@@ -17,14 +17,6 @@
     <link rel="icon" href="/img/favicon.png"> 
     <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
     <link rel="stylesheet" href="/css/diaspora.css">
-    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({
-        google_ad_client: "ca-pub-8691406134231910",
-        enable_page_level_ads: true
-      });
-    </script>
-
 </head>
 
 <body class="loading">
@@ -60,7 +52,8 @@
 
         </div>
         <div class="content markdown">
-            <h3 id="DDL语句"><a href="#DDL语句" class="headerlink" title="DDL语句"></a>DDL语句</h3><ul>
+            <h3 id="DDL语句"><a href="#DDL语句" class="headerlink" title="DDL语句"></a>DDL语句</h3><p>DDL（Data Definition Languages）语句：数据定义语言，是对数据库内部的对象进行创建、删除、修改等操作的语言。它和DML语句的最大区别是DML只是对表内部数据操作，而不涉及表的定义、结构的修改，更不会涉及其他对象。常用的语句关键字包括create、drop、alter等。</p>
+<ul>
 <li><h4 id="连接到mysql数据库"><a href="#连接到mysql数据库" class="headerlink" title="连接到mysql数据库"></a>连接到mysql数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -uroot -p&lt;password&gt;</span><br></pre></td></tr></table></figure>
 </li>
 <li><h4 id="查看数据库"><a href="#查看数据库" class="headerlink" title="查看数据库"></a>查看数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show databases;</span><br></pre></td></tr></table></figure>
@@ -101,7 +94,8 @@
 </ol>
 </li>
 </ul>
-<h3 id="DML语句"><a href="#DML语句" class="headerlink" title="DML语句"></a>DML语句</h3><ul>
+<h3 id="DML语句"><a href="#DML语句" class="headerlink" title="DML语句"></a>DML语句</h3><p>DML（Data Manipulation Language）语句：数据操纵语句。用于对数据表中记录的操作，主要包括表记录的插入（insert）、更新（update）、删除（delete）和查询（select）。</p>
+<ul>
 <li><h4 id="插入记录"><a href="#插入记录" class="headerlink" title="插入记录"></a>插入记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values</span><br><span class="line">        (record_1_value_1,record_1_value_2,...,record_1_value_n),</span><br><span class="line">        (record_2_value_1,record_2_value_2,...,record_2_value_n),</span><br><span class="line">        ......</span><br><span class="line">        (record_n_value_1,record_n_value_2,...,record_n_value_n);</span><br></pre></td></tr></table></figure>
 </li>
 <li><h4 id="更新记录"><a href="#更新记录" class="headerlink" title="更新记录"></a>更新记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;</span><br></pre></td></tr></table></figure>
@@ -172,7 +166,8 @@
 </ol>
 </li>
 </ul>
-<h3 id="DCL语句"><a href="#DCL语句" class="headerlink" title="DCL语句"></a>DCL语句</h3><ul>
+<h3 id="DCL语句"><a href="#DCL语句" class="headerlink" title="DCL语句"></a>DCL语句</h3><p>DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。</p>
+<ul>
 <li><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;password&gt;&apos;;</span><br></pre></td></tr></table></figure>
 <p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-create-user.png" alt="mysql_create_user"></p>
 </li>
@@ -241,7 +236,6 @@
         </div>
     
 </div>
-
 
     </div>
 </div>

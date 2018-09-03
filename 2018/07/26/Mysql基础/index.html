@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hans" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wang kuntian&#39;s Blog</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="Fechin,"> 
+    <meta name="description" content="Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any pr,"> 
+    <meta name="author" content="Wang kuntian"> 
+    <link rel="alternative" href="atom.xml" title="Wang kuntian&#39;s Blog" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+    <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({
+        google_ad_client: "ca-pub-8691406134231910",
+        enable_page_level_ads: true
+      });
+    </script>
+
+</head>
+
+<body class="loading">
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Mysql基础</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Mysql基础</h1>
+        <div class="stuff">
+            <span>七月 26, 2018</span>
+            
+  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/Mysql/">Mysql</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h3 id="DDL语句"><a href="#DDL语句" class="headerlink" title="DDL语句"></a>DDL语句</h3><ul>
+<li><h4 id="连接到mysql数据库"><a href="#连接到mysql数据库" class="headerlink" title="连接到mysql数据库"></a>连接到mysql数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -uroot -p&lt;password&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="查看数据库"><a href="#查看数据库" class="headerlink" title="查看数据库"></a>查看数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show databases;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="创建数据库"><a href="#创建数据库" class="headerlink" title="创建数据库"></a>创建数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create database &lt;database_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="选择数据库"><a href="#选择数据库" class="headerlink" title="选择数据库"></a>选择数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; use &lt;databaseName&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="删除数据库"><a href="#删除数据库" class="headerlink" title="删除数据库"></a>删除数据库</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop database &lt;database_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="创建表"><a href="#创建表" class="headerlink" title="创建表"></a>创建表</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create table &lt;table_name&gt;(</span><br><span class="line">        &lt;column_name_1&gt; &lt;column_type_1&gt; &lt;constraints&gt;,</span><br><span class="line">        &lt;column_name_2&gt; &lt;column_type_2&gt; &lt;constraints&gt;,</span><br><span class="line">        &lt;column_name_3&gt; &lt;column_type_3&gt; &lt;constraints&gt;,</span><br><span class="line">        ......</span><br><span class="line">        &lt;column_name_n&gt; &lt;column_type_n&gt; &lt;constraints&gt;</span><br><span class="line">        );</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="查看表定义"><a href="#查看表定义" class="headerlink" title="查看表定义"></a>查看表定义</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; desc &lt;table_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="查看创建表的SQL语句"><a href="#查看创建表的SQL语句" class="headerlink" title="查看创建表的SQL语句"></a>查看创建表的SQL语句</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show create table &lt;table_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="删除表"><a href="#删除表" class="headerlink" title="删除表"></a>删除表</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop table &lt;table_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="修改表"><a href="#修改表" class="headerlink" title="修改表"></a>修改表</h4><ol>
+<li><p>修改表类型</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>增加表字段</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>删除表字段</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; drop column &lt;column_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>字段改名</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改字段排序</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;</span><br><span class="line"></span><br><span class="line">mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;</span><br><span class="line"></span><br><span class="line">mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>更改表名</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table &lt;table_name&gt; rename &lt;new_table_name&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="DML语句"><a href="#DML语句" class="headerlink" title="DML语句"></a>DML语句</h3><ul>
+<li><h4 id="插入记录"><a href="#插入记录" class="headerlink" title="插入记录"></a>插入记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values</span><br><span class="line">        (record_1_value_1,record_1_value_2,...,record_1_value_n),</span><br><span class="line">        (record_2_value_1,record_2_value_2,...,record_2_value_n),</span><br><span class="line">        ......</span><br><span class="line">        (record_n_value_1,record_n_value_2,...,record_n_value_n);</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="更新记录"><a href="#更新记录" class="headerlink" title="更新记录"></a>更新记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="删除记录"><a href="#删除记录" class="headerlink" title="删除记录"></a>删除记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; delete from &lt;table_name&gt; &lt;where condition&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="查询记录"><a href="#查询记录" class="headerlink" title="查询记录"></a>查询记录</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt;;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><p>去重(distinct)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select &lt;field&gt; distinct from &lt;table_name&gt; &lt;where condition&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>条件查询(&gt;,&lt;,&gt;=,&lt;=,!=,=,or,and,between…and…)</p>
+</li>
+<li><p>排序(order by)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt; order by field_1 &lt;desc|asc&gt;,</span><br><span class="line">                                                             field_2 &lt;desc|asc&gt;,</span><br><span class="line">                                                             ......</span><br><span class="line">                                                             field_n &lt;desc|asc&gt;;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>desc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。</p>
+</blockquote>
+</li>
+<li><p>限制(limit)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from &lt;table_name&gt; limit &lt;n,m&gt;;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>第(n+1)条开始，选择m条记录。<br><br>n偏移量默认为0时，可以不写。</p>
+</blockquote>
+</li>
+<li><p>聚合</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;</span><br><span class="line">       from &lt;table_name&gt;</span><br><span class="line">       where &lt;where condition&gt;</span><br><span class="line">       group by field_1,field_2,...,field_n</span><br><span class="line">       having &lt;where condition&gt;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>聚合函数(fun_name)</p>
+<ul>
+<li>sum()求和</li>
+<li>avg()平均数</li>
+<li>count()计数</li>
+<li>max()最大值</li>
+<li>min()最小值</li>
+</ul>
+</blockquote>
+<p>group by 表示进行分类聚合的字段。<br>having 表示对分类后的结果再进行条件过滤。</p>
+<blockquote>
+<p>having 和 where 的区别在于，having 是对聚合后的结果进行条件过滤，而 where 是在 聚合前就对记录进行过滤。<br>如果逻辑允许，尽可能用 where 先进行过滤，减小结果集，提高聚合效率，最后再根据逻辑看是否用 having 再进行过滤。</p>
+</blockquote>
+</li>
+<li><p>表连接</p>
+<ul>
+<li><p>外连接</p>
+<ul>
+<li><p>左连接(left join)<br>包含所有左表中的记录甚至是右表中没有和它匹配的记录。</p>
+</li>
+<li><p>右连接(right join)<br>包含所有右表中的记录甚至是左表中没有和它匹配的记录。</p>
+</li>
+</ul>
+</li>
+<li><p>内连接(inner join)最常用</p>
+</li>
+</ul>
+</li>
+<li><p>子查询(in,not in,=,!=,exists,not exists)</p>
+<blockquote>
+<p>子查询记录数唯一，还可以用=代替in。</p>
+</blockquote>
+</li>
+<li><p>记录联合(union,union all)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from t1</span><br><span class="line">       union | union</span><br><span class="line">       all select * from t2</span><br><span class="line">       ......</span><br><span class="line">       union | union</span><br><span class="line">       all select * from tn;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>union 和 union all 的主要区别是:<br>union all 是把结果直接合并在一起，而 union 是将 union all 后的结果进行一次 distinct ，去除重复记录后的结果。</p>
+</blockquote>
+</li>
+</ol>
+</li>
+</ul>
+<h3 id="DCL语句"><a href="#DCL语句" class="headerlink" title="DCL语句"></a>DCL语句</h3><ul>
+<li><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;password&gt;&apos;;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-create-user.png" alt="mysql_create_user"></p>
+</li>
+<li><h4 id="查看所有用户-root-用户下"><a href="#查看所有用户-root-用户下" class="headerlink" title="查看所有用户(root 用户下)"></a>查看所有用户(root 用户下)</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; use mysql;</span><br><span class="line">mysql&gt; select user from mysql.user;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-select-user.png" alt="mysql_select_user"></p>
+</li>
+<li><h4 id="修改用户密码"><a href="#修改用户密码" class="headerlink" title="修改用户密码"></a>修改用户密码</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;new_password&gt;&apos;;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-alter-user.png" alt="mysql_alter_user"></p>
+</li>
+<li><h4 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="用户授权"><a href="#用户授权" class="headerlink" title="用户授权"></a>用户授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-grant.png" alt="mysql_grant"></p>
+</li>
+<li><h4 id="查看授权-root-用户下"><a href="#查看授权-root-用户下" class="headerlink" title="查看授权(root 用户下)"></a>查看授权(root 用户下)</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-show-grants.png" alt="mysql_show_grants"></p>
+</li>
+<li><h4 id="撤销授权"><a href="#撤销授权" class="headerlink" title="撤销授权"></a>撤销授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="Mysql帮助"><a href="#Mysql帮助" class="headerlink" title="Mysql帮助"></a>Mysql帮助</h3><ul>
+<li><h4 id="按照层次看帮助"><a href="#按照层次看帮助" class="headerlink" title="按照层次看帮助"></a>按照层次看帮助</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? content;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-content.png" alt="mysql_content"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? data types;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? double;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-double.png" alt="mysql_double"></p>
+</li>
+<li><h4 id="快速查阅帮助"><a href="#快速查阅帮助" class="headerlink" title="快速查阅帮助"></a>快速查阅帮助</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? show;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-show.png" alt="mysql_show"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? create table;</span><br></pre></td></tr></table></figure>
+<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-create-table.png" alt="mysql_create_table"></p>
+</li>
+</ul>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        <li title='0' data-url='http://www.ytmp3.cn/down/44406.mp3'></li>
+                    
+                        <li title='1' data-url='http://link.hhtjim.com/qq/001faIUs4M2zna.mp3'></li>
+                    
+                </ul>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='cbc94f448184d9663ff4'
+        data-cs='12b3200839d111b5dbf0637abab7c79acc6c922e'
+        data-r='wangkuntian.github.io'
+        data-o='wangkuntian'
+        data-a='wangkuntian'
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+        <div class='side'>
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#DDL语句"><span class="toc-number">1.</span> <span class="toc-text">DDL语句</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#连接到mysql数据库"><span class="toc-number">1.1.</span> <span class="toc-text">连接到mysql数据库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看数据库"><span class="toc-number">1.2.</span> <span class="toc-text">查看数据库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#创建数据库"><span class="toc-number">1.3.</span> <span class="toc-text">创建数据库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#选择数据库"><span class="toc-number">1.4.</span> <span class="toc-text">选择数据库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#删除数据库"><span class="toc-number">1.5.</span> <span class="toc-text">删除数据库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#创建表"><span class="toc-number">1.6.</span> <span class="toc-text">创建表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看表定义"><span class="toc-number">1.7.</span> <span class="toc-text">查看表定义</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看创建表的SQL语句"><span class="toc-number">1.8.</span> <span class="toc-text">查看创建表的SQL语句</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#删除表"><span class="toc-number">1.9.</span> <span class="toc-text">删除表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#修改表"><span class="toc-number">1.10.</span> <span class="toc-text">修改表</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DML语句"><span class="toc-number">2.</span> <span class="toc-text">DML语句</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#插入记录"><span class="toc-number">2.1.</span> <span class="toc-text">插入记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#更新记录"><span class="toc-number">2.2.</span> <span class="toc-text">更新记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#删除记录"><span class="toc-number">2.3.</span> <span class="toc-text">删除记录</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查询记录"><span class="toc-number">2.4.</span> <span class="toc-text">查询记录</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DCL语句"><span class="toc-number">3.</span> <span class="toc-text">DCL语句</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#创建用户"><span class="toc-number">3.1.</span> <span class="toc-text">创建用户</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看所有用户-root-用户下"><span class="toc-number">3.2.</span> <span class="toc-text">查看所有用户(root 用户下)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#修改用户密码"><span class="toc-number">3.3.</span> <span class="toc-text">修改用户密码</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#删除用户"><span class="toc-number">3.4.</span> <span class="toc-text">删除用户</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#用户授权"><span class="toc-number">3.5.</span> <span class="toc-text">用户授权</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看授权-root-用户下"><span class="toc-number">3.6.</span> <span class="toc-text">查看授权(root 用户下)</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#撤销授权"><span class="toc-number">3.7.</span> <span class="toc-text">撤销授权</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mysql帮助"><span class="toc-number">4.</span> <span class="toc-text">Mysql帮助</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#按照层次看帮助"><span class="toc-number">4.1.</span> <span class="toc-text">按照层次看帮助</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#快速查阅帮助"><span class="toc-number">4.2.</span> <span class="toc-text">快速查阅帮助</span></a></li></ol></li></ol>
+        </div>
+    
+</div>
+
+
+    </div>
+</div>
+<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

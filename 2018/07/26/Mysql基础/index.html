@@ -11,7 +11,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="google" content="notranslate" />
     <meta name="keywords" content="Fechin,"> 
-    <meta name="description" content="Welcome to Hexo! This is your very first post. Check documentation for more info. If you get any pr,"> 
+    <meta name="description" content="概述在启动一个Trove实例时，必须要指定一个flavor。flavor是虚拟机的模板，提供了基本的硬件配置信息，例如内存、磁盘空间、虚拟CPU的数量等等。
+查看可用flavor1trove fla,"> 
     <meta name="author" content="Wang kuntian"> 
     <link rel="alternative" href="atom.xml" title="Wang kuntian&#39;s Blog" type="application/atom+xml"> 
     <link rel="icon" href="/img/favicon.png"> 
@@ -169,37 +170,37 @@
 <h3 id="DCL语句"><a href="#DCL语句" class="headerlink" title="DCL语句"></a>DCL语句</h3><p>DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。</p>
 <ul>
 <li><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;password&gt;&apos;;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-create-user.png" alt="mysql_create_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-create-user.png" alt="mysql_create_user"></p>
 </li>
 <li><h4 id="查看所有用户-root-用户下"><a href="#查看所有用户-root-用户下" class="headerlink" title="查看所有用户(root 用户下)"></a>查看所有用户(root 用户下)</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; use mysql;</span><br><span class="line">mysql&gt; select user from mysql.user;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-select-user.png" alt="mysql_select_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-select-user.png" alt="mysql_select_user"></p>
 </li>
 <li><h4 id="修改用户密码"><a href="#修改用户密码" class="headerlink" title="修改用户密码"></a>修改用户密码</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;new_password&gt;&apos;;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-alter-user.png" alt="mysql_alter_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-alter-user.png" alt="mysql_alter_user"></p>
 </li>
 <li><h4 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 </li>
 <li><h4 id="用户授权"><a href="#用户授权" class="headerlink" title="用户授权"></a>用户授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-grant.png" alt="mysql_grant"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-grant.png" alt="mysql_grant"></p>
 </li>
 <li><h4 id="查看授权-root-用户下"><a href="#查看授权-root-用户下" class="headerlink" title="查看授权(root 用户下)"></a>查看授权(root 用户下)</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-show-grants.png" alt="mysql_show_grants"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-show-grants.png" alt="mysql_show_grants"></p>
 </li>
 <li><h4 id="撤销授权"><a href="#撤销授权" class="headerlink" title="撤销授权"></a>撤销授权</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 </li>
 </ul>
 <h3 id="Mysql帮助"><a href="#Mysql帮助" class="headerlink" title="Mysql帮助"></a>Mysql帮助</h3><ul>
 <li><h4 id="按照层次看帮助"><a href="#按照层次看帮助" class="headerlink" title="按照层次看帮助"></a>按照层次看帮助</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? content;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-content.png" alt="mysql_content"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-content.png" alt="mysql_content"></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? data types;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? double;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-double.png" alt="mysql_double"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-double.png" alt="mysql_double"></p>
 </li>
 <li><h4 id="快速查阅帮助"><a href="#快速查阅帮助" class="headerlink" title="快速查阅帮助"></a>快速查阅帮助</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? show;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-show.png" alt="mysql_show"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-show.png" alt="mysql_show"></p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? create table;</span><br></pre></td></tr></table></figure>
-<p>  <img src="/2018/07/26/Mysql基础/images/2018/07/mysql-create-table.png" alt="mysql_create_table"></p>
+<p>  <img src="/2018/07/26/Mysql基础/images/mysql-create-table.png" alt="mysql_create_table"></p>
 </li>
 </ul>
 
@@ -259,7 +260,6 @@
 <script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
 <script src="/js/plugin.js"></script>
 <script src="/js/diaspora.js"></script>
-<script src="/js/md5.min.js"></script>
 <link rel="stylesheet" href="/photoswipe/photoswipe.css">
 <link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
 <script src="/photoswipe/photoswipe.min.js"></script>

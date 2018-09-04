@@ -27,7 +27,7 @@
     <div class="bar" style="width: 0;"></div>
     <a class="icon-home image-icon" href="javascript:;"></a>
     <div title="播放/暂停" class="icon-play"></div>
-    <h3 class="subtitle">Hello World</h3>
+    <h3 class="subtitle">Trove的高级操作之自定义flavor</h3>
     <div class="social">
         <!--<div class="like-icon">-->
             <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
@@ -44,24 +44,21 @@
     <div class="section">
         <div class="article">
     <div class='main'>
-        <h1 class="title">Hello World</h1>
+        <h1 class="title">Trove的高级操作之自定义flavor</h1>
         <div class="stuff">
-            <span>八月 22, 2018</span>
+            <span>九月 04, 2018</span>
             
-  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/Hexo/">Hexo</a></li></ul>
+  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/Trove/">Trove</a></li></ul>
 
 
         </div>
         <div class="content markdown">
-            <p>Welcome to <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>
+            <h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>在启动一个Trove实例时，必须要指定一个flavor。flavor是虚拟机的模板，提供了基本的硬件配置信息，例如内存、磁盘空间、虚拟CPU的数量等等。</p>
+<h3 id="查看可用flavor"><a href="#查看可用flavor" class="headerlink" title="查看可用flavor"></a>查看可用flavor</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove flavor-list</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/04/Trove的高级操作之自定义flavor/images/trove-flavor-list.png" alt="trove-flavor-list"></p>
+<h4 id="查看nova的flavor"><a href="#查看nova的flavor" class="headerlink" title="查看nova的flavor"></a>查看nova的flavor</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova flavor-list</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/04/Trove的高级操作之自定义flavor/images/nova-flavor-list.png" alt="nova-flavor-list"></p>
+<h3 id="定制flavor"><a href="#定制flavor" class="headerlink" title="定制flavor"></a>定制flavor</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova flavor-create &lt;name&gt; &lt;id&gt; &lt;ram&gt; &lt;disk&gt; &lt;vcpus&gt;</span><br></pre></td></tr></table></figure>
 
             <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
             <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
@@ -96,7 +93,7 @@
         repo: 'wangkuntian.github.io',
         owner: 'wangkuntian',
         admin: ['wangkuntian'],
-        id: 'Hello World',      // Ensure uniqueness and length less than 50
+        id: 'Trove的高级操作之自定义flavor',      // Ensure uniqueness and length less than 50
         distractionFreeMode: false  // Facebook-like distraction free mode
     })
     gitalk.render('gitalk-container')
@@ -106,7 +103,7 @@
     </div>
     
         <div class='side'>
-            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Quick-Start"><span class="toc-number">1.</span> <span class="toc-text">Quick Start</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Create-a-new-post"><span class="toc-number">1.1.</span> <span class="toc-text">Create a new post</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Run-server"><span class="toc-number">1.2.</span> <span class="toc-text">Run server</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Generate-static-files"><span class="toc-number">1.3.</span> <span class="toc-text">Generate static files</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Deploy-to-remote-sites"><span class="toc-number">1.4.</span> <span class="toc-text">Deploy to remote sites</span></a></li></ol></li></ol>
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查看可用flavor"><span class="toc-number">2.</span> <span class="toc-text">查看可用flavor</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#查看nova的flavor"><span class="toc-number">2.1.</span> <span class="toc-text">查看nova的flavor</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#定制flavor"><span class="toc-number">3.</span> <span class="toc-text">定制flavor</span></a></li></ol>
         </div>
     
 </div>

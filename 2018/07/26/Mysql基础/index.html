@@ -218,7 +218,7 @@
             
         </div>
         
-    <div id='gitalk-container' class="comment link"
+    <!-- <div id='gitalk-container' class="comment link"
         data-ae='true'
         data-ci='cbc94f448184d9663ff4'
         data-cs='12b3200839d111b5dbf0637abab7c79acc6c922e'
@@ -226,7 +226,21 @@
         data-o='wangkuntian'
         data-a='wangkuntian'
         data-d='false'
-    >查看评论</div>
+    >查看评论</div> -->
+    <div id='gitalk-container' class="comment link"
+    data-ae='true'>查看评论</div>
+<script>
+    var gitalk = new Gitalk({
+        clientID: 'cbc94f448184d9663ff4',
+        clientSecret: '12b3200839d111b5dbf0637abab7c79acc6c922e',
+        repo: 'wangkuntian.github.io',
+        owner: 'wangkuntian',
+        admin: ['wangkuntian'],
+        id: 'Mysql基础',      // Ensure uniqueness and length less than 50
+        distractionFreeMode: false  // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
 
 
     </div>
@@ -245,6 +259,7 @@
 <script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
 <script src="/js/plugin.js"></script>
 <script src="/js/diaspora.js"></script>
+<script src="/js/md5.min.js"></script>
 <link rel="stylesheet" href="/photoswipe/photoswipe.css">
 <link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
 <script src="/photoswipe/photoswipe.min.js"></script>

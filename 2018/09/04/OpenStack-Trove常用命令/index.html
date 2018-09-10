@@ -1,57 +1,274 @@
 
 <!DOCTYPE html>
-<html lang="zh-Hans" class="loading">
-<head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Wang kuntian&#39;s Blog</title>
-
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="google" content="notranslate" />
-    <meta name="keywords" content="wangkuntian,"> 
+<html lang="zh-en">
     
-    <meta name="author" content="Wang kuntian"> 
-    <link rel="alternative" href="atom.xml" title="Wang kuntian&#39;s Blog" type="application/atom+xml"> 
-    <link rel="icon" href="/img/favicon.png"> 
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
-    <link rel="stylesheet" href="/css/diaspora.css">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack Trove的基本操作 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+    
+        <link rel="icon" href="http://yoursite.com/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg"},"articleBody":"展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。1trove list\n\n\n查看json格式时，可以使用–json命令行选项。\n\n当实例数量过多时，可以使用–limit命令行选项。1trove list --limit &lt;数字&gt;\n启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。\n\n实例名称（name）\n实例的类型id（flavor_id）\n持久化卷的大小（size）\n数据库类型（datastore）\n数据库版本（datastore_version）\n\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;数字(G)&gt; --datastore &lt;datastore_id或datastore_name&gt; --datastore_version &lt;datastore_version_id 或datastore_version_name&gt;\n\n重启实例实例一旦被创建，就可以用trove restart命令重启实例。这个命令只会重启运行在由Trove管理的Nova实例中的数据库服务，不会重启Nova实例。1trove restart &lt;实例id&gt;\n删除实例可以使用trove delete命令永久删除一个实例。delete命令是不可逆的，一旦删除了实例，将永远无法访问其上的数据库服务，实例中的所有数据也将消失。1trove delete &lt;实例id&gt;\n创建用户和数据库启用数据库的root用户像Mysql之类的数据库服务都有一个超级用户（root），在默认情况下，Trove的数据库实例是禁止这个用户的。可以利用root用户连接到Mysql数据库服务。1mysql -uroot -p&lt;password&gt; -h&lt;ip&gt; -s\n\n在一个运行中的实例上启用root用户\n1trove root-enable &lt;实例id&gt;\n  可以使用root-show 查看root用户的状态。\n 1trove root-show &lt;实例id&gt;\n \n\n启用默认root用户除了在已经存在的数据库实例上启用root用户，也可以在默认情况下启用root用户（在实例创建时）。需要将trove.conf配置文件的[mysql]配置中的root_on_create设为true。\n12[mysql]root_on_create = True\n\n需要重启Trove服务生效。\n\n\n\n数据库操作\n列出数据库\n1trove database-list &lt;实例id&gt;\n \n\n禁止某些数据库的显示经常会有一些内置的数据库不需要通过database-list命令显示出来。可以通过设置trove.conf中的ignore_dbs参数禁止这些数据库的显示。\n\nignore_dbs的默认值是lost+found、mysql和information_schema。\n\n\n在运行的实例上创建数据库\n1trove database-create &lt;实例id&gt; &lt;name&gt;\n\n创建实例时创建数据库trove create命令允许在创建实例的同时创建多个数据库。可以指定任意数量的数据库并与用户关联。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n\n用户操作\n在创建实例时创建用户\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n列出用户\n1trove user-list &lt;实例id&gt;\n \n\n在运行的实例上创建用户\n1trove user-create &lt;实例id&gt; &lt;username&gt; --databases &lt;database _name&gt;\n\n删除用户删除实例的所有用户\n1trove user-delete &lt;实例id&gt;\n 删除实例的指定用户\n 1trove user-delete &lt;实例id&gt; &lt;username&gt;\n\n管理用户的访问权限 1）列出用户的访问权限 user-show-access 命令显示了允许用户访问的数据库。\n 1trove user-show-access &lt;实例id&gt; &lt;username&gt;\n \n 2) 在user-list中禁止某些用户 一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示\n 123[DEFAULT]ignore_users = os_admin,root...\n\nMysql使用[DEFAULT]配置段\n\n 3) 给予用户访问权限\n 1trove user-grant-access &lt;实例id&gt; &lt;username&gt;\n 4) 撤销用户访问权限\n 1trove user-revoke-access &lt;实例id&gt; &lt;username&gt;\n\n\n其他查看实例详细信息1trove show &lt;实例id或name&gt;\n\n查看flavor1trove flavor-list\n\n查看flavor详细1trove flavor-show &lt;实例id&gt;\n\n查看datastore1trove datastore-list\n\n查看datastore详细1trove datastore-show &lt;datastore_id&gt;\n\n查看datastore版本1trove datastore-version-list &lt;datastore_id&gt;\n\n帮助1trove help &lt;命令&gt;\n\n","dateCreated":"2018-09-04T11:26:07+08:00","dateModified":"2018-09-07T14:52:52+08:00","datePublished":"2018-09-04T11:26:07+08:00","description":"","headline":"OpenStack Trove的基本操作","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/","keywords":"Trove, OpenStack"}</script>
+    <meta name="description" content="展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。1trove list   查看json格式时，可以使用–json命令行选项。  当实例数量过多时，可以使用–limit命令行选项。1trove list --limit &amp;lt;数字&amp;gt; 启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。  实例名称">
+<meta name="keywords" content="Trove,OpenStack">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack Trove的基本操作">
+<meta property="og:url" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。1trove list   查看json格式时，可以使用–json命令行选项。  当实例数量过多时，可以使用–limit命令行选项。1trove list --limit &amp;lt;数字&amp;gt; 启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。  实例名称">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-create.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-root-enable.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-root-show.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-database-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-user-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-show-user-access.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-show.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-flavor-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-flavor-show.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-datastore-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-datastore-show.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-datastore-version-list.png">
+<meta property="og:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-help.png">
+<meta property="og:updated_time" content="2018-09-07T06:52:52.657Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="OpenStack Trove的基本操作">
+<meta name="twitter:description" content="展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。1trove list   查看json格式时，可以使用–json命令行选项。  当实例数量过多时，可以使用–limit命令行选项。1trove list --limit &amp;lt;数字&amp;gt; 启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。  实例名称">
+<meta name="twitter:image" content="http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/images/trove-list.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="http://yoursite.com/assets/images/1.jpg"/>
+    
+    
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
 </head>
 
-<body class="loading">
-    <div id="loader"></div>
-    <div id="single">
-    <div id="top" style="display: block;">
-    <div class="bar" style="width: 0;"></div>
-    <a class="icon-home image-icon" href="javascript:;"></a>
-    <div title="播放/暂停" class="icon-play"></div>
-    <h3 class="subtitle">OpenStack Trove的基本操作</h3>
-    <div class="social">
-        <!--<div class="like-icon">-->
-            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
-        <!--</div>-->
-        <div>
-            <div class="share">
-                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
-            </div>
-            <div id="qr"></div>
-        </div>
-    </div>
-    <div class="scrollbar"></div>
-</div>
-    <div class="section">
-        <div class="article">
-    <div class='main'>
-        <h1 class="title">OpenStack Trove的基本操作</h1>
-        <div class="stuff">
-            <span>九月 04, 2018</span>
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
             
-  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/OpenStack/">OpenStack</a></li><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/Trove/">Trove</a></li></ul>
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a  class="header-right-picture "
+                href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
 
 
-        </div>
-        <div class="content markdown">
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/mailto"
+                            title="Mail"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+            <div id="main" data-behavior="4"
+                 class="
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+        <div class="post-header main-content-wrap text-left">
+    
+        <h1 class="post-title">
+            OpenStack Trove的基本操作
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-04T11:26:07+08:00">
+	
+		    Sep 04, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
             <h3 id="展示实例列表"><a href="#展示实例列表" class="headerlink" title="展示实例列表"></a>展示实例列表</h3><p>Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove list</span><br></pre></td></tr></table></figure></p>
 <p><img src="/2018/09/04/OpenStack-Trove常用命令/images/trove-list.png" alt="trove_list"></p>
 <blockquote>
@@ -147,117 +364,256 @@
 <h4 id="帮助"><a href="#帮助" class="headerlink" title="帮助"></a>帮助</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove help &lt;命令&gt;</span><br></pre></td></tr></table></figure>
 <p><img src="/2018/09/04/OpenStack-Trove常用命令/images/trove-help.png" alt="trove_help"></p>
 
-            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
-            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
-                <source type="audio/mpeg" src="">
-            </audio>
             
-                <ul id="audio-list" style="display:none">
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
                     
-                        <li title='0' data-url='http://www.ytmp3.cn/down/44406.mp3'></li>
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/04/Trove的高级操作之自定义flavor/" data-tooltip="Trove的高级操作之自定义flavor" aria-label="PREVIOUS: Trove的高级操作之自定义flavor">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
                     
-                        <li title='1' data-url='http://link.hhtjim.com/qq/001faIUs4M2zna.mp3'></li>
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/08/22/hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/&amp;title=OpenStack Trove的基本操作" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2018 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
                     
-                </ul>
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/04/Trove的高级操作之自定义flavor/" data-tooltip="Trove的高级操作之自定义flavor" aria-label="PREVIOUS: Trove的高级操作之自定义flavor">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/08/22/hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/&amp;title=OpenStack Trove的基本操作" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/&amp;title=OpenStack Trove的基本操作">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/09/04/OpenStack-Trove常用命令/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
             
         </div>
         
-    <!-- <div id='gitalk-container' class="comment link"
-        data-ae='true'
-        data-ci='cbc94f448184d9663ff4'
-        data-cs='12b3200839d111b5dbf0637abab7c79acc6c922e'
-        data-r='wangkuntian.github.io'
-        data-o='wangkuntian'
-        data-a='wangkuntian'
-        data-d='true'
-    >查看评论</div> -->
-    <div id='gitalk-container' class="comment link"
-    data-ae='true'>查看评论</div>
-<script>
-    var gitalk = new Gitalk({
-        clientID: 'cbc94f448184d9663ff4',
-        clientSecret: '12b3200839d111b5dbf0637abab7c79acc6c922e',
-        repo: 'wangkuntian.github.io',
-        owner: 'wangkuntian',
-        admin: ['wangkuntian'],
-        id: 'OpenStack Trove的基本操作',      // Ensure uniqueness and length less than 50
-        distractionFreeMode: true  // Facebook-like distraction free mode
-    })
-    gitalk.render('gitalk-container')
-</script>
 
 
-    </div>
     
-        <div class='side'>
-            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#展示实例列表"><span class="toc-number">1.</span> <span class="toc-text">展示实例列表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#启动实例"><span class="toc-number">2.</span> <span class="toc-text">启动实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#重启实例"><span class="toc-number">3.</span> <span class="toc-text">重启实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除实例"><span class="toc-number">4.</span> <span class="toc-text">删除实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#创建用户和数据库"><span class="toc-number">5.</span> <span class="toc-text">创建用户和数据库</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#启用数据库的root用户"><span class="toc-number">5.1.</span> <span class="toc-text">启用数据库的root用户</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据库操作"><span class="toc-number">5.2.</span> <span class="toc-text">数据库操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#用户操作"><span class="toc-number">5.3.</span> <span class="toc-text">用户操作</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#其他"><span class="toc-number">6.</span> <span class="toc-text">其他</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#查看实例详细信息"><span class="toc-number">6.1.</span> <span class="toc-text">查看实例详细信息</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看flavor"><span class="toc-number">6.2.</span> <span class="toc-text">查看flavor</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看flavor详细"><span class="toc-number">6.3.</span> <span class="toc-text">查看flavor详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore"><span class="toc-number">6.4.</span> <span class="toc-text">查看datastore</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore详细"><span class="toc-number">6.5.</span> <span class="toc-text">查看datastore详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore版本"><span class="toc-number">6.6.</span> <span class="toc-text">查看datastore版本</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#帮助"><span class="toc-number">6.7.</span> <span class="toc-text">帮助</span></a></li></ol></li></ol>
-        </div>
+        
     
-</div>
 
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
     </div>
 </div>
 
-<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
-<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
-<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
-<script src="/js/plugin.js"></script>
-<script src="/js/diaspora.js"></script>
-<script src="/js/my.js"></script>
-<link rel="stylesheet" href="/photoswipe/photoswipe.css">
-<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
-<script src="/photoswipe/photoswipe.min.js"></script>
-<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
 
-<!-- Root element of PhotoSwipe. Must have class pswp. -->
-<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
-    <!-- Background of PhotoSwipe. 
-         It's a separate element as animating opacity is faster than rgba(). -->
-    <div class="pswp__bg"></div>
-    <!-- Slides wrapper with overflow:hidden. -->
-    <div class="pswp__scroll-wrap">
-        <!-- Container that holds slides. 
-            PhotoSwipe keeps only 3 of them in the DOM to save memory.
-            Don't modify these 3 pswp__item elements, data is added later on. -->
-        <div class="pswp__container">
-            <div class="pswp__item"></div>
-            <div class="pswp__item"></div>
-            <div class="pswp__item"></div>
-        </div>
-        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
-        <div class="pswp__ui pswp__ui--hidden">
-            <div class="pswp__top-bar">
-                <!--  Controls are self-explanatory. Order can be changed. -->
-                <div class="pswp__counter"></div>
-                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
-                <button class="pswp__button pswp__button--share" title="Share"></button>
-                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
-                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
-                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
-                <!-- element will get class pswp__preloader--active when preloader is running -->
-                <div class="pswp__preloader">
-                    <div class="pswp__preloader__icn">
-                      <div class="pswp__preloader__cut">
-                        <div class="pswp__preloader__donut"></div>
-                      </div>
-                    </div>
-                </div>
-            </div>
-            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
-                <div class="pswp__share-tooltip"></div> 
-            </div>
-            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
-            </button>
-            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
-            </button>
-            <div class="pswp__caption">
-                <div class="pswp__caption__center"></div>
-            </div>
-        </div>
-    </div>
-</div>
+    
 
 
 
-
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

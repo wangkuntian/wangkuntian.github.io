@@ -1,7 +1,17 @@
 window.onload = Init; //网页加载完成时，调用init
+window.onunload = Stop;
+
+var id;
+
 function Init() {
     //定时器,每秒钟触发ShowPicturesInOrder()函数
-    window.setInterval("ShowPicturesInOrder()", 10000);
+    id = window.setInterval("ShowPicturesInOrder()", 10000);
+
+}
+
+function Stop() {
+    //定时器,每秒钟触发ShowPicturesInOrder()函数
+    window.clearInterval(id);
 
 }
 

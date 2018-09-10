@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hans" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wang kuntian&#39;s Blog</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="wangkuntian,"> 
+    
+    <meta name="author" content="Wang kuntian"> 
+    <link rel="alternative" href="atom.xml" title="Wang kuntian&#39;s Blog" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.png"> 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.css">
+    <link rel="stylesheet" href="/css/diaspora.css">
+</head>
+
+<body class="loading">
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="icon-home image-icon" href="javascript:;"></a>
+    <div title="播放/暂停" class="icon-play"></div>
+    <h3 class="subtitle">Trove的高级操作之备份和恢复</h3>
+    <div class="social">
+        <!--<div class="like-icon">-->
+            <!--<a href="javascript:;" class="likeThis active"><span class="icon-like"></span><span class="count">76</span></a>-->
+        <!--</div>-->
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">Trove的高级操作之备份和恢复</h1>
+        <div class="stuff">
+            <span>九月 10, 2018</span>
+            
+  <ul class="post-tags-list"><li class="post-tags-list-item"><a class="post-tags-list-link" href="/tags/Trove/">Trove</a></li></ul>
+
+
+        </div>
+        <div class="content markdown">
+            <h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。</p>
+<h3 id="新建备份"><a href="#新建备份" class="headerlink" title="新建备份"></a>新建备份</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-create &lt;实例id&gt; &lt;name&gt;</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-create.png" alt="trove-backup-create"></p>
+<h3 id="新建增量备份"><a href="#新建增量备份" class="headerlink" title="新建增量备份"></a>新建增量备份</h3><p>Trove还支持基于现有备份创建增量备份。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description &quot;&lt;description&gt;&quot;</span><br></pre></td></tr></table></figure></p>
+<h3 id="恢复备份"><a href="#恢复备份" class="headerlink" title="恢复备份"></a>恢复备份</h3><p>恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;</span><br></pre></td></tr></table></figure></p>
+<h3 id="删除备份"><a href="#删除备份" class="headerlink" title="删除备份"></a>删除备份</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-delete &lt;备份的id/name&gt;</span><br></pre></td></tr></table></figure>
+<h3 id="查看备份"><a href="#查看备份" class="headerlink" title="查看备份"></a>查看备份</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-list</span><br></pre></td></tr></table></figure>
+<p><img src="/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-list.png" alt="trove_backup_list"></p>
+<h3 id="找到指定实例的所有备份"><a href="#找到指定实例的所有备份" class="headerlink" title="找到指定实例的所有备份"></a>找到指定实例的所有备份</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-list-instance &lt;实例id&gt;</span><br></pre></td></tr></table></figure>
+
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                        <li title='0' data-url='http://www.ytmp3.cn/down/44406.mp3'></li>
+                    
+                        <li title='1' data-url='http://link.hhtjim.com/qq/001faIUs4M2zna.mp3'></li>
+                    
+                </ul>
+            
+        </div>
+        
+    <!-- <div id='gitalk-container' class="comment link"
+        data-ae='true'
+        data-ci='cbc94f448184d9663ff4'
+        data-cs='12b3200839d111b5dbf0637abab7c79acc6c922e'
+        data-r='wangkuntian.github.io'
+        data-o='wangkuntian'
+        data-a='wangkuntian'
+        data-d='true'
+    >查看评论</div> -->
+    <div id='gitalk-container' class="comment link"
+    data-ae='true'>查看评论</div>
+<script>
+    var gitalk = new Gitalk({
+        clientID: 'cbc94f448184d9663ff4',
+        clientSecret: '12b3200839d111b5dbf0637abab7c79acc6c922e',
+        repo: 'wangkuntian.github.io',
+        owner: 'wangkuntian',
+        admin: ['wangkuntian'],
+        id: 'Trove的高级操作之备份和恢复',      // Ensure uniqueness and length less than 50
+        distractionFreeMode: true  // Facebook-like distraction free mode
+    })
+    gitalk.render('gitalk-container')
+</script>
+
+
+    </div>
+    
+        <div class='side'>
+            <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#概述"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#新建备份"><span class="toc-number">2.</span> <span class="toc-text">新建备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#新建增量备份"><span class="toc-number">3.</span> <span class="toc-text">新建增量备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#恢复备份"><span class="toc-number">4.</span> <span class="toc-text">恢复备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除备份"><span class="toc-number">5.</span> <span class="toc-text">删除备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查看备份"><span class="toc-number">6.</span> <span class="toc-text">查看备份</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#找到指定实例的所有备份"><span class="toc-number">7.</span> <span class="toc-text">找到指定实例的所有备份</span></a></li></ol>
+        </div>
+    
+</div>
+
+    </div>
+</div>
+
+<script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+<script src="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js"></script>
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/diaspora.js"></script>
+<script src="/js/my.js"></script>
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</html>

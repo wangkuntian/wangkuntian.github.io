@@ -10,41 +10,41 @@
     <meta name="author" content="Wang kuntian">
     
     
-        <link rel="icon" href="http://yoursite.com/assets/images/favicon.png">
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg"},"articleBody":"\nDDL语句DDL（Data Definition Languages）语句：数据定义语言，是对数据库内部的对象进行创建、删除、修改等操作的语言。它和DML语句的最大区别是DML只是对表内部数据操作，而不涉及表的定义、结构的修改，更不会涉及其他对象。常用的语句关键字包括create、drop、alter等。\n\n连接到mysql数据库1mysql -uroot -p&lt;password&gt;\n\n\b查看数据\b库1mysql&gt; show databases;\n\n创建数据库1mysql&gt; create database &lt;database_name&gt;;\n\n选择数据库1mysql&gt; use &lt;databaseName&gt;\n\n删除数据库1mysql&gt; drop database &lt;database_name&gt;;\n\n创建表1234567mysql&gt; create table &lt;table_name&gt;(        &lt;column_name_1&gt; &lt;column_type_1&gt; &lt;constraints&gt;,        &lt;column_name_2&gt; &lt;column_type_2&gt; &lt;constraints&gt;,        &lt;column_name_3&gt; &lt;column_type_3&gt; &lt;constraints&gt;,        ......        &lt;column_name_n&gt; &lt;column_type_n&gt; &lt;constraints&gt;        );\n\n查看表定义1mysql&gt; desc &lt;table_name&gt;;\n\n查看创建表的SQL语句1mysql&gt; show create table &lt;table_name&gt;;\n\n删除表1mysql&gt; drop table &lt;table_name&gt;;\n\n修改表\n修改表类型\n1mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt;;\n\n增加表字段\n1mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n删除表字段\n1mysql&gt; alter table &lt;table_name&gt; drop column &lt;column_name&gt;;\n\n字段改名\n1mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n修改字段排序\n12345mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;\n\n更改表名\n1mysql&gt; alter table &lt;table_name&gt; rename &lt;new_table_name&gt;;\n\n\n\n\nDML语句DML（Data Manipulation Language）语句：数据操纵语句。用于对数据表中记录的操作，主要包括表记录的插入（insert）、更新（update）、删除（delete）和查询（select）。\n\n插入记录12345mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values        (record_1_value_1,record_1_value_2,...,record_1_value_n),        (record_2_value_1,record_2_value_2,...,record_2_value_n),        ......        (record_n_value_1,record_n_value_2,...,record_n_value_n);\n\n更新记录1mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;\n\n删除记录1mysql&gt; delete from &lt;table_name&gt; &lt;where condition&gt;;\n\n查询记录1mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt;;\n\n去重(distinct)\n1mysql&gt; select &lt;field&gt; distinct from &lt;table_name&gt; &lt;where condition&gt;;\n\n条件查询(&gt;,&lt;,&gt;=,&lt;=,!=,=,or,and,between…and…)\n\n排序(order by)\n1234mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt; order by field_1 &lt;desc|asc&gt;,                                                             field_2 &lt;desc|asc&gt;,                                                             ......                                                             field_n &lt;desc|asc&gt;;\n\ndesc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。\n\n\n限制(limit)\n1mysql&gt; select * from &lt;table_name&gt; limit &lt;n,m&gt;;\n\n第(n+1)条开始，选择m条记录。n\b\b偏移量默认\b为0时，可以不写。\n\n\n\b聚合\n12345mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;       from &lt;table_name&gt;       where &lt;where condition&gt;       group by field_1,field_2,...,field_n       having &lt;where condition&gt;\n\n聚合函数(fun_name)\n\n\bsum()求和\navg()平均数\ncount()计数\nmax()最大值\nmin()最小值\n\n\ngroup by 表示进行分类聚合的字段。having 表示对分类后的结果再进行条件过滤。\n\nhaving 和 where 的区别在于，having 是对聚合后的结果进行条件过滤，而 where 是在 聚合前就对记录进行过滤。如果逻辑允许，尽可能用 where 先进行过滤，减小结果集，提高聚合效率，最后再根据逻辑看是否用 having 再进行过滤。\n\n\n表连接\n\n外连接\n\n左连接(left join)包含所有左表中的记录甚至是右表中没有和它匹配的记录。\n\n右连接(right join)包含所有右表中的记录甚至是左表中没有和它匹配的记录。\n\n\n\n内连接(inner join)最常用\n\n\n\n子查询(in,not in,=,!=,exists,not exists)\n\n子查询记录数唯一，还可以用=代替in。\n\n\n记录联合(union,union all)\n123456mysql&gt; select * from t1       union | union       all select * from t2       ......       union | union       all select * from tn;\n\nunion 和 union all 的主要区别是:union all 是把结果直接合并在一起，而 union 是将 union all \b\b后的结果进行一次 distinct ，去除重复记录后的结果。\n\n\n\n\n\nDCL语句DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。\n\n创建用户1mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;password&gt;&apos;;\n  \n\n查看所有用户(root 用户下)12mysql&gt; use mysql;mysql&gt; select user from mysql.user;\n  \n\n修改用户密码1mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;new_password&gt;&apos;;\n  \n\n删除用户1mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n用户授权1mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n查看授权(root \b用户下)1mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n撤销授权1mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n\nMysql帮助\n按照层次看帮助1mysql&gt; ? content;\n  \n1mysql&gt; ? data types;\n  \n1mysql&gt; ? double;\n  \n\n快速查阅帮助1mysql&gt; ? show;\n  \n1mysql&gt; ? create table;\n  \n\n","dateCreated":"2018-07-26T14:00:00+08:00","dateModified":"2018-09-10T15:12:25+08:00","datePublished":"2018-07-26T14:00:00+08:00","description":"Mysql基础","headline":"Mysql基础","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"http://yoursite.com/2018/07/26/Mysql基础/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"http://yoursite.com/2018/07/26/Mysql基础/","keywords":"Mysql"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg"},"articleBody":"\nDDL语句DDL（Data Definition Languages）语句：数据定义语言，是对数据库内部的对象进行创建、删除、修改等操作的语言。它和DML语句的最大区别是DML只是对表内部数据操作，而不涉及表的定义、结构的修改，更不会涉及其他对象。常用的语句关键字包括create、drop、alter等。\n\n连接到mysql数据库1mysql -uroot -p&lt;password&gt;\n\n\b查看数据\b库1mysql&gt; show databases;\n\n创建数据库1mysql&gt; create database &lt;database_name&gt;;\n\n选择数据库1mysql&gt; use &lt;databaseName&gt;\n\n删除数据库1mysql&gt; drop database &lt;database_name&gt;;\n\n创建表1234567mysql&gt; create table &lt;table_name&gt;(        &lt;column_name_1&gt; &lt;column_type_1&gt; &lt;constraints&gt;,        &lt;column_name_2&gt; &lt;column_type_2&gt; &lt;constraints&gt;,        &lt;column_name_3&gt; &lt;column_type_3&gt; &lt;constraints&gt;,        ......        &lt;column_name_n&gt; &lt;column_type_n&gt; &lt;constraints&gt;        );\n\n查看表定义1mysql&gt; desc &lt;table_name&gt;;\n\n查看创建表的SQL语句1mysql&gt; show create table &lt;table_name&gt;;\n\n删除表1mysql&gt; drop table &lt;table_name&gt;;\n\n修改表\n修改表类型\n1mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt;;\n\n增加表字段\n1mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n删除表字段\n1mysql&gt; alter table &lt;table_name&gt; drop column &lt;column_name&gt;;\n\n字段改名\n1mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n修改字段排序\n12345mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;\n\n更改表名\n1mysql&gt; alter table &lt;table_name&gt; rename &lt;new_table_name&gt;;\n\n\n\n\nDML语句DML（Data Manipulation Language）语句：数据操纵语句。用于对数据表中记录的操作，主要包括表记录的插入（insert）、更新（update）、删除（delete）和查询（select）。\n\n插入记录12345mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values        (record_1_value_1,record_1_value_2,...,record_1_value_n),        (record_2_value_1,record_2_value_2,...,record_2_value_n),        ......        (record_n_value_1,record_n_value_2,...,record_n_value_n);\n\n更新记录1mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;\n\n删除记录1mysql&gt; delete from &lt;table_name&gt; &lt;where condition&gt;;\n\n查询记录1mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt;;\n\n去重(distinct)\n1mysql&gt; select &lt;field&gt; distinct from &lt;table_name&gt; &lt;where condition&gt;;\n\n条件查询(&gt;,&lt;,&gt;=,&lt;=,!=,=,or,and,between…and…)\n\n排序(order by)\n1234mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt; order by field_1 &lt;desc|asc&gt;,                                                             field_2 &lt;desc|asc&gt;,                                                             ......                                                             field_n &lt;desc|asc&gt;;\n\ndesc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。\n\n\n限制(limit)\n1mysql&gt; select * from &lt;table_name&gt; limit &lt;n,m&gt;;\n\n第(n+1)条开始，选择m条记录。n\b\b偏移量默认\b为0时，可以不写。\n\n\n\b聚合\n12345mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;       from &lt;table_name&gt;       where &lt;where condition&gt;       group by field_1,field_2,...,field_n       having &lt;where condition&gt;\n\n聚合函数(fun_name)\n\n\bsum()求和\navg()平均数\ncount()计数\nmax()最大值\nmin()最小值\n\n\ngroup by 表示进行分类聚合的字段。having 表示对分类后的结果再进行条件过滤。\n\nhaving 和 where 的区别在于，having 是对聚合后的结果进行条件过滤，而 where 是在 聚合前就对记录进行过滤。如果逻辑允许，尽可能用 where 先进行过滤，减小结果集，提高聚合效率，最后再根据逻辑看是否用 having 再进行过滤。\n\n\n表连接\n\n外连接\n\n左连接(left join)包含所有左表中的记录甚至是右表中没有和它匹配的记录。\n\n右连接(right join)包含所有右表中的记录甚至是左表中没有和它匹配的记录。\n\n\n\n内连接(inner join)最常用\n\n\n\n子查询(in,not in,=,!=,exists,not exists)\n\n子查询记录数唯一，还可以用=代替in。\n\n\n记录联合(union,union all)\n123456mysql&gt; select * from t1       union | union       all select * from t2       ......       union | union       all select * from tn;\n\nunion 和 union all 的主要区别是:union all 是把结果直接合并在一起，而 union 是将 union all \b\b后的结果进行一次 distinct ，去除重复记录后的结果。\n\n\n\n\n\nDCL语句DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。\n\n创建用户1mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;password&gt;&apos;;\n  \n\n查看所有用户(root 用户下)12mysql&gt; use mysql;mysql&gt; select user from mysql.user;\n  \n\n修改用户密码1mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by &apos;&lt;new_password&gt;&apos;;\n  \n\n删除用户1mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n用户授权1mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n查看授权(root \b用户下)1mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n撤销授权1mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n\nMysql帮助\n按照层次看帮助1mysql&gt; ? content;\n  \n1mysql&gt; ? data types;\n  \n1mysql&gt; ? double;\n  \n\n快速查阅帮助1mysql&gt; ? show;\n  \n1mysql&gt; ? create table;\n  \n\n","dateCreated":"2018-07-26T14:00:00+08:00","dateModified":"2018-09-10T15:12:25+08:00","datePublished":"2018-07-26T14:00:00+08:00","description":"Mysql基础","headline":"Mysql基础","image":[],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/26/Mysql基础/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/26/Mysql基础/","keywords":"Mysql"}</script>
     <meta name="description" content="Mysql基础">
 <meta name="keywords" content="Mysql">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Mysql基础">
-<meta property="og:url" content="http://yoursite.com/2018/07/26/Mysql基础/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Mysql基础">
 <meta property="og:locale" content="zh-en">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-create-user.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-select-user.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-alter-user.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-grant.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-show-grants.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-content.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-data-tpye.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-double.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-show.png">
-<meta property="og:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-create-table.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-create-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-select-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-alter-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-grant.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-show-grants.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-content.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-data-tpye.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-double.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-create-table.png">
 <meta property="og:updated_time" content="2018-09-10T07:12:25.946Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Mysql基础">
 <meta name="twitter:description" content="Mysql基础">
-<meta name="twitter:image" content="http://yoursite.com/2018/07/26/Mysql基础/images/mysql-create-user.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础/images/mysql-create-user.png">
     
     
         
     
     
-        <meta property="og:image" content="http://yoursite.com/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
     
     
     
@@ -463,7 +463,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/07/26/Mysql基础/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -471,7 +471,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/07/26/Mysql基础/&amp;title=Mysql基础" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/&amp;title=Mysql基础" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -479,7 +479,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/07/26/Mysql基础/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -548,7 +548,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/07/26/Mysql基础/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -556,7 +556,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/07/26/Mysql基础/&amp;title=Mysql基础" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/&amp;title=Mysql基础" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -564,7 +564,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/07/26/Mysql基础/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -591,7 +591,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=http://yoursite.com/2018/07/26/Mysql基础/">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础/">
                     <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
                 </a>
             </li>
@@ -599,7 +599,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=http://yoursite.com/2018/07/26/Mysql基础/&amp;title=Mysql基础">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/&amp;title=Mysql基础">
                     <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
                 </a>
             </li>
@@ -607,7 +607,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=http://yoursite.com/2018/07/26/Mysql基础/">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础/">
                     <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
                 </a>
             </li>

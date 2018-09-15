@@ -6,10 +6,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
-    <title>Mysql选择合适的数据类型 - Wang kuntian&#39;s Blog</title>
+    <title>Mysql开发篇之选择合适的数据类型 - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Mysql,数据类型">
+        <meta name="keywords" content="Mysql,开发,数据类型">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,18 +17,18 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\nCHAR与VARCHARCHAR属于固定长度的字符类型，VARCHAR属于可变长度的字符类型。\n\n\n\n值\nCHAR(4)\n存储需求\nVARCHAR(4)\n存储需求\n\n\n\n\n‘’\n‘&nbsp;&nbsp;&nbsp;&nbsp;’\n4个字节\n‘&nbsp;’\n1个字节\n\n\n‘ab’\n‘ab&nbsp;’\n4个字节\n‘ab&nbsp;’\n3个字节\n\n\n‘abcd’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n‘abcdefgh’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n\n由于CHAR长度固定，所以它处理速度比VARCHAR要快很多，但是缺点是浪费存储空间，程序需要对行尾空格进行处理。对于长度变化不大并且对查询速度有较高要求的数据可以考虑使用CHAR类型来存储。\n\n不同的存储引擎对CHAR和VARCHAR的使用原则有所不同。\n\n\nInnoDB  建议使用VARCHAR类型。对于InnoDB数据表，内部的行存储格式没有区分固定长度和可变长度列(所有数据行都使用指向数据列值的头指针)，\b因此本质上，使用固定长度的CHAR不一定比使用可变长度VARCHAR列性能要好。因而，主要的性能因素是数据行使用的存储总量。由于CHAR平均占用的空间多于VARCHAR，因此使用VARCHAR来最小化需要处理的数据行的存储总量和磁盘I/O是比较好的。\n\nMyISAM  建议使用固定长度的数据列代替\b可变长度的数据列。\n\nMEMORY  都使用固定长度的数据行存储，因此无论使用CHAR或者VARCHAR列都没有关系。两者都是作为CHAR类型处理。\n\n\nTEXT与BLOBBLOB能用来保存二进制数据，比如照片；Text只能保存字符数据，比如一篇文章或者日记。\n常见问题\nBLOB和TEXT值会引起一些性能问题，特别是在执行大量的删除操作时。删除操作会在数据表中留下很大的“空洞”，以后填入这些\b“空洞”的记录在插入的性能上会有影响。为了提高性能，建议定期使用optimize table 功能对这类表进行碎片整理，避免因为“空洞”导致性能问题。\n\n使用合成的(Synthetic)索引来提高文本字段(BLOB或TEXT)的查询性能。合成索引就是根据大文本字段的内容建立一个散列值，并将这个值存储在单独的数据列中，通过检索散列值就可以找到数据行(只能用于精确匹配的查询)。可以使用MD5()、SHA1()、CRC32()生成散列值。\n\n在不必要的时候避免检索大型的BLOB或TEXT值。\n\n把BLOB或者TEXT列分离到单独的表中。\n\n\n浮点数与定点数浮点数一般用于表示含有小数部分的数值。\n当一个字段被定义为\b浮点类型后，如果被插入数据的精度超过该列定义的实际精度，则插入值会被四舍五入到实际定义的精度值，然后插入，四舍五入的过程不会报错。\b在Mysql中float、double(或real)用来表示浮点数。\n定点数不同于浮点数，定点数实际上是以字符串的形式存放的，所以定点数可以更精确地保存数据。如果实际插入的数值精度大于实际定义的精度，\b则Mysql会进行警告(默认的SQLModel下)，但是\b数据会按照\b实际精度四舍五入后插入；如果SQLModel是在Tranditional(传统模式)下，则系统会直接报错，导致数据无法插入。在Mysql中，decimal(或\bnumberic)用来表示定点数。\b\b\b\n在今后的\b关于浮点数和定点数的应用中，要考虑到：\n\n浮点数存在误差\n对于货币等对精度敏感的数据，应该应用定点数标书或存储。\n在编程中，如果用到浮点数，要特别注意误差问题，并尽量避免做浮点数比较。\n要注意浮点数中一些特殊值的处理。\n\n日期类型Mysql提供的常用的日期类型有D\bATE、TIME、DATETIME、TIMESTAMP。\b日期选择原则：\n\n根据实际需要选择能够满足应用最小的存储的日期类型。这样不仅能节约存储，更能提高表的操作效率。\n\n如果要记录年月日时分秒，并且记录的年份比较久远，最好使用DATETIME,不要使用TIMESTAMP。因为TIMESTAMP表示的日期范围比DATETIME\b要短得多。\n\n如果记录的日期需要要让不同时区的用户使用，那么最好是使用TIMESTAMP，因为日期类型中只有它能够和实际时区相对应。\n\n\n总结\n对于字符类型，要根据存储引擎来进行相应的选择。\n\n对于精度要求较高的应用中，建议使用定点数来存储数值，以保证结果的正确性。\n\n对于含有TEXT和BOLG字段的表，如果经常做删除和修改记录的操作要定时执行optimize table功能\b对表进行碎片整理。\n\n日期类型要根据实际需要选择能够满足应用的最小存储的日期类型。\n\n","dateCreated":"2018-07-18T14:30:00+08:00","dateModified":"2018-09-10T16:22:22+08:00","datePublished":"2018-07-18T14:30:00+08:00","description":"选择合适的数据类型","headline":"Mysql选择合适的数据类型","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/","keywords":"Mysql, 数据类型","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\nCHAR与VARCHARCHAR属于固定长度的字符类型，VARCHAR属于可变长度的字符类型。\n\n\n\n值\nCHAR(4)\n存储需求\nVARCHAR(4)\n存储需求\n\n\n\n\n‘’\n‘&nbsp;&nbsp;&nbsp;&nbsp;’\n4个字节\n‘&nbsp;’\n1个字节\n\n\n‘ab’\n‘ab&nbsp;’\n4个字节\n‘ab&nbsp;’\n3个字节\n\n\n‘abcd’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n‘abcdefgh’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n\n由于CHAR长度固定，所以它处理速度比VARCHAR要快很多，但是缺点是浪费存储空间，程序需要对行尾空格进行处理。对于长度变化不大并且对查询速度有较高要求的数据可以考虑使用CHAR类型来存储。\n\n不同的存储引擎对CHAR和VARCHAR的使用原则有所不同。\n\n\nInnoDB  建议使用VARCHAR类型。对于InnoDB数据表，内部的行存储格式没有区分固定长度和可变长度列(所有数据行都使用指向数据列值的头指针)，\b因此本质上，使用固定长度的CHAR不一定比使用可变长度VARCHAR列性能要好。因而，主要的性能因素是数据行使用的存储总量。由于CHAR平均占用的空间多于VARCHAR，因此使用VARCHAR来最小化需要处理的数据行的存储总量和磁盘I/O是比较好的。\n\nMyISAM  建议使用固定长度的数据列代替\b可变长度的数据列。\n\nMEMORY  都使用固定长度的数据行存储，因此无论使用CHAR或者VARCHAR列都没有关系。两者都是作为CHAR类型处理。\n\n\nTEXT与BLOBBLOB能用来保存二进制数据，比如照片；Text只能保存字符数据，比如一篇文章或者日记。\n常见问题\nBLOB和TEXT值会引起一些性能问题，特别是在执行大量的删除操作时。删除操作会在数据表中留下很大的“空洞”，以后填入这些\b“空洞”的记录在插入的性能上会有影响。为了提高性能，建议定期使用optimize table 功能对这类表进行碎片整理，避免因为“空洞”导致性能问题。\n\n使用合成的(Synthetic)索引来提高文本字段(BLOB或TEXT)的查询性能。合成索引就是根据大文本字段的内容建立一个散列值，并将这个值存储在单独的数据列中，通过检索散列值就可以找到数据行(只能用于精确匹配的查询)。可以使用MD5()、SHA1()、CRC32()生成散列值。\n\n在不必要的时候避免检索大型的BLOB或TEXT值。\n\n把BLOB或者TEXT列分离到单独的表中。\n\n\n浮点数与定点数浮点数一般用于表示含有小数部分的数值。\n当一个字段被定义为\b浮点类型后，如果被插入数据的精度超过该列定义的实际精度，则插入值会被四舍五入到实际定义的精度值，然后插入，四舍五入的过程不会报错。\b在Mysql中float、double(或real)用来表示浮点数。\n定点数不同于浮点数，定点数实际上是以字符串的形式存放的，所以定点数可以更精确地保存数据。如果实际插入的数值精度大于实际定义的精度，\b则Mysql会进行警告(默认的SQLModel下)，但是\b数据会按照\b实际精度四舍五入后插入；如果SQLModel是在Tranditional(传统模式)下，则系统会直接报错，导致数据无法插入。在Mysql中，decimal(或\bnumberic)用来表示定点数。\b\b\b\n在今后的\b关于浮点数和定点数的应用中，要考虑到：\n\n浮点数存在误差\n对于货币等对精度敏感的数据，应该应用定点数标书或存储。\n在编程中，如果用到浮点数，要特别注意误差问题，并尽量避免做浮点数比较。\n要注意浮点数中一些特殊值的处理。\n\n日期类型Mysql提供的常用的日期类型有D\bATE、TIME、DATETIME、TIMESTAMP。\b日期选择原则：\n\n根据实际需要选择能够满足应用最小的存储的日期类型。这样不仅能节约存储，更能提高表的操作效率。\n\n如果要记录年月日时分秒，并且记录的年份比较久远，最好使用DATETIME,不要使用TIMESTAMP。因为TIMESTAMP表示的日期范围比DATETIME\b要短得多。\n\n如果记录的日期需要要让不同时区的用户使用，那么最好是使用TIMESTAMP，因为日期类型中只有它能够和实际时区相对应。\n\n\n总结\n对于字符类型，要根据存储引擎来进行相应的选择。\n\n对于精度要求较高的应用中，建议使用定点数来存储数值，以保证结果的正确性。\n\n对于含有TEXT和BOLG字段的表，如果经常做删除和修改记录的操作要定时执行optimize table功能\b对表进行碎片整理。\n\n日期类型要根据实际需要选择能够满足应用的最小存储的日期类型。\n\n","dateCreated":"2018-07-18T14:30:00+08:00","dateModified":"2018-09-12T15:23:18+08:00","datePublished":"2018-07-18T14:30:00+08:00","description":"选择合适的数据类型","headline":"Mysql开发篇之选择合适的数据类型","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/","keywords":"Mysql, 开发, 数据类型","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="选择合适的数据类型">
-<meta name="keywords" content="Mysql,数据类型">
+<meta name="keywords" content="Mysql,开发,数据类型">
 <meta property="og:type" content="blog">
-<meta property="og:title" content="Mysql选择合适的数据类型">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/index.html">
+<meta property="og:title" content="Mysql开发篇之选择合适的数据类型">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="选择合适的数据类型">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2018-09-10T08:22:22.219Z">
+<meta property="og:updated_time" content="2018-09-12T07:23:18.288Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Mysql选择合适的数据类型">
+<meta name="twitter:title" content="Mysql开发篇之选择合适的数据类型">
 <meta name="twitter:description" content="选择合适的数据类型">
     
     
@@ -39,8 +39,8 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/images/PROJECT-Vayne.jpg" />
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/images/PROJECT-Vayne.jpg" />
     
     
     <!--STYLES-->
@@ -235,7 +235,7 @@
                 <div class="post-header main-content-wrap text-center">
     
         <h1 class="post-title">
-            Mysql选择合适的数据类型
+            Mysql开发篇之选择合适的数据类型
         </h1>
     
     
@@ -369,7 +369,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据类型/">数据类型</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/开发/">开发</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据类型/">数据类型</a>
 
             </div>
         
@@ -380,7 +380,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql字符集/" data-tooltip="Mysql字符集" aria-label="PREVIOUS: Mysql字符集">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之字符集/" data-tooltip="Mysql开发篇之字符集" aria-label="PREVIOUS: Mysql开发篇之字符集">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -389,7 +389,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql数据库引擎/" data-tooltip="Mysql数据库引擎" aria-label="NEXT: Mysql数据库引擎">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之数据库引擎/" data-tooltip="Mysql开发篇之数据库引擎" aria-label="NEXT: Mysql开发篇之数据库引擎">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -407,7 +407,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -415,7 +415,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/&amp;title=Mysql选择合适的数据类型" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/&amp;title=Mysql开发篇之选择合适的数据类型" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -423,7 +423,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -465,7 +465,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql字符集/" data-tooltip="Mysql字符集" aria-label="PREVIOUS: Mysql字符集">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之字符集/" data-tooltip="Mysql开发篇之字符集" aria-label="PREVIOUS: Mysql开发篇之字符集">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -474,7 +474,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql数据库引擎/" data-tooltip="Mysql数据库引擎" aria-label="NEXT: Mysql数据库引擎">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之数据库引擎/" data-tooltip="Mysql开发篇之数据库引擎" aria-label="NEXT: Mysql开发篇之数据库引擎">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -492,7 +492,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -500,7 +500,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/&amp;title=Mysql选择合适的数据类型" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/&amp;title=Mysql开发篇之选择合适的数据类型" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -508,7 +508,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -535,7 +535,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/">
                     <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
                 </a>
             </li>
@@ -543,7 +543,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/&amp;title=Mysql选择合适的数据类型">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/&amp;title=Mysql开发篇之选择合适的数据类型">
                     <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
                 </a>
             </li>
@@ -551,7 +551,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql选择合适的数据类型/">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/">
                     <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
                 </a>
             </li>

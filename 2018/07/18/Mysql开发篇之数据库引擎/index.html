@@ -6,10 +6,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
-    <title>Mysql数据库引擎 - Wang kuntian&#39;s Blog</title>
+    <title>Mysql开发篇之数据库引擎 - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Mysql,数据库引擎">
+        <meta name="keywords" content="Mysql,开发,数据库引擎">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,18 +17,18 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。\n\n\n常用查看默认存储引擎12345678910mysql&gt; show variables like '%storage_engine%';+----------------------------------+-----------+| Variable_name                    | Value     |+----------------------------------+-----------+| default_storage_engine           | InnoDB    || default_tmp_storage_engine       | InnoDB    || disabled_storage_engines         |           || internal_tmp_disk_storage_engine | InnoDB    || internal_tmp_mem_storage_engine  | TempTable |+----------------------------------+-----------+\n查询当前数据库支持的存储引擎1mysql&gt; show engines;\n查看当前表的存储引擎1mysql&gt; show status table;\n设置存储引擎12345mysql&gt; create table student (\t  id int not null auto_increment,\t  name varchar(10) not null,\t  primary key(id)\t  )engine = myisam default charset=gbk;\n修改存储引擎1mysql&gt; alter table student engine = innodb;\n常用存储引擎对比\n\n\n特点\nMyISAM\nInnoDB\nMEMORY\nMERGE\nNDB\n\n\n\n\n存储限制\n有\n64TB\n有\n没有\n有\n\n\n事物安全\n\n支持\n\n\n\n\n\n锁机制\n表锁\n行锁\n表锁\n表锁\n行所\n\n\nB树索引\n支持\n支持\n支持\n支持\n支持\n\n\n哈希索引\n\n\n支持\n\n支持\n\n\n全文索引\n支持\n\n\n\n\n\n\n集群索引\n\n支持\n\n\n\n\n\n数据缓存\n\n支持\n支持\n\n支持\n\n\n索引缓存\n支持\n支持\n支持\n支持\n支持\n\n\n数据可压缩\n支持\n\n\n\n\n\n\n空间使用\n低\n高\nN/A\n低\n高\n\n\n内存使用\n低\n高\n中等\n低\n高\n\n\n批量插入的速度\n高\n低\n高\n高\n高\n\n\n支持外键\n\n支持\n\n\n\n\n\n\n适用环境InnDB用于事务处理应用程序，支持外键。如果应用对事物的完整性\b有较高的要求，在并发条件下\b要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。\nMyISAM以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储\b\b和其他应用环境下最常使用的存储引擎之一。\nMEMORY将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小\b\b有限制，太大的表无法缓存在内存中，其次是\b要确保表的数据可以恢复，数据库异常终止后表中的数据是可以\b恢复的。常用于更新不太频的小表，用以快速地得到访问结果。\nMERGE用于将一系列等同的MyISAM表以逻辑方式组合在一起，并作为一个对象引用它们。优点在于可以突破对单个MyISAM表大小的限制，并且通过将不同的表分布在多个磁盘上，可以有效地改善MERAGE表的访问效率。对于诸如数据仓储等VLDB环境十分适合。\n","dateCreated":"2018-07-18T14:00:00+08:00","dateModified":"2018-09-10T16:47:04+08:00","datePublished":"2018-07-18T14:00:00+08:00","description":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。","headline":"Mysql数据库引擎","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/","keywords":"Mysql, 数据库引擎","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。\n\n\n常用查看默认存储引擎12345678910mysql&gt; show variables like '%storage_engine%';+----------------------------------+-----------+| Variable_name                    | Value     |+----------------------------------+-----------+| default_storage_engine           | InnoDB    || default_tmp_storage_engine       | InnoDB    || disabled_storage_engines         |           || internal_tmp_disk_storage_engine | InnoDB    || internal_tmp_mem_storage_engine  | TempTable |+----------------------------------+-----------+\n查询当前数据库支持的存储引擎1mysql&gt; show engines;\n查看当前表的存储引擎1mysql&gt; show status table;\n设置存储引擎12345mysql&gt; create table student (\t  id int not null auto_increment,\t  name varchar(10) not null,\t  primary key(id)\t  )engine = myisam default charset=gbk;\n修改存储引擎1mysql&gt; alter table student engine = innodb;\n常用存储引擎对比\n\n\n特点\nMyISAM\nInnoDB\nMEMORY\nMERGE\nNDB\n\n\n\n\n存储限制\n有\n64TB\n有\n没有\n有\n\n\n事物安全\n\n支持\n\n\n\n\n\n锁机制\n表锁\n行锁\n表锁\n表锁\n行所\n\n\nB树索引\n支持\n支持\n支持\n支持\n支持\n\n\n哈希索引\n\n\n支持\n\n支持\n\n\n全文索引\n支持\n\n\n\n\n\n\n集群索引\n\n支持\n\n\n\n\n\n数据缓存\n\n支持\n支持\n\n支持\n\n\n索引缓存\n支持\n支持\n支持\n支持\n支持\n\n\n数据可压缩\n支持\n\n\n\n\n\n\n空间使用\n低\n高\nN/A\n低\n高\n\n\n内存使用\n低\n高\n中等\n低\n高\n\n\n批量插入的速度\n高\n低\n高\n高\n高\n\n\n支持外键\n\n支持\n\n\n\n\n\n\n适用环境InnDB用于事务处理应用程序，支持外键。如果应用对事物的完整性\b有较高的要求，在并发条件下\b要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。\nMyISAM以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储\b\b和其他应用环境下最常使用的存储引擎之一。\nMEMORY将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小\b\b有限制，太大的表无法缓存在内存中，其次是\b要确保表的数据可以恢复，数据库异常终止后表中的数据是可以\b恢复的。常用于更新不太频的小表，用以快速地得到访问结果。\nMERGE用于将一系列等同的MyISAM表以逻辑方式组合在一起，并作为一个对象引用它们。优点在于可以突破对单个MyISAM表大小的限制，并且通过将不同的表分布在多个磁盘上，可以有效地改善MERAGE表的访问效率。对于诸如数据仓储等VLDB环境十分适合。\n","dateCreated":"2018-07-18T14:00:00+08:00","dateModified":"2018-09-12T15:20:48+08:00","datePublished":"2018-07-18T14:00:00+08:00","description":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。","headline":"Mysql开发篇之数据库引擎","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/","keywords":"Mysql, 开发, 数据库引擎","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。">
-<meta name="keywords" content="Mysql,数据库引擎">
+<meta name="keywords" content="Mysql,开发,数据库引擎">
 <meta property="og:type" content="blog">
-<meta property="og:title" content="Mysql数据库引擎">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/index.html">
+<meta property="og:title" content="Mysql开发篇之数据库引擎">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2018-09-10T08:47:04.003Z">
+<meta property="og:updated_time" content="2018-09-12T07:20:48.474Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Mysql数据库引擎">
+<meta name="twitter:title" content="Mysql开发篇之数据库引擎">
 <meta name="twitter:description" content="插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。">
     
     
@@ -39,8 +39,8 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/images/PROJECT-Vayne.jpg" />
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/images/PROJECT-Vayne.jpg" />
     
     
     <!--STYLES-->
@@ -235,7 +235,7 @@
                 <div class="post-header main-content-wrap text-center">
     
         <h1 class="post-title">
-            Mysql数据库引擎
+            Mysql开发篇之数据库引擎
         </h1>
     
     
@@ -413,7 +413,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据库引擎/">数据库引擎</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/开发/">开发</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据库引擎/">数据库引擎</a>
 
             </div>
         
@@ -424,7 +424,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql选择合适的数据类型/" data-tooltip="Mysql选择合适的数据类型" aria-label="PREVIOUS: Mysql选择合适的数据类型">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之选择合适的数据类型/" data-tooltip="Mysql开发篇之选择合适的数据类型" aria-label="PREVIOUS: Mysql开发篇之选择合适的数据类型">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -433,7 +433,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/01/hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/01/Hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -451,7 +451,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -459,7 +459,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/&amp;title=Mysql数据库引擎" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/&amp;title=Mysql开发篇之数据库引擎" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -467,7 +467,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -509,7 +509,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql选择合适的数据类型/" data-tooltip="Mysql选择合适的数据类型" aria-label="PREVIOUS: Mysql选择合适的数据类型">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/18/Mysql开发篇之选择合适的数据类型/" data-tooltip="Mysql开发篇之选择合适的数据类型" aria-label="PREVIOUS: Mysql开发篇之选择合适的数据类型">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -518,7 +518,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/01/hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/07/01/Hello-world/" data-tooltip="Hello World" aria-label="NEXT: Hello World">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -536,7 +536,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -544,7 +544,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/&amp;title=Mysql数据库引擎" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/&amp;title=Mysql开发篇之数据库引擎" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -552,7 +552,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -579,7 +579,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/">
                     <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
                 </a>
             </li>
@@ -587,7 +587,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/&amp;title=Mysql数据库引擎">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/&amp;title=Mysql开发篇之数据库引擎">
                     <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
                 </a>
             </li>
@@ -595,7 +595,7 @@
             
             
             <li class="share-option">
-                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql数据库引擎/">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/">
                     <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
                 </a>
             </li>

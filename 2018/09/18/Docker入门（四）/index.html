@@ -1,0 +1,583 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Docker入门（四） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Docker,容器,入门">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。\n\n创建容器新建容器可以使用docker create命令新建一个容器。1sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。1sudo docker start [OPTIONS] CONTAINER [CONTAINER...]\n\n新建并启动容器启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。1sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]\n当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：\n\n检查本地是否存在指定的镜像，不存在就从公有仓库下载。\n利用镜像创建并启动一个容器。\n分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。\n从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。\n从地址池配置一个IP地址给容器。\n执行用户指定的应用程序。\n执行完毕后容器就被终止。\n\n下面的命令将启动一个bash终端，允许用户进行交互。1sudo docker run -t -i ubuntu /bin/bash\n可选参数-t docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。-i 容器的标准输入保持打开。\n用户可以使用Ctrl+d或者exit命令退出容器。对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。\n\n守护态运行更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。1sudo docker run -d ubuntu /bin/sh -c \"while ture; do echo hello world; sleep 1; done\"\nps：要获取容器的输出信息可以通过docker logs命令\n\n1sudo docker logs [OPTIONS] CONTAINER\n终止容器1sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-t，–time=10 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。\n\ndocker kill命令会直接发送SIGKILL信号强行终止容器。\n\ndocker start命令可以重新启动已经终止的容器。docker restart命令将会让一个运行的容器终止，然后重新启动。\n\n进入容器在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。\nattach命令docker attach是docker自带的命令。1sudo docker attach [OPTIONS] CONTAINER\n但是使用attach命令有时并不方便。当多个窗口同时attach到同一容器是，所有窗口都会同步显示。当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。\n\nexec命令docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。1sudo docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\nnsenter工具这里不做讨论。\n删除容器1sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-f，–force=false 强行终止并删除一个运行中的容器。-l，–link=false 删除容器的连接，但保留容器。-v，–volumes=false 删除容器挂载的数据卷。\n\n\n删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。\n\n导入和导出容器导出容器导出容器是指导出一个已经创建的容器到一个文件中。1sudo docker export [OPTIONS] CONTAINER\n\n导入容器导出的文件又可以使用docker import命令导入，成为镜像。1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\ndocker load和docker import比较。docker load导入镜像存储文件到本地镜像库。docker import导入容器快照到本地镜像库。区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。\n\n","dateCreated":"2018-09-18T17:23:08+08:00","dateModified":"2018-09-20T10:58:46+08:00","datePublished":"2018-09-18T17:23:08+08:00","description":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。","headline":"Docker入门（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/18/Docker入门（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/18/Docker入门（四）/","keywords":"Docker, 入门, 容器","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。">
+<meta name="keywords" content="Docker,容器,入门">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Docker入门（四）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-create.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-start.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-run.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-run-it.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-attach.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-exec.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-rm.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-export.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-import.png">
+<meta property="og:updated_time" content="2018-09-20T02:58:46.812Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Docker入门（四）">
+<meta name="twitter:description" content="容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/docker-create.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/18/Docker入门（四）/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a  class="header-right-picture "
+                href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Docker入门（四）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-18T17:23:08+08:00">
+	
+		    Sep 18, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>容器是Docker的另一核心概念。<br>容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。<br><a id="more"></a></p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#创建容器"><span class="toc-text">创建容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#新建容器"><span class="toc-text">新建容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#新建并启动容器"><span class="toc-text">新建并启动容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#守护态运行"><span class="toc-text">守护态运行</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#终止容器"><span class="toc-text">终止容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#进入容器"><span class="toc-text">进入容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#attach命令"><span class="toc-text">attach命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#exec命令"><span class="toc-text">exec命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#nsenter工具"><span class="toc-text">nsenter工具</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除容器"><span class="toc-text">删除容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#导入和导出容器"><span class="toc-text">导入和导出容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#导出容器"><span class="toc-text">导出容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#导入容器"><span class="toc-text">导入容器</span></a></li></ol></li></ol>
+<h3 id="创建容器"><a href="#创建容器" class="headerlink" title="创建容器"></a>创建容器</h3><h4 id="新建容器"><a href="#新建容器" class="headerlink" title="新建容器"></a>新建容器</h4><p>可以使用docker create命令新建一个容器。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-create.png" alt="docker-create"></p>
+<p>使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker start [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-start.png" alt="docker-start"></p>
+<h4 id="新建并启动容器"><a href="#新建并启动容器" class="headerlink" title="新建并启动容器"></a>新建并启动容器</h4><p>启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-run.png" alt="docker-run"><br>当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：</p>
+<ol>
+<li>检查本地是否存在指定的镜像，不存在就从公有仓库下载。</li>
+<li>利用镜像创建并启动一个容器。</li>
+<li>分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。</li>
+<li>从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。</li>
+<li>从地址池配置一个IP地址给容器。</li>
+<li>执行用户指定的应用程序。</li>
+<li>执行完毕后容器就被终止。</li>
+</ol>
+<p>下面的命令将启动一个bash终端，允许用户进行交互。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -t -i ubuntu /bin/bash</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-run-it.png" alt="docker-run-it"><br><div class="alert danger no-icon"><p>可选参数<br><strong>-t</strong> docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。<br><strong>-i</strong> 容器的标准输入保持打开。</p>
+</div><br><div class="alert warning no-icon"><p>用户可以使用Ctrl+d或者exit命令退出容器。<br>对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。<br>因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。</p>
+</div></p>
+<h4 id="守护态运行"><a href="#守护态运行" class="headerlink" title="守护态运行"></a>守护态运行</h4><p>更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d ubuntu /bin/sh -c <span class="string">"while ture; do echo hello world; sleep 1; done"</span></span><br></pre></td></tr></table></figure></p>
+<div class="alert info no-icon"><p>ps：要获取容器的输出信息可以通过docker logs命令</p>
+</div>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker logs [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
+<h3 id="终止容器"><a href="#终止容器" class="headerlink" title="终止容器"></a>终止容器</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-t，–time=10</strong> 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。</p>
+</div>
+<div class="alert danger no-icon"><p>docker kill命令会直接发送SIGKILL信号强行终止容器。</p>
+</div>
+<div class="alert info no-icon"><p>docker start命令可以重新启动已经终止的容器。<br>docker restart命令将会让一个运行的容器终止，然后重新启动。</p>
+</div>
+<h3 id="进入容器"><a href="#进入容器" class="headerlink" title="进入容器"></a>进入容器</h3><p>在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。</p>
+<h4 id="attach命令"><a href="#attach命令" class="headerlink" title="attach命令"></a>attach命令</h4><p>docker attach是docker自带的命令。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker attach [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-attach.png" alt="docker-attach"><br><div class="alert warning no-icon"><p>但是使用attach命令有时并不方便。<br>当多个窗口同时attach到同一容器是，所有窗口都会同步显示。<br>当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。</p>
+</div></p>
+<h4 id="exec命令"><a href="#exec命令" class="headerlink" title="exec命令"></a>exec命令</h4><p>docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker <span class="built_in">exec</span> [OPTIONS] CONTAINER COMMAND [ARG...]</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-exec.png" alt="docker-exec"></p>
+<h4 id="nsenter工具"><a href="#nsenter工具" class="headerlink" title="nsenter工具"></a>nsenter工具</h4><p>这里不做讨论。</p>
+<h3 id="删除容器"><a href="#删除容器" class="headerlink" title="删除容器"></a>删除容器</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-f，–force=false</strong> 强行终止并删除一个运行中的容器。<br><strong>-l，–link=false</strong> 删除容器的连接，但保留容器。<br><strong>-v，–volumes=false</strong> 删除容器挂载的数据卷。</p>
+</div>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-rm.png" alt="docker-rm"></p>
+<div class="alert info no-icon"><p>删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。</p>
+</div>
+<h3 id="导入和导出容器"><a href="#导入和导出容器" class="headerlink" title="导入和导出容器"></a>导入和导出容器</h3><h4 id="导出容器"><a href="#导出容器" class="headerlink" title="导出容器"></a>导出容器</h4><p>导出容器是指导出一个已经创建的容器到一个文件中。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker export [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-export.png" alt="docker-export"></p>
+<h4 id="导入容器"><a href="#导入容器" class="headerlink" title="导入容器"></a>导入容器</h4><p>导出的文件又可以使用docker import命令导入，成为镜像。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-import.png" alt="docker-import"></p>
+<div class="alert danger no-icon"><p>docker load和docker import比较。<br>docker load导入镜像存储文件到本地镜像库。<br>docker import导入容器快照到本地镜像库。<br>区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。</p>
+</div>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/入门/">入门</a> <a class="tag tag--primary tag--small t-link" href="/tags/容器/">容器</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/19/源码看Trove（一）/" data-tooltip="源码看Trove（一）" aria-label="PREVIOUS: 源码看Trove（一）">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/15/席慕蓉——无怨的青春/" data-tooltip="席慕蓉——无怨的青春" aria-label="NEXT: 席慕蓉——无怨的青春">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/&amp;title=Docker入门（四）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2018 Wang kuntian. All Rights Reserved.
+    </span>
+    <br>
+    <script type="text/javascript" src="//rf.revolvermaps.com/0/0/3.js?i=5kw0kghcqpw&amp;b=0&amp;s=40&amp;m=2&amp;cl=ffffff&amp;co=010020&amp;cd=aa0000&amp;v0=60&amp;v1=60&amp;r=1" async="async"></script>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/19/源码看Trove（一）/" data-tooltip="源码看Trove（一）" aria-label="PREVIOUS: 源码看Trove（一）">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/15/席慕蓉——无怨的青春/" data-tooltip="席慕蓉——无怨的青春" aria-label="NEXT: 席慕蓉——无怨的青春">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/&amp;title=Docker入门（四）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/&amp;title=Docker入门（四）">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/18/Docker入门（四）/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>

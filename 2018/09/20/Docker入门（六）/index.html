@@ -1,0 +1,570 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Docker入门（六） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Docker,数据管理,入门">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。容器的数据管理主要有两种方式：\n\n数据卷（Data Volumes）\n数据卷容器（Data Volume Dontainers）\n\n数据卷数据卷是一个可供容器使用的特殊目录，它绕过文件系统，可以提供很多有用的特性。\n\n数据卷可以在容器间共享使用。\n对数据卷的修改会马上生效。\n对数据卷的更新，不会影响镜像。\n卷会一直存在，直到没有容器使用。数据卷的使用，类似Linux下对目录或文件进行mount操作。\n\n在容器内创建一个数据卷在用docker run命令时，使用-v可以在容器内创建一个数据卷。1sudo docker run -d -P --name web -v /webapp training/webapp python app.py\n-P 是允许外部访问容器需要暴露的端口。\n\n\n挂载一个主机目录作为数据卷使用-v也可以指定挂载一个本地的目录到容器中去作为数据卷。1sudo docker run -d -P --name web-2 -v /src/webapp:/opt/webapp training/webapp python app.py\n加载主机中的/src/webapp目录到容器的/opt/webapp目录。本地目录的路径必须是绝对路径，如果目录不存在，docker会自动创建。\n\n\ndocker挂载的数据卷默认权限是读写（rw），用户也可以通过，ro设定只读。1sudo docker run -d -P --name web-3 -v /src/webapp:/opt/webapp:ro training/webapp python app.py\n挂载一个本地主机文件作为数据卷-v也可以从主句挂载单个文件到容器中作为数据卷。1sudo docker run --rm -it  -v ~/.bash_history:/.bash_history ubuntu /bin/bash\n数据卷容器如果用户需要在容器之间共享一些持续更新的数据，最简单的方式是使用数据卷容器。数据卷容器其实就是一个普通的容器，专门用它提供数据卷供其他容器挂载。\n首先创建一个数据卷容器dbdata，并在其中创建一个数据卷挂在到/dbdata。1sudo docker run -it -v /dbdata --name dbdata ubuntu\n然后，可以在其他容器中使用–volumes-from来挂载dbdata容器中的数据卷。创建db1和db2两个容器，并从dbdata容器挂载数据卷。12sudo docker run -it --volumes-from dbdata --name db1 ubuntusudo docker run -it --volumes-from dbdata --name db2 ubuntu\n现在，容器db1和db2都挂载同一个数据卷到相同的/dbdata目录。三个容器任何一方在该目录写入，其他容器都可以看到。\n在dbdata容器中创建一个test文件。12345root@33821d0743e1:/# cd dbdata/root@33821d0743e1:/dbdata# touch testroot@33821d0743e1:/dbdata# lstestroot@33821d0743e1:/dbdata#\n\n在db1容器内查看。\n可以多次使用–volumes-from参数来从多个容器挂载多个数据卷。还可以从其他已经挂载了容器卷的容器来挂载数据卷。1sudo docker run -d --volumes-from db1 --name db3 ubuntu\n使用–volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。\n\n如果删除了挂载了的容器（包括dbdata、db1和db2），数据卷并不会自动删除。如果要删除一个数据卷，必须在删除最后一个还挂载这它的容器时显示使用docker rm -v命令来指定同时删除相关联的容器。\n\n利用数据卷容器迁移数据可以利用数据卷容器对其中的数据卷进行备份、恢复，以实现数据的迁移。\n备份1sudo docker run --volumes-from dbdata -v $(pwd):/backup --name worker ubuntu tar cvf /backup/backup.tar /dbdata\n首先，利用ubuntu镜像创建一个容器worker。使用–volumes-from dbdata参数让worker容器挂载dbdata容器的数据卷（即dbdata数据卷）。使用-v$(pwd):/backup参数来挂载本地的当前目录到worker容器下的/backup目录。worker容器启动后，使用tar cvf /backup/backup.tar /dbdata命令来将/dbdata下内容备份为容器内的/backup/backup.tar，即主机目录下的backup.tar。\n\n\n恢复首先创建一个带有数据卷的容器dbdata2。1sudo docker run -v /dbdata --name dbdata2 ubuntu /bin/bash\n然后创建另一个新的容器，挂载dbdata2的容器，并使用untar解压备份文件到所挂载的容器卷即可。1sudo docker run --volumes-from dbdata2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar\n","dateCreated":"2018-09-20T14:44:39+08:00","dateModified":"2018-09-20T18:05:39+08:00","datePublished":"2018-09-20T14:44:39+08:00","description":"用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。","headline":"Docker入门（六）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/20/Docker入门（六）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/20/Docker入门（六）/","keywords":"Docker, 入门, 数据管理","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。">
+<meta name="keywords" content="Docker,数据管理,入门">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Docker入门（六）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/docker-run-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/docker-run-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/docker-run-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/touch-test.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/db1-ls.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/docker-backup.png">
+<meta property="og:updated_time" content="2018-09-20T10:05:39.455Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Docker入门（六）">
+<meta name="twitter:description" content="用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/docker-run-1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/20/Docker入门（六）/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a  class="header-right-picture "
+                href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Docker入门（六）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-20T14:44:39+08:00">
+	
+		    Sep 20, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。<br><a id="more"></a><br>容器的数据管理主要有两种方式：</p>
+<ul>
+<li>数据卷（Data Volumes）</li>
+<li>数据卷容器（Data Volume Dontainers）</li>
+</ul>
+<h3 id="数据卷"><a href="#数据卷" class="headerlink" title="数据卷"></a>数据卷</h3><p>数据卷是一个可供容器使用的特殊目录，它绕过文件系统，可以提供很多有用的特性。</p>
+<ul>
+<li>数据卷可以在容器间共享使用。</li>
+<li>对数据卷的修改会马上生效。</li>
+<li>对数据卷的更新，不会影响镜像。</li>
+<li>卷会一直存在，直到没有容器使用。<br>数据卷的使用，类似Linux下对目录或文件进行mount操作。</li>
+</ul>
+<h4 id="在容器内创建一个数据卷"><a href="#在容器内创建一个数据卷" class="headerlink" title="在容器内创建一个数据卷"></a>在容器内创建一个数据卷</h4><p>在用docker run命令时，使用-v可以在容器内创建一个数据卷。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web -v /webapp training/webapp python app.py</span><br></pre></td></tr></table></figure></p>
+<div class="alert info no-icon"><p>-P 是允许外部访问容器需要暴露的端口。</p>
+</div>
+<p><img src="/2018/09/20/Docker入门（六）/images/docker-run-1.png" alt="docker-run"></p>
+<h4 id="挂载一个主机目录作为数据卷"><a href="#挂载一个主机目录作为数据卷" class="headerlink" title="挂载一个主机目录作为数据卷"></a>挂载一个主机目录作为数据卷</h4><p>使用-v也可以指定挂载一个本地的目录到容器中去作为数据卷。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web-2 -v /src/webapp:/opt/webapp training/webapp python app.py</span><br></pre></td></tr></table></figure></p>
+<div class="alert info no-icon"><p>加载主机中的/src/webapp目录到容器的/opt/webapp目录。<br>本地目录的路径必须是绝对路径，如果目录不存在，docker会自动创建。</p>
+</div>
+<p><img src="/2018/09/20/Docker入门（六）/images/docker-run-2.png" alt="docker-run"></p>
+<p>docker挂载的数据卷默认权限是读写（rw），用户也可以通过，ro设定只读。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web-3 -v /src/webapp:/opt/webapp:ro training/webapp python app.py</span><br></pre></td></tr></table></figure></p>
+<h4 id="挂载一个本地主机文件作为数据卷"><a href="#挂载一个本地主机文件作为数据卷" class="headerlink" title="挂载一个本地主机文件作为数据卷"></a>挂载一个本地主机文件作为数据卷</h4><p>-v也可以从主句挂载单个文件到容器中作为数据卷。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --rm -it  -v ~/.bash_history:/.bash_history ubuntu /bin/bash</span><br></pre></td></tr></table></figure></p>
+<h3 id="数据卷容器"><a href="#数据卷容器" class="headerlink" title="数据卷容器"></a>数据卷容器</h3><p>如果用户需要在容器之间共享一些持续更新的数据，最简单的方式是使用数据卷容器。数据卷容器其实就是一个普通的容器，专门用它提供数据卷供其他容器挂载。</p>
+<p>首先创建一个数据卷容器dbdata，并在其中创建一个数据卷挂在到/dbdata。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -it -v /dbdata --name dbdata ubuntu</span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/20/Docker入门（六）/images/docker-run-3.png" alt="docker-run"><br>然后，可以在其他容器中使用–volumes-from来挂载dbdata容器中的数据卷。创建db1和db2两个容器，并从dbdata容器挂载数据卷。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -it --volumes-from dbdata --name db1 ubuntu</span><br><span class="line">sudo docker run -it --volumes-from dbdata --name db2 ubuntu</span><br></pre></td></tr></table></figure></p>
+<p>现在，容器db1和db2都挂载同一个数据卷到相同的/dbdata目录。三个容器任何一方在该目录写入，其他容器都可以看到。</p>
+<p>在dbdata容器中创建一个test文件。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">root@33821d0743e1:/<span class="comment"># cd dbdata/</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment"># touch test</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment"># ls</span></span><br><span class="line"><span class="built_in">test</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment">#</span></span><br></pre></td></tr></table></figure></p>
+<p><img src="/2018/09/20/Docker入门（六）/images/touch-test.png" alt="touch-test"></p>
+<p>在db1容器内查看。<br><img src="/2018/09/20/Docker入门（六）/images/db1-ls.png" alt="db1-ls"></p>
+<p>可以多次使用–volumes-from参数来从多个容器挂载多个数据卷。还可以从其他已经挂载了容器卷的容器来挂载数据卷。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d --volumes-from db1 --name db3 ubuntu</span><br></pre></td></tr></table></figure></p>
+<div class="alert info no-icon"><p>使用–volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。</p>
+</div>
+<div class="alert danger no-icon"><p>如果删除了挂载了的容器（包括dbdata、db1和db2），数据卷并不会自动删除。<br>如果要删除一个数据卷，必须在删除最后一个还挂载这它的容器时显示使用docker rm -v命令来指定同时删除相关联的容器。</p>
+</div>
+<h3 id="利用数据卷容器迁移数据"><a href="#利用数据卷容器迁移数据" class="headerlink" title="利用数据卷容器迁移数据"></a>利用数据卷容器迁移数据</h3><p>可以利用数据卷容器对其中的数据卷进行备份、恢复，以实现数据的迁移。</p>
+<h4 id="备份"><a href="#备份" class="headerlink" title="备份"></a>备份</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --volumes-from dbdata -v $(pwd):/backup --name worker ubuntu tar cvf /backup/backup.tar /dbdata</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>首先，利用ubuntu镜像创建一个容器worker。<br>使用–volumes-from dbdata参数让worker容器挂载dbdata容器的数据卷（即dbdata数据卷）。<br>使用-v$(pwd):/backup参数来挂载本地的当前目录到worker容器下的/backup目录。<br>worker容器启动后，使用tar cvf /backup/backup.tar /dbdata命令来将/dbdata下内容备份为容器内的/backup/backup.tar，即主机目录下的backup.tar。</p>
+</div>
+<p><img src="/2018/09/20/Docker入门（六）/images/docker-backup.png" alt="docker-backup"></p>
+<h4 id="恢复"><a href="#恢复" class="headerlink" title="恢复"></a>恢复</h4><p>首先创建一个带有数据卷的容器dbdata2。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -v /dbdata --name dbdata2 ubuntu /bin/bash</span><br></pre></td></tr></table></figure></p>
+<p>然后创建另一个新的容器，挂载dbdata2的容器，并使用untar解压备份文件到所挂载的容器卷即可。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --volumes-from dbdata2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar</span><br></pre></td></tr></table></figure></p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/入门/">入门</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据管理/">数据管理</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/21/计算机网络复习/" data-tooltip="计算机网络复习" aria-label="PREVIOUS: 计算机网络复习">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/20/Docker入门（五）/" data-tooltip="Docker入门（五）" aria-label="NEXT: Docker入门（五）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/&amp;title=Docker入门（六）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2018 Wang kuntian. All Rights Reserved.
+    </span>
+    <br>
+    <script type="text/javascript" src="//rf.revolvermaps.com/0/0/3.js?i=5kw0kghcqpw&amp;b=0&amp;s=40&amp;m=2&amp;cl=ffffff&amp;co=010020&amp;cd=aa0000&amp;v0=60&amp;v1=60&amp;r=1" async="async"></script>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/21/计算机网络复习/" data-tooltip="计算机网络复习" aria-label="PREVIOUS: 计算机网络复习">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/20/Docker入门（五）/" data-tooltip="Docker入门（五）" aria-label="NEXT: Docker入门（五）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/&amp;title=Docker入门（六）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/&amp;title=Docker入门（六）">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/Docker入门（六）/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>

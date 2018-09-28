@@ -1,0 +1,659 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>计算机网络复习 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="计算机网络,基础">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"计算机网络复习\n体系结构OSI七层协议开放系统互连基本参考模型 OSI/RM（Open Systems Interconnection Reference Model），简称OSI。\nTCP/IP四层协议五层协议\n每层功能及协议\n\n\n\n功能\n常见\n协议\n\n\n\n\n物理层（比特Bit）\n设备间收获发送比特流；说明电压、线速和线缆等。\n中继器、网线、集线器、HUB等\nRJ45、CLOCK、IEEE802.3等\n\n\n数据链路层（帧Frame）\n将比特组合成字节，进而组合成帧；用MAC地址访问介质；错误可以被发现但是不能被纠正。\n网卡、网桥、二层交换机等。\nPPP、FR、HDLC、VLAN、MAC等。\n\n\n网络层（数据包Packet）\n负责数据包从源到宿的传递和网际互连。\n路由器、多层交换机、防火墙等。\nIP、ICMP、ARP、PARP、OSPF、IPX、RIP、IGRP等。\n\n\n运输层\n可靠或不可靠数据传输；数据重传前的错误纠正。\n进程、端口（socket）\nTCP、UDP、SPX\n\n\n会话层\n保证不同应用程序的数据独立；建立、管理和终止会话。\n服务器验证用户登录、断点续传\nNFS、SQL、NetBIOS、RPC\n\n\n表示层\n数据表示；加密与解密、数据的压缩与解压缩、图像编码与编码等特殊处理过程\nURL加密、口令加密、图片编解码等\nJPEG、MPEG、ASCII\n\n\n应用层\n用户接口\n\nFTP、DNS、Telnet、SNMP、SMTP、HTTP、WWW、NFS\n\n\n\n概念DHCPDHCP（Dynamic Host Configuration Protocol，动态主机配置协议）通常被应用在大型的局域网络环境中，主要作用是集中的管理、分配IP地址，使网络环境中的主机动态的获得IP地址、Gateway地址、DNS服务器地址等信息，并能够提升地址的使用率。DHCP协议采用客户端/服务器模型，主机地址的动态分配任务由网络主机驱动。当DHCP服务器接收到来自网络主机申请地址的信息时，才会向网络主机发送相关的地址配置等信息，以实现网络主机地址信息的动态配置。DHCP具有以下功能：\n\n保证任何IP地址在同一时刻只能由一台DHCP客户机所使用。\nDHCP应当可以给用户分配永久固定的IP地址。\nDHCP应当可以同用其他方法获得IP地址的主机共存（如手工配置IP地址的主机）。\nDHCP服务器应当向现有的BOOTP客户端提供服务。\n\nDHCP有三种机制分配IP地址：\n\n自动分配方式（Automatic Allocation），DHCP服务器为主机指定一个永久性的IP地址，一旦DHCP客户端第一次成功从DHCP服务器端租用到IP地址后，就可以永久性的使用该地址。\n动态分配方式（Dynamic Allocation），DHCP服务器给主机指定一个具有时间限制的IP地址，时间到期或主机明确表示放弃该地址时，该地址可以被其他主机使用。\n手工分配方式（Manual Allocation），客户端的IP地址是由网络管理员指定的，DHCP服务器只是将指定的IP地址告诉客户端主机。三种地址分配方式中，只有动态分配可以重复使用客户端不再需要的地址。\n\nVLANVLAN（Virtual Local Area Network）的中文名为”虚拟局域网”。虚拟局域网（VLAN）是一组逻辑上的设备和用户，这些设备和用户并不受物理位置的限制，可以根据功能、部门及应用等因素将它们组织起来，相互之间的通信就好像它们在同一个网段中一样，由此得名虚拟局域网。VLAN是一种比较新的技术，工作在OSI参考模型的第2层和第3层，一个VLAN就是一个广播域，VLAN之间的通信是通过第3层的路由器来完成的。与传统的局域网技术相比较，VLAN技术更加灵活，它具有以下优点： 网络设备的移动、添加和修改的管理开销减少；可以控制广播活动；可提高网络的安全性。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。\nVXLANVXLAN（Virtual Extensible LAN），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:\n\n多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。\n提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。\n更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。\n\nARP地址解析协议，即ARP（Address Resolution Protocol），是根据IP地址获取物理地址的一个TCP/IP协议。主机发送信息时将包含目标IP地址的ARP请求广播到网络上的所有主机，并接收返回消息，以此确定目标的物理地址；收到返回消息后将该IP地址和物理地址存入本机ARP缓存中并保留一定时间，下次请求时直接查询ARP缓存以节约资源。地址解析协议是建立在网络中各个主机互相信任的基础上的，网络上的主机可以自主发送ARP应答消息，其他主机收到应答报文时不会检测该报文的真实性就会将其记入本机ARP缓存；由此攻击者就可以向某一主机发送伪ARP应答报文，使其发送的信息无法到达预期的主机或到达错误的主机，这就构成了一个ARP欺骗。ARP命令可用于查询本机ARP缓存中IP地址和MAC地址的对应关系、添加或删除静态对应关系等。相关协议有RARP、代理ARP。NDP用于在IPv6中代替地址解析协议。\nOSI模型把网络工作分为七层，IP地址在OSI模型的第三层，MAC地址在第二层，彼此不直接打交道。在通过以太网发送IP数据包时，需要先封装第三层（32位IP地址）、第二层（48位MAC地址）的报头，但由于发送时只知道目标IP地址，不知道其MAC地址，又不能跨第二、三层，所以需要使用地址解析协议。使用地址解析协议，可根据网络层IP数据包包头中的IP地址信息解析出目标硬件地址（MAC地址）信息，以保证通信的顺利进行。\n工作过程主机A的IP地址为192.168.1.1，MAC地址为0A-11-22-33-44-01；主机B的IP地址为192.168.1.2，MAC地址为0A-11-22-33-44-02；当主机A要与主机B通信时，地址解析协议可以将主机B的IP地址（192.168.1.2）解析成主机B的MAC地址，以下为工作流程：第1步：根据主机A上的路由表内容，IP确定用于访问主机B的转发IP地址是192.168.1.2。然后A主机在自己的本地ARP缓存中检查主机B的匹配MAC地址。第2步：如果主机A在ARP缓存中没有找到映射，它将询问192.168.1.2的硬件地址，从而将ARP请求帧广播到本地网络上的所有主机。源主机A的IP地址和MAC地址都包括在ARP请求中。本地网络上的每台主机都接收到ARP请求并且检查是否与自己的IP地址匹配。如果主机发现请求的IP地址与自己的IP地址不匹配，它将丢弃ARP请求。第3步：主机B确定ARP请求中的IP地址与自己的IP地址匹配，则将主机A的IP地址和MAC地址映射添加到本地ARP缓存中。第4步：主机B将包含其MAC地址的ARP回复消息直接发送回主机A。第5步：当主机A收到从主机B发来的ARP回复消息时，会用主机B的IP和MAC地址映射更新ARP缓存。本机缓存是有生存期的，生存期结束后，将再次重复上面的过程。主机B的MAC地址一旦确定，主机A就能向主机B发送IP通信了。\nMAC地址MAC（Medium/Media Access Control）地址，用来表示互联网上每一个站点的标识符，采用十六进制数表示，共六个字节（48位）。其中，前三个字节是由IEEE的注册管理机构RA负责给不同厂家分配的代码(高位24位），也称为“编制上唯一的标识符”（Organizationally Unique Identifier），后三个字节(低位24位)由各厂家自行指派给生产的适配器接口，称为扩展标识符（唯一性）。一个地址块可以生成2^24个不同的地址。MAC地址实际上就是适配器地址或适配器标识符EUI-48。\nff:ff:ff:ff:ff:ff以主机A（192.168.1.5）向主机B（192.168.1.1）发送数据为例。当发送数据时，主机A会在自己的ARP缓存表中寻找是否有目标IP地址。如果找到了，也就知道了目标MAC地址，直接把目标MAC地址写入帧里面发送就可以了；如果在ARP缓存表中没有找到相对应的IP地址，主机A就会在网络上发送一个广播，目标MAC地址是“FF.FF.FF.FF.FF.FF”，这表示向同一网段内的所有主机发出这样的询问：“192.168.1.1的MAC地址是什么？”网络上其他主机并不响应ARP询问，只有主机B接收到这个帧时，才向主机A做出这样的回应：“192.168.1.1的MAC地址是00-aa-00-62-c6-09”。这样，主机A就知道了主机B的MAC地址，它就可以向主机B发送信息了。同时它还更新了自己的ARP缓存表，下次再向主机B发送信息时，直接从ARP缓存表里查找就可以了。\n交换机交换机（Switch）意为“开关”是一种用于电（光）信号转发的网络设备。它可以为接入交换机的任意两个网络节点提供独享的电信号通路。最常见的交换机是以太网交换机。其他常见的还有电话语音交换机、光纤交换机等。\n二层交换二层交换技术的发展比较成熟，二层交换机属数据链路层设备，可以识别数据包中的MAC地址信息，根据MAC地址进行转发，并将这些MAC地址与对应的端口记录在自己内部的一个地址表中。具体的工作流程如下：\n\n当交换机从某个端口收到一个数据包，它先读取包头中的源MAC地址，这样它就知道源MAC地址的机器是连在哪个端口上的；\n再去读取包头中的目的MAC地址，并在地址表中查找相应的端口；\n如表中有与这目的MAC地址对应的端口，把数据包直接复制到这端口上；\n如表中找不到相应的端口则把数据包广播到所有端口上，当目的机器对源机器回应时，交换机又可以记录这一目的MAC地址与哪个端口对应，在下次传送数据时就不再需要对所有端口进行广播了。不断的循环这个过程，对于全网的MAC地址信息都可以学习到，二层交换机就是这样建立和维护它自己的地址表。\n\n从二层交换机的工作原理可以推知以下三点：\n\n由于交换机对多数端口的数据进行同时交换，这就要求具有很宽的交换总线带宽，如果二层交换机有N个端口，每个端口的带宽是M，交换机总线带宽超过N×M，那么这交换机就可以实现线速交换。\n学习端口连接的机器的MAC地址，写入地址表，地址表的大小（一般两种表示方式：一为BEFFER RAM，一为MAC表项数值），地址表大小影响交换机的接入容量。\n还有一个就是二层交换机一般都含有专门用于处理数据包转发的ASIC（Application specific Integrated Circuit，专用集成电路）芯片，因此转发速度可以做到非常快。由于各个厂家采用ASIC不同，直接影响产品性能。\n\n以上三点也是评判二、三层交换机性能优劣的主要技术参数。\n三层交换使用IP的设备A————————三层交换机————————使用IP的设备B\n比如A要给B发送数据，已知目的IP，那么A就用子网掩码取得网络地址，判断目的IP是否与自己在同一网段。如果在同一网段，但不知道转发数据所需的MAC地址，A就发送一个ARP请求，B返回其MAC地址，A用此MAC封装数据包并发送给交换机，交换机起用二层交换模块，查找MAC地址表，将数据包转发到相应的端口。如果目的IP地址显示不是同一网段的，那么A要实现和B的通讯，在流缓存条目中没有对应MAC地址条目，就将第一个正常数据包发送向一个缺省网关，这个缺省网关一般在操作系统中已经设好，这个缺省网关的IP对应第三层路由模块，所以对于不是同一子网的数据，最先在MAC表中放的是缺省网关的MAC地址（由源主机A完成）；然后就由三层模块接收到此数据包，查询路由表以确定到达B的路由，将构造一个新的帧头，其中以缺省网关的MAC地址为源MAC地址，以主机B的MAC地址为目的MAC地址。通过一定的识别触发机制，确立主机A与B的MAC地址及转发端口的对应关系，并记录进流缓存条目表，以后的A到B的数据（三层交换机要确认是由A到B而不是到C的数据，还要读取帧中的IP地址。），就直接交由二层交换模块完成。这就通常所说的一次路由多次转发。\n以上就是三层交换机工作过程的简单概括，可以看出三层交换的特点：\n\n由硬件结合实现数据的高速转发。这就不是简单的二层交换机和路由器的叠加，三层路由模块直接叠加在二层交换的高速背板总线上，突破了传统路由器的接口速率限制，速率可达几十Gbit/s。算上背板带宽，这些是三层交换机性能的两个重要参数。\n简洁的路由软件使路由过程简化。大部分的数据转发，除了必要的路由选择交由路由软件处理，都是由二层模块高速转发，路由软件大多都是经过处理的高效优化软件，并不是简单照搬路由器中的软件。\n\n二层和三层交换机的选择二层交换机用于小型的局域网络。这个就不用多言了，在小型局域网中，广播包影响不大，二层交换机的快速交换功能、多个接入端口和低廉价格为小型网络用户提供了很完善的解决方案。三层交换机的优点在于接口类型丰富，支持的三层功能强大，路由能力强大，适合用于大型的网络间的路由，它的优势在于选择最佳路由，负荷分担，链路备份及和其他网络进行路由信息的交换等等路由器所具有功能。三层交换机的最重要的功能是加快大型局域网络内部的数据的快速转发，加入路由功能也是为这个目的服务的。如果把大型网络按照部门，地域等等因素划分成一个个小局域网，这将导致大量的网际互访，单纯的使用二层交换机不能实现网际互访；如单纯的使用路由器，由于接口数量有限和路由转发速度慢，将限制网络的速度和网络规模，采用具有路由功能的快速转发的三层交换机就成为首选。一般来说，在内网数据流量大，要求快速转发响应的网络中，如全部由三层交换机来做这个工作，会造成三层交换机负担过重，响应速度受影响，将网间的路由交由路由器去完成，充分发挥不同设备的优点，不失为一种好的组网策略，当然，前提是客户的腰包很鼓，不然就退而求其次，让三层交换机也兼为网际互连。\n交换机端口模式交换机三种端口模式Access、Hybrid和Trunk。以太网端口有三种链路类型：Access、Hybrid和Trunk。\nAccessAccess类型的端口只能属于1个VLAN，一般用于连接计算机的端口。\nTrunkTrunk类型的端口可以允许多个VLAN通过，可以接收和发送多个VLAN的报文，一般用于交换机之间连接的端口。\nHybridHybrid类型的端口可以允许多个VLAN通过，可以接收和发送多个VLAN的报文，可以用于交换机之间连接，也可以用于连接用户的计算机。Hybrid端口和Trunk端口在接收数据时，处理方法是一样的，唯一不同之处在于发送数据时：Hybrid端口可以允许多个VLAN的报文发送时不打标签，而Trunk端口只允许缺省VLAN的报文发送时不打标签。\n\n路由器路由器（Router），是连接因特网中各局域网、广域网的设备，它会根据信道的情况自动选择和设定路由，以最佳路径，按前后顺序发送信号。路由器（Router）又称网关设备（Gateway）是用于连接多个逻辑上分开的网络，所谓逻辑网络是代表一个单独的网络或者一个子网。当数据从一个子网传输到另一个子网时，可通过路由器的路由功能来完成。因此，路由器具有判断网络地址和选择IP路径的功能，它能在多网络互联环境中，建立灵活的连接，可用完全不同的数据分组和介质访问方法连接各种子网，路由器只接受源站或其他路由器的信息，属网络层的一种互联设备。\n工作原理示例\n\n工作站A将工作站B的地址12.0.0.5连同数据信息以数据包的形式发送给路由器1。\n路由器1收到工作站A的数据包后，先从包头中取出地址12.0.0.5，并根据路径表计算出发往工作站B的最佳路径：R1-&gt;R2-&gt;R5-&gt;B；并将数据包发往路由器2。\n路由器2重复路由器1的工作，并将数据包转发给路由器5。\n路由器5同样取出目的地址，发现12.0.0.5就在该路由器所连接的网段上，于是将该数据包直接交给工作站B。\n工作站B收到工作站A的数据包，一次通信过程宣告结束。\n\n单播单播是客户端与服务器之间的点到点连接。“点到点”指每个客户端都从服务器接收远程流。仅当客户端发出请求时，才发送单播流。单播（Unicast）是在一个单个的发送者和一个接受者之间通过网络进行的通信。可以应用于通信、计算机等领域，还可以利用多播单播混合算法解决实际问题。\n广播广播（Broadcasting）是多点投递的最普遍的形式，它向每一个目的站投递一个分组的拷贝。它可以通过多个单次分组的投递完成，也可以通过单独的连接传递分组的拷贝，直到每个接收方均收到一个拷贝为止。\n多播单播(unicast：point to point)，点到点的通信方式；多播(multicast：point tO multipoint)，点到多点的通信方式；汇播(concast：multipoint to point)，多点到一点的通信方式；群播(multipoint tO multipoint)，多点到多点的通信方式，多播的一种推广；广播(broadcast：point to all point)，点到所有节点的通信方式。\nRFC 1918RFC（Request For Comments），是一系列以编号排定的文件。RFC 1918私有网络地址分配 (Address Allocation for Private Internets)。因特网域名分配组织IANA组织（Internet Assigned Numbers Authority）保留了以下三个IP地址块用于私有网络。10.0.0.0 - 10.255.255.255 (10/8比特前缀)172.16.0.0 - 172.31.255.255 (172.16/12比特前缀)192.168.0.0 - 192.168.255.255 (192.168/16比特前缀)\n把第一块称为“24-比特块”，第二块称为“20-比特块”，第三块称为“16-比特块”注意（在前面的CIDR 记号中），第一块地址就是一个A类网络号，第二块地址是16个连续的B类网络号集合，第三块地址是256个连续的C类网络号集合。\nNATNAT（Network Address Translation，网络地址转换）。NAT的实现方式有三种，即静态转换Static Nat、动态转换Dynamic Nat和端口多路复用OverLoad。\n静态转换静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。\n动态转换动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。\n端口多路复用端口多路复用（Port address Translation,PAT)是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation).采用端口多路复用方式。内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。\nALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。\nSNATSNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。\nDNATDNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。\nNIC网卡(Network Interface Card，简称NIC)，也称网络适配器，是电脑与局域网相互连接的设备。\n混杂模式混杂模式（Promiscuous Mode）是指一台机器能够接收所有经过它的数据流，而不论其目的地址是否是他。混杂模式就是接收所有经过网卡的数据包，包括不是发给本机的包。默认情况下网卡只把发给本机的包（包括广播包）传递给上层程序，其它的包一律丢弃。简单的讲，混杂模式就是指网卡能接受所有通过它的数据流，不管是什么格式，什么地址的。事实上，计算机收到数据包后，由网络层进行判断，确定是递交上层（传输层），还是丢弃，还是递交下层（数据链路层、MAC子层）转发。\n非混杂模式（标准模式）网卡只会接受我们该接收的包而不会接受其他的地址的网络数据包。\nFIBFIB（Forward Information dataBase）转发信息库，从概念上讲类似于路由表或信息库。它维护着一个IP路由表中包含的转发信息的镜象。当网络中路由或拓朴结构发生了变化时，IP路由表就被更新，而这些变化也反映在FIB中。FIB基于IP路由表中信息，维护着下一网络段的地址信息。\n","dateCreated":"2018-09-21T16:22:14+08:00","dateModified":"2018-09-28T11:12:08+08:00","datePublished":"2018-09-21T16:22:14+08:00","description":"计算机网络复习","headline":"计算机网络复习","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/21/计算机网络复习/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/21/计算机网络复习/","keywords":"基础, 计算机网络","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="计算机网络复习">
+<meta name="keywords" content="计算机网络,基础">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="计算机网络复习">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/21/计算机网络复习/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="计算机网络复习">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/21/计算机网络复习/images/network.png">
+<meta property="og:updated_time" content="2018-09-28T03:12:08.449Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="计算机网络复习">
+<meta name="twitter:description" content="计算机网络复习">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/21/计算机网络复习/images/network.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/21/计算机网络复习/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/21/计算机网络复习/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a  class="header-right-picture "
+                href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            计算机网络复习
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-21T16:22:14+08:00">
+	
+		    Sep 21, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>计算机网络复习<br><a id="more"></a><br><h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#体系结构"><span class="toc-text">体系结构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#OSI七层协议"><span class="toc-text">OSI七层协议</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#TCP-IP四层协议"><span class="toc-text">TCP/IP四层协议</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#五层协议"><span class="toc-text">五层协议</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#每层功能及协议"><span class="toc-text">每层功能及协议</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#概念"><span class="toc-text">概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#DHCP"><span class="toc-text">DHCP</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VLAN"><span class="toc-text">VLAN</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VXLAN"><span class="toc-text">VXLAN</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ARP"><span class="toc-text">ARP</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MAC地址"><span class="toc-text">MAC地址</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#ff-ff-ff-ff-ff-ff"><span class="toc-text">ff:ff:ff:ff:ff:ff</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#交换机"><span class="toc-text">交换机</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#二层交换"><span class="toc-text">二层交换</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#三层交换"><span class="toc-text">三层交换</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#二层和三层交换机的选择"><span class="toc-text">二层和三层交换机的选择</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#交换机端口模式"><span class="toc-text">交换机端口模式</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Access"><span class="toc-text">Access</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Trunk"><span class="toc-text">Trunk</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Hybrid"><span class="toc-text">Hybrid</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#路由器"><span class="toc-text">路由器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#单播"><span class="toc-text">单播</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#广播"><span class="toc-text">广播</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#多播"><span class="toc-text">多播</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#RFC-1918"><span class="toc-text">RFC 1918</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#NAT"><span class="toc-text">NAT</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#静态转换"><span class="toc-text">静态转换</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#动态转换"><span class="toc-text">动态转换</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#端口多路复用"><span class="toc-text">端口多路复用</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SNAT"><span class="toc-text">SNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DNAT"><span class="toc-text">DNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#NIC"><span class="toc-text">NIC</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#混杂模式"><span class="toc-text">混杂模式</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#非混杂模式（标准模式）"><span class="toc-text">非混杂模式（标准模式）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#FIB"><span class="toc-text">FIB</span></a></li></ol></li></ol></p>
+<h3 id="体系结构"><a href="#体系结构" class="headerlink" title="体系结构"></a>体系结构</h3><h4 id="OSI七层协议"><a href="#OSI七层协议" class="headerlink" title="OSI七层协议"></a>OSI七层协议</h4><p>开放系统互连基本参考模型 OSI/RM（Open Systems Interconnection Reference Model），简称OSI。</p>
+<h4 id="TCP-IP四层协议"><a href="#TCP-IP四层协议" class="headerlink" title="TCP/IP四层协议"></a>TCP/IP四层协议</h4><h4 id="五层协议"><a href="#五层协议" class="headerlink" title="五层协议"></a>五层协议</h4><p><img src="/2018/09/21/计算机网络复习/images/network.png" alt="network"></p>
+<h3 id="每层功能及协议"><a href="#每层功能及协议" class="headerlink" title="每层功能及协议"></a>每层功能及协议</h3><table>
+<thead>
+<tr>
+<th style="text-align:left"></th>
+<th style="text-align:left">功能</th>
+<th style="text-align:left">常见</th>
+<th style="text-align:left">协议</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">物理层（比特Bit）</td>
+<td style="text-align:left">设备间收获发送比特流；<br>说明电压、线速和线缆等。</td>
+<td style="text-align:left">中继器、网线、集线器、HUB等</td>
+<td style="text-align:left">RJ45、CLOCK、IEEE802.3等</td>
+</tr>
+<tr>
+<td style="text-align:left">数据链路层（帧Frame）</td>
+<td style="text-align:left">将比特组合成字节，进而组合成帧；<br>用MAC地址访问介质；<br>错误可以被发现但是不能被纠正。</td>
+<td style="text-align:left">网卡、网桥、二层交换机等。</td>
+<td style="text-align:left">PPP、FR、HDLC、VLAN、MAC等。</td>
+</tr>
+<tr>
+<td style="text-align:left">网络层（数据包Packet）</td>
+<td style="text-align:left">负责数据包从源到宿的传递和网际互连。</td>
+<td style="text-align:left">路由器、多层交换机、防火墙等。</td>
+<td style="text-align:left">IP、ICMP、ARP、PARP、OSPF、IPX、RIP、IGRP等。</td>
+</tr>
+<tr>
+<td style="text-align:left">运输层</td>
+<td style="text-align:left">可靠或不可靠数据传输；<br>数据重传前的错误纠正。</td>
+<td style="text-align:left">进程、端口（socket）</td>
+<td style="text-align:left">TCP、UDP、SPX</td>
+</tr>
+<tr>
+<td style="text-align:left">会话层</td>
+<td style="text-align:left">保证不同应用程序的数据独立；<br>建立、管理和终止会话。</td>
+<td style="text-align:left">服务器验证用户登录、断点续传</td>
+<td style="text-align:left">NFS、SQL、NetBIOS、RPC</td>
+</tr>
+<tr>
+<td style="text-align:left">表示层</td>
+<td style="text-align:left">数据表示；加密与解密、数据的压缩与解压缩、图像编码与编码等特殊处理过程</td>
+<td style="text-align:left">URL加密、口令加密、图片编解码等</td>
+<td style="text-align:left">JPEG、MPEG、ASCII</td>
+</tr>
+<tr>
+<td style="text-align:left">应用层</td>
+<td style="text-align:left">用户接口</td>
+<td style="text-align:left"></td>
+<td style="text-align:left">FTP、DNS、Telnet、SNMP、SMTP、HTTP、WWW、NFS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><h4 id="DHCP"><a href="#DHCP" class="headerlink" title="DHCP"></a>DHCP</h4><p>DHCP（Dynamic Host Configuration Protocol，动态主机配置协议）通常被应用在大型的局域网络环境中，主要作用是集中的管理、分配IP地址，使网络环境中的主机动态的获得IP地址、Gateway地址、DNS服务器地址等信息，并能够提升地址的使用率。<br>DHCP协议采用客户端/服务器模型，主机地址的动态分配任务由网络主机驱动。当DHCP服务器接收到来自网络主机申请地址的信息时，才会向网络主机发送相关的地址配置等信息，以实现网络主机地址信息的动态配置。DHCP具有以下功能：</p>
+<ol>
+<li>保证任何IP地址在同一时刻只能由一台DHCP客户机所使用。</li>
+<li>DHCP应当可以给用户分配永久固定的IP地址。</li>
+<li>DHCP应当可以同用其他方法获得IP地址的主机共存（如手工配置IP地址的主机）。</li>
+<li>DHCP服务器应当向现有的BOOTP客户端提供服务。</li>
+</ol>
+<p>DHCP有三种机制分配IP地址：</p>
+<ol>
+<li>自动分配方式（Automatic Allocation），DHCP服务器为主机指定一个永久性的IP地址，一旦DHCP客户端第一次成功从DHCP服务器端租用到IP地址后，就可以永久性的使用该地址。</li>
+<li>动态分配方式（Dynamic Allocation），DHCP服务器给主机指定一个具有时间限制的IP地址，时间到期或主机明确表示放弃该地址时，该地址可以被其他主机使用。</li>
+<li>手工分配方式（Manual Allocation），客户端的IP地址是由网络管理员指定的，DHCP服务器只是将指定的IP地址告诉客户端主机。<br>三种地址分配方式中，只有动态分配可以重复使用客户端不再需要的地址。</li>
+</ol>
+<h4 id="VLAN"><a href="#VLAN" class="headerlink" title="VLAN"></a>VLAN</h4><p>VLAN（Virtual Local Area Network）的中文名为”虚拟局域网”。<br>虚拟局域网（VLAN）是一组逻辑上的设备和用户，这些设备和用户并不受物理位置的限制，可以根据功能、部门及应用等因素将它们组织起来，相互之间的通信就好像它们在同一个网段中一样，由此得名虚拟局域网。VLAN是一种比较新的技术，工作在OSI参考模型的第2层和第3层，一个VLAN就是一个广播域，VLAN之间的通信是通过第3层的路由器来完成的。与传统的局域网技术相比较，VLAN技术更加灵活，它具有以下优点： 网络设备的移动、添加和修改的管理开销减少；可以控制广播活动；可提高网络的安全性。<br>在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。</p>
+<h4 id="VXLAN"><a href="#VXLAN" class="headerlink" title="VXLAN"></a>VXLAN</h4><p>VXLAN（Virtual Extensible LAN），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。<br>就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:</p>
+<ol>
+<li>多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。</li>
+<li>提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。</li>
+<li>更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。</li>
+</ol>
+<h4 id="ARP"><a href="#ARP" class="headerlink" title="ARP"></a>ARP</h4><p>地址解析协议，即ARP（Address Resolution Protocol），是根据IP地址获取物理地址的一个TCP/IP协议。主机发送信息时将包含目标IP地址的ARP请求广播到网络上的所有主机，并接收返回消息，以此确定目标的物理地址；收到返回消息后将该IP地址和物理地址存入本机ARP缓存中并保留一定时间，下次请求时直接查询ARP缓存以节约资源。地址解析协议是建立在网络中各个主机互相信任的基础上的，网络上的主机可以自主发送ARP应答消息，其他主机收到应答报文时不会检测该报文的真实性就会将其记入本机ARP缓存；由此攻击者就可以向某一主机发送伪ARP应答报文，使其发送的信息无法到达预期的主机或到达错误的主机，这就构成了一个ARP欺骗。ARP命令可用于查询本机ARP缓存中IP地址和MAC地址的对应关系、添加或删除静态对应关系等。相关协议有RARP、代理ARP。NDP用于在IPv6中代替地址解析协议。</p>
+<p>OSI模型把网络工作分为七层，IP地址在OSI模型的第三层，MAC地址在第二层，彼此不直接打交道。在通过以太网发送IP数据包时，需要先封装第三层（32位IP地址）、第二层（48位MAC地址）的报头，但由于发送时只知道目标IP地址，不知道其MAC地址，又不能跨第二、三层，所以需要使用地址解析协议。使用地址解析协议，可根据网络层IP数据包包头中的IP地址信息解析出目标硬件地址（MAC地址）信息，以保证通信的顺利进行。</p>
+<p>工作过程<br>主机A的IP地址为192.168.1.1，MAC地址为0A-11-22-33-44-01；<br>主机B的IP地址为192.168.1.2，MAC地址为0A-11-22-33-44-02；<br>当主机A要与主机B通信时，地址解析协议可以将主机B的IP地址（192.168.1.2）解析成主机B的MAC地址，以下为工作流程：<br>第1步：根据主机A上的路由表内容，IP确定用于访问主机B的转发IP地址是192.168.1.2。然后A主机在自己的本地ARP缓存中检查主机B的匹配MAC地址。<br>第2步：如果主机A在ARP缓存中没有找到映射，它将询问192.168.1.2的硬件地址，从而将ARP请求帧广播到本地网络上的所有主机。源主机A的IP地址和MAC地址都包括在ARP请求中。本地网络上的每台主机都接收到ARP请求并且检查是否与自己的IP地址匹配。如果主机发现请求的IP地址与自己的IP地址不匹配，它将丢弃ARP请求。<br>第3步：主机B确定ARP请求中的IP地址与自己的IP地址匹配，则将主机A的IP地址和MAC地址映射添加到本地ARP缓存中。<br>第4步：主机B将包含其MAC地址的ARP回复消息直接发送回主机A。<br>第5步：当主机A收到从主机B发来的ARP回复消息时，会用主机B的IP和MAC地址映射更新ARP缓存。本机缓存是有生存期的，生存期结束后，将再次重复上面的过程。主机B的MAC地址一旦确定，主机A就能向主机B发送IP通信了。</p>
+<h4 id="MAC地址"><a href="#MAC地址" class="headerlink" title="MAC地址"></a>MAC地址</h4><p>MAC（Medium/Media Access Control）地址，用来表示互联网上每一个站点的标识符，采用十六进制数表示，共六个字节（48位）。其中，前三个字节是由IEEE的注册管理机构RA负责给不同厂家分配的代码(高位24位），也称为“编制上唯一的标识符”（Organizationally Unique Identifier），后三个字节(低位24位)由各厂家自行指派给生产的适配器接口，称为扩展标识符（唯一性）。一个地址块可以生成2^24个不同的地址。MAC地址实际上就是适配器地址或适配器标识符EUI-48。</p>
+<h5 id="ff-ff-ff-ff-ff-ff"><a href="#ff-ff-ff-ff-ff-ff" class="headerlink" title="ff:ff:ff:ff:ff:ff"></a>ff:ff:ff:ff:ff:ff</h5><p>以主机A（192.168.1.5）向主机B（192.168.1.1）发送数据为例。当发送数据时，主机A会在自己的ARP缓存表中寻找是否有目标IP地址。如果找到了，也就知道了目标MAC地址，直接把目标MAC地址写入帧里面发送就可以了；如果在ARP缓存表中没有找到相对应的IP地址，主机A就会在网络上发送一个广播，目标MAC地址是“FF.FF.FF.FF.FF.FF”，这表示向同一网段内的所有主机发出这样的询问：“192.168.1.1的MAC地址是什么？”网络上其他主机并不响应ARP询问，只有主机B接收到这个帧时，才向主机A做出这样的回应：“192.168.1.1的MAC地址是00-aa-00-62-c6-09”。这样，主机A就知道了主机B的MAC地址，它就可以向主机B发送信息了。同时它还更新了自己的ARP缓存表，下次再向主机B发送信息时，直接从ARP缓存表里查找就可以了。</p>
+<h4 id="交换机"><a href="#交换机" class="headerlink" title="交换机"></a>交换机</h4><p>交换机（Switch）意为“开关”是一种用于电（光）信号转发的网络设备。它可以为接入交换机的任意两个网络节点提供独享的电信号通路。最常见的交换机是以太网交换机。其他常见的还有电话语音交换机、光纤交换机等。</p>
+<h5 id="二层交换"><a href="#二层交换" class="headerlink" title="二层交换"></a>二层交换</h5><p>二层交换技术的发展比较成熟，二层交换机属数据链路层设备，可以识别数据包中的MAC地址信息，根据MAC地址进行转发，并将这些MAC地址与对应的端口记录在自己内部的一个地址表中。<br>具体的工作流程如下：</p>
+<ol>
+<li>当交换机从某个端口收到一个数据包，它先读取包头中的源MAC地址，这样它就知道源MAC地址的机器是连在哪个端口上的；</li>
+<li>再去读取包头中的目的MAC地址，并在地址表中查找相应的端口；</li>
+<li>如表中有与这目的MAC地址对应的端口，把数据包直接复制到这端口上；</li>
+<li>如表中找不到相应的端口则把数据包广播到所有端口上，当目的机器对源机器回应时，交换机又可以记录这一目的MAC地址与哪个端口对应，在下次传送数据时就不再需要对所有端口进行广播了。不断的循环这个过程，对于全网的MAC地址信息都可以学习到，二层交换机就是这样建立和维护它自己的地址表。</li>
+</ol>
+<p>从二层交换机的工作原理可以推知以下三点：</p>
+<ol>
+<li>由于交换机对多数端口的数据进行同时交换，这就要求具有很宽的交换总线带宽，如果二层交换机有N个端口，每个端口的带宽是M，交换机总线带宽超过N×M，那么这交换机就可以实现线速交换。</li>
+<li>学习端口连接的机器的MAC地址，写入地址表，地址表的大小（一般两种表示方式：一为BEFFER RAM，一为MAC表项数值），地址表大小影响交换机的接入容量。</li>
+<li>还有一个就是二层交换机一般都含有专门用于处理数据包转发的ASIC（Application specific Integrated Circuit，专用集成电路）芯片，因此转发速度可以做到非常快。由于各个厂家采用ASIC不同，直接影响产品性能。</li>
+</ol>
+<p>以上三点也是评判二、三层交换机性能优劣的主要技术参数。</p>
+<h5 id="三层交换"><a href="#三层交换" class="headerlink" title="三层交换"></a>三层交换</h5><p>使用IP的设备A————————三层交换机————————使用IP的设备B</p>
+<p>比如A要给B发送数据，已知目的IP，那么A就用子网掩码取得网络地址，判断目的IP是否与自己在同一网段。如果在同一网段，但不知道转发数据所需的MAC地址，A就发送一个ARP请求，B返回其MAC地址，A用此MAC封装数据包并发送给交换机，交换机起用二层交换模块，查找MAC地址表，将数据包转发到相应的端口。<br>如果目的IP地址显示不是同一网段的，那么A要实现和B的通讯，在流缓存条目中没有对应MAC地址条目，就将第一个正常数据包发送向一个缺省网关，这个缺省网关一般在操作系统中已经设好，这个缺省网关的IP对应第三层路由模块，所以对于不是同一子网的数据，最先在MAC表中放的是缺省网关的MAC地址（由源主机A完成）；然后就由三层模块接收到此数据包，查询路由表以确定到达B的路由，将构造一个新的帧头，其中以缺省网关的MAC地址为源MAC地址，以主机B的MAC地址为目的MAC地址。通过一定的识别触发机制，确立主机A与B的MAC地址及转发端口的对应关系，并记录进流缓存条目表，以后的A到B的数据（三层交换机要确认是由A到B而不是到C的数据，还要读取帧中的IP地址。），就直接交由二层交换模块完成。这就通常所说的一次路由多次转发。</p>
+<p>以上就是三层交换机工作过程的简单概括，可以看出三层交换的特点：</p>
+<ol>
+<li>由硬件结合实现数据的高速转发。这就不是简单的二层交换机和路由器的叠加，三层路由模块直接叠加在二层交换的高速背板总线上，突破了传统路由器的接口速率限制，速率可达几十Gbit/s。算上背板带宽，这些是三层交换机性能的两个重要参数。</li>
+<li>简洁的路由软件使路由过程简化。大部分的数据转发，除了必要的路由选择交由路由软件处理，都是由二层模块高速转发，路由软件大多都是经过处理的高效优化软件，并不是简单照搬路由器中的软件。</li>
+</ol>
+<h5 id="二层和三层交换机的选择"><a href="#二层和三层交换机的选择" class="headerlink" title="二层和三层交换机的选择"></a>二层和三层交换机的选择</h5><p>二层交换机用于小型的局域网络。这个就不用多言了，在小型局域网中，广播包影响不大，二层交换机的快速交换功能、多个接入端口和低廉价格为小型网络用户提供了很完善的解决方案。<br>三层交换机的优点在于接口类型丰富，支持的三层功能强大，路由能力强大，适合用于大型的网络间的路由，它的优势在于选择最佳路由，负荷分担，链路备份及和其他网络进行路由信息的交换等等路由器所具有功能。<br>三层交换机的最重要的功能是加快大型局域网络内部的数据的快速转发，加入路由功能也是为这个目的服务的。如果把大型网络按照部门，地域等等因素划分成一个个小局域网，这将导致大量的网际互访，单纯的使用二层交换机不能实现网际互访；如单纯的使用路由器，由于接口数量有限和路由转发速度慢，将限制网络的速度和网络规模，采用具有路由功能的快速转发的三层交换机就成为首选。<br>一般来说，在内网数据流量大，要求快速转发响应的网络中，如全部由三层交换机来做这个工作，会造成三层交换机负担过重，响应速度受影响，将网间的路由交由路由器去完成，充分发挥不同设备的优点，不失为一种好的组网策略，当然，前提是客户的腰包很鼓，不然就退而求其次，让三层交换机也兼为网际互连。</p>
+<h4 id="交换机端口模式"><a href="#交换机端口模式" class="headerlink" title="交换机端口模式"></a>交换机端口模式</h4><p>交换机三种端口模式Access、Hybrid和Trunk。<br>以太网端口有三种链路类型：Access、Hybrid和Trunk。</p>
+<h5 id="Access"><a href="#Access" class="headerlink" title="Access"></a>Access</h5><p>Access类型的端口只能属于1个VLAN，一般用于连接计算机的端口。</p>
+<h5 id="Trunk"><a href="#Trunk" class="headerlink" title="Trunk"></a>Trunk</h5><p>Trunk类型的端口可以允许多个VLAN通过，可以接收和发送多个VLAN的报文，一般用于交换机之间连接的端口。</p>
+<h5 id="Hybrid"><a href="#Hybrid" class="headerlink" title="Hybrid"></a>Hybrid</h5><p>Hybrid类型的端口可以允许多个VLAN通过，可以接收和发送多个VLAN的报文，可以用于交换机之间连接，也可以用于连接用户的计算机。<br><div class="alert info no-icon"><p>Hybrid端口和Trunk端口在接收数据时，处理方法是一样的，唯一不同之处在于发送数据时：Hybrid端口可以允许多个VLAN的报文发送时不打标签，而Trunk端口只允许缺省VLAN的报文发送时不打标签。</p>
+</div></p>
+<h4 id="路由器"><a href="#路由器" class="headerlink" title="路由器"></a>路由器</h4><p>路由器（Router），是连接因特网中各局域网、广域网的设备，它会根据信道的情况自动选择和设定路由，以最佳路径，按前后顺序发送信号。<br>路由器（Router）又称网关设备（Gateway）是用于连接多个逻辑上分开的网络，所谓逻辑网络是代表一个单独的网络或者一个子网。当数据从一个子网传输到另一个子网时，可通过路由器的路由功能来完成。因此，路由器具有判断网络地址和选择IP路径的功能，它能在多网络互联环境中，建立灵活的连接，可用完全不同的数据分组和介质访问方法连接各种子网，路由器只接受源站或其他路由器的信息，属网络层的一种互联设备。</p>
+<p>工作原理示例</p>
+<ol>
+<li>工作站A将工作站B的地址12.0.0.5连同数据信息以数据包的形式发送给路由器1。</li>
+<li>路由器1收到工作站A的数据包后，先从包头中取出地址12.0.0.5，并根据路径表计算出发往工作站B的最佳路径：R1-&gt;R2-&gt;R5-&gt;B；并将数据包发往路由器2。</li>
+<li>路由器2重复路由器1的工作，并将数据包转发给路由器5。</li>
+<li>路由器5同样取出目的地址，发现12.0.0.5就在该路由器所连接的网段上，于是将该数据包直接交给工作站B。</li>
+<li>工作站B收到工作站A的数据包，一次通信过程宣告结束。</li>
+</ol>
+<h4 id="单播"><a href="#单播" class="headerlink" title="单播"></a>单播</h4><p>单播是客户端与服务器之间的点到点连接。“点到点”指每个客户端都从服务器接收远程流。仅当客户端发出请求时，才发送单播流。单播（Unicast）是在一个单个的发送者和一个接受者之间通过网络进行的通信。可以应用于通信、计算机等领域，还可以利用多播单播混合算法解决实际问题。</p>
+<h4 id="广播"><a href="#广播" class="headerlink" title="广播"></a>广播</h4><p>广播（Broadcasting）是多点投递的最普遍的形式，它向每一个目的站投递一个分组的拷贝。它可以通过多个单次分组的投递完成，也可以通过单独的连接传递分组的拷贝，直到每个接收方均收到一个拷贝为止。</p>
+<h4 id="多播"><a href="#多播" class="headerlink" title="多播"></a>多播</h4><p>单播(unicast：point to point)，点到点的通信方式；<br>多播(multicast：point tO multipoint)，点到多点的通信方式；<br>汇播(concast：multipoint to point)，多点到一点的通信方式；<br>群播(multipoint tO multipoint)，多点到多点的通信方式，多播的一种推广；<br>广播(broadcast：point to all point)，点到所有节点的通信方式。</p>
+<h4 id="RFC-1918"><a href="#RFC-1918" class="headerlink" title="RFC 1918"></a>RFC 1918</h4><p>RFC（Request For Comments），是一系列以编号排定的文件。<br>RFC 1918私有网络地址分配 (Address Allocation for Private Internets)。<br>因特网域名分配组织IANA组织（Internet Assigned Numbers Authority）保留了以下三个IP地址块用于私有网络。<br>10.0.0.0 - 10.255.255.255 (10/8比特前缀)<br>172.16.0.0 - 172.31.255.255 (172.16/12比特前缀)<br>192.168.0.0 - 192.168.255.255 (192.168/16比特前缀)</p>
+<p>把第一块称为“24-比特块”，第二块称为“20-比特块”，第三块称为“16-比特块”注意（在前面的CIDR 记号中），第一块地址就是一个A类网络号，第二块地址是16个连续的B类网络号集合，第三块地址是256个连续的C类网络号集合。</p>
+<h4 id="NAT"><a href="#NAT" class="headerlink" title="NAT"></a>NAT</h4><p>NAT（Network Address Translation，网络地址转换）。<br>NAT的实现方式有三种，即静态转换Static Nat、动态转换Dynamic Nat和端口多路复用OverLoad。</p>
+<h5 id="静态转换"><a href="#静态转换" class="headerlink" title="静态转换"></a>静态转换</h5><p>静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。</p>
+<h5 id="动态转换"><a href="#动态转换" class="headerlink" title="动态转换"></a>动态转换</h5><p>动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。</p>
+<h5 id="端口多路复用"><a href="#端口多路复用" class="headerlink" title="端口多路复用"></a>端口多路复用</h5><p>端口多路复用（Port address Translation,PAT)是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation).采用端口多路复用方式。内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。</p>
+<p>ALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。<br>如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。</p>
+<h4 id="SNAT"><a href="#SNAT" class="headerlink" title="SNAT"></a>SNAT</h4><p>SNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。</p>
+<h4 id="DNAT"><a href="#DNAT" class="headerlink" title="DNAT"></a>DNAT</h4><p>DNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。</p>
+<h4 id="NIC"><a href="#NIC" class="headerlink" title="NIC"></a>NIC</h4><p>网卡(Network Interface Card，简称NIC)，也称网络适配器，是电脑与局域网相互连接的设备。</p>
+<h4 id="混杂模式"><a href="#混杂模式" class="headerlink" title="混杂模式"></a>混杂模式</h4><p>混杂模式（Promiscuous Mode）是指一台机器能够接收所有经过它的数据流，而不论其目的地址是否是他。<br>混杂模式就是接收所有经过网卡的数据包，包括不是发给本机的包。默认情况下网卡只把发给本机的包（包括广播包）传递给上层程序，其它的包一律丢弃。简单的讲，混杂模式就是指网卡能接受所有通过它的数据流，不管是什么格式，什么地址的。事实上，计算机收到数据包后，由网络层进行判断，确定是递交上层（传输层），还是丢弃，还是递交下层（数据链路层、MAC子层）转发。</p>
+<h4 id="非混杂模式（标准模式）"><a href="#非混杂模式（标准模式）" class="headerlink" title="非混杂模式（标准模式）"></a>非混杂模式（标准模式）</h4><p>网卡只会接受我们该接收的包而不会接受其他的地址的网络数据包。</p>
+<h4 id="FIB"><a href="#FIB" class="headerlink" title="FIB"></a>FIB</h4><p>FIB（Forward Information dataBase）转发信息库，从概念上讲类似于路由表或信息库。它维护着一个IP路由表中包含的转发信息的镜象。当网络中路由或拓朴结构发生了变化时，IP路由表就被更新，而这些变化也反映在FIB中。FIB基于IP路由表中信息，维护着下一网络段的地址信息。</p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/基础/">基础</a> <a class="tag tag--primary tag--small t-link" href="/tags/计算机网络/">计算机网络</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/27/Understand-Neutron/" data-tooltip="Understand Neutron" aria-label="PREVIOUS: Understand Neutron">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/20/Docker入门（六）/" data-tooltip="Docker入门（六）" aria-label="NEXT: Docker入门（六）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/21/计算机网络复习/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/&amp;title=计算机网络复习" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2018 Wang kuntian. All Rights Reserved.
+    </span>
+    <br>
+    <script type="text/javascript" src="//rf.revolvermaps.com/0/0/3.js?i=5kw0kghcqpw&amp;b=0&amp;s=40&amp;m=2&amp;cl=ffffff&amp;co=010020&amp;cd=aa0000&amp;v0=60&amp;v1=60&amp;r=1" async="async"></script>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/27/Understand-Neutron/" data-tooltip="Understand Neutron" aria-label="PREVIOUS: Understand Neutron">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/20/Docker入门（六）/" data-tooltip="Docker入门（六）" aria-label="NEXT: Docker入门（六）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/21/计算机网络复习/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/&amp;title=计算机网络复习" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/21/计算机网络复习/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/&amp;title=计算机网络复习">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/21/计算机网络复习/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>

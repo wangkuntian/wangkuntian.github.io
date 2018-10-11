@@ -17,16 +17,19 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"","dateCreated":"2018-09-27T14:18:03+08:00","dateModified":"2018-09-27T15:27:06+08:00","datePublished":"2018-09-27T14:18:03+08:00","description":"","headline":"Understand Neutron","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron/","keywords":"Openstack, Neutron, Network","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
-    <meta name="keywords" content="Openstack,Neutron,Network">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"基本概念\nOverlay (tunnel) protocols隧道技术（Tunneling）是一种通过使用互联网络的基础设施在网络之间传递数据的方式。使用隧道传递的数据（或负载）可以是不同协议的数据帧或包。隧道协议将其它协议的数据帧或包重新封装然后通过隧道发送。新的帧头提供路由信息，以便通过互联网传递被封装的负载数据。它允许网络用户访问被拒绝或不安全的网络。为了确保封装的用户网络数据看起来是公共的，它采用数据加密来传输有效载荷，即使它是私有的并且可以容易地通过冲突的网络。\nGRE\n全称：GRE（Generic Routing Encapsulation）：通用路由封装协议。\n功能：定义了在一种网络层协议上封装另一种协议（或同一种协议）。\nGRE的隧道由两端的源IP地址和目的IP地址来定义，允许用户使用IP包封装IP、IPX、AppleTalk包，并支持全部的路由协议（如RIP2、OSPF等）。通过GRE，用户可以利用公共IP网络连接IPX网络、AppleTalk网络，还可以使用保留地址进行网络互连，或者对公网隐藏企业网的IP地址。\nGRE主要用于源路由和终路由之间所形成的隧道。例如，将通过隧道的报文用一个新的报文头（GRE报文头）进行封装然后带着隧道终点地址放入隧道中。当报文到达隧道终点时，GRE报文头被剥掉，继续原始报文的目标地址进行寻址。 GRE隧道通常是点到点的，即隧道只有一个源地址和一个终地址。GRE建立起来的隧道只是在隧道源点和隧道终点可见，中间经过的设备仍按照外层IP在网络上进行普通的路由转发。\n所在层次：GRE是VPN（Virtual Private Network）的第三层隧道协议，即在协议层之间采用了Tunnel（隧道）的技术。\n\nVXLANVXLAN（Virtual extensible local area network），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。它是一种 overlay 技术，通过三层的网络来搭建虚拟的二层网络。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:\n\n多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。\n提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。\n更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。\n\nNetwork namespace命名空间是一种确定特定标识符集的方法。使用命名空间，您可以在不同的命名空间中多次使用相同的标识符。您还可以限制特定进程可见的标识符集。例如，Linux为网络和进程提供名称空间等。如果进程在进程名称空间中运行，则它只能查看同一名称空间中的其他进程并与之通信。因此，如果特定进程命名空间中的shell运行ps waux，则它只会显示同一命名空间中的其他进程。\nLinux network namespaceLinux网络命名空间\nVRF虚拟路由和转发（Virtual routing and forwarding）是一种IP技术，允许路由表的多个实例同时在同一路由器上共存。 它是上述网络命名空间功能的另一个名称。\nNATNAT（Network Address Translation，网络地址转换）。NAT的实现方式有三种，即静态转换Static NAT、动态转换Dynamic NAT和端口多路复用OverLoad。\n\n静态转换静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。\n\n动态转换动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。\n\n端口多路复用端口多路复用（Port address Translation,PAT)是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation).采用端口多路复用方式。内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。\n\n\nALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。\nSNATSNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。\nDNATDNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。\nOne-to-one NAT在一对一NAT中，NAT路由器维护私有IP地址和公共IP地址之间的一对一映射。OpenStack使用一对一的NAT来实现浮动IP地址。\n","dateCreated":"2018-09-27T14:18:03+08:00","dateModified":"2018-10-10T14:52:04+08:00","datePublished":"2018-09-27T14:18:03+08:00","description":"基本概念","headline":"Understand Neutron","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron/","keywords":"Openstack, Neutron, Network","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="基本概念">
+<meta name="keywords" content="Openstack,Neutron,Network">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Understand Neutron">
 <meta property="og:url" content="https://wangkuntian.github.io/2018/09/27/Understand-Neutron/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="基本概念">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2018-09-27T07:27:06.024Z">
+<meta property="og:updated_time" content="2018-10-10T06:52:04.490Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Understand Neutron">
+<meta name="twitter:description" content="基本概念">
     
     
         
@@ -262,7 +265,38 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            
+            <p>基本概念<br><a id="more"></a><br><h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Overlay-tunnel-protocols"><span class="toc-text">Overlay (tunnel) protocols</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#GRE"><span class="toc-text">GRE</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VXLAN"><span class="toc-text">VXLAN</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Network-namespace"><span class="toc-text">Network namespace</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Linux-network-namespace"><span class="toc-text">Linux network namespace</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VRF"><span class="toc-text">VRF</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT"><span class="toc-text">NAT</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#SNAT"><span class="toc-text">SNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DNAT"><span class="toc-text">DNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#One-to-one-NAT"><span class="toc-text">One-to-one NAT</span></a></li></ol></li></ol></p>
+<h3 id="Overlay-tunnel-protocols"><a href="#Overlay-tunnel-protocols" class="headerlink" title="Overlay (tunnel) protocols"></a>Overlay (tunnel) protocols</h3><p>隧道技术（Tunneling）是一种通过使用互联网络的基础设施在网络之间传递数据的方式。使用隧道传递的数据（或负载）可以是不同协议的数据帧或包。隧道协议将其它协议的数据帧或包重新封装然后通过隧道发送。新的帧头提供路由信息，以便通过互联网传递被封装的负载数据。<br>它允许网络用户访问被拒绝或不安全的网络。为了确保封装的用户网络数据看起来是公共的，它采用数据加密来传输有效载荷，即使它是私有的并且可以容易地通过冲突的网络。</p>
+<h4 id="GRE"><a href="#GRE" class="headerlink" title="GRE"></a>GRE</h4><ol>
+<li>全称：GRE（Generic Routing Encapsulation）：通用路由封装协议。</li>
+<li>功能：定义了在一种网络层协议上封装另一种协议（或同一种协议）。</li>
+<li>GRE的隧道由两端的源IP地址和目的IP地址来定义，允许用户使用IP包封装IP、IPX、AppleTalk包，并支持全部的路由协议（如RIP2、OSPF等）。通过GRE，用户可以利用公共IP网络连接IPX网络、AppleTalk网络，还可以使用保留地址进行网络互连，或者对公网隐藏企业网的IP地址。</li>
+<li>GRE主要用于源路由和终路由之间所形成的隧道。例如，将通过隧道的报文用一个新的报文头（GRE报文头）进行封装然后带着隧道终点地址放入隧道中。当报文到达隧道终点时，GRE报文头被剥掉，继续原始报文的目标地址进行寻址。 GRE隧道通常是点到点的，即隧道只有一个源地址和一个终地址。GRE建立起来的隧道只是在隧道源点和隧道终点可见，中间经过的设备仍按照外层IP在网络上进行普通的路由转发。</li>
+<li>所在层次：GRE是VPN（Virtual Private Network）的第三层隧道协议，即在协议层之间采用了Tunnel（隧道）的技术。</li>
+</ol>
+<h4 id="VXLAN"><a href="#VXLAN" class="headerlink" title="VXLAN"></a>VXLAN</h4><p>VXLAN（Virtual extensible local area network），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。它是一种 overlay 技术，通过三层的网络来搭建虚拟的二层网络。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。<br>就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:</p>
+<ol>
+<li>多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。</li>
+<li>提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。</li>
+<li>更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。</li>
+</ol>
+<h3 id="Network-namespace"><a href="#Network-namespace" class="headerlink" title="Network namespace"></a>Network namespace</h3><p>命名空间是一种确定特定标识符集的方法。使用命名空间，您可以在不同的命名空间中多次使用相同的标识符。您还可以限制特定进程可见的标识符集。例如，Linux为网络和进程提供名称空间等。如果进程在进程名称空间中运行，则它只能查看同一名称空间中的其他进程并与之通信。因此，如果特定进程命名空间中的shell运行ps waux，则它只会显示同一命名空间中的其他进程。</p>
+<h4 id="Linux-network-namespace"><a href="#Linux-network-namespace" class="headerlink" title="Linux network namespace"></a>Linux network namespace</h4><p>Linux网络命名空间</p>
+<h4 id="VRF"><a href="#VRF" class="headerlink" title="VRF"></a>VRF</h4><p>虚拟路由和转发（Virtual routing and forwarding）是一种IP技术，允许路由表的多个实例同时在同一路由器上共存。 它是上述网络命名空间功能的另一个名称。</p>
+<h3 id="NAT"><a href="#NAT" class="headerlink" title="NAT"></a>NAT</h3><p>NAT（Network Address Translation，网络地址转换）。<br>NAT的实现方式有三种，即静态转换Static NAT、动态转换Dynamic NAT和端口多路复用OverLoad。</p>
+<ul>
+<li><p>静态转换<br>静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。</p>
+</li>
+<li><p>动态转换<br>动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。</p>
+</li>
+<li><p>端口多路复用<br>端口多路复用（Port address Translation,PAT)是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation).采用端口多路复用方式。内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。</p>
+</li>
+</ul>
+<p>ALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。<br>如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。</p>
+<h4 id="SNAT"><a href="#SNAT" class="headerlink" title="SNAT"></a>SNAT</h4><p>SNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。</p>
+<h4 id="DNAT"><a href="#DNAT" class="headerlink" title="DNAT"></a>DNAT</h4><p>DNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。</p>
+<h4 id="One-to-one-NAT"><a href="#One-to-one-NAT" class="headerlink" title="One-to-one NAT"></a>One-to-one NAT</h4><p>在一对一NAT中，NAT路由器维护私有IP地址和公共IP地址之间的一对一映射。OpenStack使用一对一的NAT来实现浮动IP地址。</p>
+
             
 
         </div>
@@ -282,7 +316,8 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    <a class="post-action-btn btn btn--disabled">
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/30/OpenStack-Networking/" data-tooltip="OpenStack Networking" aria-label="PREVIOUS: OpenStack Networking">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -335,7 +370,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -368,7 +403,8 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    <a class="post-action-btn btn btn--disabled">
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/09/30/OpenStack-Networking/" data-tooltip="OpenStack Networking" aria-label="PREVIOUS: OpenStack Networking">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -421,7 +457,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>

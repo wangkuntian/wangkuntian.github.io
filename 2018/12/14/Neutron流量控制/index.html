@@ -1,0 +1,502 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Neutron流量控制 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"DVR模式下的\bFloating IP的流量控制\n\n\nLinux流量控制Linux中的流量控制器TC（\bTraffic Control）用于Linux内核的流量控制，它利用队列规定建立处理数据包的队列，并定义队列中的数据包被发送的方式，从而实现对流量的控制.TC模块实现流量控制功能\n首先看一下计算节点的网络设备分布。\n\n流量控制在qrouter的网络命名空间下进行。\n可以看到名为in-qos-ifb的网卡\n","dateCreated":"2018-12-14T14:29:15+08:00","dateModified":"2019-02-13T11:40:56+08:00","datePublished":"2018-12-14T14:29:15+08:00","description":"DVR模式下的\bFloating IP的流量控制","headline":"Neutron流量控制","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/12/14/Neutron流量控制/","keywords":"Neutron, Floating IP, 流量控制","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="DVR模式下的Floating IP的流量控制">
+<meta name="keywords" content="Neutron">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Neutron流量控制">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="DVR模式下的Floating IP的流量控制">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/compute.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/ip-nets-exec.png">
+<meta property="og:updated_time" content="2019-02-13T03:40:56.108Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Neutron流量控制">
+<meta name="twitter:description" content="DVR模式下的Floating IP的流量控制">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/compute.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Neutron流量控制
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-12-14T14:29:15+08:00">
+	
+		    Dec 14, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>DVR模式下的Floating IP的流量控制</p>
+<a id="more"></a>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Linux流量控制"><span class="toc-text">Linux流量控制</span></a></li></ol>
+<h3 id="Linux流量控制"><a href="#Linux流量控制" class="headerlink" title="Linux流量控制"></a>Linux流量控制</h3><p>Linux中的流量控制器TC（Traffic Control）用于Linux内核的流量控制，它利用队列规定建立处理数据包的队列，并定义队列中的数据包被发送的方式，从而实现对流量的控制.TC模块实现流量控制功能</p>
+<p>首先看一下计算节点的网络设备分布。</p>
+<p><img src="/2018/12/14/Neutron流量控制/images/compute.png" alt="compute"></p>
+<p>流量控制在qrouter的网络命名空间下进行。<br><img src="/2018/12/14/Neutron流量控制/images/ip-nets-exec.png" alt="ip-nets-exec"></p>
+<p>可以看到名为in-qos-ifb的网卡</p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Floating-IP/">Floating IP</a> <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/">Neutron</a> <a class="tag tag--primary tag--small t-link" href="/tags/流量控制/">流量控制</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/12/17/CMMI/" data-tooltip="CMMI" aria-label="PREVIOUS: CMMI">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/12/11/Ubuntu-Server那点事/" data-tooltip="Ubuntu Server那点儿事" aria-label="NEXT: Ubuntu Server那点儿事">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+    </span>
+    <br>
+    <script type="text/javascript" src="//rf.revolvermaps.com/0/0/3.js?i=5kw0kghcqpw&amp;b=0&amp;s=40&amp;m=2&amp;cl=ffffff&amp;co=010020&amp;cd=aa0000&amp;v0=60&amp;v1=60&amp;r=1" async="async"></script>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/12/17/CMMI/" data-tooltip="CMMI" aria-label="PREVIOUS: CMMI">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2018/12/11/Ubuntu-Server那点事/" data-tooltip="Ubuntu Server那点儿事" aria-label="NEXT: Ubuntu Server那点儿事">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>

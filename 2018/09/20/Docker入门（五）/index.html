@@ -9,7 +9,7 @@
     <title>Docker入门（五） - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Docker,仓库,入门">
+        <meta name="keywords" content="Docker,Repository">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,9 +17,9 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"仓库（Repository）是集中存放镜像的地方。注册服务器是存放仓库的具体服务器，每个服务器上可以有多个仓库，而每个仓库下有多个镜像。对于仓库地址dl.dockerpool.com/ubuntu来说，dl.dockerpool.com是注册服务器地址，ubuntu是仓库名。\nDocker Hub官网\n创建和使用私有仓库使用registry镜像创建私有仓库可以使用官方提供的registry镜像来搭建本地私有仓库环境。1sudo docker run -d -p 5000:5000 -v /opt/data/registry:/tmp/registry registry\n此时本地将启动一个私有仓库服务，监听端口为5000。默认情况下，会将仓库创建在容器的/tmp/registry下。可以通过-v参数来将镜像文件存放在本地的指定路径上。\n\n管理私有仓库镜像使用docker tag将ubuntu镜像标记为10.211.55.11:5000/test（格式为docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]）12sudo docker tag ubuntu 10.211.55.11:5000/kingsudo docker images\n10.211.55.11是我的IP地址。\n\n\n使用docker push上传标记的镜像。1sudo docker push 10.211.55.11:5000/king\n\n现在可以在任意连接到10.211.55.11的机器下载这个镜像。1sudo docker pull 10.211.55.11:5000/king\n出现错误123king@ubuntu: sudo docker push 10.211.55.11:5000/kingThe push refers to repository [10.211.55.11:5000/king]Get https://10.211.55.11:5000/v2/: http: server gave HTTP response to HTTPS client\n在/etc/docker下，创建daemon.json文件。1&#123; \"insecure-registries\":[\"10.211.55.11:5000\"]&#125;\n重启docker1systemctl restart docker.service\n重新启动registry12sudo docker ps -a # 找到registry的CONTAINER IDsudo docker start [CONTAINER ID]\n","dateCreated":"2018-09-20T11:05:11+08:00","dateModified":"2018-09-20T14:36:58+08:00","datePublished":"2018-09-20T11:05:11+08:00","description":"仓库（Repository）是集中存放镜像的地方。","headline":"Docker入门（五）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/20/Docker入门（五）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/20/Docker入门（五）/","keywords":"Docker, 入门, 仓库","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"仓库（Repository）是集中存放镜像的地方。注册服务器是存放仓库的具体服务器，每个服务器上可以有多个仓库，而每个仓库下有多个镜像。对于仓库地址dl.dockerpool.com/ubuntu来说，dl.dockerpool.com是注册服务器地址，ubuntu是仓库名。\nDocker Hub官网\n创建和使用私有仓库使用registry镜像创建私有仓库可以使用官方提供的registry镜像来搭建本地私有仓库环境。1sudo docker run -d -p 5000:5000 -v /opt/data/registry:/tmp/registry registry\n此时本地将启动一个私有仓库服务，监听端口为5000。默认情况下，会将仓库创建在容器的/tmp/registry下。可以通过-v参数来将镜像文件存放在本地的指定路径上。\n\n管理私有仓库镜像使用docker tag将ubuntu镜像标记为10.211.55.11:5000/test（格式为docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]）12sudo docker tag ubuntu 10.211.55.11:5000/kingsudo docker images\n10.211.55.11是我的IP地址。\n\n\n使用docker push上传标记的镜像。1sudo docker push 10.211.55.11:5000/king\n\n现在可以在任意连接到10.211.55.11的机器下载这个镜像。1sudo docker pull 10.211.55.11:5000/king\n出现错误123king@ubuntu: sudo docker push 10.211.55.11:5000/kingThe push refers to repository [10.211.55.11:5000/king]Get https://10.211.55.11:5000/v2/: http: server gave HTTP response to HTTPS client\n在/etc/docker下，创建daemon.json文件。1&#123; \"insecure-registries\":[\"10.211.55.11:5000\"]&#125;\n重启docker1systemctl restart docker.service\n重新启动registry12sudo docker ps -a # 找到registry的CONTAINER IDsudo docker start [CONTAINER ID]\n","dateCreated":"2018-09-20T11:05:11+08:00","dateModified":"2019-02-14T16:03:07+08:00","datePublished":"2018-09-20T11:05:11+08:00","description":"仓库（Repository）是集中存放镜像的地方。","headline":"Docker入门（五）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/20/Docker入门（五）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/20/Docker入门（五）/","keywords":"Docker, Repository","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="仓库（Repository）是集中存放镜像的地方。">
-<meta name="keywords" content="Docker,仓库,入门">
+<meta name="keywords" content="Docker,Repository">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Docker入门（五）">
 <meta property="og:url" content="https://wangkuntian.github.io/2018/09/20/Docker入门（五）/index.html">
@@ -28,7 +28,7 @@
 <meta property="og:locale" content="zh-en">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（五）/images/docker-tag.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker入门（五）/images/docker-push.png">
-<meta property="og:updated_time" content="2018-09-20T06:36:58.994Z">
+<meta property="og:updated_time" content="2019-02-14T08:03:07.552Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Docker入门（五）">
 <meta name="twitter:description" content="仓库（Repository）是集中存放镜像的地方。">
@@ -263,7 +263,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/仓库/">仓库</a> <a class="tag tag--primary tag--small t-link" href="/tags/入门/">入门</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/Repository/">Repository</a>
 
             </div>
         

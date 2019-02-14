@@ -9,7 +9,7 @@
     <title>Docker入门（二） - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Docker,安装,核心概念,入门">
+        <meta name="keywords" content="Docker">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,16 +17,16 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2018-09-14T16:28:58+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/","keywords":"Docker, 入门, 安装, 核心概念","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2019-02-14T16:02:50+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Docker的核心概念和安装">
-<meta name="keywords" content="Docker,安装,核心概念,入门">
+<meta name="keywords" content="Docker">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Docker入门（二）">
 <meta property="og:url" content="https://wangkuntian.github.io/2018/09/14/Docker入门（二）/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Docker的核心概念和安装">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2018-09-14T08:28:58.140Z">
+<meta property="og:updated_time" content="2019-02-14T08:02:50.890Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Docker入门（二）">
 <meta name="twitter:description" content="Docker的核心概念和安装">
@@ -251,7 +251,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/入门/">入门</a> <a class="tag tag--primary tag--small t-link" href="/tags/安装/">安装</a> <a class="tag tag--primary tag--small t-link" href="/tags/核心概念/">核心概念</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a>
 
             </div>
         

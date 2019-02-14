@@ -9,7 +9,7 @@
     <title>Trove的概念和架构（四） - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Trove,基础,扩展,Extension">
+        <meta name="keywords" content="Trove">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,16 +17,16 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\nTrove ExtensionTrove 也支持一些特定数据库的操作（也叫作扩展），涉及root-show、root-enable、database-list、database-create、database-delete、user-create、user-delete、user-grant-access、user-revoke-access及user-show-access等命令。\nTrove使用Paste Deploy，及配置文件api-paste.ini，定义了接收到消息及时通过API WSGI服务执行操作的pipeline。\n123456789[pipeline:troveapi]pipeline = cors http_proxy_to_wsgi faultwrapper osprofiler authtoken authorization contextwrapper ratelimit extensions troveapp#pipeline = debug extensions troveapp[filter:extensions]paste.filter_factory = trove.common.extensions:factory[app:troveapp]paste.app_factory = trove.common.api:app_factory\n这里建立的pipline提供了Trove API服务将调用的处理请求的操作列表。","dateCreated":"2018-09-12T11:01:13+08:00","dateModified":"2018-09-20T14:37:53+08:00","datePublished":"2018-09-12T11:01:13+08:00","description":"Trove Extension","headline":"Trove的概念和架构（四）","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/12/Trove的概念和架构（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/12/Trove的概念和架构（四）/","keywords":"Trove, 基础, Extension","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\nTrove ExtensionTrove 也支持一些特定数据库的操作（也叫作扩展），涉及root-show、root-enable、database-list、database-create、database-delete、user-create、user-delete、user-grant-access、user-revoke-access及user-show-access等命令。\nTrove使用Paste Deploy，及配置文件api-paste.ini，定义了接收到消息及时通过API WSGI服务执行操作的pipeline。\n123456789[pipeline:troveapi]pipeline = cors http_proxy_to_wsgi faultwrapper osprofiler authtoken authorization contextwrapper ratelimit extensions troveapp#pipeline = debug extensions troveapp[filter:extensions]paste.filter_factory = trove.common.extensions:factory[app:troveapp]paste.app_factory = trove.common.api:app_factory\n这里建立的pipline提供了Trove API服务将调用的处理请求的操作列表。","dateCreated":"2018-09-12T11:01:13+08:00","dateModified":"2019-02-14T16:07:40+08:00","datePublished":"2018-09-12T11:01:13+08:00","description":"Trove Extension","headline":"Trove的概念和架构（四）","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/12/Trove的概念和架构（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/12/Trove的概念和架构（四）/","keywords":"Trove","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Trove Extension">
-<meta name="keywords" content="Trove,基础,扩展,Extension">
+<meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的概念和架构（四）">
 <meta property="og:url" content="https://wangkuntian.github.io/2018/09/12/Trove的概念和架构（四）/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Trove Extension">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2018-09-20T06:37:53.444Z">
+<meta property="og:updated_time" content="2019-02-14T08:07:40.966Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Trove的概念和架构（四）">
 <meta name="twitter:description" content="Trove Extension">
@@ -250,7 +250,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Extension/">Extension</a> <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a> <a class="tag tag--primary tag--small t-link" href="/tags/基础/">基础</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
 
             </div>
         

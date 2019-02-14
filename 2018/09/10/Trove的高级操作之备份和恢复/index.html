@@ -9,7 +9,7 @@
     <title>Trove的高级操作之备份和恢复 - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Trove,高级,备份,恢复">
+        <meta name="keywords" content="Trove">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,9 +17,9 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n新建增量备份Trove还支持基于现有备份创建增量备份。1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description \"&lt;description&gt;\"\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n查看备份1trove backup-list\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n","dateCreated":"2018-09-10T09:13:37+08:00","dateModified":"2018-09-10T17:22:48+08:00","datePublished":"2018-09-10T09:13:37+08:00","description":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。","headline":"Trove的高级操作之备份和恢复","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/","keywords":"Trove, 高级, 备份, 恢复","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n新建增量备份Trove还支持基于现有备份创建增量备份。1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description \"&lt;description&gt;\"\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n查看备份1trove backup-list\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n","dateCreated":"2018-09-10T09:13:37+08:00","dateModified":"2019-02-14T16:07:54+08:00","datePublished":"2018-09-10T09:13:37+08:00","description":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。","headline":"Trove的高级操作之备份和恢复","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/","keywords":"Trove","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。">
-<meta name="keywords" content="Trove,高级,备份,恢复">
+<meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的高级操作之备份和恢复">
 <meta property="og:url" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/index.html">
@@ -28,7 +28,7 @@
 <meta property="og:locale" content="zh-en">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-create.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-list.png">
-<meta property="og:updated_time" content="2018-09-10T09:22:48.388Z">
+<meta property="og:updated_time" content="2019-02-14T08:07:54.277Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Trove的高级操作之备份和恢复">
 <meta name="twitter:description" content="Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。">
@@ -256,7 +256,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a> <a class="tag tag--primary tag--small t-link" href="/tags/备份/">备份</a> <a class="tag tag--primary tag--small t-link" href="/tags/恢复/">恢复</a> <a class="tag tag--primary tag--small t-link" href="/tags/高级/">高级</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
 
             </div>
         

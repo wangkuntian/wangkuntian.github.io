@@ -195,6 +195,43 @@
                 <section class="postShorten-group main-content-wrap">
     
     
+    <article class="postShorten postShorten--thumbnailimg-right">
+        <div class="postShorten-wrap">
+            
+            <div class="postShorten-header">
+                <h1 class="postShorten-title">
+                    
+                        <a class="link-unstyled" href="/2019/02/14/Ceilometer和Gnocchi/">
+                            Ceilometer和Gnocchi
+                        </a>
+                    
+                </h1>
+                <div class="postShorten-meta">
+    <time datetime="2019-02-14T14:50:43+08:00">
+	
+		    Feb 14, 2019
+    	
+    </time>
+    
+</div>
+
+            </div>
+            
+                <div class="postShorten-excerpt">
+                    <p>Ceilometer和Gnocchi的集成<br>
+                    
+                        <a href="/2019/02/14/Ceilometer和Gnocchi/" class="postShorten-excerpt_link link">
+                            Continue reading
+                        </a>
+                        
+                    
+                </p></div>
+            
+        </div>
+        
+    </article>
+    
+    
     <article class="postShorten postShorten--thumbnailimg-bottom">
         <div class="postShorten-wrap">
             
@@ -237,7 +274,7 @@
     </article>
     
     
-    <article class="postShorten postShorten--thumbnailimg-right">
+    <article class="postShorten postShorten--thumbnailimg-bottom">
         <div class="postShorten-wrap">
             
             <div class="postShorten-header">
@@ -259,15 +296,36 @@
 
             </div>
             
-                <div class="postShorten-excerpt">
-                    <p>Gnocchi配置<br>
+                <div class="postShorten-content">
+                    <p>aodh alarm create \<br>–name cpu_test_1 \<br>–type gnocchi_resources_threshold \<br>–description ‘instance running hot’ \<br>–metric cpu_util \<br>–threshold 30.0 \<br>–comparison-operator gt \<br>–aggregation-method mean \<br>–granularity 600 \<br>–evaluation-periods 3 \<br>–alarm-action ‘log://‘ \<br>–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \<br>–resource-type instance</p>
+<p>aodh alarm create \<br>–name cpu_test_11 \<br>–type threshold \<br>–description ‘instance running hot’ \<br>–metric cpu_util \<br>–threshold 30.0 \<br>–comparison-operator gt \<br>–aggregation-method mean \<br>–granularity 600 \<br>–evaluation-periods 3 \<br>–alarm-action ‘log://‘ \<br>–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \<br>–resource-type instance</p>
+<p>{<br>    “name”: “cpu_test_1”,<br>    “description”: “ cpu_use”,<br>    “type”: “threshold”,<br>    “threshold_rule”:<br>    {<br>        “comparison_operator”: “gt”,<br>        “evaluation_periods”: 1,<br>        “meter_name”: “cpu_util”,<br>        “period”: “300”,<br>        “unit”: “%”,<br>        “query”:<br>        [<br>            {<br>                “field”: “resource_id”,<br>                “op”: “eq”,<br>                “value”: “49b0ac31-736c-4dfa-828b-76de6ea022b8”<br>            }<br>        ],<br>        “statistic”: “avg”,<br>        “resource_metadata”:<br>        {<br>            “resource_type”: “instance”,<br>            “resource_name”: “123”<br>        },<br>        “threshold”: 5<br>    },<br>    “alarm_actions”:<br>    [</p>
+<pre><code>],
+&quot;ok_actions&quot;:
+[
+
+],
+&quot;insufficient_data_actions&quot;:
+[
+
+]
+</code></pre><p>}</p>
+<result><br>    <item><br>        &lt;alarm_id&gt;34ddd135-2991-41af-a854-89aed558922e&lt;/alarm_id&gt;<br>        <name>222</name><br>        <description> 222</description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions&gt;<br>            <item><a href="http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1" target="_blank" rel="noopener">http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1</a></item><br>        &lt;/alarm_actions&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2019-01-21T06:36:06.004862</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2019-01-21T06:36:06.004862&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>123</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1 <em> 300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>49b0ac31-736c-4dfa-828b-76de6ea022b8</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>5.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </em></item><br>    <item><br>        &lt;alarm_id&gt;0b879b91-724f-4dc9-9f17-dc69f7f24ebe&lt;/alarm_id&gt;<br>        <name>AA</name><br>        <description> 123</description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions&gt;<br>            <item><a href="http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1" target="_blank" rel="noopener">http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1</a></item><br>        &lt;/alarm_actions&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2018-12-27T07:10:14.017940</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2018-12-27T07:10:14.017940&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>Test_b</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 1.0% during 1  300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>c05ea85d-d60c-4a0c-9d0c-e4d1594995e0</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>1.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </item><br>    <item><br>        &lt;alarm_id&gt;95bcb231-0b56-4d7f-a843-f5b3e864e9a7&lt;/alarm_id&gt;<br>        <name>sf</name><br>        <description> </description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions /&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2018-12-08T10:17:12.631460</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2018-12-08T10:17:12.631460&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>Test_b</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1 * 300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>c05ea85d-d60c-4a0c-9d0c-e4d1594995e0</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>5.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </item><br></result>
+
+<p>gnocchi measures show \<br>–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \<br>–granularity 3600 \<br>–start 1549818000.0 \<br>–stop 1549825200.0 \<br>cpu_util</p>
+
                     
-                        <a href="/2019/01/21/就决定是你啦Gnocchi（一）/" class="postShorten-excerpt_link link">
-                            Continue reading
-                        </a>
                         
+
                     
-                </p></div>
+                    
+                        <p>
+                            <a href="/2019/01/21/就决定是你啦Gnocchi（一）/#post-footer" class="postShorten-excerpt_link link">
+                                Comment and share
+                            </a>
+                        </p>
+                    
+                </div>
             
         </div>
         
@@ -522,43 +580,6 @@
                     <p>ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。<br></p>
                     
                         <a href="/2018/12/05/Linux命令大全（一）/" class="postShorten-excerpt_link link">
-                            Continue reading
-                        </a>
-                        
-                    
-                </div>
-            
-        </div>
-        
-    </article>
-    
-    
-    <article class="postShorten postShorten--thumbnailimg-right">
-        <div class="postShorten-wrap">
-            
-            <div class="postShorten-header">
-                <h1 class="postShorten-title">
-                    
-                        <a class="link-unstyled" href="/2018/11/21/Mac软件/">
-                            Mac软件
-                        </a>
-                    
-                </h1>
-                <div class="postShorten-meta">
-    <time datetime="2018-11-21T09:40:29+08:00">
-	
-		    Nov 21, 2018
-    	
-    </time>
-    
-</div>
-
-            </div>
-            
-                <div class="postShorten-excerpt">
-                    <p>细数我Mac上的软件</p>
-                    
-                        <a href="/2018/11/21/Mac软件/" class="postShorten-excerpt_link link">
                             Continue reading
                         </a>
                         

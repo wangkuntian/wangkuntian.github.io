@@ -1,0 +1,506 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Aodh，我想告诉你 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Aodh">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Aodh\naodh alarm create \\–name cpu_test_1 \\–type gnocchi_resources_threshold \\–description ‘instance running hot’ \\–metric cpu_util \\–threshold 30.0 \\–comparison-operator gt \\–aggregation-method mean \\–granularity 600 \\–evaluation-periods 3 \\–alarm-action ‘log://‘ \\–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\–resource-type instance\naodh alarm create \\–name cpu_test_11 \\–type threshold \\–description ‘instance running hot’ \\–metric cpu_util \\–threshold 30.0 \\–comparison-operator gt \\–aggregation-method mean \\–granularity 600 \\–evaluation-periods 3 \\–alarm-action ‘log://‘ \\–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\–resource-type instance\n{    “name”: “cpu_test_1”,    “description”: “ cpu_use”,    “type”: “threshold”,    “threshold_rule”:    {        “comparison_operator”: “gt”,        “evaluation_periods”: 1,        “meter_name”: “cpu_util”,        “period”: “300”,        “unit”: “%”,        “query”:        [            {                “field”: “resource_id”,                “op”: “eq”,                “value”: “49b0ac31-736c-4dfa-828b-76de6ea022b8”            }        ],        “statistic”: “avg”,        “resource_metadata”:        {            “resource_type”: “instance”,            “resource_name”: “123”        },        “threshold”: 5    },    “alarm_actions”:    [\n],\n&quot;ok_actions&quot;:\n[\n\n],\n&quot;insufficient_data_actions&quot;:\n[\n\n]\n}\n            &lt;alarm_id&gt;34ddd135-2991-41af-a854-89aed558922e&lt;/alarm_id&gt;        222         222        true        &lt;ok_actions /&gt;        &lt;alarm_actions&gt;            http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1        &lt;/alarm_actions&gt;        &lt;insufficient_data_actions /&gt;        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;        threshold        &lt;time_constraints /&gt;        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;        2019-01-21T06:36:06.004862        insufficient data        &lt;state_timestamp&gt;2019-01-21T06:36:06.004862&lt;/state_timestamp&gt;        low        &lt;threshold_rule&gt;            %            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;            &lt;resource_metadata&gt;                                    resource_name                    123                                                    resource_type                    instance                            &lt;/resource_metadata&gt;            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1  300s&lt;/threshold_rule_string&gt;            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;                                                resource_id                    eq                    49b0ac31-736c-4dfa-828b-76de6ea022b8                                                    project_id                    eq                    0f985edd85684b489cb10c80bc9fce49                                        300            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;            5.0            avg            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;        &lt;/threshold_rule&gt;                &lt;alarm_id&gt;0b879b91-724f-4dc9-9f17-dc69f7f24ebe&lt;/alarm_id&gt;        AA         123        true        &lt;ok_actions /&gt;        &lt;alarm_actions&gt;            http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1        &lt;/alarm_actions&gt;        &lt;insufficient_data_actions /&gt;        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;        threshold        &lt;time_constraints /&gt;        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;        2018-12-27T07:10:14.017940        insufficient data        &lt;state_timestamp&gt;2018-12-27T07:10:14.017940&lt;/state_timestamp&gt;        low        &lt;threshold_rule&gt;            %            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;            &lt;resource_metadata&gt;                                    resource_name                    Test_b                                                    resource_type                    instance                            &lt;/resource_metadata&gt;            &lt;threshold_rule_string&gt;mem_util &gt; 1.0% during 1  300s&lt;/threshold_rule_string&gt;            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;                                                resource_id                    eq                    c05ea85d-d60c-4a0c-9d0c-e4d1594995e0                                                    project_id                    eq                    0f985edd85684b489cb10c80bc9fce49                                        300            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;            1.0            avg            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;        &lt;/threshold_rule&gt;                &lt;alarm_id&gt;95bcb231-0b56-4d7f-a843-f5b3e864e9a7&lt;/alarm_id&gt;        sf                 true        &lt;ok_actions /&gt;        &lt;alarm_actions /&gt;        &lt;insufficient_data_actions /&gt;        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;        threshold        &lt;time_constraints /&gt;        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;        2018-12-08T10:17:12.631460        insufficient data        &lt;state_timestamp&gt;2018-12-08T10:17:12.631460&lt;/state_timestamp&gt;        low        &lt;threshold_rule&gt;            %            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;            &lt;resource_metadata&gt;                                    resource_name                    Test_b                                                    resource_type                    instance                            &lt;/resource_metadata&gt;            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1 * 300s&lt;/threshold_rule_string&gt;            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;                                                resource_id                    eq                    c05ea85d-d60c-4a0c-9d0c-e4d1594995e0                                                    project_id                    eq                    0f985edd85684b489cb10c80bc9fce49                                        300            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;            5.0            avg            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;        &lt;/threshold_rule&gt;    \n","dateCreated":"2019-02-19T11:25:10+08:00","dateModified":"2019-02-19T11:26:29+08:00","datePublished":"2019-02-19T11:25:10+08:00","description":"Aodh","headline":"Aodh，我想告诉你","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/","keywords":"Aodh","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Aodh">
+<meta name="keywords" content="Aodh">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Aodh，我想告诉你">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Aodh">
+<meta property="og:locale" content="zh-en">
+<meta property="og:updated_time" content="2019-02-19T03:26:29.765Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Aodh，我想告诉你">
+<meta name="twitter:description" content="Aodh">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/covers/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-du2xmrqdqrl2ollgeiw050kpl6l4nbyz7bumjuurjgsxyopifvukebxc9lqe.min.css">
+    <!--STYLES END-->
+    
+
+    
+</head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full" style="background-image:url('/covers/PROJECT-Vayne.jpg');" data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Aodh，我想告诉你
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-02-19T11:25:10+08:00">
+	
+		    Feb 19, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Aodh<br><a id="more"></a></p>
+<p>aodh alarm create \<br>–name cpu_test_1 \<br>–type gnocchi_resources_threshold \<br>–description ‘instance running hot’ \<br>–metric cpu_util \<br>–threshold 30.0 \<br>–comparison-operator gt \<br>–aggregation-method mean \<br>–granularity 600 \<br>–evaluation-periods 3 \<br>–alarm-action ‘log://‘ \<br>–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \<br>–resource-type instance</p>
+<p>aodh alarm create \<br>–name cpu_test_11 \<br>–type threshold \<br>–description ‘instance running hot’ \<br>–metric cpu_util \<br>–threshold 30.0 \<br>–comparison-operator gt \<br>–aggregation-method mean \<br>–granularity 600 \<br>–evaluation-periods 3 \<br>–alarm-action ‘log://‘ \<br>–resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \<br>–resource-type instance</p>
+<p>{<br>    “name”: “cpu_test_1”,<br>    “description”: “ cpu_use”,<br>    “type”: “threshold”,<br>    “threshold_rule”:<br>    {<br>        “comparison_operator”: “gt”,<br>        “evaluation_periods”: 1,<br>        “meter_name”: “cpu_util”,<br>        “period”: “300”,<br>        “unit”: “%”,<br>        “query”:<br>        [<br>            {<br>                “field”: “resource_id”,<br>                “op”: “eq”,<br>                “value”: “49b0ac31-736c-4dfa-828b-76de6ea022b8”<br>            }<br>        ],<br>        “statistic”: “avg”,<br>        “resource_metadata”:<br>        {<br>            “resource_type”: “instance”,<br>            “resource_name”: “123”<br>        },<br>        “threshold”: 5<br>    },<br>    “alarm_actions”:<br>    [</p>
+<pre><code>],
+&quot;ok_actions&quot;:
+[
+
+],
+&quot;insufficient_data_actions&quot;:
+[
+
+]
+</code></pre><p>}</p>
+<result><br>    <item><br>        &lt;alarm_id&gt;34ddd135-2991-41af-a854-89aed558922e&lt;/alarm_id&gt;<br>        <name>222</name><br>        <description> 222</description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions&gt;<br>            <item><a href="http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1" target="_blank" rel="noopener">http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1</a></item><br>        &lt;/alarm_actions&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2019-01-21T06:36:06.004862</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2019-01-21T06:36:06.004862&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>123</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1 <em> 300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>49b0ac31-736c-4dfa-828b-76de6ea022b8</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>5.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </em></item><br>    <item><br>        &lt;alarm_id&gt;0b879b91-724f-4dc9-9f17-dc69f7f24ebe&lt;/alarm_id&gt;<br>        <name>AA</name><br>        <description> 123</description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions&gt;<br>            <item><a href="http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1" target="_blank" rel="noopener">http://lotus/e23a3939-6855-41a4-9c9c-6c1c9fd6eeb1</a></item><br>        &lt;/alarm_actions&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2018-12-27T07:10:14.017940</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2018-12-27T07:10:14.017940&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>Test_b</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 1.0% during 1  300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>c05ea85d-d60c-4a0c-9d0c-e4d1594995e0</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>1.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </item><br>    <item><br>        &lt;alarm_id&gt;95bcb231-0b56-4d7f-a843-f5b3e864e9a7&lt;/alarm_id&gt;<br>        <name>sf</name><br>        <description> </description><br>        <enabled>true</enabled><br>        &lt;ok_actions /&gt;<br>        &lt;alarm_actions /&gt;<br>        &lt;insufficient_data_actions /&gt;<br>        &lt;repeat_actions&gt;false&lt;/repeat_actions&gt;<br>        <type>threshold</type><br>        &lt;time_constraints /&gt;<br>        &lt;project_id&gt;0f985edd85684b489cb10c80bc9fce49&lt;/project_id&gt;<br>        &lt;user_id&gt;d7bee6b1be714e5db0e24729ef244d8f&lt;/user_id&gt;<br>        <timestamp>2018-12-08T10:17:12.631460</timestamp><br>        <state>insufficient data</state><br>        &lt;state_timestamp&gt;2018-12-08T10:17:12.631460&lt;/state_timestamp&gt;<br>        <severity>low</severity><br>        &lt;threshold_rule&gt;<br>            <unit>%</unit><br>            &lt;verbose_name&gt;Memory Utilization&lt;/verbose_name&gt;<br>            &lt;resource_metadata&gt;<br>                <item><br>                    <key>resource_name</key><br>                    <value>Test_b</value><br>                </item><br>                <item><br>                    <key>resource_type</key><br>                    <value>instance</value><br>                </item><br>            &lt;/resource_metadata&gt;<br>            &lt;threshold_rule_string&gt;mem_util &gt; 5.0% during 1 * 300s&lt;/threshold_rule_string&gt;<br>            &lt;meter_name&gt;mem_util&lt;/meter_name&gt;<br>            <query><br>                <item><br>                    <field>resource_id</field><br>                    <op>eq</op><br>                    <value>c05ea85d-d60c-4a0c-9d0c-e4d1594995e0</value><br>                </item><br>                <item><br>                    <field>project_id</field><br>                    <op>eq</op><br>                    <value>0f985edd85684b489cb10c80bc9fce49</value><br>                </item><br>            </query><br>            <period>300</period><br>            &lt;comparison_operator&gt;gt&lt;/comparison_operator&gt;<br>            <threshold>5.0</threshold><br>            <statistic>avg</statistic><br>            &lt;evaluation_periods&gt;1&lt;/evaluation_periods&gt;<br>            &lt;exclude_outliers&gt;false&lt;/exclude_outliers&gt;<br>        &lt;/threshold_rule&gt;<br>    </item><br></result>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Aodh/">Aodh</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/14/Ceilometer和Gnocchi/" data-tooltip="Ceilometer和Gnocchi" aria-label="NEXT: Ceilometer和Gnocchi">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/&amp;title=Aodh，我想告诉你" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+    </span>
+    <br>
+    <script type="text/javascript" src="//rf.revolvermaps.com/0/0/3.js?i=5kw0kghcqpw&amp;b=0&amp;s=40&amp;m=2&amp;cl=ffffff&amp;co=010020&amp;cd=aa0000&amp;v0=60&amp;v1=60&amp;r=1" async="async"></script>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a class="post-action-btn btn btn--disabled">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/02/14/Ceilometer和Gnocchi/" data-tooltip="Ceilometer和Gnocchi" aria-label="NEXT: Ceilometer和Gnocchi">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/&amp;title=Aodh，我想告诉你" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+    <i id="btn-close-shareoptions" class="fa fa-times"></i>
+    <ul class="share-options">
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/">
+                    <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/&amp;title=Aodh，我想告诉你">
+                    <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                </a>
+            </li>
+        
+            
+            
+            <li class="share-option">
+                <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/19/Aodh，我想告诉你/">
+                    <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                </a>
+            </li>
+        
+    </ul>
+</div>
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-vufjrm3fmbuttogo1hxuu0w9w0sesk5iyysjuguc2hdhufot9szxg8twijry.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
+</html>

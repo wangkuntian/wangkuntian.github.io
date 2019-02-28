@@ -2260,8 +2260,10 @@ a.fancybox {
     overflow: hidden;
     margin: 15px 0 15px 0; }
     .postShorten.postShorten--thumbnailimg-bottom .postShorten-thumbnailimg img {
-      width: auto;
-      height: auto; } }
+      width: 100%;
+      height: auto;
+      max-height: 250px;
+      object-fit: cover; } }
 
 .share-options-bar {
   position: fixed;
@@ -2269,6 +2271,7 @@ a.fancybox {
   background: white;
   height: 100%;
   clear: both;
+  box-sizing: border-box;
   border-top: 1px solid #eef2f8;
   transition: transform .25s ease-in-out;
   z-index: 50;

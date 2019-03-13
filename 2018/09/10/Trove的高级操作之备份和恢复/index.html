@@ -9,7 +9,7 @@
     <title>Trove的高级操作之备份和恢复 - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Trove">
+        <meta name="keywords" content="hexo,python,Trove">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n新建增量备份Trove还支持基于现有备份创建增量备份。1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description \"&lt;description&gt;\"\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n查看备份1trove backup-list\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n","dateCreated":"2018-09-10T09:13:37+08:00","dateModified":"2019-02-14T16:07:54+08:00","datePublished":"2018-09-10T09:13:37+08:00","description":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。","headline":"Trove的高级操作之备份和恢复","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/","keywords":"Trove","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n新建增量备份Trove还支持基于现有备份创建增量备份。1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description \"&lt;description&gt;\"\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n查看备份1trove backup-list\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n","dateCreated":"2018-09-10T09:13:37+08:00","dateModified":"2019-02-28T18:28:43+08:00","datePublished":"2018-09-10T09:13:37+08:00","description":"Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。","headline":"Trove的高级操作之备份和恢复","image":["covers/LOL/Ezreal/Striker-Ezreal.jpg","covers/LOL/Ezreal/Striker-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Striker-Ezreal.jpg"}</script>
     <meta name="description" content="Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。">
 <meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
@@ -28,7 +28,7 @@
 <meta property="og:locale" content="zh-en">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-create.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/trove-backup-list.png">
-<meta property="og:updated_time" content="2019-02-14T08:07:54.277Z">
+<meta property="og:updated_time" content="2019-02-28T10:28:43.031Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Trove的高级操作之备份和恢复">
 <meta name="twitter:description" content="Trove实现了一个内部框架，使得数据库可以实现备份机制，并从备份中启动新的实例，该框架基于备份和恢复策略。Trove本身并不进行备份和恢复，它依赖于实现特定的数据库备份和恢复操作的策略。">
@@ -41,15 +41,27 @@
         <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
     
     
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/covers/LOL/Ezreal/Striker-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/covers/LOL/Ezreal/Striker-Ezreal.jpg" />
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/images/PROJECT-Vayne.jpg" />
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/covers/LOL/Ezreal/Striker-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/10/Trove的高级操作之备份和恢复/covers/LOL/Ezreal/Striker-Ezreal.jpg" />
     
     
     <!--STYLES-->
     <link rel="stylesheet" href="/assets/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
     <!--STYLES END-->
     
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
 
     
 </head>
@@ -202,7 +214,7 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full" style="background-image:url('/covers/LOL/Ezreal/Striker-Ezreal.jpg');" data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -229,9 +241,11 @@
             <div id="main" data-behavior="4"
                  class="hasCover
                         hasCoverMetaIn
-                        ">
+                        hasCoverCaption">
                 
 <article class="post">
+    
+        <span class="post-header-cover-caption caption">Striker Ezreal</span>
     
     
     <div class="post-content markdown">

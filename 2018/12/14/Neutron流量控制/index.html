@@ -337,20 +337,38 @@
         
         
             
-                <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
-<script>
-    new Valine({
-        el: '#vcomment', // 
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz', // 这里填写上面得到的APP ID
-        appKey: '56G0KI3088RN76r5dTyRcsao', // 这里填写上面得到的APP KEY
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' // [v1.0.7 new]留言框占位提示文字
-    });
-</script> 
-            
         
     </div>
+       
 </article>
+
+<div class="main-content-wrap">
+    
+        <!-- <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script> -->
+<div id="vcomments"></div>
+<script>
+    new Valine({
+        el: '#vcomments', // 
+        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
+        appKey: '56G0KI3088RN76r5dTyRcsao', 
+        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
+        notify: 'false',
+        verity: '',
+        path: window.location.pathname,
+        avatar: 'wavatar',
+        meta: ['nick','mail','link'],
+        pageSize: '10',
+        lang: 'zh-cn',
+        visitor: 'true',
+        highlight: 'true'
+
+    });
+</script>  
+    
+</div>
+
+
 
 
 

@@ -1,0 +1,551 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Glance接口测试 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Glance">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n镜像创建POST  /v2/images\n\nRequest\n\n\n\n名称\n位于\n类型\n描述\n\n\n\n\n\n\n\n\n12345678910111213141516curl \\-X POST  \\-H 'Content-Type: application/json; charset=UTF-8' \\-H 'X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb' \\-d '&#123;    \"container_format\": \"bare\",    \"disk_format\": \"qcow2\",    \"min_disk\": 10,    \"min_ram\": 1024,    \"name\": \"image_test\",    \"protected\": false,    \"visibility\": \"public\",    \"image_label\": \"CentOS\",    \"image_type\": \"distribution\"&#125;' \\http://2.3.3.54:9292/v2/images | python -m json.tool\nResponse12345678910111213141516171819202122&#123;    \"checksum\": null,    \"container_format\": \"bare\",    \"created_at\": \"2019-05-15T02:30:31Z\",    \"disk_format\": \"qcow2\",    \"file\": \"/v2/images/993bc534-3973-492c-979b-403aea654fd0/file\",    \"id\": \"993bc534-3973-492c-979b-403aea654fd0\",    \"locations\": [],    \"min_disk\": 10,    \"min_ram\": 1024,    \"name\": \"image_test\",    \"owner\": \"e1163a30a063441cad01e392be6eb57e\",    \"protected\": false,    \"schema\": \"/v2/schemas/image\",    \"self\": \"/v2/images/993bc534-3973-492c-979b-403aea654fd0\",    \"size\": null,    \"status\": \"queued\",    \"tags\": [],    \"updated_at\": \"2019-05-15T02:30:31Z\",    \"virtual_size\": null,    \"visibility\": \"public\"&#125;\n镜像上传PUT  /v2/images/{image_id}/file\na123456curl -i \\-X PUT \\-H \"X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb\" \\-H \"Content-Type: application/octet-stream\" \\-d @/root/images/centos7.qcow2 \\http://2.3.3.54:9292/v2/images/993bc534-3973-492c-979b-403aea654fd0/file| python -m json.tool","dateCreated":"2019-05-15T10:16:57+08:00","dateModified":"2019-05-16T09:43:16+08:00","datePublished":"2019-05-15T10:16:57+08:00","description":"Glance接口测试","headline":"Glance接口测试","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/15/Glance接口测试/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/15/Glance接口测试/","keywords":"Glance","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Glance接口测试">
+<meta name="keywords" content="Glance">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Glance接口测试">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Glance接口测试">
+<meta property="og:locale" content="zh-en">
+<meta property="og:updated_time" content="2019-05-16T01:43:16.508Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Glance接口测试">
+<meta name="twitter:description" content="Glance接口测试">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+    
+</head>
+
+    <body>
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Glance接口测试
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-05-15T10:16:57+08:00">
+	
+		    May 15, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt --><p></p>
+<h3 id="镜像创建"><a href="#镜像创建" class="headerlink" title="镜像创建"></a>镜像创建</h3><div class="alert info no-icon"><p>POST  /v2/images</p>
+</div>
+<p>Request</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">位于</th>
+<th style="text-align:left">类型</th>
+<th style="text-align:left">描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"></td>
+</tr>
+</tbody>
+</table>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">curl \</span><br><span class="line">-X POST  \</span><br><span class="line">-H 'Content-Type: application/json; charset=UTF-8' \</span><br><span class="line">-H 'X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb' \</span><br><span class="line">-d '&#123;</span><br><span class="line">    "container_format": "bare",</span><br><span class="line">    "disk_format": "qcow2",</span><br><span class="line">    "min_disk": 10,</span><br><span class="line">    "min_ram": 1024,</span><br><span class="line">    "name": "image_test",</span><br><span class="line">    "protected": false,</span><br><span class="line">    "visibility": "public",</span><br><span class="line">    "image_label": "CentOS",</span><br><span class="line">    "image_type": "distribution"</span><br><span class="line">&#125;' \</span><br><span class="line">http://2.3.3.54:9292/v2/images | python -m json.tool</span><br></pre></td></tr></table></figure>
+<p>Response<br><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"checksum"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"container_format"</span>: <span class="string">"bare"</span>,</span><br><span class="line">    <span class="attr">"created_at"</span>: <span class="string">"2019-05-15T02:30:31Z"</span>,</span><br><span class="line">    <span class="attr">"disk_format"</span>: <span class="string">"qcow2"</span>,</span><br><span class="line">    <span class="attr">"file"</span>: <span class="string">"/v2/images/993bc534-3973-492c-979b-403aea654fd0/file"</span>,</span><br><span class="line">    <span class="attr">"id"</span>: <span class="string">"993bc534-3973-492c-979b-403aea654fd0"</span>,</span><br><span class="line">    <span class="attr">"locations"</span>: [],</span><br><span class="line">    <span class="attr">"min_disk"</span>: <span class="number">10</span>,</span><br><span class="line">    <span class="attr">"min_ram"</span>: <span class="number">1024</span>,</span><br><span class="line">    <span class="attr">"name"</span>: <span class="string">"image_test"</span>,</span><br><span class="line">    <span class="attr">"owner"</span>: <span class="string">"e1163a30a063441cad01e392be6eb57e"</span>,</span><br><span class="line">    <span class="attr">"protected"</span>: <span class="literal">false</span>,</span><br><span class="line">    <span class="attr">"schema"</span>: <span class="string">"/v2/schemas/image"</span>,</span><br><span class="line">    <span class="attr">"self"</span>: <span class="string">"/v2/images/993bc534-3973-492c-979b-403aea654fd0"</span>,</span><br><span class="line">    <span class="attr">"size"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"status"</span>: <span class="string">"queued"</span>,</span><br><span class="line">    <span class="attr">"tags"</span>: [],</span><br><span class="line">    <span class="attr">"updated_at"</span>: <span class="string">"2019-05-15T02:30:31Z"</span>,</span><br><span class="line">    <span class="attr">"virtual_size"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"visibility"</span>: <span class="string">"public"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<h3 id="镜像上传"><a href="#镜像上传" class="headerlink" title="镜像上传"></a>镜像上传</h3><div class="alert info no-icon"><p>PUT  /v2/images/{image_id}/file</p>
+</div>a<br><br><br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">curl -i \</span><br><span class="line">-X PUT \</span><br><span class="line">-H "X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb" \</span><br><span class="line">-H "Content-Type: application/octet-stream" \</span><br><span class="line">-d @/root/images/centos7.qcow2 \</span><br><span class="line">http://2.3.3.54:9292/v2/images/993bc534-3973-492c-979b-403aea654fd0/file| python -m json.tool</span><br></pre></td></tr></table></figure>
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Glance/">Glance</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/OpenStack通用库（四）/" data-tooltip="OpenStack通用库（四）" aria-label="PREVIOUS: OpenStack通用库（四）">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（三）/" data-tooltip="OpenStack通用库（三）" aria-label="NEXT: OpenStack通用库（三）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+       
+</article>
+
+<div class="main-content-wrap">
+    
+        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<div id="vcomments"></div>
+<script>
+    new Valine({
+        el: '#vcomments', // 
+        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
+        appKey: '56G0KI3088RN76r5dTyRcsao', 
+        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
+        notify: 'false',
+        verity: '',
+        path: window.location.pathname,
+        avatar: 'wavatar',
+        meta: ['nick','mail','link'],
+        pageSize: '10',
+        lang: 'zh-cn',
+        visitor: 'true',
+        highlight: 'true'
+
+    });
+</script>  
+    
+</div>
+
+
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/OpenStack通用库（四）/" data-tooltip="OpenStack通用库（四）" aria-label="PREVIOUS: OpenStack通用库（四）">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（三）/" data-tooltip="OpenStack通用库（三）" aria-label="NEXT: OpenStack通用库（三）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/">
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+</html>

@@ -1,0 +1,613 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack通用库（三） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Oslo,DB">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.db是针对SQLAlchemy访问的抽象。\n\n使用SQLAlchemy的session和connectionoslo.db提供了oslo_db.sqlachemy.enginefacade模块来获取session和connection，有两种方法来使用enginefacade，即函数装饰器（decorator）和上下文管理器（context mangager）。这两种调用方式都需要提供一个上下文对象。上下文对象可以是任何Python类。这样做的目的是提供一个统一规范的session使用模式，避免调用者使用不当造成数据库事务（transaction）的滥用和嵌套。123456789101112131415161718192021222324252627from oslo_db.sqlalchemy import enginefacadeclass SomeClass(object):    def __init__(self, x, y):        self.x = x        self.y = yclass MyContext(object):    'User-defined context class'def read(context):    with enginefacade.reader.using(context) as session:        return session.query(SomeClass).all()def write(context, x, y):    with enginefacade.writer.using(context) as session:        session.add(SomeClass(x, y))def main():    context = MyContext()    results = read(context)    write(context, 0, 0)\n当使用装饰器模式的时候需要对context对象做特殊处理，调用transaction_context_provider装饰context对象。12345678910111213141516171819202122232425262728from oslo_db.sqlalchemy import enginefacadeclass SomeClass(object):    def __init__(self, x, y):        self.x = x        self.y = y@enginefacade.transaction_context_providerclass MyContext(object):    'User-defined context class'@enginefacade.readerdef read(context):    return context.session.query(SomeClass).all()@enginefacade.writerdef write(context, x, y):    context.session.add(SomeClass(x, y))def main():    context = MyContext()    results = read(context)    write(context, 0, 0)\n管理员可以通过配置文件来配置oslo.db的许多选项，比如：12[database]connection = mysql://root:root@localhost/ceilometer?charset=utf8\n用户可以在使用数据库之前调用oslo_db.sqlalchemy.enginefacade.configure()方法来改变已有的配置。\n\n常用配置选项。\n\n\n\n配置项 = 默认值\n类型\n说明\n\n\n\n\nbackend = sqlalchemy\n字符串\n后台数据库标识\n\n\nconnection = None\n字符串\nsqlalchemy用此来连接数据库\n\n\nconnection_debug = 0\n整型\nsqlalchmey的debug等级，0表示不输出任何调试信息，100表示输出所有调试信息\n\n\nconnection_trace = False\n布尔型\n是否把Python的调用栈信息加到SQL的注释中\n\n\ndb_inc_retry_interval = True\n布尔型\n连接重试时，是否增加重试之间的时间间隔\n\n\ndb_max_retries = 20\n整型\n连接重试的最多次数（-1表示一直重试）\n\n\ndb_max_retry_interval = 10\n整型\n连接重试时间间隔，单位为秒\n\n\nidle_timeout = 3600\n整型\n连接被回收之前的空闲时间，单位为秒\n\n\nmax_overflow = None\n整型\n如果设置了，这个参数会被直接传给sqlalchemy\n\n\nmax_pool_size = None\n整型\n在一个连接池中，最大可同时打开的连接数\n\n\nmax_retries = 10\n整型\n打开连接时最大重试次数（-1表示一直重试）\n\n\nretry_interval = 10\n整型\n打开连接重试时的时间间隔\n\n\n\n使用OpenStack中通用的SQLAlchemy model类123456789from oslo_db.sqlalchemy.models import TimestampMixin, ModelBasefrom oslo_db.sqlalchemy.models import typesfrom oslo_db.sqlalchemy.models import Columnclass Project(TimestampMixin, ModelBase):    id = Column(types.Integer, primary_key=True)    name = Column(types.String)\noslol_db.sqlalchemy.models定义了两种Mixin：TimestampMixin和SoftDeleteMixin。使用TimestampMixin时SQLAlchemy model中会多出两列create_at和update_at，分别表示记录的创建时间和上一次修改时间。\nSoftDeleteMixin支持使用soft delete功能。12345678910111213from oslo_db.sqlalchemy.models import ModelBase, SoftDeleteMixinfrom oslo_db.sqlalchemy.models import typesfrom oslo_db.sqlalchemy.models import Columnfrom oslo_db.sqlalchemy.utils import model_queryclass Bar(SoftDeleteMixin, ModelBase):    id = Column(types.Integer, primary_key=True)    name = Column(types.String)count = model_query(Bar).find(id=1).soft_delete()if count == 0:    raise Exception(\"0 entries were soft deleted\")\n不同DB后端的支持。12345678910111213141516171819202122232425from oslo_config import cfgfrom oslo_db import api as db_api# 定义不同backend所对应的实现，如果配置选项conf.database.backend的值为sqlalchemy，# 就用project.db.sqlalchemy.api模块中的实现。_BACKEND_MAPPING = &#123;    'sqlalchemy': 'project.db.sqlalchemy.api'&#125;IMPL = db_api.DBAPI.from_config(cfg.CONF,                                backend_mapping=_BACKEND_MAPPING)def get_engine():    return IMPL.get_engine()def get_session():    return IMPL.get_session()# DB-API methoddef do_something(id):    return IMPL.do_something(id)\n不同backend具体实现时，需要定义如下函数返回具体DB API的实现类。12def get_backend():    return MyImplementationClass\n","dateCreated":"2019-05-09T18:00:02+08:00","dateModified":"2019-05-15T14:55:17+08:00","datePublished":"2019-05-09T18:00:02+08:00","description":"oslo.db是针对SQLAlchemy访问的抽象。","headline":"OpenStack通用库（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/","keywords":"OpenStack, Oslo, DB","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="oslo.db是针对SQLAlchemy访问的抽象。">
+<meta name="keywords" content="OpenStack,Oslo,DB">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack通用库（三）">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="oslo.db是针对SQLAlchemy访问的抽象。">
+<meta property="og:locale" content="zh-en">
+<meta property="og:updated_time" content="2019-05-15T06:55:17.949Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="OpenStack通用库（三）">
+<meta name="twitter:description" content="oslo.db是针对SQLAlchemy访问的抽象。">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/images/PROJECT-Vayne.jpg" />
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+    
+</head>
+
+    <body>
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a class="header-title-link" href="/ ">Wang kuntian&#39;s Blog</a>
+    </div>
+    
+        
+            <a class="header-right-picture " href="#about">
+        
+        
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a href="/#about">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/ " title="Home">
+                    
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                    
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                    
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                    
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                    
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="#about" title="About">
+                    
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                    
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                    
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                    
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack通用库（三）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-05-09T18:00:02+08:00">
+	
+		    May 09, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p><a href="https://github.com/openstack/oslo.db" target="_blank" rel="noopener">oslo.db</a>是针对SQLAlchemy访问的抽象。<br><a id="more"></a></p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#使用SQLAlchemy的session和connection"><span class="toc-text">使用SQLAlchemy的session和connection</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#使用OpenStack中通用的SQLAlchemy-model类"><span class="toc-text">使用OpenStack中通用的SQLAlchemy model类</span></a></li></ol>
+<h3 id="使用SQLAlchemy的session和connection"><a href="#使用SQLAlchemy的session和connection" class="headerlink" title="使用SQLAlchemy的session和connection"></a>使用SQLAlchemy的session和connection</h3><p>oslo.db提供了oslo_db.sqlachemy.enginefacade模块来获取session和connection，有两种方法来使用enginefacade，即函数装饰器（decorator）和上下文管理器（context mangager）。这两种调用方式都需要提供一个上下文对象。上下文对象可以是任何Python类。这样做的目的是提供一个统一规范的session使用模式，避免调用者使用不当造成数据库事务（transaction）的滥用和嵌套。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy <span class="keyword">import</span> enginefacade</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SomeClass</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, x, y)</span>:</span></span><br><span class="line">        self.x = x</span><br><span class="line">        self.y = y</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">'User-defined context class'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">read</span><span class="params">(context)</span>:</span></span><br><span class="line">    <span class="keyword">with</span> enginefacade.reader.using(context) <span class="keyword">as</span> session:</span><br><span class="line">        <span class="keyword">return</span> session.query(SomeClass).all()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">write</span><span class="params">(context, x, y)</span>:</span></span><br><span class="line">    <span class="keyword">with</span> enginefacade.writer.using(context) <span class="keyword">as</span> session:</span><br><span class="line">        session.add(SomeClass(x, y))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></span><br><span class="line">    context = MyContext()</span><br><span class="line">    results = read(context)</span><br><span class="line">    write(context, <span class="number">0</span>, <span class="number">0</span>)</span><br></pre></td></tr></table></figure></p>
+<p>当使用装饰器模式的时候需要对context对象做特殊处理，调用transaction_context_provider装饰context对象。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy <span class="keyword">import</span> enginefacade</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SomeClass</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, x, y)</span>:</span></span><br><span class="line">        self.x = x</span><br><span class="line">        self.y = y</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@enginefacade.transaction_context_provider</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyContext</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="string">'User-defined context class'</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@enginefacade.reader</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">read</span><span class="params">(context)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> context.session.query(SomeClass).all()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@enginefacade.writer</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">write</span><span class="params">(context, x, y)</span>:</span></span><br><span class="line">    context.session.add(SomeClass(x, y))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span><span class="params">()</span>:</span></span><br><span class="line">    context = MyContext()</span><br><span class="line">    results = read(context)</span><br><span class="line">    write(context, <span class="number">0</span>, <span class="number">0</span>)</span><br></pre></td></tr></table></figure></p>
+<p>管理员可以通过配置文件来配置oslo.db的许多选项，比如：<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[database]</span><br><span class="line">connection = mysql://root:root@localhost/ceilometer?charset=utf8</span><br></pre></td></tr></table></figure></p>
+<div class="alert info no-icon"><p>用户可以在使用数据库之前调用oslo_db.sqlalchemy.enginefacade.configure()方法来改变已有的配置。</p>
+</div>
+<p>常用配置选项。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">配置项 = 默认值</th>
+<th style="text-align:left">类型</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">backend = sqlalchemy</td>
+<td style="text-align:left">字符串</td>
+<td style="text-align:left">后台数据库标识</td>
+</tr>
+<tr>
+<td style="text-align:left">connection = None</td>
+<td style="text-align:left">字符串</td>
+<td style="text-align:left">sqlalchemy用此来连接数据库</td>
+</tr>
+<tr>
+<td style="text-align:left">connection_debug = 0</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">sqlalchmey的debug等级，<br>0表示不输出任何调试信息，<br>100表示输出所有调试信息</td>
+</tr>
+<tr>
+<td style="text-align:left">connection_trace = False</td>
+<td style="text-align:left">布尔型</td>
+<td style="text-align:left">是否把Python的调用栈信息加到SQL的注释中</td>
+</tr>
+<tr>
+<td style="text-align:left">db_inc_retry_interval = True</td>
+<td style="text-align:left">布尔型</td>
+<td style="text-align:left">连接重试时，是否增加重试之间的时间间隔</td>
+</tr>
+<tr>
+<td style="text-align:left">db_max_retries = 20</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">连接重试的最多次数（-1表示一直重试）</td>
+</tr>
+<tr>
+<td style="text-align:left">db_max_retry_interval = 10</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">连接重试时间间隔，单位为秒</td>
+</tr>
+<tr>
+<td style="text-align:left">idle_timeout = 3600</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">连接被回收之前的空闲时间，单位为秒</td>
+</tr>
+<tr>
+<td style="text-align:left">max_overflow = None</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">如果设置了，这个参数会被直接传给sqlalchemy</td>
+</tr>
+<tr>
+<td style="text-align:left">max_pool_size = None</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">在一个连接池中，最大可同时打开的连接数</td>
+</tr>
+<tr>
+<td style="text-align:left">max_retries = 10</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">打开连接时最大重试次数（-1表示一直重试）</td>
+</tr>
+<tr>
+<td style="text-align:left">retry_interval = 10</td>
+<td style="text-align:left">整型</td>
+<td style="text-align:left">打开连接重试时的时间间隔</td>
+</tr>
+</tbody>
+</table>
+<h3 id="使用OpenStack中通用的SQLAlchemy-model类"><a href="#使用OpenStack中通用的SQLAlchemy-model类" class="headerlink" title="使用OpenStack中通用的SQLAlchemy model类"></a>使用OpenStack中通用的SQLAlchemy model类</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> TimestampMixin, ModelBase</span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> types</span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> Column</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Project</span><span class="params">(TimestampMixin, ModelBase)</span>:</span></span><br><span class="line">    id = Column(types.Integer, primary_key=<span class="keyword">True</span>)</span><br><span class="line">    name = Column(types.String)</span><br></pre></td></tr></table></figure>
+<p>oslol_db.sqlalchemy.models定义了两种Mixin：TimestampMixin和SoftDeleteMixin。使用TimestampMixin时SQLAlchemy model中会多出两列create_at和update_at，分别表示记录的创建时间和上一次修改时间。</p>
+<p>SoftDeleteMixin支持使用soft delete功能。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> ModelBase, SoftDeleteMixin</span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> types</span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.models <span class="keyword">import</span> Column</span><br><span class="line"><span class="keyword">from</span> oslo_db.sqlalchemy.utils <span class="keyword">import</span> model_query</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Bar</span><span class="params">(SoftDeleteMixin, ModelBase)</span>:</span></span><br><span class="line">    id = Column(types.Integer, primary_key=<span class="keyword">True</span>)</span><br><span class="line">    name = Column(types.String)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">count = model_query(Bar).find(id=<span class="number">1</span>).soft_delete()</span><br><span class="line"><span class="keyword">if</span> count == <span class="number">0</span>:</span><br><span class="line">    <span class="keyword">raise</span> Exception(<span class="string">"0 entries were soft deleted"</span>)</span><br></pre></td></tr></table></figure></p>
+<p>不同DB后端的支持。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"><span class="keyword">from</span> oslo_db <span class="keyword">import</span> api <span class="keyword">as</span> db_api</span><br><span class="line"></span><br><span class="line"><span class="comment"># 定义不同backend所对应的实现，如果配置选项conf.database.backend的值为sqlalchemy，</span></span><br><span class="line"><span class="comment"># 就用project.db.sqlalchemy.api模块中的实现。</span></span><br><span class="line"></span><br><span class="line">_BACKEND_MAPPING = &#123;</span><br><span class="line">    <span class="string">'sqlalchemy'</span>: <span class="string">'project.db.sqlalchemy.api'</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">IMPL = db_api.DBAPI.from_config(cfg.CONF,</span><br><span class="line">                                backend_mapping=_BACKEND_MAPPING)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_engine</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">return</span> IMPL.get_engine()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_session</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">return</span> IMPL.get_session()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># DB-API method</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">do_something</span><span class="params">(id)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> IMPL.do_something(id)</span><br></pre></td></tr></table></figure></p>
+<p>不同backend具体实现时，需要定义如下函数返回具体DB API的实现类。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_backend</span><span class="params">()</span>:</span></span><br><span class="line">    <span class="keyword">return</span> MyImplementationClass</span><br></pre></td></tr></table></figure></p>
+
+            
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/DB/">DB</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/Glance接口测试/" data-tooltip="Glance接口测试" aria-label="PREVIOUS: Glance接口测试">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（二）/" data-tooltip="OpenStack通用库（二）" aria-label="NEXT: OpenStack通用库（二）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/&amp;title=OpenStack通用库（三）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+       
+</article>
+
+<div class="main-content-wrap">
+    
+        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<div id="vcomments"></div>
+<script>
+    new Valine({
+        el: '#vcomments', // 
+        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
+        appKey: '56G0KI3088RN76r5dTyRcsao', 
+        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
+        notify: 'false',
+        verity: '',
+        path: window.location.pathname,
+        avatar: 'wavatar',
+        meta: ['nick','mail','link'],
+        pageSize: '10',
+        lang: 'zh-cn',
+        visitor: 'true',
+        highlight: 'true'
+
+    });
+</script>  
+    
+</div>
+
+
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/Glance接口测试/" data-tooltip="Glance接口测试" aria-label="PREVIOUS: Glance接口测试">
+                
+                    <i class="fa fa-angle-left" aria-hidden="true"></i>
+                    <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（二）/" data-tooltip="OpenStack通用库（二）" aria-label="NEXT: OpenStack通用库（二）">
+                
+                    <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                    <i class="fa fa-angle-right" aria-hidden="true"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a class="post-action-btn btn btn--default btn-open-shareoptions" href="#btn-open-shareoptions" aria-label="Share this post">
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/" title="Share on Weibo">
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/&amp;title=OpenStack通用库（三）" title="Share on QQ">
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/" title="Share on Qzone">
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/">
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/&amp;title=OpenStack通用库（三）">
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（三）/">
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
+<!--SCRIPTS END-->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+</html>

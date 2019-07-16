@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>奔跑吧Ansible（一） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Ansible基础入门\n\nAnsible是什么Ansible是一种IT自动化工具。它可以配置系统，部署软件以及协调更高级的IT任务，例如持续部署或零停机滚动更新。\nAnsible发展史Ansible第一个版本是0.0.1，发布于2012年3月9日，创始人是Michael DeHaan。\n为什么选择Ansible\n完全基于Python开发，而DevOps在国内已然是一种趋势，Python被逐步普及，运维人员自己开发工具的门槛逐步降低，得益于此，方便对Ansible二次开发。\nAnsible丰富的内置模块，甚至还有专门为商业平台开发的功能模块。\n在Ansible去中心化概念下，一个简单的复制操作即可完成管理配置中心的迁移。\nAgentless（无客户端)，客户端无需任何配置，由管理端配置好后即可使用。\n\nAnsible是如何工作的Ansible没有客户端，因此底层通信依赖于系统软件，Linux系统下基于OpenSSH通信，Windows系统下基于PowerShell，管理端必须是Linux系统。使用者认证通过后，在管理节点通过Ansible工具调用各应用模块，将指令推送至被管理端执行，并在执行完毕后自动删除产生的临时文件。\n按角色根据Ansible使用过程的不同角色，将其分为：\n\n使用者\nAnsible工具集\n作用对象\n\n使用者Ansible使用者来源于多种维度，有4种方式。\n\nCMDB（Configuration Management Database，配置管理数据库）。CMDB存储和管理着企业IT架构中的各项配置信息，是构建ITIL（IT基础架构库）项目的核心工具。运维人员可以组合CMDB和Ansible，通过CMDB直接下发指令调用Ansible工具集完成操作者所希望达成的目标。\nPUBLIC/PRUVATE方式。Ansible除了丰富的内置模块外，同时提供丰富的API语言接口，如PHP、Python、PERL等语言，基于PUBLIC（公有云）/PRIVATE（私有云），Ansible以API调用的方式运行。\nUSERS直接使用Ad-Hoc临时命令集调用Ansible工具集来完成任务。\nUSERS预先编写好的ANSBILE PLAYBOOKS，通过执行playbooks中预先编排好的任务集按序完成任务。\n\nAnsible工具集ansible命令是Ansible的核心工具，ansible工具集包括，INVENTORY（命令执行的目标对象标配文件）、API（供第三方程序调用的应用程序编程接口）、MODULES（丰富的内置模块）、PLUGINS（内置和可自定义的插件）。\n作用对象Ansible的作用对象，不仅仅是Linux和非Linux操作系统的主机（HOSTS），同样可以作用域各类公有云/私有云，商业和非商业设备的网络设施。\n按Ansible工具集组成ANSIBLE PLAYBOOKS任务剧本（任务集），编排定义Ansible任务集的配置文件，由Ansibke顺序依次执行，通常是JSON格式的YML文件。\nINVENTORYAnsible管理主机的清单。\nMODULESAnsible执行命令的功能模块，多数为内置核心模块，也可以自定义。\nPLUGINS模块功能的补充，如连接类型插件、循环插件、变量插件、过滤插件等。\nAPI供第三方程序调用的应用程序编程接口\nAnsible通信发展史Ansible SSH工作机制Ansible通信方式发展历程Paramiko通信模块OpenSSH加速模式Faster OpenSSH in Ansible 1.5+Ansible应用场景运维操作角度文件传输文件的本地传输和异地传输，所有文件的空间形态、时间形态变化均构成文件传输类操作。\n命令执行终端所有操作对系统来讲都是指令的组成，最终转换为基础硬件可接受的电信号完成任务集。对运维操作的用户行为来讲，除文件传输的其他操作均可以成为命令执行。\n自动化工作类型角度应用部署配置管理任务流编排Ansible安装部署PIP\n安装python-pip及python-devel。\n1yum install python-pip python-devel -y\n\n安装Ansible服务。\n123yum install gcc glibc-devel zlib-devel rpm-build openssl-devel -ypip install --upgrade pippip install ansible -upgrade\n\n\nPython多环境扩展管理PyenvVirtualenv","dateCreated":"2019-01-16T14:23:50+08:00","dateModified":"2019-01-16T16:15:31+08:00","datePublished":"2019-01-16T14:23:50+08:00","description":"Ansible基础入门","headline":"奔跑吧Ansible（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Ansible基础入门\n\n\n\n\nAnsible是什么Ansible是一种IT自动化工具。它可以配置系统，部署软件以及协调更高级的IT任务，例如持续部署或零停机滚动更新。\nAnsible发展史Ansible第一个版本是0.0.1，发布于2012年3月9日，创始人是Michael DeHaan。\n为什么选择Ansible\n完全基于Python开发，而DevOps在国内已然是一种趋势，Python被逐步普及，运维人员自己开发工具的门槛逐步降低，得益于此，方便对Ansible二次开发。\nAnsible丰富的内置模块，甚至还有专门为商业平台开发的功能模块。\n在Ansible去中心化概念下，一个简单的复制操作即可完成管理配置中心的迁移。\nAgentless（无客户端)，客户端无需任何配置，由管理端配置好后即可使用。\n\nAnsible是如何工作的Ansible没有客户端，因此底层通信依赖于系统软件，Linux系统下基于OpenSSH通信，Windows系统下基于PowerShell，管理端必须是Linux系统。使用者认证通过后，在管理节点通过Ansible工具调用各应用模块，将指令推送至被管理端执行，并在执行完毕后自动删除产生的临时文件。\n按角色根据Ansible使用过程的不同角色，将其分为：\n\n使用者\nAnsible工具集\n作用对象\n\n使用者Ansible使用者来源于多种维度，有4种方式。\n\nCMDB（Configuration Management Database，配置管理数据库）。CMDB存储和管理着企业IT架构中的各项配置信息，是构建ITIL（IT基础架构库）项目的核心工具。运维人员可以组合CMDB和Ansible，通过CMDB直接下发指令调用Ansible工具集完成操作者所希望达成的目标。\nPUBLIC/PRUVATE方式。Ansible除了丰富的内置模块外，同时提供丰富的API语言接口，如PHP、Python、PERL等语言，基于PUBLIC（公有云）/PRIVATE（私有云），Ansible以API调用的方式运行。\nUSERS直接使用Ad-Hoc临时命令集调用Ansible工具集来完成任务。\nUSERS预先编写好的ANSBILE PLAYBOOKS，通过执行playbooks中预先编排好的任务集按序完成任务。\n\nAnsible工具集ansible命令是Ansible的核心工具，ansible工具集包括，INVENTORY（命令执行的目标对象标配文件）、API（供第三方程序调用的应用程序编程接口）、MODULES（丰富的内置模块）、PLUGINS（内置和可自定义的插件）。\n作用对象Ansible的作用对象，不仅仅是Linux和非Linux操作系统的主机（HOSTS），同样可以作用域各类公有云/私有云，商业和非商业设备的网络设施。\n按Ansible工具集组成ANSIBLE PLAYBOOKS任务剧本（任务集），编排定义Ansible任务集的配置文件，由Ansibke顺序依次执行，通常是JSON格式的YML文件。\nINVENTORYAnsible管理主机的清单。\nMODULESAnsible执行命令的功能模块，多数为内置核心模块，也可以自定义。\nPLUGINS模块功能的补充，如连接类型插件、循环插件、变量插件、过滤插件等。\nAPI供第三方程序调用的应用程序编程接口\nAnsible通信发展史Ansible SSH工作机制Ansible通信方式发展历程Paramiko通信模块OpenSSH加速模式Faster OpenSSH in Ansible 1.5+Ansible应用场景运维操作角度文件传输文件的本地传输和异地传输，所有文件的空间形态、时间形态变化均构成文件传输类操作。\n命令执行终端所有操作对系统来讲都是指令的组成，最终转换为基础硬件可接受的电信号完成任务集。对运维操作的用户行为来讲，除文件传输的其他操作均可以成为命令执行。\n自动化工作类型角度应用部署配置管理任务流编排Ansible安装部署PIP\n安装python-pip及python-devel。\n1yum install python-pip python-devel -y\n\n安装Ansible服务。\n123yum install gcc glibc-devel zlib-devel rpm-build openssl-devel -ypip install --upgrade pippip install ansible -upgrade\n\n\n\nPython多环境扩展管理PyenvVirtualenv","dateCreated":"2019-01-16T14:23:50+08:00","dateModified":"2019-01-16T16:15:31+08:00","datePublished":"2019-01-16T14:23:50+08:00","description":"Ansible基础入门","headline":"奔跑吧Ansible（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ansible基础入门">
 <meta name="keywords" content="Ansible">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,8 +273,11 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>Ansible基础入门<br><a id="more"></a></p>
+            <p>Ansible基础入门</p>
+<a id="more"></a>
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible是什么"><span class="toc-text">Ansible是什么</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible发展史"><span class="toc-text">Ansible发展史</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#为什么选择Ansible"><span class="toc-text">为什么选择Ansible</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible是如何工作的"><span class="toc-text">Ansible是如何工作的</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#按角色"><span class="toc-text">按角色</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#使用者"><span class="toc-text">使用者</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Ansible工具集"><span class="toc-text">Ansible工具集</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#作用对象"><span class="toc-text">作用对象</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#按Ansible工具集组成"><span class="toc-text">按Ansible工具集组成</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#ANSIBLE-PLAYBOOKS"><span class="toc-text">ANSIBLE PLAYBOOKS</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#INVENTORY"><span class="toc-text">INVENTORY</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#MODULES"><span class="toc-text">MODULES</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#PLUGINS"><span class="toc-text">PLUGINS</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#API"><span class="toc-text">API</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible通信发展史"><span class="toc-text">Ansible通信发展史</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Ansible-SSH工作机制"><span class="toc-text">Ansible SSH工作机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Ansible通信方式发展历程"><span class="toc-text">Ansible通信方式发展历程</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Paramiko通信模块"><span class="toc-text">Paramiko通信模块</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#OpenSSH"><span class="toc-text">OpenSSH</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#加速模式"><span class="toc-text">加速模式</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Faster-OpenSSH-in-Ansible-1-5"><span class="toc-text">Faster OpenSSH in Ansible 1.5+</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible应用场景"><span class="toc-text">Ansible应用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#运维操作角度"><span class="toc-text">运维操作角度</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#文件传输"><span class="toc-text">文件传输</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#命令执行"><span class="toc-text">命令执行</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#自动化工作类型角度"><span class="toc-text">自动化工作类型角度</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#应用部署"><span class="toc-text">应用部署</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#配置管理"><span class="toc-text">配置管理</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#任务流编排"><span class="toc-text">任务流编排</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible安装部署"><span class="toc-text">Ansible安装部署</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#PIP"><span class="toc-text">PIP</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Python多环境扩展管理"><span class="toc-text">Python多环境扩展管理</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Pyenv"><span class="toc-text">Pyenv</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Virtualenv"><span class="toc-text">Virtualenv</span></a></li></ol></li></ol>
+
 <h3 id="Ansible是什么"><a href="#Ansible是什么" class="headerlink" title="Ansible是什么"></a>Ansible是什么</h3><p>Ansible是一种IT自动化工具。它可以配置系统，部署软件以及协调更高级的IT任务，例如持续部署或零停机滚动更新。</p>
 <h3 id="Ansible发展史"><a href="#Ansible发展史" class="headerlink" title="Ansible发展史"></a>Ansible发展史</h3><p>Ansible第一个版本是0.0.1，发布于2012年3月9日，创始人是Michael DeHaan。</p>
 <h3 id="为什么选择Ansible"><a href="#为什么选择Ansible" class="headerlink" title="为什么选择Ansible"></a>为什么选择Ansible</h3><ol>
@@ -281,6 +315,7 @@
 </li>
 <li><p>安装Ansible服务。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">yum install gcc glibc-devel zlib-devel rpm-build openssl-devel -y</span><br><span class="line">pip install --upgrade pip</span><br><span class="line">pip install ansible -upgrade</span><br></pre></td></tr></table></figure>
+
 </li>
 </ol>
 <h3 id="Python多环境扩展管理"><a href="#Python多环境扩展管理" class="headerlink" title="Python多环境扩展管理"></a>Python多环境扩展管理</h3><h4 id="Pyenv"><a href="#Pyenv" class="headerlink" title="Pyenv"></a>Pyenv</h4><h4 id="Virtualenv"><a href="#Virtualenv" class="headerlink" title="Virtualenv"></a>Virtualenv</h4>
@@ -291,7 +326,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Ansible/">Ansible</a>
 
@@ -377,7 +412,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -530,7 +565,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -540,7 +575,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -548,7 +583,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -566,5 +601,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

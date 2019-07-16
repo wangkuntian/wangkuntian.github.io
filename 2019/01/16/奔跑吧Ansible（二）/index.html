@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>奔跑吧Ansible（二） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Ansible基础元素\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。1ansible &lt;host-pattern&gt; [options]\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。1ansible-playbook playbook.yml\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Ansible基础元素\n\n\n\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。\n1ansible &lt;host-pattern&gt; [options]\n\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。\n1ansible-playbook playbook.yml\n\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ansible基础元素">
 <meta name="keywords" content="Ansible">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,7 +273,10 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>Ansible基础元素<br><a id="more"></a><br></p><h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible目录结构介绍"><span class="toc-text">Ansible目录结构介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible配置文件"><span class="toc-text">Ansible配置文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible命令用法详解"><span class="toc-text">Ansible命令用法详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Ad-Hoc"><span class="toc-text">Ad-Hoc</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Ansible-playbook"><span class="toc-text">Ansible-playbook</span></a></li></ol></li></ol><p></p>
+            <p>Ansible基础元素</p>
+<a id="more"></a>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible目录结构介绍"><span class="toc-text">Ansible目录结构介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible配置文件"><span class="toc-text">Ansible配置文件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ansible命令用法详解"><span class="toc-text">Ansible命令用法详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Ad-Hoc"><span class="toc-text">Ad-Hoc</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Ansible-playbook"><span class="toc-text">Ansible-playbook</span></a></li></ol></li></ol>
+
 <h3 id="Ansible目录结构介绍"><a href="#Ansible目录结构介绍" class="headerlink" title="Ansible目录结构介绍"></a>Ansible目录结构介绍</h3><ul>
 <li>配置文件目录 /etc/ansible</li>
 <li>执行文件目录 /usr/bin/</li>
@@ -252,9 +286,12 @@
 </ul>
 <h3 id="Ansible配置文件"><a href="#Ansible配置文件" class="headerlink" title="Ansible配置文件"></a>Ansible配置文件</h3><p>Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。</p>
 <h3 id="Ansible命令用法详解"><a href="#Ansible命令用法详解" class="headerlink" title="Ansible命令用法详解"></a>Ansible命令用法详解</h3><p>Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。</p>
-<h4 id="Ad-Hoc"><a href="#Ad-Hoc" class="headerlink" title="Ad-Hoc"></a>Ad-Hoc</h4><p>Ad-Hoc的命令使用格式如下。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible &lt;host-pattern&gt; [options]</span><br></pre></td></tr></table></figure></p>
+<h4 id="Ad-Hoc"><a href="#Ad-Hoc" class="headerlink" title="Ad-Hoc"></a>Ad-Hoc</h4><p>Ad-Hoc的命令使用格式如下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible &lt;host-pattern&gt; [options]</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p><host-pattern>是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。<br>&lt;&gt;表示该选项是必须项，不可忽略。</host-pattern></p>
 </div>
+
 <div class="alert info no-icon"><p>[options]是Ansible的参数选项，[]表示该选项中的参数任选其一</p>
 <p>-m NAME, –module-name=NAME 指定执行使用的模块</p>
 <p>-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。</p>
@@ -262,7 +299,10 @@
 <p>-b, –become 相当于Linux系统下的sudo命令。</p>
 <p>-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。</p>
 </div>
-<h4 id="Ansible-playbook"><a href="#Ansible-playbook" class="headerlink" title="Ansible-playbook"></a>Ansible-playbook</h4><p>Ansible-playbook的命令使用格式如下。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook playbook.yml</span><br></pre></td></tr></table></figure></p>
+
+<h4 id="Ansible-playbook"><a href="#Ansible-playbook" class="headerlink" title="Ansible-playbook"></a>Ansible-playbook</h4><p>Ansible-playbook的命令使用格式如下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook playbook.yml</span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"></div>
             
 
@@ -271,7 +311,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Ansible/">Ansible</a>
 
@@ -357,7 +397,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -510,7 +550,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -520,7 +560,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -528,7 +568,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -546,5 +586,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

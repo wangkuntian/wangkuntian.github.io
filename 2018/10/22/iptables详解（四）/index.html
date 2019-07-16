@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（四） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n源地址12iptables -t filter -I INPUT -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -s 192.168.1.0/24 -j DROP\n-s，用于匹配报文的源地址，可以同时指定多个源地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n1iptables -t filter -I INPUT ! -s 192.168.1.0/24 -j ACCEPT\n!，用于匹配条件取反。上面的规则匹配的是，只要源地址不是192.168.1.0/24网段的就会执行接受动作。\n\n目的地址12iptables -t filter -I INPUT -d 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -d 192.168.1.0/24 -j DROP\n-d，用于匹配报文的目的地址，可以同时指定多个目的地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n协议类型12iptables -t filter -I INPUT -p tcp -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -p udp -s 192.168.1.0/24 -j DROP\n-p，用于匹配报文的协议类型，可以匹配的协议类型tcp、udp、udplite、icmp、esp、ah、sctp等。\n\n网卡接口1iptables -t filter -I INPUT -p icmp -i enth4 -j DROP\n-i，用于匹配报文要从哪个网卡接口流入本机。由于匹配条件只是用于匹配报文流入的网卡，所以在OUTPUT链与POSTROUTING链中不能使用此选项。\n\n1iptables -t filter -I INPUT -p icmp -O enth4 -j DROP\n-o，用于匹配报文要从哪个网卡接口流出本机。由于匹配条件只是用于匹配报文流入的网卡，所以在INPUT链与PREROUTING链中不能使用此选项。\n\n扩展匹配tcp1iptables -t filter -I OUTPUT -d 192.168.1.111 -p tcp -m tcp --sport 22 -j REJECT\n-p，指定协议。-m，指定扩展模块。–sport，source-port，指定源端口。\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 22:25 -j REJECT\n-p，指定协议。-m，指定扩展模块。–dport，destination-port，指定目的端口。22:25，表示22、23、24、25端口。\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 80: -j REJECT\n80:，表示80端口到之后的所有的端口（直到65535）。\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport :22 -j REJECT\n:22，表示从0端口到22端口。\n\n–tcp-flags–tcp-flags，指的就是tcp头中的标志位，可以匹配tcp报文的头部的标志位，然后根据标识位的实际情况实现访问控制的功能。\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN -j REJECT\n匹配到第一次握手的报文。\n\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK -j REJECT\n匹配到第二次握手的报文。\n\n还可以用ALL表示SYN,ACK,FIN,RST,URG,PSH。\n12iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN -j REJECTiptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN,ACK -j REJECT\n–syn选项，匹配tcp第一次握手。1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT\nmultiporttcp模块中的–sport或者–dport可以指定一个连续的端口范围，但是无法同时指定多个离散的、不连续的端口。\nmultiport模块中的–sports扩展条件可以同时指定多个离散的源端口。multiport模块中的–dports扩展条件可以同时指定多个离散的目的端口。\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m multiport --dport 22,36,80 -j DROP\nmultiport模块只能用于tcp协议和udp协议，配合-p tcp或者-p udp使用。\n\niprange在不使用任何扩展模块下，可以使用-s或者-d即匹配报文的源地址和目的地址，而且在指定IP地址时，可以同时指定多个IP地址，每个IP地址之间用逗号隔开；但是，-s或者-d选项不能一次性地指定一段连续的IP地址范围。\niprange可以指定一段连续的IP地址范围。\n12iptables -t filter -I INPUT -m iprange --src-range 192.168.1.111-192.168.1.146 -j DROPiptables -t filter -I INPUT -m iprange --dst-range 192.168.1.111-192.168.1.146 -j DROP\n–src-range，源地址范围。–dst-range，目的地址范围。\n\nstringstring扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配规则。\n1iptables -t filter -I INPUT -m string --algo bm --string \"Hello World\" -j ACCEPT\n–algo，用于指定匹配算法，可选算法有bm和kmp，必须选项，所以不用纠结选择哪个算法，但是必须指定一个。–string，用于指定需要匹配的字符串。\n\ntimetime扩展模块，可以根据时间段匹配报文，如果报文到达的时间在规定时间范围以内，则符合匹配条件。\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --timestart 09:00:00 --timestop 18:00:00 -j REJECT\n–timestart，指定开始时间。–timestop，指定结束时间。\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --weekdays 6,7 -j REJECT\n–weekdays，指定每个星期的具体哪一天，可以同时指定多个，用逗号隔开。\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --monthdays 22,23 -j REJECT\n–monthdays，指定每个月的哪一天。\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --datestart 2018-12-01 --datestop 2018-12-25 -j REJECT\n–datestart，日期开始。–datestop，日期结束。\n\n–weekdays和–monthdays可以使用“!”取反，其他选项不可以。\n\nconnlimitconnlimit扩展模块，可以限制每个IP地址同时链接到server端的链接数量。不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 -j REJECT\n–conlimit-above 2，表示限制每个IP的链接数量上限为2。-p tcp –dport 22，限制每个客户端IP的ssh并发链接数量不能高于2。\n\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 --connlimit-mask 24 -j REJECT\n–connlimit-mask 24，表示某个C类网段。mask表示掩码；24转换成点分十进制就是255.255.255.0。所以，上面的规则表示，一个最多包含254个IP的C类网络中，同时最多只能有2个ssh客户端连接到当前服务器。\n\nlimitlimit扩展模块，可以对报文到达的速率进行限制（限制单位时间内流入的包的数量）。\n1iptables -t filter -I INPUT -p icmp -m limit 10/minute -j ACCEPT\n\n–limit 10/minute -j ACCEPT，表示每分钟最多放行10个包，相当于每6秒最多放行一个包。\n\nping测试。\n\n配置的规则没有起作用，ping请求的速率完全没有发生任何变化。这是因为，上面的规则每6秒放行一个包，那么iptables就会计时，每6秒一个轮次，到第6秒时，到达的报文就会匹配到对应的规则，执行ACCEPT。那么，在第6秒之前到达的包，则无法被上述规则匹配到。之前总结过，报文会匹配链中的每条规则，如果没有任何一条规则匹配到，则匹配默认动作（链的默认策略）。INPUT链的默认策略是ACCEPT。\n\n我们有两种方法修改。一是，修改INPUT链的默认策略；二是，再增加一条规则。\n1iptables -t filter -A INPUT -p icmp -j REJECT\n\nping测试。\n\n前5个ping包没有受到限制，之后的ping包已经开始受到规则的限制。\n\nlimit模块采用令牌桶算法。上面的情况可以这样想象，有一个木桶，木桶里放了5块令牌，而且这个木桶最多也只能放下5块令牌，所有报文如果想要出关入关，必须要持有木桶中的令牌才行。这个木桶每隔6秒钟就会产生一块新的令牌，如果此时，木桶的令牌不足5块，那么新生成的令牌就会放在木桶中，超过5块，新生成的令牌就会被丢弃。如果此时有5个报文想要入关，那么这5个报文就会去木桶里找令牌，正好一人一个，快乐地入关了。此时木桶空了，再想有报文想要入关已经没有对应的令牌可以使用，只好等待6秒，新的令牌生成，报文拿着新生成的令牌入关。如果很长一段时间没有新的报文想要入关，木桶里的令牌又会慢慢积攒起来，直到到达5个令牌，直到有人使用它。\n\n–limit，用于指定多长时间生成一个新的令牌。–limit-brust，用于指定木桶中最多存放几个令牌。\n\n\n上面的例子表示，令牌桶最多放3个令牌，每分钟生成10个令牌。\n\n–limit，可以选择的时间单位有多种，如 /second、/minute、/hour、/day。\n","dateCreated":"2018-10-22T14:03:08+08:00","dateModified":"2018-10-24T10:34:16+08:00","datePublished":"2018-10-22T14:03:08+08:00","description":"匹配条件","headline":"iptables详解（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/22/iptables详解（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/22/iptables详解（四）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n源地址12iptables -t filter -I INPUT -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -s 192.168.1.0/24 -j DROP\n\n-s，用于匹配报文的源地址，可以同时指定多个源地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n\n1iptables -t filter -I INPUT ! -s 192.168.1.0/24 -j ACCEPT\n\n!，用于匹配条件取反。上面的规则匹配的是，只要源地址不是192.168.1.0/24网段的就会执行接受动作。\n\n\n目的地址12iptables -t filter -I INPUT -d 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -d 192.168.1.0/24 -j DROP\n\n-d，用于匹配报文的目的地址，可以同时指定多个目的地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n\n协议类型12iptables -t filter -I INPUT -p tcp -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -p udp -s 192.168.1.0/24 -j DROP\n\n-p，用于匹配报文的协议类型，可以匹配的协议类型tcp、udp、udplite、icmp、esp、ah、sctp等。\n\n\n网卡接口1iptables -t filter -I INPUT -p icmp -i enth4 -j DROP\n\n-i，用于匹配报文要从哪个网卡接口流入本机。由于匹配条件只是用于匹配报文流入的网卡，所以在OUTPUT链与POSTROUTING链中不能使用此选项。\n\n\n1iptables -t filter -I INPUT -p icmp -O enth4 -j DROP\n\n-o，用于匹配报文要从哪个网卡接口流出本机。由于匹配条件只是用于匹配报文流入的网卡，所以在INPUT链与PREROUTING链中不能使用此选项。\n\n\n扩展匹配tcp1iptables -t filter -I OUTPUT -d 192.168.1.111 -p tcp -m tcp --sport 22 -j REJECT\n\n-p，指定协议。-m，指定扩展模块。–sport，source-port，指定源端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 22:25 -j REJECT\n\n-p，指定协议。-m，指定扩展模块。–dport，destination-port，指定目的端口。22:25，表示22、23、24、25端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 80: -j REJECT\n\n80:，表示80端口到之后的所有的端口（直到65535）。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport :22 -j REJECT\n\n:22，表示从0端口到22端口。\n\n\n–tcp-flags–tcp-flags，指的就是tcp头中的标志位，可以匹配tcp报文的头部的标志位，然后根据标识位的实际情况实现访问控制的功能。\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN -j REJECT\n\n匹配到第一次握手的报文。\n\n\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK -j REJECT\n\n匹配到第二次握手的报文。\n\n\n还可以用ALL表示SYN,ACK,FIN,RST,URG,PSH。\n12iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN -j REJECTiptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN,ACK -j REJECT\n\n–syn选项，匹配tcp第一次握手。\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT\n\nmultiporttcp模块中的–sport或者–dport可以指定一个连续的端口范围，但是无法同时指定多个离散的、不连续的端口。\nmultiport模块中的–sports扩展条件可以同时指定多个离散的源端口。multiport模块中的–dports扩展条件可以同时指定多个离散的目的端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m multiport --dport 22,36,80 -j DROP\n\nmultiport模块只能用于tcp协议和udp协议，配合-p tcp或者-p udp使用。\n\n\niprange在不使用任何扩展模块下，可以使用-s或者-d即匹配报文的源地址和目的地址，而且在指定IP地址时，可以同时指定多个IP地址，每个IP地址之间用逗号隔开；但是，-s或者-d选项不能一次性地指定一段连续的IP地址范围。\niprange可以指定一段连续的IP地址范围。\n12iptables -t filter -I INPUT -m iprange --src-range 192.168.1.111-192.168.1.146 -j DROPiptables -t filter -I INPUT -m iprange --dst-range 192.168.1.111-192.168.1.146 -j DROP\n\n–src-range，源地址范围。–dst-range，目的地址范围。\n\n\nstringstring扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配规则。\n1iptables -t filter -I INPUT -m string --algo bm --string \"Hello World\" -j ACCEPT\n\n–algo，用于指定匹配算法，可选算法有bm和kmp，必须选项，所以不用纠结选择哪个算法，但是必须指定一个。–string，用于指定需要匹配的字符串。\n\n\ntimetime扩展模块，可以根据时间段匹配报文，如果报文到达的时间在规定时间范围以内，则符合匹配条件。\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --timestart 09:00:00 --timestop 18:00:00 -j REJECT\n\n–timestart，指定开始时间。–timestop，指定结束时间。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --weekdays 6,7 -j REJECT\n\n–weekdays，指定每个星期的具体哪一天，可以同时指定多个，用逗号隔开。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --monthdays 22,23 -j REJECT\n\n–monthdays，指定每个月的哪一天。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --datestart 2018-12-01 --datestop 2018-12-25 -j REJECT\n\n–datestart，日期开始。–datestop，日期结束。\n\n\n–weekdays和–monthdays可以使用“!”取反，其他选项不可以。\n\n\nconnlimitconnlimit扩展模块，可以限制每个IP地址同时链接到server端的链接数量。不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 -j REJECT\n\n–conlimit-above 2，表示限制每个IP的链接数量上限为2。-p tcp –dport 22，限制每个客户端IP的ssh并发链接数量不能高于2。\n\n\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 --connlimit-mask 24 -j REJECT\n\n–connlimit-mask 24，表示某个C类网段。mask表示掩码；24转换成点分十进制就是255.255.255.0。所以，上面的规则表示，一个最多包含254个IP的C类网络中，同时最多只能有2个ssh客户端连接到当前服务器。\n\n\nlimitlimit扩展模块，可以对报文到达的速率进行限制（限制单位时间内流入的包的数量）。\n1iptables -t filter -I INPUT -p icmp -m limit 10/minute -j ACCEPT\n\n\n–limit 10/minute -j ACCEPT，表示每分钟最多放行10个包，相当于每6秒最多放行一个包。\n\n\nping测试。\n\n配置的规则没有起作用，ping请求的速率完全没有发生任何变化。这是因为，上面的规则每6秒放行一个包，那么iptables就会计时，每6秒一个轮次，到第6秒时，到达的报文就会匹配到对应的规则，执行ACCEPT。那么，在第6秒之前到达的包，则无法被上述规则匹配到。之前总结过，报文会匹配链中的每条规则，如果没有任何一条规则匹配到，则匹配默认动作（链的默认策略）。INPUT链的默认策略是ACCEPT。\n\n\n我们有两种方法修改。一是，修改INPUT链的默认策略；二是，再增加一条规则。\n1iptables -t filter -A INPUT -p icmp -j REJECT\n\n\nping测试。\n\n前5个ping包没有受到限制，之后的ping包已经开始受到规则的限制。\n\n\nlimit模块采用令牌桶算法。上面的情况可以这样想象，有一个木桶，木桶里放了5块令牌，而且这个木桶最多也只能放下5块令牌，所有报文如果想要出关入关，必须要持有木桶中的令牌才行。这个木桶每隔6秒钟就会产生一块新的令牌，如果此时，木桶的令牌不足5块，那么新生成的令牌就会放在木桶中，超过5块，新生成的令牌就会被丢弃。如果此时有5个报文想要入关，那么这5个报文就会去木桶里找令牌，正好一人一个，快乐地入关了。此时木桶空了，再想有报文想要入关已经没有对应的令牌可以使用，只好等待6秒，新的令牌生成，报文拿着新生成的令牌入关。如果很长一段时间没有新的报文想要入关，木桶里的令牌又会慢慢积攒起来，直到到达5个令牌，直到有人使用它。\n\n\n–limit，用于指定多长时间生成一个新的令牌。–limit-brust，用于指定木桶中最多存放几个令牌。\n\n\n\n上面的例子表示，令牌桶最多放3个令牌，每分钟生成10个令牌。\n\n\n–limit，可以选择的时间单位有多种，如 /second、/minute、/hour、/day。\n","dateCreated":"2018-10-22T14:03:08+08:00","dateModified":"2018-10-24T10:34:16+08:00","datePublished":"2018-10-22T14:03:08+08:00","description":"匹配条件","headline":"iptables详解（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/22/iptables详解（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/22/iptables详解（四）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="匹配条件">
 <meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
@@ -60,14 +60,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -84,10 +84,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -105,7 +106,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -119,7 +120,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -128,7 +133,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -137,7 +146,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -146,7 +159,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -155,7 +172,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -164,7 +185,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -177,7 +202,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -186,7 +211,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -199,7 +224,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -214,7 +243,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -248,108 +279,165 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
+            <!-- excerpt -->
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#源地址"><span class="toc-text">源地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#目的地址"><span class="toc-text">目的地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#协议类型"><span class="toc-text">协议类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#网卡接口"><span class="toc-text">网卡接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#扩展匹配"><span class="toc-text">扩展匹配</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#tcp"><span class="toc-text">tcp</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#–tcp-flags"><span class="toc-text">–tcp-flags</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#multiport"><span class="toc-text">multiport</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#iprange"><span class="toc-text">iprange</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#string"><span class="toc-text">string</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#time"><span class="toc-text">time</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#connlimit"><span class="toc-text">connlimit</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#limit"><span class="toc-text">limit</span></a></li></ol></li></ol>
+
 <h3 id="源地址"><a href="#源地址" class="headerlink" title="源地址"></a>源地址</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -s 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-s，用于匹配报文的源地址，可以同时指定多个源地址，每个IP地址用逗号隔开，也可以指定一个网段。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT ! -s 192.168.1.0/24 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>!，用于匹配条件取反。<br>上面的规则匹配的是，只要源地址不是192.168.1.0/24网段的就会执行接受动作。</p>
 </div>
+
 <h3 id="目的地址"><a href="#目的地址" class="headerlink" title="目的地址"></a>目的地址</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -d 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -d 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-d，用于匹配报文的目的地址，可以同时指定多个目的地址，每个IP地址用逗号隔开，也可以指定一个网段。</p>
 </div>
+
 <h3 id="协议类型"><a href="#协议类型" class="headerlink" title="协议类型"></a>协议类型</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -s 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -p udp -s 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-p，用于匹配报文的协议类型，可以匹配的协议类型tcp、udp、udplite、icmp、esp、ah、sctp等。</p>
 </div>
+
 <h3 id="网卡接口"><a href="#网卡接口" class="headerlink" title="网卡接口"></a>网卡接口</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -i enth4 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-i，用于匹配报文要从哪个网卡接口流入本机。由于匹配条件只是用于匹配报文流入的网卡，所以在OUTPUT链与POSTROUTING链中不能使用此选项。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -O enth4 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-o，用于匹配报文要从哪个网卡接口流出本机。由于匹配条件只是用于匹配报文流入的网卡，所以在INPUT链与PREROUTING链中不能使用此选项。</p>
 </div>
+
 <h3 id="扩展匹配"><a href="#扩展匹配" class="headerlink" title="扩展匹配"></a>扩展匹配</h3><h4 id="tcp"><a href="#tcp" class="headerlink" title="tcp"></a>tcp</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -d 192.168.1.111 -p tcp -m tcp --sport 22 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-p，指定协议。<br>-m，指定扩展模块。<br>–sport，source-port，指定源端口。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 22:25 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>-p，指定协议。<br>-m，指定扩展模块。<br>–dport，destination-port，指定目的端口。<br>22:25，表示22、23、24、25端口。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 80: -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>80:，表示80端口到之后的所有的端口（直到65535）。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport :22 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>:22，表示从0端口到22端口。</p>
 </div>
+
 <h5 id="–tcp-flags"><a href="#–tcp-flags" class="headerlink" title="–tcp-flags"></a>–tcp-flags</h5><p>–tcp-flags，指的就是tcp头中的标志位，可以匹配tcp报文的头部的标志位，然后根据标识位的实际情况实现访问控制的功能。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"><p>匹配到第一次握手的报文。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"><p>匹配到第二次握手的报文。</p>
 </div>
+
 <p>还可以用ALL表示SYN,ACK,FIN,RST,URG,PSH。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN -j REJECT</span><br><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN,ACK -j REJECT</span><br></pre></td></tr></table></figure>
-<p>–syn选项，匹配tcp第一次握手。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT</span><br></pre></td></tr></table></figure></p>
+
+<p>–syn选项，匹配tcp第一次握手。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT</span><br></pre></td></tr></table></figure>
+
 <h4 id="multiport"><a href="#multiport" class="headerlink" title="multiport"></a>multiport</h4><p>tcp模块中的–sport或者–dport可以指定一个连续的端口范围，但是无法同时指定多个离散的、不连续的端口。</p>
 <div class="alert danger no-icon"><p>multiport模块中的–sports扩展条件可以同时指定多个离散的源端口。<br>multiport模块中的–dports扩展条件可以同时指定多个离散的目的端口。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m multiport --dport 22,36,80 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert warning no-icon"><p>multiport模块只能用于tcp协议和udp协议，配合-p tcp或者-p udp使用。</p>
 </div>
+
 <h4 id="iprange"><a href="#iprange" class="headerlink" title="iprange"></a>iprange</h4><p>在不使用任何扩展模块下，可以使用-s或者-d即匹配报文的源地址和目的地址，而且在指定IP地址时，可以同时指定多个IP地址，每个IP地址之间用逗号隔开；但是，-s或者-d选项不能一次性地指定一段连续的IP地址范围。</p>
 <p>iprange可以指定一段连续的IP地址范围。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -m iprange --src-range 192.168.1.111-192.168.1.146 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -m iprange --dst-range 192.168.1.111-192.168.1.146 -j DROP</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–src-range，源地址范围。<br>–dst-range，目的地址范围。</p>
 </div>
+
 <h4 id="string"><a href="#string" class="headerlink" title="string"></a>string</h4><p>string扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -m string --algo bm --string "Hello World" -j ACCEPT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–algo，用于指定匹配算法，可选算法有bm和kmp，必须选项，所以不用纠结选择哪个算法，但是必须指定一个。<br>–string，用于指定需要匹配的字符串。</p>
 </div>
+
 <h4 id="time"><a href="#time" class="headerlink" title="time"></a>time</h4><p>time扩展模块，可以根据时间段匹配报文，如果报文到达的时间在规定时间范围以内，则符合匹配条件。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --timestart 09:00:00 --timestop 18:00:00 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–timestart，指定开始时间。<br>–timestop，指定结束时间。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --weekdays 6,7 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–weekdays，指定每个星期的具体哪一天，可以同时指定多个，用逗号隔开。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --monthdays 22,23 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–monthdays，指定每个月的哪一天。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --datestart 2018-12-01 --datestop 2018-12-25 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–datestart，日期开始。<br>–datestop，日期结束。</p>
 </div>
+
 <div class="alert warning no-icon"><p>–weekdays和–monthdays可以使用“!”取反，其他选项不可以。</p>
 </div>
+
 <h4 id="connlimit"><a href="#connlimit" class="headerlink" title="connlimit"></a>connlimit</h4><p>connlimit扩展模块，可以限制每个IP地址同时链接到server端的链接数量。不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–conlimit-above 2，表示限制每个IP的链接数量上限为2。<br>-p tcp –dport 22，限制每个客户端IP的ssh并发链接数量不能高于2。</p>
 </div>
+
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 --connlimit-mask 24 -j REJECT</span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>–connlimit-mask 24，表示某个C类网段。mask表示掩码；24转换成点分十进制就是255.255.255.0。<br>所以，上面的规则表示，一个最多包含254个IP的C类网络中，同时最多只能有2个ssh客户端连接到当前服务器。</p>
 </div>
+
 <h4 id="limit"><a href="#limit" class="headerlink" title="limit"></a>limit</h4><p>limit扩展模块，可以对报文到达的速率进行限制（限制单位时间内流入的包的数量）。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -m limit 10/minute -j ACCEPT</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/22/iptables详解（四）/images/iptables-1.png" alt="iptable"></p>
+
+<p><img src="images/iptables-1.png" alt="iptable"></p>
 <div class="alert danger no-icon"><p>–limit 10/minute -j ACCEPT，表示每分钟最多放行10个包，相当于每6秒最多放行一个包。</p>
 </div>
+
 <p>ping测试。</p>
-<p><img src="/2018/10/22/iptables详解（四）/images/ping-1.png" alt="ping"></p>
+<p><img src="images/ping-1.png" alt="ping"></p>
 <div class="alert info no-icon"><p>配置的规则没有起作用，ping请求的速率完全没有发生任何变化。<br>这是因为，上面的规则每6秒放行一个包，那么iptables就会计时，每6秒一个轮次，到第6秒时，到达的报文就会匹配到对应的规则，执行ACCEPT。<br>那么，在第6秒之前到达的包，则无法被上述规则匹配到。<br>之前总结过，报文会匹配链中的每条规则，如果没有任何一条规则匹配到，则匹配默认动作（链的默认策略）。INPUT链的默认策略是ACCEPT。</p>
 </div>
+
 <p>我们有两种方法修改。一是，修改INPUT链的默认策略；二是，再增加一条规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -p icmp -j REJECT</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/22/iptables详解（四）/images/iptables-2.png" alt="iptable"></p>
+
+<p><img src="images/iptables-2.png" alt="iptable"></p>
 <p>ping测试。</p>
-<p><img src="/2018/10/22/iptables详解（四）/images/ping-2.png" alt="ping"></p>
+<p><img src="images/ping-2.png" alt="ping"></p>
 <div class="alert info no-icon"><p>前5个ping包没有受到限制，之后的ping包已经开始受到规则的限制。</p>
 </div>
+
 <div class="alert info no-icon"><p>limit模块采用令牌桶算法。<br>上面的情况可以这样想象，有一个木桶，木桶里放了5块令牌，而且这个木桶最多也只能放下5块令牌，所有报文如果想要出关入关，必须要持有木桶中的令牌才行。这个木桶每隔6秒钟就会产生一块新的令牌，如果此时，木桶的令牌不足5块，那么新生成的令牌就会放在木桶中，超过5块，新生成的令牌就会被丢弃。如果此时有5个报文想要入关，那么这5个报文就会去木桶里找令牌，正好一人一个，快乐地入关了。此时木桶空了，再想有报文想要入关已经没有对应的令牌可以使用，只好等待6秒，新的令牌生成，报文拿着新生成的令牌入关。如果很长一段时间没有新的报文想要入关，木桶里的令牌又会慢慢积攒起来，直到到达5个令牌，直到有人使用它。</p>
 </div>
+
 <div class="alert info no-icon"><p>–limit，用于指定多长时间生成一个新的令牌。<br>–limit-brust，用于指定木桶中最多存放几个令牌。</p>
 </div>
-<p><img src="/2018/10/22/iptables详解（四）/images/iptables-3.png" alt="iptable"></p>
+
+<p><img src="images/iptables-3.png" alt="iptable"></p>
 <div class="alert info no-icon"><p>上面的例子表示，令牌桶最多放3个令牌，每分钟生成10个令牌。</p>
 </div>
+
 <div class="alert danger no-icon"><p>–limit，可以选择的时间单位有多种，如 /second、/minute、/hour、/day。</p>
 </div>
             
@@ -359,7 +447,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/iptables/">iptables</a>
 
@@ -445,7 +533,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -598,7 +686,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -608,7 +696,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -616,7 +704,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -634,5 +722,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

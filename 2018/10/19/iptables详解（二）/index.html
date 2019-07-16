@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（二） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n命令查看对应表的规则1iptables -t [表名] -L\n-t，指定要操作的表；省略“-t”时，默认操作filter表。-L，表示列出规则。\n\n查看指定表的指定链的规则1iptables -t [表名] -L [链名]\n查看filter表中INPUT链的规则1iptables -vL INPUT\n\n-v，查看详细信息。\n\npkts：对应规则匹配到的报文个数。bytes：对应匹配到报文包的大小总和。target：规则对应的target，往往表示对应的“动作”，即规则匹配完成后需要采取的措施。prot：表示规则对应的协议，是否只针对某些协议应用此规则。opt：表示规则对应的选项。in：表示数据包由哪个接口（网卡）流入，我们可以设置通过哪块网卡流入的报文需要匹配当前规则。out：表示数据包由哪个接口（网卡）流出，我们可以设置通过哪块网卡流出的报文需要匹配当前规则。source：表示规则对应的源头地址。可以是一个IP，也可以是一个网段。destination：表示规则对应的目的地址。可以是一个IP，也可以是一个网段。\n\n显示IP地址1iptables -nvL INPUT\n\n-n，表示不对IP地址进行名称反解，直接显示IP地址。\n\n显示行号1iptables -nvL INPUT --line-numbers\n\n–line-numbers，显示行号。\n\n（policy ACCEPT 26381 packets, 2993K bytes）policy ACCEPT表示图中INPUT的链的默认动作为ACCEPT。默认接收通过INPUT的所请求。packets表示当前链默认策略匹配到的包的数量。bytes表示当前链默认策略匹配到的所有的包的大小总和。\n\n精确计数1iptables -nvxL INPUT\n\n-x，精确计数。\n","dateCreated":"2018-10-19T15:19:37+08:00","dateModified":"2018-10-19T17:03:58+08:00","datePublished":"2018-10-19T15:19:37+08:00","description":"规则查询","headline":"iptables详解（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（二）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n命令查看对应表的规则1iptables -t [表名] -L\n\n-t，指定要操作的表；省略“-t”时，默认操作filter表。-L，表示列出规则。\n\n\n查看指定表的指定链的规则1iptables -t [表名] -L [链名]\n\n查看filter表中INPUT链的规则1iptables -vL INPUT\n\n\n-v，查看详细信息。\n\n\npkts：对应规则匹配到的报文个数。bytes：对应匹配到报文包的大小总和。target：规则对应的target，往往表示对应的“动作”，即规则匹配完成后需要采取的措施。prot：表示规则对应的协议，是否只针对某些协议应用此规则。opt：表示规则对应的选项。in：表示数据包由哪个接口（网卡）流入，我们可以设置通过哪块网卡流入的报文需要匹配当前规则。out：表示数据包由哪个接口（网卡）流出，我们可以设置通过哪块网卡流出的报文需要匹配当前规则。source：表示规则对应的源头地址。可以是一个IP，也可以是一个网段。destination：表示规则对应的目的地址。可以是一个IP，也可以是一个网段。\n\n\n显示IP地址1iptables -nvL INPUT\n\n\n-n，表示不对IP地址进行名称反解，直接显示IP地址。\n\n\n显示行号1iptables -nvL INPUT --line-numbers\n\n\n–line-numbers，显示行号。\n\n\n（policy ACCEPT 26381 packets, 2993K bytes）policy ACCEPT表示图中INPUT的链的默认动作为ACCEPT。默认接收通过INPUT的所请求。packets表示当前链默认策略匹配到的包的数量。bytes表示当前链默认策略匹配到的所有的包的大小总和。\n\n\n精确计数1iptables -nvxL INPUT\n\n\n-x，精确计数。\n","dateCreated":"2018-10-19T15:19:37+08:00","dateModified":"2018-10-19T17:03:58+08:00","datePublished":"2018-10-19T15:19:37+08:00","description":"规则查询","headline":"iptables详解（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（二）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="规则查询">
 <meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
@@ -59,14 +59,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -83,10 +83,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -104,7 +105,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -118,7 +119,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -127,7 +132,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -136,7 +145,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -145,7 +158,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -154,7 +171,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -163,7 +184,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -176,7 +201,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -185,7 +210,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -198,7 +223,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -213,7 +242,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -247,30 +278,44 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
+            <!-- excerpt -->
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#命令"><span class="toc-text">命令</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#查看对应表的规则"><span class="toc-text">查看对应表的规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看指定表的指定链的规则"><span class="toc-text">查看指定表的指定链的规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看filter表中INPUT链的规则"><span class="toc-text">查看filter表中INPUT链的规则</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#显示IP地址"><span class="toc-text">显示IP地址</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#显示行号"><span class="toc-text">显示行号</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#精确计数"><span class="toc-text">精确计数</span></a></li></ol></li></ol></li></ol>
+
 <h3 id="命令"><a href="#命令" class="headerlink" title="命令"></a>命令</h3><h4 id="查看对应表的规则"><a href="#查看对应表的规则" class="headerlink" title="查看对应表的规则"></a>查看对应表的规则</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -L</span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"><p>-t，指定要操作的表；省略“-t”时，默认操作filter表。<br>-L，表示列出规则。</p>
 </div>
+
 <h4 id="查看指定表的指定链的规则"><a href="#查看指定表的指定链的规则" class="headerlink" title="查看指定表的指定链的规则"></a>查看指定表的指定链的规则</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -L [链名]</span><br></pre></td></tr></table></figure>
+
 <h4 id="查看filter表中INPUT链的规则"><a href="#查看filter表中INPUT链的规则" class="headerlink" title="查看filter表中INPUT链的规则"></a>查看filter表中INPUT链的规则</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -vL INPUT</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/19/iptables详解（二）/images/iptales-vL.png" alt="iptales-vL"></p>
+
+<p><img src="images/iptales-vL.png" alt="iptales-vL"></p>
 <div class="alert danger no-icon"><p>-v，查看详细信息。</p>
 </div>
+
 <div class="alert info no-icon"><p><strong>pkts</strong>：对应规则匹配到的报文个数。<br><strong>bytes</strong>：对应匹配到报文包的大小总和。<br><strong>target</strong>：规则对应的target，往往表示对应的“动作”，即规则匹配完成后需要采取的措施。<br><strong>prot</strong>：表示规则对应的协议，是否只针对某些协议应用此规则。<br><strong>opt</strong>：表示规则对应的选项。<br><strong>in</strong>：表示数据包由哪个接口（网卡）流入，我们可以设置通过哪块网卡流入的报文需要匹配当前规则。<br><strong>out</strong>：表示数据包由哪个接口（网卡）流出，我们可以设置通过哪块网卡流出的报文需要匹配当前规则。<br><strong>source</strong>：表示规则对应的源头地址。可以是一个IP，也可以是一个网段。<br><strong>destination</strong>：表示规则对应的目的地址。可以是一个IP，也可以是一个网段。</p>
 </div>
+
 <h5 id="显示IP地址"><a href="#显示IP地址" class="headerlink" title="显示IP地址"></a>显示IP地址</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvL INPUT</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/19/iptables详解（二）/images/iptables-nvL.png" alt="iptables-nvL"></p>
+
+<p><img src="images/iptables-nvL.png" alt="iptables-nvL"></p>
 <div class="alert danger no-icon"><p>-n，表示不对IP地址进行名称反解，直接显示IP地址。</p>
 </div>
+
 <h5 id="显示行号"><a href="#显示行号" class="headerlink" title="显示行号"></a>显示行号</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvL INPUT --line-numbers</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/19/iptables详解（二）/images/iptables-nvL-line.png" alt="iptables-nvL-line"></p>
+
+<p><img src="images/iptables-nvL-line.png" alt="iptables-nvL-line"></p>
 <div class="alert danger no-icon"><p>–line-numbers，显示行号。</p>
 </div>
+
 <div class="alert info no-icon"><p>（policy ACCEPT 26381 packets, 2993K bytes）<br><strong>policy ACCEPT</strong>表示图中INPUT的链的默认动作为<strong>ACCEPT</strong>。默认接收通过INPUT的所请求。<br><strong>packets</strong>表示当前链默认策略匹配到的包的数量。<br><strong>bytes</strong>表示当前链默认策略匹配到的所有的包的大小总和。</p>
 </div>
+
 <h5 id="精确计数"><a href="#精确计数" class="headerlink" title="精确计数"></a>精确计数</h5><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvxL INPUT</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/10/19/iptables详解（二）/images/iptables-nvxL.png" alt="iptables-nvxL-line"></p>
+
+<p><img src="images/iptables-nvxL.png" alt="iptables-nvxL-line"></p>
 <div class="alert danger no-icon"><p>-x，精确计数。</p>
 </div>
             
@@ -280,7 +325,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/iptables/">iptables</a>
 
@@ -366,7 +411,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -519,7 +564,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -529,7 +574,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -537,7 +582,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -555,5 +600,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

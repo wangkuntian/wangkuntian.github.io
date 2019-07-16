@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Python内置函数 - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Python 2.7的内置函数\n\nabs()abs(x)返回数字的绝对值。参数可以是普通或长整数或浮点数。如果参数是一个复数，则返回其大小（复数的模）。123abs(-123) # 123abs(123)  # 123abs(complex(3, 4)) # 5.0\ncomplex()返回值为复数，complex(3,4)的返回值是3+4j。3+4j的模就是5。\n\nall()all(iterable)如果iterable的所有元素为真（或迭代器为空），返回True，否则返回False。123all([]) # Trueall[1, 2, 3]) # Trueall([1, 2, None]) # False\n等价于：12345def all(iterable):    for element in iterable:        if not element:            return False    return True\nany()any(iterable)如果iterable的任一元素为真则返回True。如果迭代器为空，返回False。1234any([]) # Falseany([None]) # Falseany([1, 2, None]) # Trueany([1, None, None]) # True\n等价于：12345def any(iterable):    for element in iterable:        if element:            return True    return False\nbasestring()这个抽象类型是str和unicode的超类。它不能被调用或实例化，但它可以用于测试对象是str还是unicode的实例。isinstance(obj,basestring)等同于isinstance(obj,(str,unicode))\nbin()bin(x)将整数转换为二进制字符串。结果是一个有效的Python表达式。如果x不是Python int对象，则必须定义一个返回整数的__index__()方法。12bin(10) # 0b1010bin(100) # 0b1100100\nbool()class bool([x])返回一个布尔值，即True或False。x为True则返回值为True，x为False返回值为False。12345678bool() # Falsebool(0) # Falsebool(1) # Truebool([]) # Falsebool(&#123;&#125;) # Falsebool(()) # Falsebool(True) # Truebool(False) # True\nbytearray()class bytearray([source[, encoding[, errors]]])返回一个新的字节数组。bytearray类是 0 &lt;= x &lt;256 范围内的可变整数序列。可选形参 source 可以用不同的方式来初始化数组：\n\n如果是unicode，则还必须提供编码（和可选的，错误）参数，bytearray()使用unicode.encode()将unicode转换为字节。\n如果是一个integer，会初始化大小为该数字的数组，并使用null字节填充。\n如果是一个符合buffer接口的对象，该对象的只读buffer会用来初始化字节数组。\n如果是一个iterable可迭代对象，它的元素的范围必须是 0 &lt;= x &lt;256 的整数，它会被用作数组的初始内容。\n如果没有实参，则创建大小为0的数组。\n\ncallable()callable(object)如果对象参数显示为可调用，则返回True，否则返回False。如果返回true，则调用仍然可能失败，但如果调用失败，则调用对象将永远不会成功。类是可调用的（调用类会返回一个新实例）。如果类实例具有__call__()方法，则它们是可调用的。\n\nchr()chr(i)返回一个字符串，其ASCII码为整数i。参数必须在[0..255]范围内。如果i超出该范围，则会引发ValueError。12chr(97) # achr(65) # A\n相对的方法是ord()。\n\nclassmethod()classmethod(function)返回一个函数的类方法。一个类方法把类自己作为第一个实参，就像一个实例方法把实例自己作为第一个实参。请用以下习惯来声明类方法:1234class C(object):    @classmethod    def f(cls, arg1, arg2, ...):        ...\ncmp()cmp(x, y)比较两个对象x和y并根据结果返回一个整数。如果x &lt; y则返回值为负，如果x == y则返回零，如果x &gt; y则返回为正123cmp(1, 1) # 0cmp(1, 2) # -1cmp(2, 1) # 1\ncompile()compile(source, filename, mode[, flags[, dont_inherit]])将源代码编译为代码或AST对象。代码对象可以由exec语句执行，也可以通过调用eval()来评估。source可以是Unicode字符串，Latin-1编码字符串或AST对象。filename实参需要是代码读取的文件名；如果代码不需要从文件中读取，可以传入一些可辨识的值（经常会使用 ‘‘）。mode实参指定了编译代码必须用的模式。如果source是语句序列，可以是exec；如果是单一表达式，可以是eval；如果是单个交互式语句，可以是single。（在最后一种情况下，如果表达式执行结果不是None将会被打印出来。）\n\ncomplex()class complex([real[, imag]])将字符串或数字转换为复数，返回值为real + imag * j。12complex(3,4) # (3+4j)complex('3+4j') # (3+4j)\n当从字符串转换时，字符串在 + 或 - 的周围必须不能有空格。例如complex(‘1+2j’)是合法的，但complex(‘1 + 2j’)会触发ValueError异常。\n\ndelattr()delattr(object, name)setattr()相关的函数。实参是一个对象和一个字符串。该字符串必须是对象的某个属性。如果对象允许，该函数将删除指定的属性。例如delattr(student, ‘name’)等价于del student.name。12345678910class Student(object):    def __init__(self, name, age):        self.name = name        self.age = agestudent = Student(name='wkt', age=24)print getattr(student, 'name') # wktdelattr(student, 'name')print getattr(student, 'name') # AttributeError\ndict()class dict(kwarg)class dict(mapping, kwarg)class dict(iterable, **kwarg)创建一个新的字典。123456a = dict(one=1, two=2, three=3)b = &#123;'one': 1, 'two': 2, 'three': 3&#125;c = dict(zip(['one', 'two', 'three'], [1, 2, 3]))d = dict([('two', 2), ('one', 1), ('three', 3)])e = dict(&#123;'three': 3, 'one': 1, 'two': 2&#125;)a == b == c == d == e # True\ndir()dir([object])如果没有实参，则返回当前本地作用域中的名称列表。如果有实参，它会尝试返回该对象的有效属性列表。\n如果对象有一个名为__dir__()的方法，那么该方法将被调用，并且必须返回一个属性列表。这允许实现自定义__getattr__()或__getattribute__()函数的对象能够自定义dir()来报告它们的属性。\n如果对象不提供__dir__()，这个函数会尝试从对象已定义的__dict__属性和类型对象收集信息。结果列表并不总是完整的，如果对象有自定义_getattr__()，那结果可能不准确。\n默认的dir()机制对不同类型的对象行为不同，它会试图返回最相关而不是最全的信息：\n\n如果对象是模块对象，则列表包含模块的属性名称。\n如果对象是类型或类对象，则列表包含它们的属性名称，并且递归查找所有基类的属性。\n否则，列表包含对象的属性名称，它的类属性名称，并且递归查找它的类的所有基类的属性。\n返回的列表按字母表排序。\n\n12345import datetimedir() # ['__builtins__', '__doc__', '__file__', '__name__', '__package__', 'datetime']dir(datetime) # ['MAXYEAR', 'MINYEAR', '__doc__', '__file__', '__name__', '__package__', 'date', 'datetime', 'datetime_CAPI', 'time', 'timedelta', 'tzinfo']\n1234567class Person(object):    def __dir__(self):        return ['name', 'sex', 'age']p = Person()dir(p) # ['age', 'name', 'sex']\ndivmod()divmod(a, b)取两个数（非复数）作为参数，返回由商和余数组成的一对数。对于普通类型和长整数，结果与(a // b，a ％ b)相同。对于浮点数，结果是(q, a ％ b)，其中q通常是math.floor(a / b)，但可能比该值小1。在任何情况下，q * b + a ％ b非常接近a，如果a％b非零，则其具有与b相同的符号，并且0 &lt;= abs(a ％ b) &lt; abs(b)。12divmod(1, 3)  # (0, 1)divmod(10, 4) # (2, 2)\nenumerate()enumerate(sequence, start=0)返回一个枚举对象。 sequence必须是序列，迭代器或其他支持迭代的对象。enumerate（）返回的迭代器的next（）方法返回一个包含计数的元组（从start开始，默认为0）和迭代序列获得的值。123456seasons = ['spring', 'summer', 'autumn', 'winter']list(enumerate(seasons))            # [(0, 'spring'), (1, 'summer'), (2, 'autumn'), (3, 'winter')]list(enumerate(seasons, start=1))   # [(1, 'spring'), (2, 'summer'), (3, 'autumn'), (4, 'winter')]\n相当于。12345def enumerate(sequence, start=0):    n = start    for elem in sequence:        yield n, elem        n += 1\neval()eval(expression[, globals[, locals]])参数是Unicode或Latin-1编码的字符串以及可选的全局变量和局部变量。如果提供，globals必须是字典。如果提供，则locals可以是任何映射对象。\n表达式参数作为Python表达式（技术上讲，条件列表）被解析和评估，使用全局变量和本地字典作为全局和本地名称空间。如果全局字典存在且缺少’builtins‘，则在解析表达式之前将当前全局变量复制到全局变量中。这意味着表达式通常具有对标准builtin模块的完全访问权限，并且传播受限制的环境。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用eval()的环境中执行。返回值是计算表达式的结果。语法错误报告为异常。12x = 10eval(' x + 20 ')  # 30\n此函数还可用于执行任意代码对象（例如由compile()创建的代码对象）。在这种情况下，传递代码对象而不是字符串。如果代码对象已使用’exec’作为mode参数进行编译，则eval()的返回值将为None。\nexec语句支持动态执行语句。execfile()函数支持从文件执行语句。globals()和locals()函数分别返回当前的全局和本地字典，这对于传递以供eval()或execfile()使用很有用。\n\nexecfile()execfile(filename[, globals[, locals]])此函数类似于exec语句，但解析文件而不是字符串。它与import语句的不同之处在于它不使用模块管理 - 它无条件地读取文件并且不创建新模块。\n参数是文件名和两个可选字典。使用全局和本地字典作为全局和本地命名空间，将文件解析并评估为一系列Python语句（类似于模块）。如果提供，则locals可以是任何映射对象。请记住，在模块级别，全局变量和本地变量是相同的字典。如果将两个单独的对象作为全局变量和局部变量传递，则代码将被执行，就像它嵌入在类定义中一样。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用execfile（）的环境中执行。返回值为None。\n默认的locals的行为与下面的函数locals()相同：不应尝试修改默认的locals字典。如果需要在函数execfile()返回后查看代码对locals的影响，则传递显式的locals字典。execfile()不能可靠地用于修改函数的本地。\n\nfile()file(name[, mode[, buffering]])文件类型的构造函数，在文件对象一节中进一步描述。构造函数的参数与下面描述的open()内置函数的参数相同。打开文件时，最好使用open()而不是直接调用此构造函数。file更适合于类型测试（例如，写入isinstance(f，file)）。\nfilter()filter(function, iterable)从iterable的那些元素构造一个列表，该函数返回true。iterable可以是序列，支持迭代的容器，也可以是迭代器。\n如果iterable是字符串或元组，则结果也具有该类型;否则它总是一个列表。如果function为None，即删除所有可迭代的false元素。\n请注意，如果函数不是None，则filter（function，iterable）等效于[item for item in iterable if function(item)]，如果函数为None，则[item for item in iterable if item]。12345678x = range(1, 10)# [1, 2, 3, 4, 5, 6, 7, 8, 9]filter(lambda item: item if item % 2 == 0 else None, x)# [2, 4, 6, 8][item for item in x if item % 2 == 0]# [2, 4, 6, 8]\nfloat()class float([x])返回由数字或字符串x构造的浮点数。\n如果参数是字符串，则它必须包含可能已赋值的decimal或浮点数，可能嵌入在空格中。参数也可以是[+|-]nan或[+|-] inf。否则，参数可以是普通或长整数或浮点数，并返回具有相同值（在Python的浮点精度内）的浮点数。如果没有给出参数，则返回0.0。\nformat()format(value[, format_spec])将值转换为“格式化”表示，由format_spec控制。format_spec的解释取决于value参数的类型，但是大多数内置类型都使用标准格式化语法：Format Specification Mini-Language。\nformat(value, format_spec)只调用value.format(format_spec)。\n\n1'hello &#123;0&#125;'.format('world') # hello world\nfrozenset()class frozenset([iterable])返回一个新的frozenset对象，可选地包含从iterable中获取的元素。返回一个新的set或frozenset对象，其元素取自iterable。集合的元素必须是可以清除的。要表示集合集，内部集合必须是冻结集合对象。如果未指定iterable，则返回新的空集。\n","dateCreated":"2019-04-02T20:39:31+08:00","dateModified":"2019-06-17T16:54:14+08:00","datePublished":"2019-04-02T20:39:31+08:00","description":"Python 2.7的内置函数","headline":"Python内置函数","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/04/02/Python内置函数/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/04/02/Python内置函数/","keywords":"Python","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Python 2.7的内置函数\n\n\n\n\nAabs()abs(x)返回数字的绝对值。\n参数可以是普通或长整数或浮点数。如果参数是一个复数，则返回其大小（复数的模）。\n123abs(-123) # 123abs(123)  # 123abs(complex(3, 4)) # 5.0\n\ncomplex()返回值为复数。\ncomplex(3,4)的返回值是3+4j。3+4j的模就是5。\n\n\nall()all(iterable)如果iterable的所有元素为真（或迭代器为空），返回True，否则返回False。\n123all([]) # Trueall[1, 2, 3]) # Trueall([1, 2, None]) # False\n\n等价于：\n12345def all(iterable):    for element in iterable:        if not element:            return False    return True\n\nany()any(iterable)如果iterable的任一元素为真则返回True。如果迭代器为空，返回False。\n1234any([]) # Falseany([None]) # Falseany([1, 2, None]) # Trueany([1, None, None]) # True\n\n等价于：\n12345def any(iterable):    for element in iterable:        if element:            return True    return False\n\nBbasestring()这个抽象类型是str和unicode的超类。它不能被调用或实例化，但它可以用于测试对象是str还是unicode的实例。isinstance(obj,basestring)等同于isinstance(obj,(str,unicode))\nbin()bin(x)将整数转换为二进制字符串。\n结果是一个有效的Python表达式。如果x不是Python int对象，则必须定义一个返回整数的_index_()方法。\n12bin(10) # 0b1010bin(100) # 0b1100100\n\nbool()class bool([x])返回一个布尔值，即True或False。\nx为True则返回值为True，x为False返回值为False。\n12345678bool() # Falsebool(0) # Falsebool(1) # Truebool([]) # Falsebool(&#123;&#125;) # Falsebool(()) # Falsebool(True) # Truebool(False) # True\n\nbytearray()class bytearray([source[, encoding[, errors]]])返回一个新的字节数组。bytearray类是 0 &lt;= x &lt;256 范围内的可变整数序列。\n可选形参 source 可以用不同的方式来初始化数组：\n\n如果是unicode，则还必须提供编码（和可选的，错误）参数，bytearray()使用unicode.encode()将unicode转换为字节。\n如果是一个integer，会初始化大小为该数字的数组，并使用null字节填充。\n如果是一个符合buffer接口的对象，该对象的只读buffer会用来初始化字节数组。\n如果是一个iterable可迭代对象，它的元素的范围必须是 0 &lt;= x &lt;256 的整数，它会被用作数组的初始内容。\n如果没有实参，则创建大小为0的数组。\n\nCcallable()callable(object)如果对象参数显示为可调用，则返回True，否则返回False。\n如果返回true，则调用仍然可能失败，但如果调用失败，则调用对象将永远不会成功。\n类是可调用的（调用类会返回一个新实例）。如果类实例具有_call_()方法，则它们是可调用的。\n\n\nchr()chr(i)返回一个字符串，其ASCII码为整数i。\n参数必须在[0..255]范围内。如果i超出该范围，则会引发ValueError。\n12chr(97) # achr(65) # A\n\n相对的方法是ord()。\n\n\nclassmethod()classmethod(function)返回一个函数的类方法。\n一个类方法把类自己作为第一个实参，就像一个实例方法把实例自己作为第一个实参。请用以下习惯来声明类方法:\n1234class C(object):    @classmethod    def f(cls, arg1, arg2, ...):        ...\n\ncmp()cmp(x, y)比较两个对象x和y并根据结果返回一个整数。\n如果x &lt; y则返回值为负，如果x == y则返回零，如果x &gt; y则返回为正\n123cmp(1, 1) # 0cmp(1, 2) # -1cmp(2, 1) # 1\n\ncompile()compile(source, filename, mode[, flags[, dont_inherit]])将源代码编译为代码或AST对象。代码对象可以由exec语句执行，也可以通过调用eval()来评估。\nsource可以是Unicode字符串，Latin-1编码字符串或AST对象。\nfilename实参需要是代码读取的文件名；如果代码不需要从文件中读取，可以传入一些可辨识的值（经常会使用 ‘‘）。\nmode实参指定了编译代码必须用的模式。如果source是语句序列，可以是exec；如果是单一表达式，可以是eval；如果是单个交互式语句，可以是single。（在最后一种情况下，如果表达式执行结果不是None将会被打印出来。）\n\n\ncomplex()class complex([real[, imag]])将字符串或数字转换为复数，返回值为real + imag * j。\n12complex(3,4) # (3+4j)complex('3+4j') # (3+4j)\n\n当从字符串转换时，字符串在 + 或 - 的周围必须不能有空格。例如complex(‘1+2j’)是合法的，但complex(‘1 + 2j’)会触发ValueError异常。\n\n\n\nDdelattr()delattr(object, name)setattr()相关的函数。实参是一个对象和一个字符串。该字符串必须是对象的某个属性。如果对象允许，该函数将删除指定的属性。例如delattr(student, ‘name’)等价于del student.name。\n12345678910class Student(object):    def __init__(self, name, age):        self.name = name        self.age = agestudent = Student(name='wkt', age=24)print getattr(student, 'name') # wktdelattr(student, 'name')print getattr(student, 'name') # AttributeError\n\ndict()class dict(*kwarg)class dict(mapping, *kwarg)class dict(iterable, **kwarg)创建一个新的字典。\n123456a = dict(one=1, two=2, three=3)b = &#123;'one': 1, 'two': 2, 'three': 3&#125;c = dict(zip(['one', 'two', 'three'], [1, 2, 3]))d = dict([('two', 2), ('one', 1), ('three', 3)])e = dict(&#123;'three': 3, 'one': 1, 'two': 2&#125;)a == b == c == d == e # True\n\ndir()dir([object])如果没有实参，则返回当前本地作用域中的名称列表。如果有实参，它会尝试返回该对象的有效属性列表。\n如果对象有一个名为_dir_()的方法，那么该方法将被调用，并且必须返回一个属性列表。这允许实现自定义_getattr_()或_getattribute_()函数的对象能够自定义dir()来报告它们的属性。\n如果对象不提供_dir_()，这个函数会尝试从对象已定义的_dict_属性和类型对象收集信息。结果列表并不总是完整的，如果对象有自定义_getattr\\()，那结果可能不准确。\n默认的dir()机制对不同类型的对象行为不同，它会试图返回最相关而不是最全的信息：\n\n如果对象是模块对象，则列表包含模块的属性名称。\n如果对象是类型或类对象，则列表包含它们的属性名称，并且递归查找所有基类的属性。\n否则，列表包含对象的属性名称，它的类属性名称，并且递归查找它的类的所有基类的属性。\n返回的列表按字母表排序。\n\n12345import datetimedir() # ['__builtins__', '__doc__', '__file__', '__name__', '__package__', 'datetime']dir(datetime) # ['MAXYEAR', 'MINYEAR', '__doc__', '__file__', '__name__', '__package__', 'date', 'datetime', 'datetime_CAPI', 'time', 'timedelta', 'tzinfo']\n\n1234567class Person(object):    def __dir__(self):        return ['name', 'sex', 'age']p = Person()dir(p) # ['age', 'name', 'sex']\n\ndivmod()divmod(a, b)取两个数（非复数）作为参数，返回由商和余数组成的一对数。\n对于普通类型和长整数，结果与(a // b，a ％ b)相同。\n对于浮点数，结果是(q, a ％ b)，其中q通常是math.floor(a / b)，但可能比该值小1。在任何情况下，q * b + a ％ b非常接近a，如果a％b非零，则其具有与b相同的符号，并且0 &lt;= abs(a ％ b) &lt; abs(b)。\n12divmod(1, 3)  # (0, 1)divmod(10, 4) # (2, 2)\n\nEenumerate()enumerate(sequence, start=0)返回一个枚举对象。 \nsequence必须是序列，迭代器或其他支持迭代的对象。\nenumerate（）返回的迭代器的next（）方法返回一个包含计数的元组（从start开始，默认为0）和迭代序列获得的值。\n123456seasons = ['spring', 'summer', 'autumn', 'winter']list(enumerate(seasons))            # [(0, 'spring'), (1, 'summer'), (2, 'autumn'), (3, 'winter')]list(enumerate(seasons, start=1))   # [(1, 'spring'), (2, 'summer'), (3, 'autumn'), (4, 'winter')]\n\n相当于。\n12345def enumerate(sequence, start=0):    n = start    for elem in sequence:        yield n, elem        n += 1\n\neval()eval(expression[, globals[, locals]])参数是Unicode或Latin-1编码的字符串以及可选的全局变量和局部变量。如果提供，globals必须是字典。如果提供，则locals可以是任何映射对象。\n表达式参数作为Python表达式（技术上讲，条件列表）被解析和评估，使用全局变量和本地字典作为全局和本地名称空间。如果全局字典存在且缺少‘__builtins__’，则在解析表达式之前将当前全局变量复制到全局变量中。这意味着表达式通常具有对标准__builtin__模块的完全访问权限，并且传播受限制的环境。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用eval()的环境中执行。返回值是计算表达式的结果。语法错误报告为异常。\n12x = 10eval(' x + 20 ')  # 30\n\n此函数还可用于执行任意代码对象（例如由compile()创建的代码对象）。在这种情况下，传递代码对象而不是字符串。如果代码对象已使用’exec’作为mode参数进行编译，则eval()的返回值将为None。\nexec语句支持动态执行语句。execfile()函数支持从文件执行语句。globals()和locals()函数分别返回当前的全局和本地字典，这对于传递以供eval()或execfile()使用很有用。\n\n\nexecfile()execfile(filename[, globals[, locals]])此函数类似于exec语句，但解析文件而不是字符串。它与import语句的不同之处在于它不使用模块管理 - 它无条件地读取文件并且不创建新模块。\n参数是文件名和两个可选字典。使用全局和本地字典作为全局和本地命名空间，将文件解析并评估为一系列Python语句（类似于模块）。如果提供，则locals可以是任何映射对象。请记住，在模块级别，全局变量和本地变量是相同的字典。如果将两个单独的对象作为全局变量和局部变量传递，则代码将被执行，就像它嵌入在类定义中一样。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用execfile（）的环境中执行。返回值为None。\n默认的locals的行为与下面的函数locals()相同：不应尝试修改默认的locals字典。如果需要在函数execfile()返回后查看代码对locals的影响，则传递显式的locals字典。execfile()不能可靠地用于修改函数的本地。\n\n\n\nFfile()file(name[, mode[, buffering]])文件类型的构造函数，在文件对象一节中进一步描述。构造函数的参数与下面描述的open()内置函数的参数相同。打开文件时，最好使用open()而不是直接调用此构造函数。file更适合于类型测试（例如，写入isinstance(f，file)）。\nfilter()filter(function, iterable)从iterable的那些元素构造一个列表，该函数返回true。\niterable可以是序列，支持迭代的容器，也可以是迭代器。\n如果iterable是字符串或元组，则结果也具有该类型;否则它总是一个列表。如果function为None，即删除所有可迭代的false元素。\n请注意，如果函数不是None，则filter（function，iterable）等效于[item for item in iterable if function(item)]，如果函数为None，则[item for item in iterable if item]。\n12345678x = range(1, 10)# [1, 2, 3, 4, 5, 6, 7, 8, 9]filter(lambda item: item if item % 2 == 0 else None, x)# [2, 4, 6, 8][item for item in x if item % 2 == 0]# [2, 4, 6, 8]\n\nfloat()class float([x])返回由数字或字符串x构造的浮点数。\n如果参数是字符串，则它必须包含可能已赋值的decimal或浮点数，可能嵌入在空格中。参数也可以是[+|-]nan或[+|-] inf。否则，参数可以是普通或长整数或浮点数，并返回具有相同值（在Python的浮点精度内）的浮点数。\n如果没有给出参数，则返回0.0。\nformat()format(value[, format_spec])将值转换为“格式化”表示，由format_spec控制。format_spec的解释取决于value参数的类型，但是大多数内置类型都使用标准格式化语法：Format Specification Mini-Language。\nformat(value, format_spec)只调用value.format(format_spec)。\n\n1'hello &#123;0&#125;'.format('world') # hello world\n\nfrozenset()class frozenset([iterable])返回一个新的frozenset对象，可选地包含从iterable中获取的元素。返回一个新的set或frozenset对象，其元素取自iterable。集合的元素必须是可以清除的。要表示集合集，内部集合必须是冻结集合对象。如果未指定iterable，则返回新的空集。\nGgetattr()getattr(object, name[, default])返回对象命名属性的值。\nname必须是字符串。如果该字符串是对象的属性之一，则返回该属性的值。\n例如，getattr(x, ‘foobar’)等同于x.foobar。如果指定的属性不存在，且提供了default值，则返回它，否则触发AttributeError。\nglobals()返回表示当前全局符号表的字典。这总是当前模块的字典（在函数或方法中，不是调用它的模块，而是定义它的模块）。\nHhasattr()hasattr(object, name)参数是一个对象和一个字符串。如果字符串是对象属性之一的名称，则结果为True，否则为False。（这是通过调用getattr(object,name)并查看它是否引发异常来实现的。）\nhash()hash(object)返回对象的哈希值（如果有的话）。哈希值是整数，它们用于在字典查找期间快速比较字典键。相等的数字值具有相同的哈希值（即使它们具有不同的类型，如1和1.0的情况）。\nhelp()help([object])启动内置的帮助系统（此函数主要在交互式中使用）。如果没有实参，解释器控制台里会启动交互式帮助系统。如果实参是一个字符串，则在模块、函数、类、方法、关键字或文档主题中搜索该字符串，并在控制台上打印帮助信息。如果实参是其他任意对象，则会生成该对象的帮助页。\n该函数通过 site 模块加入到内置命名空间。\n\n\nhex()hex(x)将整数（任意大小）转换为前缀为“0x”的小写十六进制字符串。\n123hex(255)    # 0xffhex(-220)   # -0xdchex(1L)     # 0x1L\n\n如果x不是int或long对象，则必须定义一个返回字符串的hex()方法。\n\n\n如果要获取浮点数的十六进制字符串形式，请使用float.hex()方法。\n\n\nIid()id(object)返回对象的“标识”。这是一个整数（或长整数），保证在该生命周期内该对象是唯一且恒定的。\n具有非重叠生存期的两个对象可以具有相同的id()值。\nid()返回的值是内存中对象的地址。\n\n\ninput()input([prompt])相当于eval(raw_input(prompt))。\n此功能不会捕获用户错误。如果输入语法无效，则会引发SyntaxError。如果评估期间出现错误，可能会引发其他异常。所以应该使用raw_input()函数来获取用户的常规输入。\n如果加载了readline模块，input()将使用它来提供复杂的行编辑和历史记录功能。\nint()class int(x=0)class int(x, base=10)返回由数字或字符串x构造的整数对象，如果没有给出参数，则返回0。\n如果x是数字，则它可以是普通整数，长整数或浮点数。\n如果x是浮点，则转换将截断为零。\n如果参数超出整数范围，则函数返回一个long对象。\n如果x不是数字或者给定了base，那么x必须是一个字符串或Unicode对象，表示以radix为基数的整数文字。可选地，文字可以在前面加+或-（之间没有空格）并且用空格包围。base-n文字由数字0到n-1组成，a到z（或A到Z）的值为10到35。\n默认base为10。允许的值为0和2-36。 Base-2，-8和-16文字可以选择以0b/0B，0o/0O/0或0x/0X作为前缀，与代码中的整数文字一样。Base0表示将字符串完全解释为整数文字，因此实际基数为2，8，10或16。\n12345678int()                   # 0int(1.1)                # 1int('11111', base=2)    # 31int('11111', base=4)    # 341int('11111', base=8)    # 4681int('11111', base=16)   # 69905int('0xa', base=16)     # 10int('11111', base=0)    # 11111\n\nisinstance()isinstance(object, classinfo)如果object参数是classinfo参数的实例，或者是（直接，间接或虚拟）子类的实例，则返回true。\n","dateCreated":"2019-04-02T20:39:31+08:00","dateModified":"2019-07-11T14:31:36+08:00","datePublished":"2019-04-02T20:39:31+08:00","description":"Python 2.7的内置函数","headline":"Python内置函数","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/04/02/Python内置函数/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/04/02/Python内置函数/","keywords":"Python","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Python 2.7的内置函数">
 <meta name="keywords" content="Python">
 <meta property="og:type" content="blog">
@@ -26,7 +26,7 @@
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Python 2.7的内置函数">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-06-17T08:54:14.000Z">
+<meta property="og:updated_time" content="2019-07-11T06:31:36.546Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Python内置函数">
 <meta name="twitter:description" content="Python 2.7的内置函数">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/covers/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -244,19 +275,42 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>Python 2.7的内置函数<br><a id="more"></a></p>
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#abs"><span class="toc-text">abs()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#all"><span class="toc-text">all()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#any"><span class="toc-text">any()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#basestring"><span class="toc-text">basestring()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bin"><span class="toc-text">bin()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bool"><span class="toc-text">bool()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bytearray"><span class="toc-text">bytearray()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#callable"><span class="toc-text">callable()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#chr"><span class="toc-text">chr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#classmethod"><span class="toc-text">classmethod()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cmp"><span class="toc-text">cmp()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#compile"><span class="toc-text">compile()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#complex"><span class="toc-text">complex()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#delattr"><span class="toc-text">delattr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dict"><span class="toc-text">dict()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dir"><span class="toc-text">dir()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#divmod"><span class="toc-text">divmod()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#enumerate"><span class="toc-text">enumerate()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#eval"><span class="toc-text">eval()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#execfile"><span class="toc-text">execfile()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#file"><span class="toc-text">file()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#filter"><span class="toc-text">filter()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#float"><span class="toc-text">float()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#format"><span class="toc-text">format()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#frozenset"><span class="toc-text">frozenset()</span></a></li></ol>
-<h3 id="abs"><a href="#abs" class="headerlink" title="abs()"></a>abs()</h3><p>abs(x)<br>返回数字的绝对值。参数可以是普通或长整数或浮点数。如果参数是一个复数，则返回其大小（复数的模）。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">abs(<span class="number">-123</span>) <span class="comment"># 123</span></span><br><span class="line">abs(<span class="number">123</span>)  <span class="comment"># 123</span></span><br><span class="line">abs(complex(<span class="number">3</span>, <span class="number">4</span>)) <span class="comment"># 5.0</span></span><br></pre></td></tr></table></figure></p>
-<div class="alert info no-icon"><p><a href="#complex">complex()</a>返回值为复数，complex(3,4)的返回值是3+4j。3+4j的模就是5。</p>
+            <p>Python 2.7的内置函数</p>
+<a id="more"></a>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#A"><span class="toc-text">A</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#abs"><span class="toc-text">abs()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#all"><span class="toc-text">all()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#any"><span class="toc-text">any()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#B"><span class="toc-text">B</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#basestring"><span class="toc-text">basestring()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bin"><span class="toc-text">bin()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bool"><span class="toc-text">bool()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#bytearray"><span class="toc-text">bytearray()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#C"><span class="toc-text">C</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#callable"><span class="toc-text">callable()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#chr"><span class="toc-text">chr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#classmethod"><span class="toc-text">classmethod()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cmp"><span class="toc-text">cmp()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#compile"><span class="toc-text">compile()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#complex"><span class="toc-text">complex()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#D"><span class="toc-text">D</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#delattr"><span class="toc-text">delattr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dict"><span class="toc-text">dict()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dir"><span class="toc-text">dir()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#divmod"><span class="toc-text">divmod()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#E"><span class="toc-text">E</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#enumerate"><span class="toc-text">enumerate()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#eval"><span class="toc-text">eval()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#execfile"><span class="toc-text">execfile()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#F"><span class="toc-text">F</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#file"><span class="toc-text">file()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#filter"><span class="toc-text">filter()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#float"><span class="toc-text">float()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#format"><span class="toc-text">format()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#frozenset"><span class="toc-text">frozenset()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#G"><span class="toc-text">G</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#getattr"><span class="toc-text">getattr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#globals"><span class="toc-text">globals()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#H"><span class="toc-text">H</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#hasattr"><span class="toc-text">hasattr()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hash"><span class="toc-text">hash()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#help"><span class="toc-text">help()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hex"><span class="toc-text">hex()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#I"><span class="toc-text">I</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#id"><span class="toc-text">id()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#input"><span class="toc-text">input()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#int"><span class="toc-text">int()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isinstance"><span class="toc-text">isinstance()</span></a></li></ol></li></ol>
+
+<h2 id="A"><a href="#A" class="headerlink" title="A"></a>A</h2><h3 id="abs"><a href="#abs" class="headerlink" title="abs()"></a>abs()</h3><p>abs(x)<br>返回数字的绝对值。</p>
+<p>参数可以是普通或长整数或浮点数。如果参数是一个复数，则返回其大小（复数的模）。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">abs(<span class="number">-123</span>) <span class="comment"># 123</span></span><br><span class="line">abs(<span class="number">123</span>)  <span class="comment"># 123</span></span><br><span class="line">abs(complex(<span class="number">3</span>, <span class="number">4</span>)) <span class="comment"># 5.0</span></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p><a href="#complex">complex()</a>返回值为复数。</p>
+<p>complex(3,4)的返回值是3+4j。3+4j的模就是5。</p>
 </div>
-<h3 id="all"><a href="#all" class="headerlink" title="all()"></a>all()</h3><p>all(iterable)<br>如果iterable的所有元素为真（或迭代器为空），返回True，否则返回False。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">all([]) <span class="comment"># True</span></span><br><span class="line">all[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]) <span class="comment"># True</span></span><br><span class="line">all([<span class="number">1</span>, <span class="number">2</span>, <span class="keyword">None</span>]) <span class="comment"># False</span></span><br></pre></td></tr></table></figure></p>
-<p>等价于：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">all</span><span class="params">(iterable)</span>:</span></span><br><span class="line">    <span class="keyword">for</span> element <span class="keyword">in</span> iterable:</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> element:</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">False</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">True</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="any"><a href="#any" class="headerlink" title="any()"></a>any()</h3><p>any(iterable)<br>如果iterable的任一元素为真则返回True。如果迭代器为空，返回False。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">any([]) <span class="comment"># False</span></span><br><span class="line">any([<span class="keyword">None</span>]) <span class="comment"># False</span></span><br><span class="line">any([<span class="number">1</span>, <span class="number">2</span>, <span class="keyword">None</span>]) <span class="comment"># True</span></span><br><span class="line">any([<span class="number">1</span>, <span class="keyword">None</span>, <span class="keyword">None</span>]) <span class="comment"># True</span></span><br></pre></td></tr></table></figure></p>
-<p>等价于：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">any</span><span class="params">(iterable)</span>:</span></span><br><span class="line">    <span class="keyword">for</span> element <span class="keyword">in</span> iterable:</span><br><span class="line">        <span class="keyword">if</span> element:</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">True</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">False</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="basestring"><a href="#basestring" class="headerlink" title="basestring()"></a>basestring()</h3><p>这个抽象类型是str和unicode的超类。它不能被调用或实例化，但它可以用于测试对象是str还是unicode的实例。isinstance(obj,basestring)等同于isinstance(obj,(str,unicode))</p>
-<h3 id="bin"><a href="#bin" class="headerlink" title="bin()"></a>bin()</h3><p>bin(x)<br>将整数转换为二进制字符串。结果是一个有效的Python表达式。如果x不是Python int对象，则必须定义一个返回整数的__index__()方法。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">bin(<span class="number">10</span>) <span class="comment"># 0b1010</span></span><br><span class="line">bin(<span class="number">100</span>) <span class="comment"># 0b1100100</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="bool"><a href="#bool" class="headerlink" title="bool()"></a>bool()</h3><p>class bool([x])<br>返回一个布尔值，即True或False。x为True则返回值为True，x为False返回值为False。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">bool() <span class="comment"># False</span></span><br><span class="line">bool(<span class="number">0</span>) <span class="comment"># False</span></span><br><span class="line">bool(<span class="number">1</span>) <span class="comment"># True</span></span><br><span class="line">bool([]) <span class="comment"># False</span></span><br><span class="line">bool(&#123;&#125;) <span class="comment"># False</span></span><br><span class="line">bool(()) <span class="comment"># False</span></span><br><span class="line">bool(<span class="keyword">True</span>) <span class="comment"># True</span></span><br><span class="line">bool(<span class="keyword">False</span>) <span class="comment"># True</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="bytearray"><a href="#bytearray" class="headerlink" title="bytearray()"></a>bytearray()</h3><p>class bytearray([source[, encoding[, errors]]])<br>返回一个新的字节数组。bytearray类是 0 &lt;= x &lt;256 范围内的可变整数序列。<br>可选形参 source 可以用不同的方式来初始化数组：</p>
+
+<h3 id="all"><a href="#all" class="headerlink" title="all()"></a>all()</h3><p>all(iterable)<br>如果iterable的所有元素为真（或迭代器为空），返回True，否则返回False。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">all([]) <span class="comment"># True</span></span><br><span class="line">all[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]) <span class="comment"># True</span></span><br><span class="line">all([<span class="number">1</span>, <span class="number">2</span>, <span class="keyword">None</span>]) <span class="comment"># False</span></span><br></pre></td></tr></table></figure>
+
+<p>等价于：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">all</span><span class="params">(iterable)</span>:</span></span><br><span class="line">    <span class="keyword">for</span> element <span class="keyword">in</span> iterable:</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> element:</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">False</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">True</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="any"><a href="#any" class="headerlink" title="any()"></a>any()</h3><p>any(iterable)<br>如果iterable的任一元素为真则返回True。如果迭代器为空，返回False。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">any([]) <span class="comment"># False</span></span><br><span class="line">any([<span class="keyword">None</span>]) <span class="comment"># False</span></span><br><span class="line">any([<span class="number">1</span>, <span class="number">2</span>, <span class="keyword">None</span>]) <span class="comment"># True</span></span><br><span class="line">any([<span class="number">1</span>, <span class="keyword">None</span>, <span class="keyword">None</span>]) <span class="comment"># True</span></span><br></pre></td></tr></table></figure>
+
+<p>等价于：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">any</span><span class="params">(iterable)</span>:</span></span><br><span class="line">    <span class="keyword">for</span> element <span class="keyword">in</span> iterable:</span><br><span class="line">        <span class="keyword">if</span> element:</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">True</span></span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">False</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="B"><a href="#B" class="headerlink" title="B"></a>B</h2><h3 id="basestring"><a href="#basestring" class="headerlink" title="basestring()"></a>basestring()</h3><p>这个抽象类型是str和unicode的超类。它不能被调用或实例化，但它可以用于测试对象是str还是unicode的实例。isinstance(obj,basestring)等同于isinstance(obj,(str,unicode))</p>
+<h3 id="bin"><a href="#bin" class="headerlink" title="bin()"></a>bin()</h3><p>bin(x)<br>将整数转换为二进制字符串。</p>
+<p>结果是一个有效的Python表达式。如果x不是Python int对象，则必须定义一个返回整数的_<em>index_</em>()方法。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">bin(<span class="number">10</span>) <span class="comment"># 0b1010</span></span><br><span class="line">bin(<span class="number">100</span>) <span class="comment"># 0b1100100</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="bool"><a href="#bool" class="headerlink" title="bool()"></a>bool()</h3><p>class bool([x])<br>返回一个布尔值，即True或False。</p>
+<p>x为True则返回值为True，x为False返回值为False。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">bool() <span class="comment"># False</span></span><br><span class="line">bool(<span class="number">0</span>) <span class="comment"># False</span></span><br><span class="line">bool(<span class="number">1</span>) <span class="comment"># True</span></span><br><span class="line">bool([]) <span class="comment"># False</span></span><br><span class="line">bool(&#123;&#125;) <span class="comment"># False</span></span><br><span class="line">bool(()) <span class="comment"># False</span></span><br><span class="line">bool(<span class="keyword">True</span>) <span class="comment"># True</span></span><br><span class="line">bool(<span class="keyword">False</span>) <span class="comment"># True</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="bytearray"><a href="#bytearray" class="headerlink" title="bytearray()"></a>bytearray()</h3><p>class bytearray([source[, encoding[, errors]]])<br>返回一个新的字节数组。bytearray类是 0 &lt;= x &lt;256 范围内的可变整数序列。</p>
+<p>可选形参 source 可以用不同的方式来初始化数组：</p>
 <ul>
 <li>如果是unicode，则还必须提供编码（和可选的，错误）参数，bytearray()使用unicode.encode()将unicode转换为字节。</li>
 <li>如果是一个integer，会初始化大小为该数字的数组，并使用null字节填充。</li>
@@ -264,23 +318,48 @@
 <li>如果是一个iterable可迭代对象，它的元素的范围必须是 0 &lt;= x &lt;256 的整数，它会被用作数组的初始内容。</li>
 <li>如果没有实参，则创建大小为0的数组。</li>
 </ul>
-<h3 id="callable"><a href="#callable" class="headerlink" title="callable()"></a>callable()</h3><p>callable(object)<br>如果对象参数显示为可调用，则返回True，否则返回False。如果返回true，则调用仍然可能失败，但如果调用失败，则调用对象将永远不会成功。<br><div class="alert info no-icon"><p>类是可调用的（调用类会返回一个新实例）。<br>如果类实例具有__call__()方法，则它们是可调用的。</p>
-</div></p>
-<h3 id="chr"><a href="#chr" class="headerlink" title="chr()"></a>chr()</h3><p>chr(i)<br>返回一个字符串，其ASCII码为整数i。参数必须在[0..255]范围内。如果i超出该范围，则会引发ValueError。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">chr(<span class="number">97</span>) <span class="comment"># a</span></span><br><span class="line">chr(<span class="number">65</span>) <span class="comment"># A</span></span><br></pre></td></tr></table></figure></p>
+<h2 id="C"><a href="#C" class="headerlink" title="C"></a>C</h2><h3 id="callable"><a href="#callable" class="headerlink" title="callable()"></a>callable()</h3><p>callable(object)<br>如果对象参数显示为可调用，则返回True，否则返回False。</p>
+<p>如果返回true，则调用仍然可能失败，但如果调用失败，则调用对象将永远不会成功。</p>
+<div class="alert info no-icon"><p>类是可调用的（调用类会返回一个新实例）。<br>如果类实例具有_<em>call_</em>()方法，则它们是可调用的。</p>
+</div>
+
+<h3 id="chr"><a href="#chr" class="headerlink" title="chr()"></a>chr()</h3><p>chr(i)<br>返回一个字符串，其ASCII码为整数i。</p>
+<p>参数必须在[0..255]范围内。如果i超出该范围，则会引发ValueError。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">chr(<span class="number">97</span>) <span class="comment"># a</span></span><br><span class="line">chr(<span class="number">65</span>) <span class="comment"># A</span></span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"><p>相对的方法是ord()。</p>
 </div>
-<h3 id="classmethod"><a href="#classmethod" class="headerlink" title="classmethod()"></a>classmethod()</h3><p>classmethod(function)<br>返回一个函数的类方法。<br>一个类方法把类自己作为第一个实参，就像一个实例方法把实例自己作为第一个实参。请用以下习惯来声明类方法:<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">C</span><span class="params">(object)</span>:</span></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">(cls, arg1, arg2, ...)</span>:</span></span><br><span class="line">        ...</span><br></pre></td></tr></table></figure></p>
-<h3 id="cmp"><a href="#cmp" class="headerlink" title="cmp()"></a>cmp()</h3><p>cmp(x, y)<br>比较两个对象x和y并根据结果返回一个整数。如果x &lt; y则返回值为负，如果x == y则返回零，如果x &gt; y则返回为正<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cmp(<span class="number">1</span>, <span class="number">1</span>) <span class="comment"># 0</span></span><br><span class="line">cmp(<span class="number">1</span>, <span class="number">2</span>) <span class="comment"># -1</span></span><br><span class="line">cmp(<span class="number">2</span>, <span class="number">1</span>) <span class="comment"># 1</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="compile"><a href="#compile" class="headerlink" title="compile()"></a>compile()</h3><p>compile(source, filename, mode[, flags[, dont_inherit]])<br>将源代码编译为代码或AST对象。代码对象可以由exec语句执行，也可以通过调用eval()来评估。<br><div class="alert info no-icon"><p>source可以是Unicode字符串，Latin-1编码字符串或AST对象。<br>filename实参需要是代码读取的文件名；如果代码不需要从文件中读取，可以传入一些可辨识的值（经常会使用 ‘<string>‘）。<br>mode实参指定了编译代码必须用的模式。如果source是语句序列，可以是exec；如果是单一表达式，可以是eval；如果是单个交互式语句，可以是single。（在最后一种情况下，如果表达式执行结果不是None将会被打印出来。）</string></p>
-</div></p>
-<h3 id="complex"><a href="#complex" class="headerlink" title="complex()"></a>complex()</h3><p>class complex([real[, imag]])<br>将字符串或数字转换为复数，返回值为real + imag * j。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">complex(<span class="number">3</span>,<span class="number">4</span>) <span class="comment"># (3+4j)</span></span><br><span class="line">complex(<span class="string">'3+4j'</span>) <span class="comment"># (3+4j)</span></span><br></pre></td></tr></table></figure></p>
+
+<h3 id="classmethod"><a href="#classmethod" class="headerlink" title="classmethod()"></a>classmethod()</h3><p>classmethod(function)<br>返回一个函数的类方法。</p>
+<p>一个类方法把类自己作为第一个实参，就像一个实例方法把实例自己作为第一个实参。请用以下习惯来声明类方法:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">C</span><span class="params">(object)</span>:</span></span><br><span class="line"><span class="meta">    @classmethod</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">(cls, arg1, arg2, ...)</span>:</span></span><br><span class="line">        ...</span><br></pre></td></tr></table></figure>
+
+<h3 id="cmp"><a href="#cmp" class="headerlink" title="cmp()"></a>cmp()</h3><p>cmp(x, y)<br>比较两个对象x和y并根据结果返回一个整数。</p>
+<p>如果x &lt; y则返回值为负，如果x == y则返回零，如果x &gt; y则返回为正</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cmp(<span class="number">1</span>, <span class="number">1</span>) <span class="comment"># 0</span></span><br><span class="line">cmp(<span class="number">1</span>, <span class="number">2</span>) <span class="comment"># -1</span></span><br><span class="line">cmp(<span class="number">2</span>, <span class="number">1</span>) <span class="comment"># 1</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="compile"><a href="#compile" class="headerlink" title="compile()"></a>compile()</h3><p>compile(source, filename, mode[, flags[, dont_inherit]])<br>将源代码编译为代码或AST对象。代码对象可以由exec语句执行，也可以通过调用eval()来评估。</p>
+<div class="alert info no-icon"><p>source可以是Unicode字符串，Latin-1编码字符串或AST对象。</p>
+<p>filename实参需要是代码读取的文件名；如果代码不需要从文件中读取，可以传入一些可辨识的值（经常会使用 ‘<string>‘）。</string></p>
+<p>mode实参指定了编译代码必须用的模式。如果source是语句序列，可以是exec；如果是单一表达式，可以是eval；如果是单个交互式语句，可以是single。（在最后一种情况下，如果表达式执行结果不是None将会被打印出来。）</p>
+</div>
+
+<h3 id="complex"><a href="#complex" class="headerlink" title="complex()"></a>complex()</h3><p>class complex([real[, imag]])<br>将字符串或数字转换为复数，返回值为real + imag * j。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">complex(<span class="number">3</span>,<span class="number">4</span>) <span class="comment"># (3+4j)</span></span><br><span class="line">complex(<span class="string">'3+4j'</span>) <span class="comment"># (3+4j)</span></span><br></pre></td></tr></table></figure>
+
 <div class="alert danger no-icon"><p>当从字符串转换时，字符串在 + 或 - 的周围必须不能有空格。例如complex(‘1+2j’)是合法的，但complex(‘1 + 2j’)会触发ValueError异常。</p>
 </div>
-<h3 id="delattr"><a href="#delattr" class="headerlink" title="delattr()"></a>delattr()</h3><p>delattr(object, name)<br>setattr()相关的函数。实参是一个对象和一个字符串。该字符串必须是对象的某个属性。如果对象允许，该函数将删除指定的属性。例如delattr(student, ‘name’)等价于del student.name。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Student</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, name, age)</span>:</span></span><br><span class="line">        self.name = name</span><br><span class="line">        self.age = age</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">student = Student(name=<span class="string">'wkt'</span>, age=<span class="number">24</span>)</span><br><span class="line"><span class="keyword">print</span> getattr(student, <span class="string">'name'</span>) <span class="comment"># wkt</span></span><br><span class="line">delattr(student, <span class="string">'name'</span>)</span><br><span class="line"><span class="keyword">print</span> getattr(student, <span class="string">'name'</span>) <span class="comment"># AttributeError</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="dict"><a href="#dict" class="headerlink" title="dict()"></a>dict()</h3><p>class dict(<strong>kwarg)<br>class dict(mapping, </strong>kwarg)<br>class dict(iterable, **kwarg)<br>创建一个新的字典。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a = dict(one=<span class="number">1</span>, two=<span class="number">2</span>, three=<span class="number">3</span>)</span><br><span class="line">b = &#123;<span class="string">'one'</span>: <span class="number">1</span>, <span class="string">'two'</span>: <span class="number">2</span>, <span class="string">'three'</span>: <span class="number">3</span>&#125;</span><br><span class="line">c = dict(zip([<span class="string">'one'</span>, <span class="string">'two'</span>, <span class="string">'three'</span>], [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))</span><br><span class="line">d = dict([(<span class="string">'two'</span>, <span class="number">2</span>), (<span class="string">'one'</span>, <span class="number">1</span>), (<span class="string">'three'</span>, <span class="number">3</span>)])</span><br><span class="line">e = dict(&#123;<span class="string">'three'</span>: <span class="number">3</span>, <span class="string">'one'</span>: <span class="number">1</span>, <span class="string">'two'</span>: <span class="number">2</span>&#125;)</span><br><span class="line">a == b == c == d == e <span class="comment"># True</span></span><br></pre></td></tr></table></figure></p>
+
+
+<h2 id="D"><a href="#D" class="headerlink" title="D"></a>D</h2><h3 id="delattr"><a href="#delattr" class="headerlink" title="delattr()"></a>delattr()</h3><p>delattr(object, name)<br>setattr()相关的函数。实参是一个对象和一个字符串。该字符串必须是对象的某个属性。如果对象允许，该函数将删除指定的属性。例如delattr(student, ‘name’)等价于del student.name。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Student</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, name, age)</span>:</span></span><br><span class="line">        self.name = name</span><br><span class="line">        self.age = age</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">student = Student(name=<span class="string">'wkt'</span>, age=<span class="number">24</span>)</span><br><span class="line"><span class="keyword">print</span> getattr(student, <span class="string">'name'</span>) <span class="comment"># wkt</span></span><br><span class="line">delattr(student, <span class="string">'name'</span>)</span><br><span class="line"><span class="keyword">print</span> getattr(student, <span class="string">'name'</span>) <span class="comment"># AttributeError</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="dict"><a href="#dict" class="headerlink" title="dict()"></a>dict()</h3><p>class dict(*<em>kwarg)<br>class dict(mapping, *</em>kwarg)<br>class dict(iterable, **kwarg)<br>创建一个新的字典。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">a = dict(one=<span class="number">1</span>, two=<span class="number">2</span>, three=<span class="number">3</span>)</span><br><span class="line">b = &#123;<span class="string">'one'</span>: <span class="number">1</span>, <span class="string">'two'</span>: <span class="number">2</span>, <span class="string">'three'</span>: <span class="number">3</span>&#125;</span><br><span class="line">c = dict(zip([<span class="string">'one'</span>, <span class="string">'two'</span>, <span class="string">'three'</span>], [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))</span><br><span class="line">d = dict([(<span class="string">'two'</span>, <span class="number">2</span>), (<span class="string">'one'</span>, <span class="number">1</span>), (<span class="string">'three'</span>, <span class="number">3</span>)])</span><br><span class="line">e = dict(&#123;<span class="string">'three'</span>: <span class="number">3</span>, <span class="string">'one'</span>: <span class="number">1</span>, <span class="string">'two'</span>: <span class="number">2</span>&#125;)</span><br><span class="line">a == b == c == d == e <span class="comment"># True</span></span><br></pre></td></tr></table></figure>
+
 <h3 id="dir"><a href="#dir" class="headerlink" title="dir()"></a>dir()</h3><p>dir([object])<br>如果没有实参，则返回当前本地作用域中的名称列表。如果有实参，它会尝试返回该对象的有效属性列表。</p>
-<p>如果对象有一个名为__dir__()的方法，那么该方法将被调用，并且必须返回一个属性列表。这允许实现自定义__getattr__()或__getattribute__()函数的对象能够自定义dir()来报告它们的属性。</p>
-<p>如果对象不提供__dir__()，这个函数会尝试从对象已定义的__dict__属性和类型对象收集信息。结果列表并不总是完整的，如果对象有自定义_getattr__()，那结果可能不准确。</p>
+<p>如果对象有一个名为_<em>dir_</em>()的方法，那么该方法将被调用，并且必须返回一个属性列表。这允许实现自定义_<em>getattr_</em>()或_<em>getattribute_</em>()函数的对象能够自定义dir()来报告它们的属性。</p>
+<p>如果对象不提供_<em>dir_</em>()，这个函数会尝试从对象已定义的_<em>dict_<em>属性和类型对象收集信息。结果列表并不总是完整的，如果对象有自定义_getattr\</em></em>()，那结果可能不准确。</p>
 <p>默认的dir()机制对不同类型的对象行为不同，它会试图返回最相关而不是最全的信息：</p>
 <ul>
 <li>如果对象是模块对象，则列表包含模块的属性名称。</li>
@@ -289,30 +368,88 @@
 <li>返回的列表按字母表排序。</li>
 </ul>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> datetime</span><br><span class="line">dir() </span><br><span class="line"><span class="comment"># ['__builtins__', '__doc__', '__file__', '__name__', '__package__', 'datetime']</span></span><br><span class="line">dir(datetime) </span><br><span class="line"><span class="comment"># ['MAXYEAR', 'MINYEAR', '__doc__', '__file__', '__name__', '__package__', 'date', 'datetime', 'datetime_CAPI', 'time', 'timedelta', 'tzinfo']</span></span><br></pre></td></tr></table></figure>
+
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Person</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__dir__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> [<span class="string">'name'</span>, <span class="string">'sex'</span>, <span class="string">'age'</span>]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">p = Person()</span><br><span class="line">dir(p) <span class="comment"># ['age', 'name', 'sex']</span></span><br></pre></td></tr></table></figure>
-<h3 id="divmod"><a href="#divmod" class="headerlink" title="divmod()"></a>divmod()</h3><p>divmod(a, b)<br>取两个数（非复数）作为参数，返回由商和余数组成的一对数。对于普通类型和长整数，结果与(a // b，a ％ b)相同。对于浮点数，结果是(q, a ％ b)，其中q通常是math.floor(a / b)，但可能比该值小1。在任何情况下，q * b + a ％ b非常接近a，如果a％b非零，则其具有与b相同的符号，并且0 &lt;= abs(a ％ b) &lt; abs(b)。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">divmod(<span class="number">1</span>, <span class="number">3</span>)  <span class="comment"># (0, 1)</span></span><br><span class="line">divmod(<span class="number">10</span>, <span class="number">4</span>) <span class="comment"># (2, 2)</span></span><br></pre></td></tr></table></figure></p>
-<h3 id="enumerate"><a href="#enumerate" class="headerlink" title="enumerate()"></a>enumerate()</h3><p>enumerate(sequence, start=0)<br>返回一个枚举对象。 sequence必须是序列，迭代器或其他支持迭代的对象。<br>enumerate（）返回的迭代器的next（）方法返回一个包含计数的元组（从start开始，默认为0）和迭代序列获得的值。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">seasons = [<span class="string">'spring'</span>, <span class="string">'summer'</span>, <span class="string">'autumn'</span>, <span class="string">'winter'</span>]</span><br><span class="line">list(enumerate(seasons))            </span><br><span class="line"><span class="comment"># [(0, 'spring'), (1, 'summer'), (2, 'autumn'), (3, 'winter')]</span></span><br><span class="line"></span><br><span class="line">list(enumerate(seasons, start=<span class="number">1</span>))   </span><br><span class="line"><span class="comment"># [(1, 'spring'), (2, 'summer'), (3, 'autumn'), (4, 'winter')]</span></span><br></pre></td></tr></table></figure></p>
-<p>相当于。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">enumerate</span><span class="params">(sequence, start=<span class="number">0</span>)</span>:</span></span><br><span class="line">    n = start</span><br><span class="line">    <span class="keyword">for</span> elem <span class="keyword">in</span> sequence:</span><br><span class="line">        <span class="keyword">yield</span> n, elem</span><br><span class="line">        n += <span class="number">1</span></span><br></pre></td></tr></table></figure></p>
+
+<h3 id="divmod"><a href="#divmod" class="headerlink" title="divmod()"></a>divmod()</h3><p>divmod(a, b)<br>取两个数（非复数）作为参数，返回由商和余数组成的一对数。</p>
+<p>对于普通类型和长整数，结果与(a // b，a ％ b)相同。</p>
+<p>对于浮点数，结果是(q, a ％ b)，其中q通常是math.floor(a / b)，但可能比该值小1。在任何情况下，q * b + a ％ b非常接近a，如果a％b非零，则其具有与b相同的符号，并且0 &lt;= abs(a ％ b) &lt; abs(b)。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">divmod(<span class="number">1</span>, <span class="number">3</span>)  <span class="comment"># (0, 1)</span></span><br><span class="line">divmod(<span class="number">10</span>, <span class="number">4</span>) <span class="comment"># (2, 2)</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="E"><a href="#E" class="headerlink" title="E"></a>E</h2><h3 id="enumerate"><a href="#enumerate" class="headerlink" title="enumerate()"></a>enumerate()</h3><p>enumerate(sequence, start=0)<br>返回一个枚举对象。 </p>
+<p>sequence必须是序列，迭代器或其他支持迭代的对象。</p>
+<p>enumerate（）返回的迭代器的next（）方法返回一个包含计数的元组（从start开始，默认为0）和迭代序列获得的值。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">seasons = [<span class="string">'spring'</span>, <span class="string">'summer'</span>, <span class="string">'autumn'</span>, <span class="string">'winter'</span>]</span><br><span class="line">list(enumerate(seasons))            </span><br><span class="line"><span class="comment"># [(0, 'spring'), (1, 'summer'), (2, 'autumn'), (3, 'winter')]</span></span><br><span class="line"></span><br><span class="line">list(enumerate(seasons, start=<span class="number">1</span>))   </span><br><span class="line"><span class="comment"># [(1, 'spring'), (2, 'summer'), (3, 'autumn'), (4, 'winter')]</span></span><br></pre></td></tr></table></figure>
+
+<p>相当于。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">enumerate</span><span class="params">(sequence, start=<span class="number">0</span>)</span>:</span></span><br><span class="line">    n = start</span><br><span class="line">    <span class="keyword">for</span> elem <span class="keyword">in</span> sequence:</span><br><span class="line">        <span class="keyword">yield</span> n, elem</span><br><span class="line">        n += <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
 <h3 id="eval"><a href="#eval" class="headerlink" title="eval()"></a>eval()</h3><p>eval(expression[, globals[, locals]])<br>参数是Unicode或Latin-1编码的字符串以及可选的全局变量和局部变量。如果提供，globals必须是字典。如果提供，则locals可以是任何映射对象。</p>
-<p>表达式参数作为Python表达式（技术上讲，条件列表）被解析和评估，使用全局变量和本地字典作为全局和本地名称空间。如果全局字典存在且缺少’<strong>builtins</strong>‘，则在解析表达式之前将当前全局变量复制到全局变量中。这意味着表达式通常具有对标准<strong>builtin</strong>模块的完全访问权限，并且传播受限制的环境。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用eval()的环境中执行。返回值是计算表达式的结果。语法错误报告为异常。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">x = <span class="number">10</span></span><br><span class="line">eval(<span class="string">' x + 20 '</span>)  <span class="comment"># 30</span></span><br></pre></td></tr></table></figure></p>
+<p>表达式参数作为Python表达式（技术上讲，条件列表）被解析和评估，使用全局变量和本地字典作为全局和本地名称空间。如果全局字典存在且缺少‘__builtins__’，则在解析表达式之前将当前全局变量复制到全局变量中。这意味着表达式通常具有对标准__builtin__模块的完全访问权限，并且传播受限制的环境。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用eval()的环境中执行。返回值是计算表达式的结果。语法错误报告为异常。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">x = <span class="number">10</span></span><br><span class="line">eval(<span class="string">' x + 20 '</span>)  <span class="comment"># 30</span></span><br></pre></td></tr></table></figure>
+
 <p>此函数还可用于执行任意代码对象（例如由compile()创建的代码对象）。在这种情况下，传递代码对象而不是字符串。如果代码对象已使用’exec’作为mode参数进行编译，则eval()的返回值将为None。</p>
 <div class="alert info no-icon"><p>exec语句支持动态执行语句。<br>execfile()函数支持从文件执行语句。<br>globals()和locals()函数分别返回当前的全局和本地字典，这对于传递以供eval()或execfile()使用很有用。</p>
 </div>
+
 <h3 id="execfile"><a href="#execfile" class="headerlink" title="execfile()"></a>execfile()</h3><p>execfile(filename[, globals[, locals]])<br>此函数类似于exec语句，但解析文件而不是字符串。它与import语句的不同之处在于它不使用模块管理 - 它无条件地读取文件并且不创建新模块。</p>
 <p>参数是文件名和两个可选字典。使用全局和本地字典作为全局和本地命名空间，将文件解析并评估为一系列Python语句（类似于模块）。如果提供，则locals可以是任何映射对象。请记住，在模块级别，全局变量和本地变量是相同的字典。如果将两个单独的对象作为全局变量和局部变量传递，则代码将被执行，就像它嵌入在类定义中一样。如果省略locals字典，则默认为globals字典。如果省略两个字典，则表达式在调用execfile（）的环境中执行。返回值为None。</p>
 <div class="alert info no-icon"><p>默认的locals的行为与下面的函数locals()相同：不应尝试修改默认的locals字典。如果需要在函数execfile()返回后查看代码对locals的影响，则传递显式的locals字典。execfile()不能可靠地用于修改函数的本地。</p>
 </div>
-<h3 id="file"><a href="#file" class="headerlink" title="file()"></a>file()</h3><p>file(name[, mode[, buffering]])<br>文件类型的构造函数，在文件对象一节中进一步描述。构造函数的参数与下面描述的open()内置函数的参数相同。<br>打开文件时，最好使用open()而不是直接调用此构造函数。file更适合于类型测试（例如，写入isinstance(f，file)）。</p>
-<h3 id="filter"><a href="#filter" class="headerlink" title="filter()"></a>filter()</h3><p>filter(function, iterable)<br>从iterable的那些元素构造一个列表，该函数返回true。iterable可以是序列，支持迭代的容器，也可以是迭代器。</p>
+
+
+<h2 id="F"><a href="#F" class="headerlink" title="F"></a>F</h2><h3 id="file"><a href="#file" class="headerlink" title="file()"></a>file()</h3><p>file(name[, mode[, buffering]])<br>文件类型的构造函数，在文件对象一节中进一步描述。构造函数的参数与下面描述的open()内置函数的参数相同。<br>打开文件时，最好使用open()而不是直接调用此构造函数。file更适合于类型测试（例如，写入isinstance(f，file)）。</p>
+<h3 id="filter"><a href="#filter" class="headerlink" title="filter()"></a>filter()</h3><p>filter(function, iterable)<br>从iterable的那些元素构造一个列表，该函数返回true。</p>
+<p>iterable可以是序列，支持迭代的容器，也可以是迭代器。</p>
 <p>如果iterable是字符串或元组，则结果也具有该类型;否则它总是一个列表。如果function为None，即删除所有可迭代的false元素。</p>
-<p>请注意，如果函数不是None，则filter（function，iterable）等效于[item for item in iterable if function(item)]，如果函数为None，则[item for item in iterable if item]。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">x = range(<span class="number">1</span>, <span class="number">10</span>)</span><br><span class="line"><span class="comment"># [1, 2, 3, 4, 5, 6, 7, 8, 9]</span></span><br><span class="line"></span><br><span class="line">filter(<span class="keyword">lambda</span> item: item <span class="keyword">if</span> item % <span class="number">2</span> == <span class="number">0</span> <span class="keyword">else</span> <span class="keyword">None</span>, x)</span><br><span class="line"><span class="comment"># [2, 4, 6, 8]</span></span><br><span class="line"></span><br><span class="line">[item <span class="keyword">for</span> item <span class="keyword">in</span> x <span class="keyword">if</span> item % <span class="number">2</span> == <span class="number">0</span>]</span><br><span class="line"><span class="comment"># [2, 4, 6, 8]</span></span><br></pre></td></tr></table></figure></p>
+<p>请注意，如果函数不是None，则filter（function，iterable）等效于[item for item in iterable if function(item)]，如果函数为None，则[item for item in iterable if item]。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">x = range(<span class="number">1</span>, <span class="number">10</span>)</span><br><span class="line"><span class="comment"># [1, 2, 3, 4, 5, 6, 7, 8, 9]</span></span><br><span class="line"></span><br><span class="line">filter(<span class="keyword">lambda</span> item: item <span class="keyword">if</span> item % <span class="number">2</span> == <span class="number">0</span> <span class="keyword">else</span> <span class="keyword">None</span>, x)</span><br><span class="line"><span class="comment"># [2, 4, 6, 8]</span></span><br><span class="line"></span><br><span class="line">[item <span class="keyword">for</span> item <span class="keyword">in</span> x <span class="keyword">if</span> item % <span class="number">2</span> == <span class="number">0</span>]</span><br><span class="line"><span class="comment"># [2, 4, 6, 8]</span></span><br></pre></td></tr></table></figure>
+
 <h3 id="float"><a href="#float" class="headerlink" title="float()"></a>float()</h3><p>class float([x])<br>返回由数字或字符串x构造的浮点数。</p>
-<p>如果参数是字符串，则它必须包含可能已赋值的decimal或浮点数，可能嵌入在空格中。参数也可以是[+|-]nan或[+|-] inf。否则，参数可以是普通或长整数或浮点数，并返回具有相同值（在Python的浮点精度内）的浮点数。如果没有给出参数，则返回0.0。</p>
+<p>如果参数是字符串，则它必须包含可能已赋值的decimal或浮点数，可能嵌入在空格中。参数也可以是[+|-]nan或[+|-] inf。否则，参数可以是普通或长整数或浮点数，并返回具有相同值（在Python的浮点精度内）的浮点数。</p>
+<p>如果没有给出参数，则返回0.0。</p>
 <h3 id="format"><a href="#format" class="headerlink" title="format()"></a>format()</h3><p>format(value[, format_spec])<br>将值转换为“格式化”表示，由format_spec控制。format_spec的解释取决于value参数的类型，但是大多数内置类型都使用标准格式化语法：Format Specification Mini-Language。</p>
 <div class="alert info no-icon"><p>format(value, format_spec)只调用value.<strong>format</strong>(format_spec)。</p>
 </div>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">'hello &#123;0&#125;'</span>.format(<span class="string">'world'</span>) <span class="comment"># hello world</span></span><br></pre></td></tr></table></figure>
+
 <h3 id="frozenset"><a href="#frozenset" class="headerlink" title="frozenset()"></a>frozenset()</h3><p>class frozenset([iterable])<br>返回一个新的frozenset对象，可选地包含从iterable中获取的元素。<br>返回一个新的set或frozenset对象，其元素取自iterable。集合的元素必须是可以清除的。要表示集合集，内部集合必须是冻结集合对象。如果未指定iterable，则返回新的空集。</p>
+<h2 id="G"><a href="#G" class="headerlink" title="G"></a>G</h2><h3 id="getattr"><a href="#getattr" class="headerlink" title="getattr()"></a>getattr()</h3><p>getattr(object, name[, default])<br>返回对象命名属性的值。</p>
+<p>name必须是字符串。如果该字符串是对象的属性之一，则返回该属性的值。</p>
+<p>例如，getattr(x, ‘foobar’)等同于x.foobar。如果指定的属性不存在，且提供了default值，则返回它，否则触发AttributeError。</p>
+<h3 id="globals"><a href="#globals" class="headerlink" title="globals()"></a>globals()</h3><p>返回表示当前全局符号表的字典。这总是当前模块的字典（在函数或方法中，不是调用它的模块，而是定义它的模块）。</p>
+<h2 id="H"><a href="#H" class="headerlink" title="H"></a>H</h2><h3 id="hasattr"><a href="#hasattr" class="headerlink" title="hasattr()"></a>hasattr()</h3><p>hasattr(object, name)<br>参数是一个对象和一个字符串。如果字符串是对象属性之一的名称，则结果为True，否则为False。（这是通过调用getattr(object,name)并查看它是否引发异常来实现的。）</p>
+<h3 id="hash"><a href="#hash" class="headerlink" title="hash()"></a>hash()</h3><p>hash(object)<br>返回对象的哈希值（如果有的话）。哈希值是整数，它们用于在字典查找期间快速比较字典键。相等的数字值具有相同的哈希值（即使它们具有不同的类型，如1和1.0的情况）。</p>
+<h3 id="help"><a href="#help" class="headerlink" title="help()"></a>help()</h3><p>help([object])<br>启动内置的帮助系统（此函数主要在交互式中使用）。如果没有实参，解释器控制台里会启动交互式帮助系统。如果实参是一个字符串，则在模块、函数、类、方法、关键字或文档主题中搜索该字符串，并在控制台上打印帮助信息。如果实参是其他任意对象，则会生成该对象的帮助页。</p>
+<div class="alert info no-icon"><p>该函数通过 site 模块加入到内置命名空间。</p>
+</div>
+
+<h3 id="hex"><a href="#hex" class="headerlink" title="hex()"></a>hex()</h3><p>hex(x)<br>将整数（任意大小）转换为前缀为“0x”的小写十六进制字符串。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hex(<span class="number">255</span>)    <span class="comment"># 0xff</span></span><br><span class="line">hex(<span class="number">-220</span>)   <span class="comment"># -0xdc</span></span><br><span class="line">hex(<span class="number">1L</span>)     <span class="comment"># 0x1L</span></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>如果x不是int或long对象，则必须定义一个返回字符串的<strong>hex</strong>()方法。</p>
+</div>
+
+<div class="alert info no-icon"><p>如果要获取浮点数的十六进制字符串形式，请使用float.hex()方法。</p>
+</div>
+
+<h2 id="I"><a href="#I" class="headerlink" title="I"></a>I</h2><h3 id="id"><a href="#id" class="headerlink" title="id()"></a>id()</h3><p>id(object)<br>返回对象的“标识”。这是一个整数（或长整数），保证在该生命周期内该对象是唯一且恒定的。</p>
+<p>具有非重叠生存期的两个对象可以具有相同的id()值。</p>
+<div class="alert info no-icon"><p>id()返回的值是内存中对象的地址。</p>
+</div>
+
+<h3 id="input"><a href="#input" class="headerlink" title="input()"></a>input()</h3><p>input([prompt])<br>相当于eval(raw_input(prompt))。</p>
+<p>此功能不会捕获用户错误。如果输入语法无效，则会引发SyntaxError。如果评估期间出现错误，可能会引发其他异常。所以应该使用raw_input()函数来获取用户的常规输入。</p>
+<p>如果加载了readline模块，input()将使用它来提供复杂的行编辑和历史记录功能。</p>
+<h3 id="int"><a href="#int" class="headerlink" title="int()"></a>int()</h3><p>class int(x=0)<br>class int(x, base=10)<br>返回由数字或字符串x构造的整数对象，如果没有给出参数，则返回0。</p>
+<p>如果x是数字，则它可以是普通整数，长整数或浮点数。</p>
+<p>如果x是浮点，则转换将截断为零。</p>
+<p>如果参数超出整数范围，则函数返回一个long对象。</p>
+<p>如果x不是数字或者给定了base，那么x必须是一个字符串或Unicode对象，表示以radix为基数的整数文字。可选地，文字可以在前面加+或-（之间没有空格）并且用空格包围。base-n文字由数字0到n-1组成，a到z（或A到Z）的值为10到35。</p>
+<p>默认base为10。允许的值为0和2-36。 Base-2，-8和-16文字可以选择以0b/0B，0o/0O/0或0x/0X作为前缀，与代码中的整数文字一样。Base0表示将字符串完全解释为整数文字，因此实际基数为2，8，10或16。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">int()                   <span class="comment"># 0</span></span><br><span class="line">int(<span class="number">1.1</span>)                <span class="comment"># 1</span></span><br><span class="line">int(<span class="string">'11111'</span>, base=<span class="number">2</span>)    <span class="comment"># 31</span></span><br><span class="line">int(<span class="string">'11111'</span>, base=<span class="number">4</span>)    <span class="comment"># 341</span></span><br><span class="line">int(<span class="string">'11111'</span>, base=<span class="number">8</span>)    <span class="comment"># 4681</span></span><br><span class="line">int(<span class="string">'11111'</span>, base=<span class="number">16</span>)   <span class="comment"># 69905</span></span><br><span class="line">int(<span class="string">'0xa'</span>, base=<span class="number">16</span>)     <span class="comment"># 10</span></span><br><span class="line">int(<span class="string">'11111'</span>, base=<span class="number">0</span>)    <span class="comment"># 11111</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="isinstance"><a href="#isinstance" class="headerlink" title="isinstance()"></a>isinstance()</h3><p>isinstance(object, classinfo)<br>如果object参数是classinfo参数的实例，或者是（直接，间接或虚拟）子类的实例，则返回true。</p>
 
             
 
@@ -321,7 +458,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Python/">Python</a>
 
@@ -407,7 +544,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -560,7 +697,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -570,7 +707,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -578,7 +715,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -596,5 +733,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

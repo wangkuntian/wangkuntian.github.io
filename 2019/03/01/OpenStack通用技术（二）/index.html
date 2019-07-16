@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用技术（二） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"SQLAlchemy和数据库\n架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n例子users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n\n1\n1\nwang@qq.com\n\n\n2\n2\nkun@qq.com\n\n\n3\n3\ntian@qq.com\n\n\n\nSQL语句。123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = 'users'    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = 'addresses'    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey('users.id'))    user = relationship('User', backref=backref('addresses', order_by=id))engine = create_engine('mysql+mysqlconnector://root:19941221@localhost:3306/test')Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a","dateCreated":"2019-03-01T18:07:57+08:00","dateModified":"2019-03-05T15:49:55+08:00","datePublished":"2019-03-01T18:07:57+08:00","description":"SQLAlchemy和数据库","headline":"OpenStack通用技术（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/","keywords":"OpenStack, Oslo, SQLAlchemy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"SQLAlchemy和数据库\n\n\n架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n例子users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n1\n1\nwang@qq.com\n\n\n2\n2\nkun@qq.com\n\n\n3\n3\ntian@qq.com\n\n\nSQL语句。\n123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = 'users'    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = 'addresses'    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey('users.id'))    user = relationship('User', backref=backref('addresses', order_by=id))engine = create_engine('mysql+mysqlconnector://root:19941221@localhost:3306/test')Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a","dateCreated":"2019-03-01T18:07:57+08:00","dateModified":"2019-03-05T15:49:55+08:00","datePublished":"2019-03-01T18:07:57+08:00","description":"SQLAlchemy和数据库","headline":"OpenStack通用技术（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/","keywords":"OpenStack, Oslo, SQLAlchemy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="SQLAlchemy和数据库">
 <meta name="keywords" content="OpenStack,Oslo,SQLAlchemy">
 <meta property="og:type" content="blog">
@@ -56,14 +56,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -80,10 +80,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -101,7 +102,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -115,7 +116,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -124,7 +129,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -133,7 +142,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -142,7 +155,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -151,7 +168,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -160,7 +181,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -173,7 +198,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -182,7 +207,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -195,7 +220,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -210,7 +239,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -244,71 +275,71 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>SQLAlchemy和数据库<br><a id="more"></a></p>
+            <p>SQLAlchemy和数据库</p>
+<a id="more"></a>
+
 <h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p>SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。</p>
 <p>SQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。</p>
 <p>SQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。</p>
 <p>SQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。</p>
-<p>SQLAlchemy架构。<br><img src="/2019/03/01/OpenStack通用技术（二）/images/sqlalchemy.png" alt="sqlalchemy"></p>
+<p>SQLAlchemy架构。<br><img src="images/sqlalchemy.png" alt="sqlalchemy"></p>
 <h3 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h3><p>users表。</p>
 <table>
 <thead>
 <tr>
-<th style="text-align:center">id</th>
-<th style="text-align:center">name</th>
-<th style="text-align:center">fullname</th>
-<th style="text-align:center">password</th>
+<th align="center">id</th>
+<th align="center">name</th>
+<th align="center">fullname</th>
+<th align="center">password</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">1</td>
-<td style="text-align:center">w</td>
-<td style="text-align:center">wang</td>
-<td style="text-align:center">123</td>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">w</td>
+<td align="center">wang</td>
+<td align="center">123</td>
 </tr>
 <tr>
-<td style="text-align:center">2</td>
-<td style="text-align:center">k</td>
-<td style="text-align:center">kun</td>
-<td style="text-align:center">abc</td>
+<td align="center">2</td>
+<td align="center">k</td>
+<td align="center">kun</td>
+<td align="center">abc</td>
 </tr>
 <tr>
-<td style="text-align:center">3</td>
-<td style="text-align:center">t</td>
-<td style="text-align:center">tian</td>
-<td style="text-align:center">xyz</td>
+<td align="center">3</td>
+<td align="center">t</td>
+<td align="center">tian</td>
+<td align="center">xyz</td>
 </tr>
-</tbody>
-</table>
+</tbody></table>
 <p>addresses表。</p>
 <table>
 <thead>
 <tr>
-<th style="text-align:center">id</th>
-<th style="text-align:center">user_id</th>
-<th style="text-align:center">email_address</th>
+<th align="center">id</th>
+<th align="center">user_id</th>
+<th align="center">email_address</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">1</td>
-<td style="text-align:center">1</td>
-<td style="text-align:center"><a href="mailto:wang@qq.com" target="_blank" rel="noopener">wang@qq.com</a></td>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center"><a href="mailto:wang@qq.com" target="_blank" rel="noopener">wang@qq.com</a></td>
 </tr>
 <tr>
-<td style="text-align:center">2</td>
-<td style="text-align:center">2</td>
-<td style="text-align:center"><a href="mailto:kun@qq.com" target="_blank" rel="noopener">kun@qq.com</a></td>
+<td align="center">2</td>
+<td align="center">2</td>
+<td align="center"><a href="mailto:kun@qq.com" target="_blank" rel="noopener">kun@qq.com</a></td>
 </tr>
 <tr>
-<td style="text-align:center">3</td>
-<td style="text-align:center">3</td>
-<td style="text-align:center"><a href="mailto:tian@qq.com" target="_blank" rel="noopener">tian@qq.com</a></td>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center"><a href="mailto:tian@qq.com" target="_blank" rel="noopener">tian@qq.com</a></td>
 </tr>
-</tbody>
-</table>
-<p>SQL语句。<br><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="keyword">users</span> (</span><br><span class="line">    <span class="keyword">id</span> <span class="built_in">INTEGER</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    <span class="keyword">name</span> <span class="built_in">VARCHAR</span>,</span><br><span class="line">    fullname <span class="built_in">VARCHAR</span>,</span><br><span class="line">    <span class="keyword">password</span> <span class="built_in">VARCHAR</span>,</span><br><span class="line">    PRIMARY <span class="keyword">KEY</span> (<span class="keyword">id</span>)</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> addresses (</span><br><span class="line">    <span class="keyword">id</span> <span class="built_in">INTEGER</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    email_address <span class="built_in">VARCHAR</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    user_id <span class="built_in">INTEGER</span>,</span><br><span class="line">    PRIMARY <span class="keyword">KEY</span> (<span class="keyword">id</span>),</span><br><span class="line">    FOREIGN <span class="keyword">KEY</span> (user_id) <span class="keyword">REFERENCES</span> <span class="keyword">users</span>(<span class="keyword">id</span>)</span><br><span class="line">);</span><br></pre></td></tr></table></figure></p>
+</tbody></table>
+<p>SQL语句。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> <span class="keyword">users</span> (</span><br><span class="line">    <span class="keyword">id</span> <span class="built_in">INTEGER</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    <span class="keyword">name</span> <span class="built_in">VARCHAR</span>,</span><br><span class="line">    fullname <span class="built_in">VARCHAR</span>,</span><br><span class="line">    <span class="keyword">password</span> <span class="built_in">VARCHAR</span>,</span><br><span class="line">    PRIMARY <span class="keyword">KEY</span> (<span class="keyword">id</span>)</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> addresses (</span><br><span class="line">    <span class="keyword">id</span> <span class="built_in">INTEGER</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    email_address <span class="built_in">VARCHAR</span> <span class="keyword">NOT</span> <span class="literal">NULL</span>,</span><br><span class="line">    user_id <span class="built_in">INTEGER</span>,</span><br><span class="line">    PRIMARY <span class="keyword">KEY</span> (<span class="keyword">id</span>),</span><br><span class="line">    FOREIGN <span class="keyword">KEY</span> (user_id) <span class="keyword">REFERENCES</span> <span class="keyword">users</span>(<span class="keyword">id</span>)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> sqlalchemy.ext.declarative <span class="keyword">import</span> declarative_base</span><br><span class="line"><span class="keyword">from</span> sqlalchemy <span class="keyword">import</span> Column, Integer, String, ForeignKey, create_engine</span><br><span class="line"><span class="keyword">from</span> sqlalchemy.orm <span class="keyword">import</span> relationship, backref, sessionmaker</span><br><span class="line"></span><br><span class="line">Base = declarative_base()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">User</span><span class="params">(Base)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">    __tablename__ = <span class="string">'users'</span></span><br><span class="line">    id = Column(Integer, primary_key=<span class="keyword">True</span>)</span><br><span class="line">    name = Column(String)</span><br><span class="line">    fullname = Column(String)</span><br><span class="line">    password = Column(String)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Address</span><span class="params">(Base)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self)</span>:</span></span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">    __tablename__ = <span class="string">'addresses'</span></span><br><span class="line">    id = Column(Integer, primary_key=<span class="keyword">True</span>)</span><br><span class="line">    user_id = Column(Integer, ForeignKey(<span class="string">'users.id'</span>))</span><br><span class="line">    user = relationship(<span class="string">'User'</span>, backref=backref(<span class="string">'addresses'</span>, order_by=id))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">engine = create_engine(<span class="string">'mysql+mysqlconnector://root:19941221@localhost:3306/test'</span>)</span><br><span class="line">Session = sessionmaker(bind=engine)</span><br><span class="line"></span><br><span class="line">session = Session()</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> u, a <span class="keyword">in</span> session.query(User, Address).filter(User.id == <span class="number">1</span>).filter(User.id == Address.user_id).all():</span><br><span class="line">    <span class="keyword">print</span> u, a</span><br></pre></td></tr></table></figure>
             
 
@@ -317,7 +348,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/SQLAlchemy/">SQLAlchemy</a>
 
@@ -403,7 +434,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -556,7 +587,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -566,7 +597,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -574,7 +605,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -592,5 +623,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

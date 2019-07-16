@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Docker入门（二） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2019-02-14T16:02:50+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。\n根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2019-02-14T16:02:50+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Docker的核心概念和安装">
 <meta name="keywords" content="Docker">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,13 +273,18 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
+            <!-- excerpt -->
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#核心概念"><span class="toc-text">核心概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Docker镜像"><span class="toc-text">Docker镜像</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Docker容器"><span class="toc-text">Docker容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Docker仓库"><span class="toc-text">Docker仓库</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#安装Docker"><span class="toc-text">安装Docker</span></a></li></ol></li></ol>
+
 <h3 id="核心概念"><a href="#核心概念" class="headerlink" title="核心概念"></a>核心概念</h3><h4 id="Docker镜像"><a href="#Docker镜像" class="headerlink" title="Docker镜像"></a>Docker镜像</h4><p>Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。<br>镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。</p>
 <h4 id="Docker容器"><a href="#Docker容器" class="headerlink" title="Docker容器"></a>Docker容器</h4><p>Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。<br>容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。<br>镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。</p>
-<h4 id="Docker仓库"><a href="#Docker仓库" class="headerlink" title="Docker仓库"></a>Docker仓库</h4><p>Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。<br>Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。<br><div class="alert info no-icon"><p>根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。</p>
-</div><br><div class="alert info no-icon"><p>用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。</p>
-</div><br>当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。</p>
+<h4 id="Docker仓库"><a href="#Docker仓库" class="headerlink" title="Docker仓库"></a>Docker仓库</h4><p>Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。<br>Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。</p>
+<div class="alert info no-icon"><p>根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。</p>
+</div>
+<div class="alert info no-icon"><p>用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。</p>
+</div>
+<p>当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。</p>
 <h4 id="安装Docker"><a href="#安装Docker" class="headerlink" title="安装Docker"></a>安装Docker</h4><p><a href="http://www.runoob.com/docker/ubuntu-docker-install.html" target="_blank" rel="noopener">安装教程</a> </p>
             
 
@@ -257,7 +293,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a>
 
@@ -343,7 +379,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -496,7 +532,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -506,7 +542,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -514,7 +550,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -532,5 +568,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>这，就是Ceilometer！ - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n架构Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。\n\nCeilometer提供两种核心服务。\n\npolling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。\nnotification agent（通知），监听消息队列上的通知，并将它们转换为Events（事件）、Samples（样本），并应用管道（pipeline）操作。\n\nCeilometer可以发送标准化的数据给各种目标。Gnocchi，捕获时间序列的测量数据，以优化存储和查询，取代现存的计量数据库。Aodh，一种警报服务，可以在用户定义的规则被破坏是发送警报。Panko，事件存储项目，捕获面向文档的数据，如日志和系统时间操作。\n\n数据\n\n\n功能名称\n功能描述\n提供功能Ceilometer模块\n\n\n\n\nCollect\nMeters数据收集\nceilometer-agent-compute  ceilometer-agent-central ceilometer-agent-notification ceilometer-collector\n\n\nTransform\nMeters数据转换\n\n\n\nPulish\nMeters数据发布\n\n\n\nStore\nMeters数据存储\n\n\n\nRead\nMeters数据访问\nceilometer-api\n\n\nAlarm\n告警\nceilometer-alarm-notifier  ceilometer-alarm-evaluator\n\n\n\n数据收集Ceilometer有两种方法来收集数据。\n\nPolling agent轮询某些API或其他工具以定期收集信息。\nceilometer-agent-compute，运行在每个compute节点上，以轮询的方式收集虚拟机的CPU内存IO等信息。\nceilometer-agent-central，运行在controller节点上，通过各个组件的API收集监控数据。\n\n\nNotification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。\n\n\npulish方式定义在/etc/ceilometer/pipline.yml中。\n\n\n数据处理Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。","dateCreated":"2019-01-21T14:41:17+08:00","dateModified":"2019-02-15T17:04:14+08:00","datePublished":"2019-01-21T14:41:17+08:00","description":"Ceilometer","headline":"这，就是Ceilometer！","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/21/这，就是Ceilometer！/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/21/这，就是Ceilometer！/","keywords":"Ceilometer","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n架构Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。\n\nCeilometer提供两种核心服务。\n\npolling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。\nnotification agent（通知），监听消息队列上的通知，并将它们转换为Events（事件）、Samples（样本），并应用管道（pipeline）操作。\n\nCeilometer可以发送标准化的数据给各种目标。Gnocchi，捕获时间序列的测量数据，以优化存储和查询，取代现存的计量数据库。Aodh，一种警报服务，可以在用户定义的规则被破坏是发送警报。Panko，事件存储项目，捕获面向文档的数据，如日志和系统时间操作。\n\n\n数据\n\n\n功能名称\n功能描述\n提供功能Ceilometer模块\n\n\n\nCollect\nMeters数据收集\nceilometer-agent-compute  ceilometer-agent-central ceilometer-agent-notification ceilometer-collector\n\n\nTransform\nMeters数据转换\n\n\n\nPulish\nMeters数据发布\n\n\n\nStore\nMeters数据存储\n\n\n\nRead\nMeters数据访问\nceilometer-api\n\n\nAlarm\n告警\nceilometer-alarm-notifier  ceilometer-alarm-evaluator\n\n\n数据收集Ceilometer有两种方法来收集数据。\n\nPolling agent轮询某些API或其他工具以定期收集信息。\nceilometer-agent-compute，运行在每个compute节点上，以轮询的方式收集虚拟机的CPU内存IO等信息。\nceilometer-agent-central，运行在controller节点上，通过各个组件的API收集监控数据。\n\n\nNotification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。\n\n\npulish方式定义在/etc/ceilometer/pipline.yml中。\n\n\n\n数据处理Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。","dateCreated":"2019-01-21T14:41:17+08:00","dateModified":"2019-02-15T17:04:14+08:00","datePublished":"2019-01-21T14:41:17+08:00","description":"Ceilometer","headline":"这，就是Ceilometer！","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/21/这，就是Ceilometer！/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/21/这，就是Ceilometer！/","keywords":"Ceilometer","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ceilometer">
 <meta name="keywords" content="Ceilometer">
 <meta property="og:type" content="blog">
@@ -58,14 +58,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,10 +82,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -103,7 +104,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -117,7 +118,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -126,7 +131,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -135,7 +144,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -144,7 +157,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -153,7 +170,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -162,7 +183,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -175,7 +200,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -184,7 +209,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -197,7 +222,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -212,7 +241,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/covers/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -248,10 +279,12 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
+            <!-- excerpt -->
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#架构"><span class="toc-text">架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#数据"><span class="toc-text">数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#数据收集"><span class="toc-text">数据收集</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据处理"><span class="toc-text">数据处理</span></a></li></ol></li></ol>
+
 <h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p>Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。</p>
-<p><img src="/2019/01/21/这，就是Ceilometer！/images/architecture.png" alt="architecture"></p>
+<p><img src="images/architecture.png" alt="architecture"></p>
 <p>Ceilometer提供两种核心服务。</p>
 <ol>
 <li>polling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。</li>
@@ -259,47 +292,46 @@
 </ol>
 <div class="alert no-icon info"><p>Ceilometer可以发送标准化的数据给各种目标。<br>Gnocchi，捕获时间序列的测量数据，以优化存储和查询，取代现存的计量数据库。<br>Aodh，一种警报服务，可以在用户定义的规则被破坏是发送警报。<br>Panko，事件存储项目，捕获面向文档的数据，如日志和系统时间操作。</p>
 </div>
+
 <h3 id="数据"><a href="#数据" class="headerlink" title="数据"></a>数据</h3><table>
 <thead>
 <tr>
-<th style="text-align:center">功能名称</th>
-<th style="text-align:center">功能描述</th>
-<th style="text-align:left">提供功能Ceilometer模块</th>
+<th align="center">功能名称</th>
+<th align="center">功能描述</th>
+<th align="left">提供功能Ceilometer模块</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">Collect</td>
-<td style="text-align:center">Meters数据收集</td>
-<td style="text-align:left">ceilometer-agent-compute <br> ceilometer-agent-central<br> ceilometer-agent-notification <br>ceilometer-collector</td>
+<tbody><tr>
+<td align="center">Collect</td>
+<td align="center">Meters数据收集</td>
+<td align="left">ceilometer-agent-compute <br> ceilometer-agent-central<br> ceilometer-agent-notification <br>ceilometer-collector</td>
 </tr>
 <tr>
-<td style="text-align:center">Transform</td>
-<td style="text-align:center">Meters数据转换</td>
-<td style="text-align:left"></td>
+<td align="center">Transform</td>
+<td align="center">Meters数据转换</td>
+<td align="left"></td>
 </tr>
 <tr>
-<td style="text-align:center">Pulish</td>
-<td style="text-align:center">Meters数据发布</td>
-<td style="text-align:left"></td>
+<td align="center">Pulish</td>
+<td align="center">Meters数据发布</td>
+<td align="left"></td>
 </tr>
 <tr>
-<td style="text-align:center">Store</td>
-<td style="text-align:center">Meters数据存储</td>
-<td style="text-align:left"></td>
+<td align="center">Store</td>
+<td align="center">Meters数据存储</td>
+<td align="left"></td>
 </tr>
 <tr>
-<td style="text-align:center">Read</td>
-<td style="text-align:center">Meters数据访问</td>
-<td style="text-align:left">ceilometer-api</td>
+<td align="center">Read</td>
+<td align="center">Meters数据访问</td>
+<td align="left">ceilometer-api</td>
 </tr>
 <tr>
-<td style="text-align:center">Alarm</td>
-<td style="text-align:center">告警</td>
-<td style="text-align:left">ceilometer-alarm-notifier <br> ceilometer-alarm-evaluator</td>
+<td align="center">Alarm</td>
+<td align="center">告警</td>
+<td align="left">ceilometer-alarm-notifier <br> ceilometer-alarm-evaluator</td>
 </tr>
-</tbody>
-</table>
+</tbody></table>
 <h4 id="数据收集"><a href="#数据收集" class="headerlink" title="数据收集"></a>数据收集</h4><p>Ceilometer有两种方法来收集数据。</p>
 <ol>
 <li>Polling agent轮询某些API或其他工具以定期收集信息。<ul>
@@ -309,10 +341,11 @@
 </li>
 <li>Notification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。</li>
 </ol>
-<p><img src="/2019/01/21/这，就是Ceilometer！/images/ceilometer-collector.png" alt="ceilometer-collector"></p>
+<p><img src="images/ceilometer-collector.png" alt="ceilometer-collector"></p>
 <div class="alert danger no-icon"><p>pulish方式定义在/etc/ceilometer/pipline.yml中。</p>
 </div>
-<p><img src="/2019/01/21/这，就是Ceilometer！/images/gather-data.png" alt="gather-data"></p>
+
+<p><img src="images/gather-data.png" alt="gather-data"></p>
 <h4 id="数据处理"><a href="#数据处理" class="headerlink" title="数据处理"></a>数据处理</h4><p>Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。</p>
             
 
@@ -321,7 +354,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Ceilometer/">Ceilometer</a>
 
@@ -407,7 +440,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -560,7 +593,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -570,7 +603,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -578,7 +611,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -596,5 +629,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

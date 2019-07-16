@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（三） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。1iptables --line -vnL INPUT\n\n删除第3条规则。1iptables -D INPUT 3\n\n-D，表示删除指定链中的某条规则。\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n删除指定表中的所有规则。1iptables -t [表名] -F\n修改规则\n修改规则中的动作从DROP改为REJECT。1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。1iptables -t filter -P INPUT DROP\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="规则管理">
 <meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
@@ -68,14 +68,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -92,10 +92,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -113,7 +114,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -127,7 +128,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -136,7 +141,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -145,7 +154,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -154,7 +167,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -163,7 +180,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -172,7 +193,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -185,7 +210,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -194,7 +219,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -207,7 +232,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -222,7 +251,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -256,45 +287,72 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#增加规则"><span class="toc-text">增加规则</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#插入规则"><span class="toc-text">插入规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#追加规则"><span class="toc-text">追加规则</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除规则"><span class="toc-text">删除规则</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#根据规则的编号删除规则"><span class="toc-text">根据规则的编号删除规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#根据具体匹配条件与动作删除规则"><span class="toc-text">根据具体匹配条件与动作删除规则</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#修改规则"><span class="toc-text">修改规则</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#指定默认策略"><span class="toc-text">指定默认策略</span></a></li></ol></li></ol><li class="toc-item toc-level-3"><a class="toc-link" href="#保存规则"><span class="toc-text">保存规则</span></a></li>
+            <!-- excerpt -->
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#增加规则"><span class="toc-text">增加规则</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#插入规则"><span class="toc-text">插入规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#追加规则"><span class="toc-text">追加规则</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除规则"><span class="toc-text">删除规则</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#根据规则的编号删除规则"><span class="toc-text">根据规则的编号删除规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#根据具体匹配条件与动作删除规则"><span class="toc-text">根据具体匹配条件与动作删除规则</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#修改规则"><span class="toc-text">修改规则</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#指定默认策略"><span class="toc-text">指定默认策略</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#保存规则"><span class="toc-text">保存规则</span></a></li></ol>
+
 <h3 id="增加规则"><a href="#增加规则" class="headerlink" title="增加规则"></a>增加规则</h3><p>主机A的IP地址为：10.211.55.11<br>主机B的IP地址为：10.211.55.2</p>
-<h4 id="插入规则"><a href="#插入规则" class="headerlink" title="插入规则"></a>插入规则</h4><p>给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-1.png" alt="iptables"></p>
+<h4 id="插入规则"><a href="#插入规则" class="headerlink" title="插入规则"></a>插入规则</h4><p>给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-1.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）</p>
 </div>
-<p>ping测试，没有通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-1.png" alt="ping"></p>
-<h4 id="追加规则"><a href="#追加规则" class="headerlink" title="追加规则"></a>追加规则</h4><p>给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-2.png" alt="iptables"></p>
+
+<p>ping测试，没有通过，规则起作用。<br><img src="images/ping-1.png" alt="ping"></p>
+<h4 id="追加规则"><a href="#追加规则" class="headerlink" title="追加规则"></a>追加规则</h4><p>给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-2.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-A，表示追加到哪条链。（最后一个）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）</p>
 </div>
-<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-2.png" alt="ping"></p>
-<p>给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-3.png" alt="iptables"></p>
-<p>ping测试，通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-3.png" alt="ping"></p>
+
+<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="images/ping-2.png" alt="ping"></p>
+<p>给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-3.png" alt="iptables"></p>
+<p>ping测试，通过，规则起作用。<br><img src="images/ping-3.png" alt="ping"></p>
 <div class="alert info no-icon"><p>规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。</p>
 </div>
-<h3 id="删除规则"><a href="#删除规则" class="headerlink" title="删除规则"></a>删除规则</h3><h4 id="根据规则的编号删除规则"><a href="#根据规则的编号删除规则" class="headerlink" title="根据规则的编号删除规则"></a>根据规则的编号删除规则</h4><p>查看filter表中INPUT链中的规则。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables --line -vnL INPUT</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-4.png" alt="iptables"></p>
-<p>删除第3条规则。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT 3</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-5.png" alt="iptables"></p>
+
+<h3 id="删除规则"><a href="#删除规则" class="headerlink" title="删除规则"></a>删除规则</h3><h4 id="根据规则的编号删除规则"><a href="#根据规则的编号删除规则" class="headerlink" title="根据规则的编号删除规则"></a>根据规则的编号删除规则</h4><p>查看filter表中INPUT链中的规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables --line -vnL INPUT</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-4.png" alt="iptables"></p>
+<p>删除第3条规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT 3</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-5.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-D，表示删除指定链中的某条规则。</p>
 </div>
-<h4 id="根据具体匹配条件与动作删除规则"><a href="#根据具体匹配条件与动作删除规则" class="headerlink" title="根据具体匹配条件与动作删除规则"></a>根据具体匹配条件与动作删除规则</h4><p>删除源地址为10.211.55.2，动作为ACCEPT的规则。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-6.png" alt="iptables"></p>
-<p>删除指定表中的所有规则。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -F</span><br></pre></td></tr></table></figure></p>
-<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="/2018/10/19/iptables详解（三）/images/iptables-7.png" alt="iptables"></p>
-<p>修改规则中的动作从DROP改为REJECT。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-8.png" alt="iptables"></p>
+
+<h4 id="根据具体匹配条件与动作删除规则"><a href="#根据具体匹配条件与动作删除规则" class="headerlink" title="根据具体匹配条件与动作删除规则"></a>根据具体匹配条件与动作删除规则</h4><p>删除源地址为10.211.55.2，动作为ACCEPT的规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-6.png" alt="iptables"></p>
+<p>删除指定表中的所有规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -F</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="images/iptables-7.png" alt="iptables"></p>
+<p>修改规则中的动作从DROP改为REJECT。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-8.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-R INPUT 1，表示修改INPUT链中的第1条规则。</p>
 </div>
+
 <div class="alert warning no-icon"><p>必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。</p>
 </div>
-<p>ping测试。<br><img src="/2018/10/19/iptables详解（三）/images/ping-4.png" alt="ping"></p>
-<h5 id="指定默认策略"><a href="#指定默认策略" class="headerlink" title="指定默认策略"></a>指定默认策略</h5><p>修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -P INPUT DROP</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-9.png" alt="iptables"></p>
+
+<p>ping测试。<br><img src="images/ping-4.png" alt="ping"></p>
+<h5 id="指定默认策略"><a href="#指定默认策略" class="headerlink" title="指定默认策略"></a>指定默认策略</h5><p>修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -P INPUT DROP</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/iptables-9.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-P INPUT DROP，将表中INPUT链的默认策略改为DROP。</p>
 </div>
+
 <h3 id="保存规则"><a href="#保存规则" class="headerlink" title="保存规则"></a>保存规则</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables-save</span><br></pre></td></tr></table></figure>
             
 
@@ -303,7 +361,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/iptables/">iptables</a>
 
@@ -389,7 +447,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -542,7 +600,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -552,7 +610,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -560,7 +618,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -578,5 +636,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（七） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.policy用于控制用户的权限，能够执行什么样的操作。OpenStack的每个项目都有一个/etc//policy.yaml文件，通过这个配置文件来实现对用户的权限管理。\n将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。\npolicy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。\n各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。\nNova API示例。123456789101112131415161718192021222324252627282930313233343536373839404142434445def authorize(context, action, target, do_raise=True, exc=None):    \"\"\"Verifies that the action is valid on the target in this context.       :param context: nova context       :param action: string representing the action to be checked           this should be colon separated for clarity.           i.e. ``compute:create_instance``,           ``compute:attach_volume``,           ``volume:attach_volume``       :param target: dictionary representing the object of the action           for object creation this should be a dictionary representing the           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``       :param do_raise: if True (the default), raises PolicyNotAuthorized;           if False, returns False       :param exc: Class of the exception to raise if the check fails.                   Any remaining arguments passed to :meth:`authorize` (both                   positional and keyword arguments) will be passed to                   the exception class. If not specified,                   :class:`PolicyNotAuthorized` will be used.       :raises nova.exception.PolicyNotAuthorized: if verification fails           and do_raise is True. Or if 'exc' is specified it will raise an           exception of that type.       :return: returns a non-False value (not necessarily \"True\") if           authorized, and the exact value False if not authorized and           do_raise is False.    \"\"\"    init()    credentials = context.to_policy_values()    if not exc:        exc = exception.PolicyNotAuthorized    try:        result = _ENFORCER.authorize(action, target, credentials,                                     do_raise=do_raise, exc=exc, action=action)    except policy.PolicyNotRegistered:        with excutils.save_and_reraise_exception():            LOG.exception(_LE('Policy not registered'))    except Exception:        with excutils.save_and_reraise_exception():            LOG.debug('Policy check for %(action)s failed with credentials '                      '%(credentials)s',                      &#123;'action': action, 'credentials': credentials&#125;)    return result\n对应/etc/nova/policy.json文件内容如下：123456&#123;    \"context_is_admin\":  \"role:admin\",    \"admin_or_owner\":  \"is_admin:True or project_id:%(project_id)s\",    \"default\": \"rule:admin_or_owner\"    ......&#125;\n从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。\n","dateCreated":"2019-05-20T17:57:18+08:00","dateModified":"2019-05-21T10:49:38+08:00","datePublished":"2019-05-20T17:57:18+08:00","description":"oslo.policy用于控制用户的权限，能够执行什么样的操作。","headline":"OpenStack通用库（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/","keywords":"OpenStack, Oslo, Policy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.policy用于控制用户的权限，能够执行什么样的操作。\n\nOpenStack的每个项目都有一个/etc//policy.yaml文件，通过这个配置文件来实现对用户的权限管理。\n将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。\npolicy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。\n各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。\nNova API示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445def authorize(context, action, target, do_raise=True, exc=None):    \"\"\"Verifies that the action is valid on the target in this context.       :param context: nova context       :param action: string representing the action to be checked           this should be colon separated for clarity.           i.e. ``compute:create_instance``,           ``compute:attach_volume``,           ``volume:attach_volume``       :param target: dictionary representing the object of the action           for object creation this should be a dictionary representing the           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``       :param do_raise: if True (the default), raises PolicyNotAuthorized;           if False, returns False       :param exc: Class of the exception to raise if the check fails.                   Any remaining arguments passed to :meth:`authorize` (both                   positional and keyword arguments) will be passed to                   the exception class. If not specified,                   :class:`PolicyNotAuthorized` will be used.       :raises nova.exception.PolicyNotAuthorized: if verification fails           and do_raise is True. Or if 'exc' is specified it will raise an           exception of that type.       :return: returns a non-False value (not necessarily \"True\") if           authorized, and the exact value False if not authorized and           do_raise is False.    \"\"\"    init()    credentials = context.to_policy_values()    if not exc:        exc = exception.PolicyNotAuthorized    try:        result = _ENFORCER.authorize(action, target, credentials,                                     do_raise=do_raise, exc=exc, action=action)    except policy.PolicyNotRegistered:        with excutils.save_and_reraise_exception():            LOG.exception(_LE('Policy not registered'))    except Exception:        with excutils.save_and_reraise_exception():            LOG.debug('Policy check for %(action)s failed with credentials '                      '%(credentials)s',                      &#123;'action': action, 'credentials': credentials&#125;)    return result\n\n对应/etc/nova/policy.json文件内容如下：\n123456&#123;    \"context_is_admin\":  \"role:admin\",    \"admin_or_owner\":  \"is_admin:True or project_id:%(project_id)s\",    \"default\": \"rule:admin_or_owner\"    ......&#125;\n\n从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。\n","dateCreated":"2019-05-20T17:57:18+08:00","dateModified":"2019-05-21T10:49:38+08:00","datePublished":"2019-05-20T17:57:18+08:00","description":"oslo.policy用于控制用户的权限，能够执行什么样的操作。","headline":"OpenStack通用库（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/","keywords":"OpenStack, Oslo, Policy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.policy用于控制用户的权限，能够执行什么样的操作。">
 <meta name="keywords" content="OpenStack,Oslo,Policy">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,12 +273,18 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p><a href="https://github.com/openstack/oslo.policy" target="_blank" rel="noopener">oslo.policy</a>用于控制用户的权限，能够执行什么样的操作。<br><a id="more"></a><br>OpenStack的每个项目都有一个/etc/<project>/policy.yaml文件，通过这个配置文件来实现对用户的权限管理。</project></p>
+            <p><a href="https://github.com/openstack/oslo.policy" target="_blank" rel="noopener">oslo.policy</a>用于控制用户的权限，能够执行什么样的操作。</p>
+<a id="more"></a>
+<p>OpenStack的每个项目都有一个/etc/<project>/policy.yaml文件，通过这个配置文件来实现对用户的权限管理。</project></p>
 <p>将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。</p>
 <p>policy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。</p>
 <p>各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。</p>
-<p>Nova API示例。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">authorize</span><span class="params">(context, action, target, do_raise=True, exc=None)</span>:</span></span><br><span class="line">    <span class="string">"""Verifies that the action is valid on the target in this context.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :param context: nova context</span></span><br><span class="line"><span class="string">       :param action: string representing the action to be checked</span></span><br><span class="line"><span class="string">           this should be colon separated for clarity.</span></span><br><span class="line"><span class="string">           i.e. ``compute:create_instance``,</span></span><br><span class="line"><span class="string">           ``compute:attach_volume``,</span></span><br><span class="line"><span class="string">           ``volume:attach_volume``</span></span><br><span class="line"><span class="string">       :param target: dictionary representing the object of the action</span></span><br><span class="line"><span class="string">           for object creation this should be a dictionary representing the</span></span><br><span class="line"><span class="string">           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``</span></span><br><span class="line"><span class="string">       :param do_raise: if True (the default), raises PolicyNotAuthorized;</span></span><br><span class="line"><span class="string">           if False, returns False</span></span><br><span class="line"><span class="string">       :param exc: Class of the exception to raise if the check fails.</span></span><br><span class="line"><span class="string">                   Any remaining arguments passed to :meth:`authorize` (both</span></span><br><span class="line"><span class="string">                   positional and keyword arguments) will be passed to</span></span><br><span class="line"><span class="string">                   the exception class. If not specified,</span></span><br><span class="line"><span class="string">                   :class:`PolicyNotAuthorized` will be used.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :raises nova.exception.PolicyNotAuthorized: if verification fails</span></span><br><span class="line"><span class="string">           and do_raise is True. Or if 'exc' is specified it will raise an</span></span><br><span class="line"><span class="string">           exception of that type.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :return: returns a non-False value (not necessarily "True") if</span></span><br><span class="line"><span class="string">           authorized, and the exact value False if not authorized and</span></span><br><span class="line"><span class="string">           do_raise is False.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    init()</span><br><span class="line">    credentials = context.to_policy_values()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> exc:</span><br><span class="line">        exc = exception.PolicyNotAuthorized</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        result = _ENFORCER.authorize(action, target, credentials,</span><br><span class="line">                                     do_raise=do_raise, exc=exc, action=action)</span><br><span class="line">    <span class="keyword">except</span> policy.PolicyNotRegistered:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.exception(_LE(<span class="string">'Policy not registered'</span>))</span><br><span class="line">    <span class="keyword">except</span> Exception:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.debug(<span class="string">'Policy check for %(action)s failed with credentials '</span></span><br><span class="line">                      <span class="string">'%(credentials)s'</span>,</span><br><span class="line">                      &#123;<span class="string">'action'</span>: action, <span class="string">'credentials'</span>: credentials&#125;)</span><br><span class="line">    <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure></p>
-<p>对应/etc/nova/policy.json文件内容如下：<br><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"context_is_admin"</span>:  <span class="string">"role:admin"</span>,</span><br><span class="line">    <span class="attr">"admin_or_owner"</span>:  <span class="string">"is_admin:True or project_id:%(project_id)s"</span>,</span><br><span class="line">    <span class="attr">"default"</span>: <span class="string">"rule:admin_or_owner"</span></span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>Nova API示例。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">authorize</span><span class="params">(context, action, target, do_raise=True, exc=None)</span>:</span></span><br><span class="line">    <span class="string">"""Verifies that the action is valid on the target in this context.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :param context: nova context</span></span><br><span class="line"><span class="string">       :param action: string representing the action to be checked</span></span><br><span class="line"><span class="string">           this should be colon separated for clarity.</span></span><br><span class="line"><span class="string">           i.e. ``compute:create_instance``,</span></span><br><span class="line"><span class="string">           ``compute:attach_volume``,</span></span><br><span class="line"><span class="string">           ``volume:attach_volume``</span></span><br><span class="line"><span class="string">       :param target: dictionary representing the object of the action</span></span><br><span class="line"><span class="string">           for object creation this should be a dictionary representing the</span></span><br><span class="line"><span class="string">           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``</span></span><br><span class="line"><span class="string">       :param do_raise: if True (the default), raises PolicyNotAuthorized;</span></span><br><span class="line"><span class="string">           if False, returns False</span></span><br><span class="line"><span class="string">       :param exc: Class of the exception to raise if the check fails.</span></span><br><span class="line"><span class="string">                   Any remaining arguments passed to :meth:`authorize` (both</span></span><br><span class="line"><span class="string">                   positional and keyword arguments) will be passed to</span></span><br><span class="line"><span class="string">                   the exception class. If not specified,</span></span><br><span class="line"><span class="string">                   :class:`PolicyNotAuthorized` will be used.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :raises nova.exception.PolicyNotAuthorized: if verification fails</span></span><br><span class="line"><span class="string">           and do_raise is True. Or if 'exc' is specified it will raise an</span></span><br><span class="line"><span class="string">           exception of that type.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :return: returns a non-False value (not necessarily "True") if</span></span><br><span class="line"><span class="string">           authorized, and the exact value False if not authorized and</span></span><br><span class="line"><span class="string">           do_raise is False.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    init()</span><br><span class="line">    credentials = context.to_policy_values()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> exc:</span><br><span class="line">        exc = exception.PolicyNotAuthorized</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        result = _ENFORCER.authorize(action, target, credentials,</span><br><span class="line">                                     do_raise=do_raise, exc=exc, action=action)</span><br><span class="line">    <span class="keyword">except</span> policy.PolicyNotRegistered:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.exception(_LE(<span class="string">'Policy not registered'</span>))</span><br><span class="line">    <span class="keyword">except</span> Exception:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.debug(<span class="string">'Policy check for %(action)s failed with credentials '</span></span><br><span class="line">                      <span class="string">'%(credentials)s'</span>,</span><br><span class="line">                      &#123;<span class="string">'action'</span>: action, <span class="string">'credentials'</span>: credentials&#125;)</span><br><span class="line">    <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure>
+
+<p>对应/etc/nova/policy.json文件内容如下：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"context_is_admin"</span>:  <span class="string">"role:admin"</span>,</span><br><span class="line">    <span class="attr">"admin_or_owner"</span>:  <span class="string">"is_admin:True or project_id:%(project_id)s"</span>,</span><br><span class="line">    <span class="attr">"default"</span>: <span class="string">"rule:admin_or_owner"</span></span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <p>从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。</p>
 
             
@@ -257,7 +294,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/Policy/">Policy</a>
 
@@ -343,7 +380,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -496,7 +533,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -506,7 +543,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -514,7 +551,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -532,5 +569,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

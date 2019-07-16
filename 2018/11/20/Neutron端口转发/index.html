@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Neutron端口转发 - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n租户T2在外部通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。\n外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1\n\n控制节点找到路由器位于的控制节点，并切换到对应节点。12\b. openrcneutron l3-agent-list-router [router-id]\n\n找到路由器的网络命名空间。1ip netns | grep [router-id]s\n\n查看规则进入snat网络命名空间，查看端口转发的规则是否被添加。\n1ip netns exec snat-[router-id] iptables -t nat -S\n\n抓包测试查看snat网络命名空间中的网卡设备。1ip netns exec snat-[router-id] ip a\n\n利用tcpdump抓取相应网卡设备上的数据包。1ip netns exec snat-[router-id] tcpdump -i [device-name] -n\n计算节点抓包测试首先在控制节点上找到虚拟机所在的计算节点。12. openrcopenstack server show [vm-uuid]\n\n切换到虚拟机所在的计算节点，并找到对应的虚拟机。1virsh list\n\n找到虚拟机对应的tap设备和qvr设备。1virsh edit [vm-id]\n\n利用tcpdump抓取tap设备和qbr设备上的网包。\n12tcpdump -i tap-[xxxx] -ntcpdump -i qbr-[xxxx] -n\n找到qrouter的网络命名空间。\n1ip netns | grep [router-id]\n\n查qrouter网络命名空间中的网卡设备。\n1ip netns exec qrouter-[router-id] ip a\n\n利用tcpdump抓取qr网卡上的网包。1tcpdump -i qr-[xxxx]\n总结流量的走向\n 外网 -&gt; Controller-SNAT(qg-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Compute-qbr -&gt; Compute-tap -&gt; VM\nVM -&gt; Compute-tap -&gt; Compute-qbr -&gt; Compute-qrouter(qr-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Controller-SNAT(qg-xxx) -&gt; 外网\n","dateCreated":"2018-11-20T17:24:50+08:00","dateModified":"2018-12-05T17:38:20+08:00","datePublished":"2018-11-20T17:24:50+08:00","description":"端口转发测试","headline":"Neutron端口转发","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/11/20/Neutron端口转发/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/11/20/Neutron端口转发/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n租户T2在外部通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。\n外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1\n\n\n控制节点找到路由器位于的控制节点，并切换到对应节点。\n12\b. openrcneutron l3-agent-list-router [router-id]\n\n\n找到路由器的网络命名空间。\n1ip netns | grep [router-id]s\n\n\n查看规则进入snat网络命名空间，查看端口转发的规则是否被添加。\n1ip netns exec snat-[router-id] iptables -t nat -S\n\n\n抓包测试查看snat网络命名空间中的网卡设备。\n1ip netns exec snat-[router-id] ip a\n\n\n利用tcpdump抓取相应网卡设备上的数据包。\n1ip netns exec snat-[router-id] tcpdump -i [device-name] -n\n\n计算节点抓包测试首先在控制节点上找到虚拟机所在的计算节点。\n12. openrcopenstack server show [vm-uuid]\n\n\n切换到虚拟机所在的计算节点，并找到对应的虚拟机。\n1virsh list\n\n\n找到虚拟机对应的tap设备和qvr设备。\n1virsh edit [vm-id]\n\n\n利用tcpdump抓取tap设备和qbr设备上的网包。\n12tcpdump -i tap-[xxxx] -ntcpdump -i qbr-[xxxx] -n\n\n找到qrouter的网络命名空间。\n1ip netns | grep [router-id]\n\n\n查qrouter网络命名空间中的网卡设备。\n1ip netns exec qrouter-[router-id] ip a\n\n\n利用tcpdump抓取qr网卡上的网包。\n1tcpdump -i qr-[xxxx]\n\n总结流量的走向\n 外网 -&gt; Controller-SNAT(qg-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Compute-qbr -&gt; Compute-tap -&gt; VM\nVM -&gt; Compute-tap -&gt; Compute-qbr -&gt; Compute-qrouter(qr-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Controller-SNAT(qg-xxx) -&gt; 外网\n","dateCreated":"2018-11-20T17:24:50+08:00","dateModified":"2018-12-05T17:38:20+08:00","datePublished":"2018-11-20T17:24:50+08:00","description":"端口转发测试","headline":"Neutron端口转发","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/11/20/Neutron端口转发/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/11/20/Neutron端口转发/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="端口转发测试">
 <meta name="keywords" content="Neutron">
 <meta property="og:type" content="blog">
@@ -65,14 +65,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -89,10 +89,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -110,7 +111,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -124,7 +125,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -133,7 +138,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -142,7 +151,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -151,7 +164,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -160,7 +177,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -169,7 +190,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -182,7 +207,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -191,7 +216,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -204,7 +229,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -219,7 +248,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -253,36 +284,58 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/dvr.png" alt="DVR"></p>
+            <!-- excerpt -->
+
+<p><img src="images/dvr.png" alt="DVR"></p>
 <p>租户T2在外部通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。</p>
 <div class="alert info no-icon"><p>外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1</p>
 </div>
-<h3 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h3><p>找到路由器位于的控制节点，并切换到对应节点。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">neutron l3-agent-list-router [router-id]</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/neutron-l3-agent-list-router.png" alt="neutron-l3-agent-list-router"></p>
-<p>找到路由器的网络命名空间。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]s</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/ip-netns.png" alt="ip-netns"></p>
+
+<h3 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h3><p>找到路由器位于的控制节点，并切换到对应节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">neutron l3-agent-list-router [router-id]</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/neutron-l3-agent-list-router.png" alt="neutron-l3-agent-list-router"></p>
+<p>找到路由器的网络命名空间。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]s</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/ip-netns.png" alt="ip-netns"></p>
 <h4 id="查看规则"><a href="#查看规则" class="headerlink" title="查看规则"></a>查看规则</h4><p>进入snat网络命名空间，查看端口转发的规则是否被添加。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> snat-[router-id] iptables -t nat -S</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/11/20/Neutron端口转发/images/iptables-t.png" alt="iptables-t"></p>
-<h4 id="抓包测试"><a href="#抓包测试" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>查看snat网络命名空间中的网卡设备。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns exec snat-[router-id] ip a</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/ip-a.png" alt="ip-a"></p>
-<p>利用tcpdump抓取相应网卡设备上的数据包。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> snat-[router-id] tcpdump -i [device-name] -n</span><br></pre></td></tr></table></figure></p>
-<h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><h4 id="抓包测试-1"><a href="#抓包测试-1" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>首先在控制节点上找到虚拟机所在的计算节点。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">openstack server show [vm-uuid]</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/server-show.png" alt="server-show"></p>
-<p>切换到虚拟机所在的计算节点，并找到对应的虚拟机。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh list</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/virsh-list.png" alt="virsh-list"></p>
-<p>找到虚拟机对应的tap设备和qvr设备。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh edit [vm-id]</span><br></pre></td></tr></table></figure></p>
-<p><img src="/2018/11/20/Neutron端口转发/images/virsh-edit.png" alt="virsh-edit"></p>
+
+<p><img src="images/iptables-t.png" alt="iptables-t"></p>
+<h4 id="抓包测试"><a href="#抓包测试" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>查看snat网络命名空间中的网卡设备。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns exec snat-[router-id] ip a</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/ip-a.png" alt="ip-a"></p>
+<p>利用tcpdump抓取相应网卡设备上的数据包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> snat-[router-id] tcpdump -i [device-name] -n</span><br></pre></td></tr></table></figure>
+
+<h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><h4 id="抓包测试-1"><a href="#抓包测试-1" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>首先在控制节点上找到虚拟机所在的计算节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">openstack server show [vm-uuid]</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/server-show.png" alt="server-show"></p>
+<p>切换到虚拟机所在的计算节点，并找到对应的虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh list</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/virsh-list.png" alt="virsh-list"></p>
+<p>找到虚拟机对应的tap设备和qvr设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh edit [vm-id]</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/virsh-edit.png" alt="virsh-edit"></p>
 <p>利用tcpdump抓取tap设备和qbr设备上的网包。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i tap-[xxxx] -n</span><br><span class="line">tcpdump -i qbr-[xxxx] -n</span><br></pre></td></tr></table></figure>
+
 <p>找到qrouter的网络命名空间。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/11/20/Neutron端口转发/images/ip-netns-1.png" alt="ip-netns"></p>
+
+<p><img src="images/ip-netns-1.png" alt="ip-netns"></p>
 <p>查qrouter网络命名空间中的网卡设备。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qrouter-[router-id] ip a</span><br></pre></td></tr></table></figure>
-<p><img src="/2018/11/20/Neutron端口转发/images/ip-a-1.png" alt="ip-a"></p>
-<p>利用tcpdump抓取qr网卡上的网包。<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qr-[xxxx]</span><br></pre></td></tr></table></figure></p>
+
+<p><img src="images/ip-a-1.png" alt="ip-a"></p>
+<p>利用tcpdump抓取qr网卡上的网包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qr-[xxxx]</span><br></pre></td></tr></table></figure>
+
 <h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><div class="alert info no-icon"><p>流量的走向</p>
 <p> 外网 -&gt; Controller-SNAT(qg-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Compute-qbr -&gt; Compute-tap -&gt; VM</p>
 <p>VM -&gt; Compute-tap -&gt; Compute-qbr -&gt; Compute-qrouter(qr-xxx) -&gt; Controller-SNAT(sg-xxx) -&gt; Controller-SNAT(qg-xxx) -&gt; 外网</p>
@@ -294,7 +347,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/">Neutron</a>
 
@@ -380,7 +433,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -533,7 +586,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -543,7 +596,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -551,7 +604,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -569,5 +622,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

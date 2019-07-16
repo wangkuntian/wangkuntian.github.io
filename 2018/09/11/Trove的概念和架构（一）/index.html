@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Trove的概念和架构（一） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\nTrove基础架构Trove和其他OpenStack服务类似。它暴露了一个RESTful的公共API并在基础设施数据库中存储了一些持久性数据。\n            Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表盘，都是通过这个公共API与Trove交互的。基础设施数据库可以与其他OpenStack服务共享，也可以是一个专用的数据库。通常这个数据库是Mysql（或某些变体），但理论上可以是SQLAlchemy所支持的任何数据库。Mysql是最常用的后端基础设施数据库。Trove是OpenStack的其他服务如Nova（计算）、Cinder（块存储）、Swift（对象存储）、Keystone（身份管理）等的用户端。Trove和这些服务交互时，会通过各自的公共API请求进行交互。\n\nTrove 由三个服务组成：Trove API、Trove conductor 和 Trove task manager。此外，每个Trove实例都有一个安装了特定的数据库类型的guest agent。\n\n\n上图左边是Trove，由暴露着公共API的Trove API、Trove task manager和Trove conductor组成。Trove服务在基础设施数据库上存储持久化型数据。上图中右上部分是OpenStack基本服务的安装和这些服务的基础架构的数据库。右下部分是计算基础设施，包括服务器和存储器，向Nova、Cinder、Swift和Neutron请求计算、存储和网络资源。\nTrove API和Trove task manager是不同的OpenStack服务的用户端，它们使用各自的公共的API和这些服务进行交互。当Nova创建了一个计算实例时，它在计算基础设施上完成这个操作。一个Trove实例是一个特殊的Nova实例，包含一个guest数据库和Trove guest agent服务。Trove guest agent 在安装了Trove服务的Trove guest实例上执行操作，并利用消息队列和Trove服务进行通信。","dateCreated":"2018-09-11T14:11:50+08:00","dateModified":"2019-02-28T18:18:43+08:00","datePublished":"2018-09-11T14:11:50+08:00","description":"Trove基础架构","headline":"Trove的概念和架构（一）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\nTrove基础架构Trove和其他OpenStack服务类似。它暴露了一个RESTful的公共API并在基础设施数据库中存储了一些持久性数据。\n\n    \n    ![trove](images/trove-1.png)\n    \n\nTrove的所有用户端，包括CLI（command-line interface）和Horizon仪表盘，都是通过这个公共API与Trove交互的。基础设施数据库可以与其他OpenStack服务共享，也可以是一个专用的数据库。\n通常这个数据库是Mysql（或某些变体），但理论上可以是SQLAlchemy所支持的任何数据库。Mysql是最常用的后端基础设施数据库。\n\nTrove是OpenStack的其他服务如Nova（计算）、Cinder（块存储）、Swift（对象存储）、Keystone（身份管理）等的用户端。Trove和这些服务交互时，会通过各自的公共API请求进行交互。\n\n![trove](images/trove-2.png)\n\n\nTrove 由三个服务组成：Trove API、Trove conductor 和 Trove task manager。此外，每个Trove实例都有一个安装了特定的数据库类型的guest agent。\n\n![trove](images/trove-3.png)\n\n\n上图左边是Trove，由暴露着公共API的Trove API、Trove task manager和Trove conductor组成。Trove服务在基础设施数据库上存储持久化型数据。上图中右上部分是OpenStack基本服务的安装和这些服务的基础架构的数据库。右下部分是计算基础设施，包括服务器和存储器，向Nova、Cinder、Swift和Neutron请求计算、存储和网络资源。\nTrove API和Trove task manager是不同的OpenStack服务的用户端，它们使用各自的公共的API和这些服务进行交互。当Nova创建了一个计算实例时，它在计算基础设施上完成这个操作。一个Trove实例是一个特殊的Nova实例，包含一个guest数据库和Trove guest agent服务。Trove guest agent 在安装了Trove服务的Trove guest实例上执行操作，并利用消息队列和Trove服务进行通信。","dateCreated":"2018-09-11T14:11:50+08:00","dateModified":"2019-02-28T18:18:43+08:00","datePublished":"2018-09-11T14:11:50+08:00","description":"Trove基础架构","headline":"Trove的概念和架构（一）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
     <meta name="description" content="Trove基础架构">
 <meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
@@ -26,14 +26,10 @@
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Trove基础架构">
 <meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/images/trove-1.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/images/trove-2.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/images/trove-3.png">
 <meta property="og:updated_time" content="2019-02-28T10:18:43.624Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Trove的概念和架构（一）">
 <meta name="twitter:description" content="Trove基础架构">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/images/trove-1.png">
     
     
         
@@ -61,14 +57,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -85,10 +81,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -106,7 +103,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -120,7 +117,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -129,7 +130,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -138,7 +143,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -147,7 +156,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -156,7 +169,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -165,7 +182,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -178,7 +199,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -187,7 +208,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -200,7 +221,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -215,7 +240,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -251,12 +278,26 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <!-- excerpt --><p></p>
+            <!-- excerpt -->
+
 <h3 id="Trove基础架构"><a href="#Trove基础架构" class="headerlink" title="Trove基础架构"></a>Trove基础架构</h3><p>Trove和其他OpenStack服务类似。它暴露了一个RESTful的公共API并在基础设施数据库中存储了一些持久性数据。</p>
-<div align="center"><br>    <div style="width:260px;text-align:center;"><br>    <img src="/2018/09/11/Trove的概念和架构（一）/images/trove-1.png" alt="trove"><br>    </div><br></div><br>Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表盘，都是通过这个公共API与Trove交互的。基础设施数据库可以与其他OpenStack服务共享，也可以是一个专用的数据库。<br>通常这个数据库是Mysql（或某些变体），但理论上可以是SQLAlchemy所支持的任何数据库。Mysql是最常用的后端基础设施数据库。<br><br>Trove是OpenStack的其他服务如Nova（计算）、Cinder（块存储）、Swift（对象存储）、Keystone（身份管理）等的用户端。Trove和这些服务交互时，会通过各自的公共API请求进行交互。<br><div align="center"><br><img src="/2018/09/11/Trove的概念和架构（一）/images/trove-2.png" alt="trove"><br></div>
+<div align="center">
+    <div style="width:260px;text-align:center;">
+    ![trove](images/trove-1.png)
+    </div>
+</div>
+Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表盘，都是通过这个公共API与Trove交互的。基础设施数据库可以与其他OpenStack服务共享，也可以是一个专用的数据库。
+通常这个数据库是Mysql（或某些变体），但理论上可以是SQLAlchemy所支持的任何数据库。Mysql是最常用的后端基础设施数据库。
+
+<p>Trove是OpenStack的其他服务如Nova（计算）、Cinder（块存储）、Swift（对象存储）、Keystone（身份管理）等的用户端。Trove和这些服务交互时，会通过各自的公共API请求进行交互。</p>
+<div align="center">
+![trove](images/trove-2.png)
+</div>
 
 <p>Trove 由三个服务组成：Trove API、Trove conductor 和 Trove task manager。此外，每个Trove实例都有一个安装了特定的数据库类型的guest agent。</p>
-<div align="center"><br><img src="/2018/09/11/Trove的概念和架构（一）/images/trove-3.png" alt="trove"><br></div>
+<div align="center">
+![trove](images/trove-3.png)
+</div>
 
 <p>上图左边是Trove，由暴露着公共API的Trove API、Trove task manager和Trove conductor组成。Trove服务在基础设施数据库上存储持久化型数据。<br>上图中右上部分是OpenStack基本服务的安装和这些服务的基础架构的数据库。右下部分是计算基础设施，包括服务器和存储器，向Nova、Cinder、Swift和Neutron请求计算、存储和网络资源。</p>
 <p>Trove API和Trove task manager是不同的OpenStack服务的用户端，它们使用各自的公共的API和这些服务进行交互。<br>当Nova创建了一个计算实例时，它在计算基础设施上完成这个操作。一个Trove实例是一个特殊的Nova实例，包含一个guest数据库和Trove guest agent服务。<br>Trove guest agent 在安装了Trove服务的Trove guest实例上执行操作，并利用消息队列和Trove服务进行通信。</p>
@@ -267,7 +308,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
 
@@ -353,7 +394,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -506,7 +547,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -516,7 +557,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -524,7 +565,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -542,5 +583,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

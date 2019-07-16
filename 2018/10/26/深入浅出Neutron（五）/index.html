@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>深入浅出Neutron（五） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Neutron二层网络服务实现原理\n\n二层网络基本原理二层网络是TCP/IP七层网络中的数据链路层，通过交换机设备进行帧转发。交换机在收到帧之后（二层网络叫帧，三层网络叫包）先解析出帧头的MAC地址，再在转发表中查找是否有对应MAC地址的端口，有的话就从相应的端口转发出去。没有，就洪泛（flood），即将帧转发到交换机的所有端口，每个端口上的计算机都检查帧头中的MAC地址是否与本机网卡的MAC地址一致，一致的话就接收数据帧，不一致就直接丢弃。而转发表是通过自学习自动建立的。\n混杂模式：默认情况下计算机只接收和本机MAC地址一致的数据帧，不一致就丢弃。如果要求计算机接收所有帧的话，就要设置网卡为混杂模式（ifconfig eth0 0.0.0.0 promisc up）。所以在虚拟网桥中，如果希望虚拟机和外部通信，必须打开桥接到虚拟网桥中物理网卡的混杂模式特性（对于flat、vlan网络适用，对于gre、vxlan等覆盖网络不适用）。\n\n广播风暴：ARP通过广播充当了二层控制平面的角色，实现通过IP找MAC地址的功能，但是ARP广播中的洪泛经常会在一个局域网内产生大量的广播，也就是所谓的广播风暴。\n\n虚拟局域网（VLAN）：VLAN（Virtual Local Area Network）。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。在基于VLAN的二层网络里，从以前的根据MAC地址接收帧改为同时根据VLAN号与MAC地址接收帧，避免了广播风暴。\n\nNeutron目前已经实现了FLAT、VLAN、GRE、VxLAN四种网络拓扑。结合VLAN号和MAC地址进行转发的是VLAN模式。只根据MAC地址进行转发的是FLAT模式。\n\nVLAN的缺点。\n\n要求穿越的所有物理交换机都配置允许带有某个VLAN号的数据帧通过，因为物理交换机通常只提供CLI命令，不提供远程接口可编程调用，所以都要手工配置，容易出错且工作量巨大，纯粹的体力劳动，影响了大规模部署。\nVLAN号的范围是0-4094，VLAN的数量遭到限制。\n\n为了克服VLAN的缺点，衍生出GRE、VxLan、VPN等隧道技术。这些技术的本质是重定制二层网络和三层网络的头部，通过三层网络或其他层的技术将数据传送到远端，在远端接收到这种定制的数据之后，再重新解包。这也就是覆盖网络（Overlay Network），它也是实现SDN的一个重要基础。因为使用隧道传输数据，所以无需再去配置隧道两端沿路的所有网络设备，这是SDN的好处（当然SDN还有一个好处是有控制器可以集中控制）\nGRE便是其中一种支持覆盖网络的隧道技术，它克服了VLAN需要人工去硬件交换机那里配置VLAN的缺点。但是GRE也有不足之处。第一体现在性能上，因为GRE在数据帧里添加上了自己的GRE帧头，这样可能造成整个数据帧长度大于硬件网卡的MTU值（一般默认设置为1500），于是需要将数据帧分片造成性能下降。同时，由于GRE隧道是点对点的，所以，如果有N个节点，就会有N*(N-1)条隧道，对于四层网络的端口资源也是一个浪费。这也是为什么GRE隧道使用UDP而不是TCP的原因，因为UDP用完后就可以释放，不会老占着端口又不用。\nVxLAN与GRE类似，但它定义了一种在二层网络定制数据帧头的标准格式，它也提供了多播在局域网中进一步缩小广播范围。\n大二层网络大二层多路径技术二层多路径技术可以解决二层的东西向流量问题。由于传统的二层网络没有控制平面，都是基于传统的生成树协议（STP）来构建网络，即按照传统的接入层、汇聚层、核心层的分级网络。相反的，大二层多路径技术的网络应该是网状的。在这种网状的结构里，需要将传统三层构建控制平面的思想引入到二层。Cisco的FabricPath便是这样一种技术，将三层基于IP的中间系统到中间系统的路由协议（IS-IS）技术引入到二层，基于交换机的ID来创建全网的交换机的网络拓扑结构。这样，传统三层的多路径技术也自然就是下沉到了二层。根据FabricPath创建的网络，不需要再像STP网络那样分层部署交换机，网络中交换机的地位是对等的：不需要再运行STP生成树协议：也不需要再执行MAC学习，因为它已经通过二层的中间系统的路由协议（IS-IS）交换了二层的全局拓扑信息，建立了二层的控制平面从而使得数据帧直接基于这个拓扑计算出的路径来转发，不再依赖于MAC地址。一句话，FabricPath技术是传统三层思想在二层的一个复制，是一个思维上的创新。\nFabricPath是Cisco的私有标准，而TRILL(Transparent Interconnection of Lots of Links，多链接半透明互联)则是IETF组织的公开标准。SPB（Shorest Path Bridging，最短桥接路径）是IEEE组织的公开标准。\n大二层互联技术覆盖网络技术是大二层互联技术的关键，它也是SDN技术的技术本质，即自定义二层帧，以各层传输技术将帧发送到远端，在远端再把自定义帧解释出来。\n覆盖网络传输虚拟化（OTV，Overlay Transport Virtualization）技术，其核心思想是通过“MAC in IP”的方式，即通过IP协议来传输OTV这个自定义的二层帧。OTV相较于VxLAN最大的特点是可以在广域网上进行地址学习，原因是OTV在大二层建立了控制平面，IS-IS动态路由协议可以在三层建立控制平面，而OTV仍然延用了传统的MAC地址的学习机制，自定义的二层帧会建立连接关系之后，通过广播或多播交换各自的MAC地址表，从而计算出一张具有全局网络拓扑状态的数据库。它有点类似MPLS通过不同的权重控制走不同的路径从而进行负载均衡。这样，OTV在发送第一个数据帧时就已经确定了路径，并对二层网关进行优化，同时具备内置的负载均衡（HSRP，Host Standby Router Protocol，热备份路由协议；Virtual Router Redundancy Protocol，虚拟路由冗余协议；GLBP，Gateway Load Balancing Protocol，网关负载均衡协议）。\n对于跨广域网数据中心之间的相同子网的互联，二层VPN或其他隧道技术都可以实现。但这里有个问题就是，用于创建隧道的隧道两端的公有地址肯定是不同的，如果一个虚拟机从一个数据中心迁移到另一个数据中心想要保持IP不变，它的网关也需要跟着移动。位置/身份分离协议（LISP，Locator/Identifier Separation Protocol）正是来解决这种网络资源移动性问题的。LISP除了实现移动前后IP不变的特性外，还在控制层面提出使用eBGP协议进行二层地址的学习。\n二层网络的实现——ML2插件Neutron中的代码结构分两类，一类是插件，一类是代理。插件负责和数据库打交道并对外提供北向API。ML2是一种插件结构，其中包含两种Driver：一种叫做Type Driver，定义了五种不同的二层网络类型，即LOCAL、FLAT、VLAN、GRE、VXLAN；另一种叫做Mechenism Driver，实现了对象Open vSwitch、Linux Bridge、Bigswitch SDN等二层网络设备的支持。\n二层网络在Linux中的实现Neutron二层网络提供了对十多种二层网络设备的支持，但其中比较常用的，也是经常拿来作为参考的，是Linux网桥和Open vSwitch两种。两种方式都采用了以下技术：\n\nTAP设备。比如vnet0，是虚拟化技术如KVM和Xen用来实现虚拟网卡的。当一个以太网帧发送给TAP设备时，这个以太网帧就会被虚拟机操作系统所接收。命名空间，用于隔离虚拟网络设备。\n\nveth配对设备（veth pair）或OVS配对端口（patch port），是一对直接相连的虚拟网络接口。当一个以太网帧被发送给一个veth配对设备的一端时，将会被此配对设备的另一端来接收，在虚拟网络技术中，经常使用veth配对设备作为虚拟配对线缆来连接两个虚拟网桥。\n\nLinux网桥，可以看做是一个简单的MAC地址学习的交换机，可以将多个（物理的或者虚拟的）网络接口设备连接到Linux网桥上。Linux网桥使用一个MAC地址缓存表来记录使用网桥上的哪个接口和链路上的主机通信。对于任何来自于连接在网桥上的网络接口的以太网帧，主机的MAC地址，以及在哪个端口上这个网帧被接收的，这个信息被记录在MAC缓存表中，并保留一段时间。当网桥需要转发一个网帧时，它会检查这个网帧的目的MAC地址是否记录在缓存表里。如果是，Linux网桥就将网帧只通过那个端口转发出去。否则，网帧会被广播到网桥上的所有网络端口，接收这个网帧的端口除外。Open vSwitch网桥，可以看做是一个虚拟交换机。网络接口设备连接到Open vSwitch网桥上的端口，并且这些端口可以像物理交换机的端口那样进行配置，比如配置VLAN。\n\n\n","dateCreated":"2018-10-26T11:04:20+08:00","dateModified":"2018-10-26T18:19:54+08:00","datePublished":"2018-10-26T11:04:20+08:00","description":"Neutron二层网络服务实现原理","headline":"深入浅出Neutron（五）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/26/深入浅出Neutron（五）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/26/深入浅出Neutron（五）/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Neutron二层网络服务实现原理\n\n\n\n\n二层网络基本原理二层网络是TCP/IP七层网络中的数据链路层，通过交换机设备进行帧转发。交换机在收到帧之后（二层网络叫帧，三层网络叫包）先解析出帧头的MAC地址，再在转发表中查找是否有对应MAC地址的端口，有的话就从相应的端口转发出去。没有，就洪泛（flood），即将帧转发到交换机的所有端口，每个端口上的计算机都检查帧头中的MAC地址是否与本机网卡的MAC地址一致，一致的话就接收数据帧，不一致就直接丢弃。而转发表是通过自学习自动建立的。\n混杂模式：默认情况下计算机只接收和本机MAC地址一致的数据帧，不一致就丢弃。如果要求计算机接收所有帧的话，就要设置网卡为混杂模式（ifconfig eth0 0.0.0.0 promisc up）。所以在虚拟网桥中，如果希望虚拟机和外部通信，必须打开桥接到虚拟网桥中物理网卡的混杂模式特性（对于flat、vlan网络适用，对于gre、vxlan等覆盖网络不适用）。\n\n\n广播风暴：ARP通过广播充当了二层控制平面的角色，实现通过IP找MAC地址的功能，但是ARP广播中的洪泛经常会在一个局域网内产生大量的广播，也就是所谓的广播风暴。\n\n\n虚拟局域网（VLAN）：VLAN（Virtual Local Area Network）。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。在基于VLAN的二层网络里，从以前的根据MAC地址接收帧改为同时根据VLAN号与MAC地址接收帧，避免了广播风暴。\n\n\nNeutron目前已经实现了FLAT、VLAN、GRE、VxLAN四种网络拓扑。结合VLAN号和MAC地址进行转发的是VLAN模式。只根据MAC地址进行转发的是FLAT模式。\n\n\nVLAN的缺点。\n\n要求穿越的所有物理交换机都配置允许带有某个VLAN号的数据帧通过，因为物理交换机通常只提供CLI命令，不提供远程接口可编程调用，所以都要手工配置，容易出错且工作量巨大，纯粹的体力劳动，影响了大规模部署。\nVLAN号的范围是0-4094，VLAN的数量遭到限制。\n\n为了克服VLAN的缺点，衍生出GRE、VxLan、VPN等隧道技术。这些技术的本质是重定制二层网络和三层网络的头部，通过三层网络或其他层的技术将数据传送到远端，在远端接收到这种定制的数据之后，再重新解包。这也就是覆盖网络（Overlay Network），它也是实现SDN的一个重要基础。因为使用隧道传输数据，所以无需再去配置隧道两端沿路的所有网络设备，这是SDN的好处（当然SDN还有一个好处是有控制器可以集中控制）\nGRE便是其中一种支持覆盖网络的隧道技术，它克服了VLAN需要人工去硬件交换机那里配置VLAN的缺点。但是GRE也有不足之处。第一体现在性能上，因为GRE在数据帧里添加上了自己的GRE帧头，这样可能造成整个数据帧长度大于硬件网卡的MTU值（一般默认设置为1500），于是需要将数据帧分片造成性能下降。同时，由于GRE隧道是点对点的，所以，如果有N个节点，就会有N*(N-1)条隧道，对于四层网络的端口资源也是一个浪费。这也是为什么GRE隧道使用UDP而不是TCP的原因，因为UDP用完后就可以释放，不会老占着端口又不用。\nVxLAN与GRE类似，但它定义了一种在二层网络定制数据帧头的标准格式，它也提供了多播在局域网中进一步缩小广播范围。\n大二层网络大二层多路径技术二层多路径技术可以解决二层的东西向流量问题。由于传统的二层网络没有控制平面，都是基于传统的生成树协议（STP）来构建网络，即按照传统的接入层、汇聚层、核心层的分级网络。相反的，大二层多路径技术的网络应该是网状的。在这种网状的结构里，需要将传统三层构建控制平面的思想引入到二层。Cisco的FabricPath便是这样一种技术，将三层基于IP的中间系统到中间系统的路由协议（IS-IS）技术引入到二层，基于交换机的ID来创建全网的交换机的网络拓扑结构。这样，传统三层的多路径技术也自然就是下沉到了二层。根据FabricPath创建的网络，不需要再像STP网络那样分层部署交换机，网络中交换机的地位是对等的：不需要再运行STP生成树协议：也不需要再执行MAC学习，因为它已经通过二层的中间系统的路由协议（IS-IS）交换了二层的全局拓扑信息，建立了二层的控制平面从而使得数据帧直接基于这个拓扑计算出的路径来转发，不再依赖于MAC地址。一句话，FabricPath技术是传统三层思想在二层的一个复制，是一个思维上的创新。\nFabricPath是Cisco的私有标准，而TRILL(Transparent Interconnection of Lots of Links，多链接半透明互联)则是IETF组织的公开标准。SPB（Shorest Path Bridging，最短桥接路径）是IEEE组织的公开标准。\n大二层互联技术覆盖网络技术是大二层互联技术的关键，它也是SDN技术的技术本质，即自定义二层帧，以各层传输技术将帧发送到远端，在远端再把自定义帧解释出来。\n覆盖网络传输虚拟化（OTV，Overlay Transport Virtualization）技术，其核心思想是通过“MAC in IP”的方式，即通过IP协议来传输OTV这个自定义的二层帧。OTV相较于VxLAN最大的特点是可以在广域网上进行地址学习，原因是OTV在大二层建立了控制平面，IS-IS动态路由协议可以在三层建立控制平面，而OTV仍然延用了传统的MAC地址的学习机制，自定义的二层帧会建立连接关系之后，通过广播或多播交换各自的MAC地址表，从而计算出一张具有全局网络拓扑状态的数据库。它有点类似MPLS通过不同的权重控制走不同的路径从而进行负载均衡。这样，OTV在发送第一个数据帧时就已经确定了路径，并对二层网关进行优化，同时具备内置的负载均衡（HSRP，Host Standby Router Protocol，热备份路由协议；Virtual Router Redundancy Protocol，虚拟路由冗余协议；GLBP，Gateway Load Balancing Protocol，网关负载均衡协议）。\n对于跨广域网数据中心之间的相同子网的互联，二层VPN或其他隧道技术都可以实现。但这里有个问题就是，用于创建隧道的隧道两端的公有地址肯定是不同的，如果一个虚拟机从一个数据中心迁移到另一个数据中心想要保持IP不变，它的网关也需要跟着移动。位置/身份分离协议（LISP，Locator/Identifier Separation Protocol）正是来解决这种网络资源移动性问题的。LISP除了实现移动前后IP不变的特性外，还在控制层面提出使用eBGP协议进行二层地址的学习。\n二层网络的实现——ML2插件Neutron中的代码结构分两类，一类是插件，一类是代理。插件负责和数据库打交道并对外提供北向API。ML2是一种插件结构，其中包含两种Driver：一种叫做Type Driver，定义了五种不同的二层网络类型，即LOCAL、FLAT、VLAN、GRE、VXLAN；另一种叫做Mechenism Driver，实现了对象Open vSwitch、Linux Bridge、Bigswitch SDN等二层网络设备的支持。\n二层网络在Linux中的实现Neutron二层网络提供了对十多种二层网络设备的支持，但其中比较常用的，也是经常拿来作为参考的，是Linux网桥和Open vSwitch两种。两种方式都采用了以下技术：\n\nTAP设备。比如vnet0，是虚拟化技术如KVM和Xen用来实现虚拟网卡的。当一个以太网帧发送给TAP设备时，这个以太网帧就会被虚拟机操作系统所接收。命名空间，用于隔离虚拟网络设备。\n\nveth配对设备（veth pair）或OVS配对端口（patch port），是一对直接相连的虚拟网络接口。当一个以太网帧被发送给一个veth配对设备的一端时，将会被此配对设备的另一端来接收，在虚拟网络技术中，经常使用veth配对设备作为虚拟配对线缆来连接两个虚拟网桥。\n\nLinux网桥，可以看做是一个简单的MAC地址学习的交换机，可以将多个（物理的或者虚拟的）网络接口设备连接到Linux网桥上。Linux网桥使用一个MAC地址缓存表来记录使用网桥上的哪个接口和链路上的主机通信。对于任何来自于连接在网桥上的网络接口的以太网帧，主机的MAC地址，以及在哪个端口上这个网帧被接收的，这个信息被记录在MAC缓存表中，并保留一段时间。当网桥需要转发一个网帧时，它会检查这个网帧的目的MAC地址是否记录在缓存表里。如果是，Linux网桥就将网帧只通过那个端口转发出去。否则，网帧会被广播到网桥上的所有网络端口，接收这个网帧的端口除外。Open vSwitch网桥，可以看做是一个虚拟交换机。网络接口设备连接到Open vSwitch网桥上的端口，并且这些端口可以像物理交换机的端口那样进行配置，比如配置VLAN。\n\n\n","dateCreated":"2018-10-26T11:04:20+08:00","dateModified":"2018-10-26T18:19:54+08:00","datePublished":"2018-10-26T11:04:20+08:00","description":"Neutron二层网络服务实现原理","headline":"深入浅出Neutron（五）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/26/深入浅出Neutron（五）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/26/深入浅出Neutron（五）/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Neutron二层网络服务实现原理">
 <meta name="keywords" content="Neutron">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,17 +273,24 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>Neutron二层网络服务实现原理<br><a id="more"></a></p>
+            <p>Neutron二层网络服务实现原理</p>
+<a id="more"></a>
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#二层网络基本原理"><span class="toc-text">二层网络基本原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#大二层网络"><span class="toc-text">大二层网络</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#大二层多路径技术"><span class="toc-text">大二层多路径技术</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#大二层互联技术"><span class="toc-text">大二层互联技术</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二层网络的实现——ML2插件"><span class="toc-text">二层网络的实现——ML2插件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#二层网络在Linux中的实现"><span class="toc-text">二层网络在Linux中的实现</span></a></li></ol>
+
 <h3 id="二层网络基本原理"><a href="#二层网络基本原理" class="headerlink" title="二层网络基本原理"></a>二层网络基本原理</h3><p>二层网络是TCP/IP七层网络中的数据链路层，通过交换机设备进行帧转发。交换机在收到帧之后（二层网络叫帧，三层网络叫包）先解析出帧头的MAC地址，再在转发表中查找是否有对应MAC地址的端口，有的话就从相应的端口转发出去。没有，就洪泛（flood），即将帧转发到交换机的所有端口，每个端口上的计算机都检查帧头中的MAC地址是否与本机网卡的MAC地址一致，一致的话就接收数据帧，不一致就直接丢弃。而转发表是通过自学习自动建立的。</p>
 <div class="alert danger no-icon"><p>混杂模式：默认情况下计算机只接收和本机MAC地址一致的数据帧，不一致就丢弃。如果要求计算机接收所有帧的话，就要设置网卡为混杂模式（ifconfig eth0 0.0.0.0 promisc up）。所以在虚拟网桥中，如果希望虚拟机和外部通信，必须打开桥接到虚拟网桥中物理网卡的混杂模式特性（对于flat、vlan网络适用，对于gre、vxlan等覆盖网络不适用）。</p>
 </div>
+
 <div class="alert danger no-icon"><p>广播风暴：ARP通过广播充当了二层控制平面的角色，实现通过IP找MAC地址的功能，但是ARP广播中的洪泛经常会在一个局域网内产生大量的广播，也就是所谓的广播风暴。</p>
 </div>
+
 <div class="alert danger no-icon"><p>虚拟局域网（VLAN）：VLAN（Virtual Local Area Network）。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。在基于VLAN的二层网络里，从以前的根据MAC地址接收帧改为同时根据VLAN号与MAC地址接收帧，避免了广播风暴。</p>
 </div>
+
 <div class="alert warning no-icon"><p>Neutron目前已经实现了FLAT、VLAN、GRE、VxLAN四种网络拓扑。<br>结合VLAN号和MAC地址进行转发的是VLAN模式。<br>只根据MAC地址进行转发的是FLAT模式。</p>
 </div>
+
 <p>VLAN的缺点。</p>
 <ul>
 <li>要求穿越的所有物理交换机都配置允许带有某个VLAN号的数据帧通过，因为物理交换机通常只提供CLI命令，不提供远程接口可编程调用，所以都要手工配置，容易出错且工作量巨大，纯粹的体力劳动，影响了大规模部署。</li>
@@ -284,7 +322,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/">Neutron</a>
 
@@ -370,7 +408,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -523,7 +561,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -533,7 +571,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -541,7 +579,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -559,5 +597,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

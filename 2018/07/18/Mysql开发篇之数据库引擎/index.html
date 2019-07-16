@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Mysql开发篇之数据库引擎 - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。\n\n\n常用查看默认存储引擎12345678910mysql&gt; show variables like '%storage_engine%';+----------------------------------+-----------+| Variable_name                    | Value     |+----------------------------------+-----------+| default_storage_engine           | InnoDB    || default_tmp_storage_engine       | InnoDB    || disabled_storage_engines         |           || internal_tmp_disk_storage_engine | InnoDB    || internal_tmp_mem_storage_engine  | TempTable |+----------------------------------+-----------+\n查询当前数据库支持的存储引擎1mysql&gt; show engines;\n查看当前表的存储引擎1mysql&gt; show status table;\n设置存储引擎12345mysql&gt; create table student (\t  id int not null auto_increment,\t  name varchar(10) not null,\t  primary key(id)\t  )engine = myisam default charset=gbk;\n修改存储引擎1mysql&gt; alter table student engine = innodb;\n常用存储引擎对比\n\n\n特点\nMyISAM\nInnoDB\nMEMORY\nMERGE\nNDB\n\n\n\n\n存储限制\n有\n64TB\n有\n没有\n有\n\n\n事物安全\n\n支持\n\n\n\n\n\n锁机制\n表锁\n行锁\n表锁\n表锁\n行所\n\n\nB树索引\n支持\n支持\n支持\n支持\n支持\n\n\n哈希索引\n\n\n支持\n\n支持\n\n\n全文索引\n支持\n\n\n\n\n\n\n集群索引\n\n支持\n\n\n\n\n\n数据缓存\n\n支持\n支持\n\n支持\n\n\n索引缓存\n支持\n支持\n支持\n支持\n支持\n\n\n数据可压缩\n支持\n\n\n\n\n\n\n空间使用\n低\n高\nN/A\n低\n高\n\n\n内存使用\n低\n高\n中等\n低\n高\n\n\n批量插入的速度\n高\n低\n高\n高\n高\n\n\n支持外键\n\n支持\n\n\n\n\n\n\n适用环境InnDB用于事务处理应用程序，支持外键。如果应用对事物的完整性\b有较高的要求，在并发条件下\b要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。\nMyISAM以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储\b\b和其他应用环境下最常使用的存储引擎之一。\nMEMORY将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小\b\b有限制，太大的表无法缓存在内存中，其次是\b要确保表的数据可以恢复，数据库异常终止后表中的数据是可以\b恢复的。常用于更新不太频的小表，用以快速地得到访问结果。\nMERGE用于将一系列等同的MyISAM表以逻辑方式组合在一起，并作为一个对象引用它们。优点在于可以突破对单个MyISAM表大小的限制，并且通过将不同的表分布在多个磁盘上，可以有效地改善MERAGE表的访问效率。对于诸如数据仓储等VLDB环境十分适合。\n","dateCreated":"2018-07-18T14:00:00+08:00","dateModified":"2019-02-28T18:14:59+08:00","datePublished":"2018-07-18T14:00:00+08:00","description":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。","headline":"Mysql开发篇之数据库引擎","image":["covers/LOL/Vayne/Project-Vayne-2.jpg","covers/LOL/Vayne/Project-Vayne-2.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/","keywords":"Mysql, 数据库引擎","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-2.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。\n创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。\n\n\n\n常用查看默认存储引擎12345678910mysql&gt; show variables like '%storage_engine%';+----------------------------------+-----------+| Variable_name                    | Value     |+----------------------------------+-----------+| default_storage_engine           | InnoDB    || default_tmp_storage_engine       | InnoDB    || disabled_storage_engines         |           || internal_tmp_disk_storage_engine | InnoDB    || internal_tmp_mem_storage_engine  | TempTable |+----------------------------------+-----------+\n\n查询当前数据库支持的存储引擎1mysql&gt; show engines;\n\n查看当前表的存储引擎1mysql&gt; show status table;\n\n设置存储引擎12345mysql&gt; create table student (\t  id int not null auto_increment,\t  name varchar(10) not null,\t  primary key(id)\t  )engine = myisam default charset=gbk;\n\n修改存储引擎1mysql&gt; alter table student engine = innodb;\n\n常用存储引擎对比\n\n\n特点\nMyISAM\nInnoDB\nMEMORY\nMERGE\nNDB\n\n\n\n存储限制\n有\n64TB\n有\n没有\n有\n\n\n事物安全\n\n支持\n\n\n\n\n\n锁机制\n表锁\n行锁\n表锁\n表锁\n行所\n\n\nB树索引\n支持\n支持\n支持\n支持\n支持\n\n\n哈希索引\n\n\n支持\n\n支持\n\n\n全文索引\n支持\n\n\n\n\n\n\n集群索引\n\n支持\n\n\n\n\n\n数据缓存\n\n支持\n支持\n\n支持\n\n\n索引缓存\n支持\n支持\n支持\n支持\n支持\n\n\n数据可压缩\n支持\n\n\n\n\n\n\n空间使用\n低\n高\nN/A\n低\n高\n\n\n内存使用\n低\n高\n中等\n低\n高\n\n\n批量插入的速度\n高\n低\n高\n高\n高\n\n\n支持外键\n\n支持\n\n\n\n\n\n适用环境InnDB用于事务处理应用程序，支持外键。如果应用对事物的完整性\b有较高的要求，在并发条件下\b要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。\nMyISAM以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储\b\b和其他应用环境下最常使用的存储引擎之一。\nMEMORY将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小\b\b有限制，太大的表无法缓存在内存中，其次是\b要确保表的数据可以恢复，数据库异常终止后表中的数据是可以\b恢复的。常用于更新不太频的小表，用以快速地得到访问结果。\nMERGE用于将一系列等同的MyISAM表以逻辑方式组合在一起，并作为一个对象引用它们。优点在于可以突破对单个MyISAM表大小的限制，并且通过将不同的表分布在多个磁盘上，可以有效地改善MERAGE表的访问效率。对于诸如数据仓储等VLDB环境十分适合。\n","dateCreated":"2018-07-18T14:00:00+08:00","dateModified":"2019-02-28T18:14:59+08:00","datePublished":"2018-07-18T14:00:00+08:00","description":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。","headline":"Mysql开发篇之数据库引擎","image":["covers/LOL/Vayne/Project-Vayne-2.jpg","covers/LOL/Vayne/Project-Vayne-2.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/","keywords":"Mysql, 数据库引擎","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-2.jpg"}</script>
     <meta name="description" content="插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。">
 <meta name="keywords" content="Mysql,数据库引擎">
 <meta property="og:type" content="blog">
@@ -57,14 +57,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -81,10 +81,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -102,7 +103,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -116,7 +117,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -125,7 +130,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -134,7 +143,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -143,7 +156,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -152,7 +169,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -161,7 +182,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -174,7 +199,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -183,7 +208,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -196,7 +221,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -211,7 +240,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/covers/LOL/Vayne/Project-Vayne-2.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Vayne/Project-Vayne-2.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -247,140 +278,145 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p>插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。<a id="more"></a>Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。<br><div class="alert info"><p>创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。</p>
-</div></p>
+            <p>插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。<a id="more"></a>Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。</p>
+<div class="alert info"><p>创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。</p>
+</div>
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#常用"><span class="toc-text">常用</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#查看默认存储引擎"><span class="toc-text">查看默认存储引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查询当前数据库支持的存储引擎"><span class="toc-text">查询当前数据库支持的存储引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看当前表的存储引擎"><span class="toc-text">查看当前表的存储引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#设置存储引擎"><span class="toc-text">设置存储引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#修改存储引擎"><span class="toc-text">修改存储引擎</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#常用存储引擎对比"><span class="toc-text">常用存储引擎对比</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#适用环境"><span class="toc-text">适用环境</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#InnDB"><span class="toc-text">InnDB</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MyISAM"><span class="toc-text">MyISAM</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MEMORY"><span class="toc-text">MEMORY</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MERGE"><span class="toc-text">MERGE</span></a></li></ol></li></ol>
 <h3 id="常用"><a href="#常用" class="headerlink" title="常用"></a>常用</h3><h4 id="查看默认存储引擎"><a href="#查看默认存储引擎" class="headerlink" title="查看默认存储引擎"></a>查看默认存储引擎</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like <span class="string">'%storage_engine%'</span>;</span><br><span class="line">+----------------------------------+-----------+</span><br><span class="line">| Variable_name                    | Value     |</span><br><span class="line">+----------------------------------+-----------+</span><br><span class="line">| default_storage_engine           | InnoDB    |</span><br><span class="line">| default_tmp_storage_engine       | InnoDB    |</span><br><span class="line">| disabled_storage_engines         |           |</span><br><span class="line">| internal_tmp_disk_storage_engine | InnoDB    |</span><br><span class="line">| internal_tmp_mem_storage_engine  | TempTable |</span><br><span class="line">+----------------------------------+-----------+</span><br></pre></td></tr></table></figure>
+
 <h4 id="查询当前数据库支持的存储引擎"><a href="#查询当前数据库支持的存储引擎" class="headerlink" title="查询当前数据库支持的存储引擎"></a>查询当前数据库支持的存储引擎</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show engines;</span><br></pre></td></tr></table></figure>
+
 <h4 id="查看当前表的存储引擎"><a href="#查看当前表的存储引擎" class="headerlink" title="查看当前表的存储引擎"></a>查看当前表的存储引擎</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show status table;</span><br></pre></td></tr></table></figure>
+
 <h4 id="设置存储引擎"><a href="#设置存储引擎" class="headerlink" title="设置存储引擎"></a>设置存储引擎</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create table student (</span><br><span class="line">	  id int not null auto_increment,</span><br><span class="line">	  name varchar(10) not null,</span><br><span class="line">	  primary key(id)</span><br><span class="line">	  )engine = myisam default charset=gbk;</span><br></pre></td></tr></table></figure>
+
 <h4 id="修改存储引擎"><a href="#修改存储引擎" class="headerlink" title="修改存储引擎"></a>修改存储引擎</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter table student engine = innodb;</span><br></pre></td></tr></table></figure>
+
 <h3 id="常用存储引擎对比"><a href="#常用存储引擎对比" class="headerlink" title="常用存储引擎对比"></a>常用存储引擎对比</h3><table>
 <thead>
 <tr>
-<th style="text-align:center">特点</th>
-<th style="text-align:center">MyISAM</th>
-<th style="text-align:center">InnoDB</th>
-<th style="text-align:center">MEMORY</th>
-<th style="text-align:center">MERGE</th>
-<th style="text-align:center">NDB</th>
+<th align="center">特点</th>
+<th align="center">MyISAM</th>
+<th align="center">InnoDB</th>
+<th align="center">MEMORY</th>
+<th align="center">MERGE</th>
+<th align="center">NDB</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:center">存储限制</td>
-<td style="text-align:center">有</td>
-<td style="text-align:center">64TB</td>
-<td style="text-align:center">有</td>
-<td style="text-align:center">没有</td>
-<td style="text-align:center">有</td>
+<tbody><tr>
+<td align="center">存储限制</td>
+<td align="center">有</td>
+<td align="center">64TB</td>
+<td align="center">有</td>
+<td align="center">没有</td>
+<td align="center">有</td>
 </tr>
 <tr>
-<td style="text-align:center">事物安全</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center">事物安全</td>
+<td align="center"></td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">锁机制</td>
-<td style="text-align:center">表锁</td>
-<td style="text-align:center">行锁</td>
-<td style="text-align:center">表锁</td>
-<td style="text-align:center">表锁</td>
-<td style="text-align:center">行所</td>
+<td align="center">锁机制</td>
+<td align="center">表锁</td>
+<td align="center">行锁</td>
+<td align="center">表锁</td>
+<td align="center">表锁</td>
+<td align="center">行所</td>
 </tr>
 <tr>
-<td style="text-align:center">B树索引</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
+<td align="center">B树索引</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
 </tr>
 <tr>
-<td style="text-align:center">哈希索引</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
+<td align="center">哈希索引</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center">支持</td>
 </tr>
 <tr>
-<td style="text-align:center">全文索引</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center">全文索引</td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">集群索引</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center">集群索引</td>
+<td align="center"></td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">数据缓存</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
+<td align="center">数据缓存</td>
+<td align="center"></td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center">支持</td>
 </tr>
 <tr>
-<td style="text-align:center">索引缓存</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center">支持</td>
+<td align="center">索引缓存</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
+<td align="center">支持</td>
 </tr>
 <tr>
-<td style="text-align:center">数据可压缩</td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center">数据可压缩</td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
 <tr>
-<td style="text-align:center">空间使用</td>
-<td style="text-align:center">低</td>
-<td style="text-align:center">高</td>
-<td style="text-align:center">N/A</td>
-<td style="text-align:center">低</td>
-<td style="text-align:center">高</td>
+<td align="center">空间使用</td>
+<td align="center">低</td>
+<td align="center">高</td>
+<td align="center">N/A</td>
+<td align="center">低</td>
+<td align="center">高</td>
 </tr>
 <tr>
-<td style="text-align:center">内存使用</td>
-<td style="text-align:center">低</td>
-<td style="text-align:center">高</td>
-<td style="text-align:center">中等</td>
-<td style="text-align:center">低</td>
-<td style="text-align:center">高</td>
+<td align="center">内存使用</td>
+<td align="center">低</td>
+<td align="center">高</td>
+<td align="center">中等</td>
+<td align="center">低</td>
+<td align="center">高</td>
 </tr>
 <tr>
-<td style="text-align:center">批量插入的速度</td>
-<td style="text-align:center">高</td>
-<td style="text-align:center">低</td>
-<td style="text-align:center">高</td>
-<td style="text-align:center">高</td>
-<td style="text-align:center">高</td>
+<td align="center">批量插入的速度</td>
+<td align="center">高</td>
+<td align="center">低</td>
+<td align="center">高</td>
+<td align="center">高</td>
+<td align="center">高</td>
 </tr>
 <tr>
-<td style="text-align:center">支持外键</td>
-<td style="text-align:center"></td>
-<td style="text-align:center">支持</td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
-<td style="text-align:center"></td>
+<td align="center">支持外键</td>
+<td align="center"></td>
+<td align="center">支持</td>
+<td align="center"></td>
+<td align="center"></td>
+<td align="center"></td>
 </tr>
-</tbody>
-</table>
+</tbody></table>
 <h3 id="适用环境"><a href="#适用环境" class="headerlink" title="适用环境"></a>适用环境</h3><h4 id="InnDB"><a href="#InnDB" class="headerlink" title="InnDB"></a>InnDB</h4><p>用于事务处理应用程序，支持外键。如果应用对事物的完整性有较高的要求，在并发条件下要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。</p>
 <h4 id="MyISAM"><a href="#MyISAM" class="headerlink" title="MyISAM"></a>MyISAM</h4><p>以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储和其他应用环境下最常使用的存储引擎之一。</p>
 <h4 id="MEMORY"><a href="#MEMORY" class="headerlink" title="MEMORY"></a>MEMORY</h4><p>将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小有限制，太大的表无法缓存在内存中，其次是要确保表的数据可以恢复，数据库异常终止后表中的数据是可以恢复的。常用于更新不太频的小表，用以快速地得到访问结果。</p>
@@ -393,7 +429,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/数据库引擎/">数据库引擎</a>
 
@@ -479,7 +515,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -632,7 +668,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -642,7 +678,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -650,7 +686,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -668,5 +704,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

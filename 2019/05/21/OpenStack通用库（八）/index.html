@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（八） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。\noslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。\n\n构造rootwrap shell脚本使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。\n以nova为例。12345678910# setup.cfgconsole_scripts =    nova-api = nova.cmd.api:main    nova-compute = nova.cmd.compute:main    nova-conductor = nova.cmd.conductor:main    nova-console = nova.cmd.console:main    nova-manage = nova.cmd.manage:main    nova-policy = nova.cmd.policy:main    nova-rootwrap = oslo_rootwrap.cmd:main\n可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。\n调用rootwrap shell脚本","dateCreated":"2019-05-21T10:50:18+08:00","dateModified":"2019-05-21T11:14:31+08:00","datePublished":"2019-05-21T10:50:18+08:00","description":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。","headline":"OpenStack通用库（八）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/21/OpenStack通用库（八）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/21/OpenStack通用库（八）/","keywords":"OpenStack, Oslo, Rootwrap","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。\noslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。\n\n\n构造rootwrap shell脚本使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。\n以nova为例。\n12345678910# setup.cfgconsole_scripts =    nova-api = nova.cmd.api:main    nova-compute = nova.cmd.compute:main    nova-conductor = nova.cmd.conductor:main    nova-console = nova.cmd.console:main    nova-manage = nova.cmd.manage:main    nova-policy = nova.cmd.policy:main    nova-rootwrap = oslo_rootwrap.cmd:main\n\n可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。\n调用rootwrap shell脚本","dateCreated":"2019-05-21T10:50:18+08:00","dateModified":"2019-05-21T11:14:31+08:00","datePublished":"2019-05-21T10:50:18+08:00","description":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。","headline":"OpenStack通用库（八）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/21/OpenStack通用库（八）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/21/OpenStack通用库（八）/","keywords":"OpenStack, Oslo, Rootwrap","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。">
 <meta name="keywords" content="OpenStack,Oslo,Rootwrap">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -245,8 +276,11 @@
             <p><a href="https://github.com/openstack/oslo.rootwrap" target="_blank" rel="noopener">oslo.rootwarp</a>可以让其他OpenStack服务以root身份执行shell命令。<a id="more"></a>一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。</p>
 <p>oslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。</p>
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#构造rootwrap-shell脚本"><span class="toc-text">构造rootwrap shell脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#调用rootwrap-shell脚本"><span class="toc-text">调用rootwrap shell脚本</span></a></li></ol>
+
 <h3 id="构造rootwrap-shell脚本"><a href="#构造rootwrap-shell脚本" class="headerlink" title="构造rootwrap shell脚本"></a>构造rootwrap shell脚本</h3><p>使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。</p>
-<p>以nova为例。<br><figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line"><span class="attr">console_scripts</span> =</span><br><span class="line">    nova-api = nova.cmd.api:main</span><br><span class="line">    nova-compute = nova.cmd.compute:main</span><br><span class="line">    nova-conductor = nova.cmd.conductor:main</span><br><span class="line">    nova-console = nova.cmd.console:main</span><br><span class="line">    nova-manage = nova.cmd.manage:main</span><br><span class="line">    nova-policy = nova.cmd.policy:main</span><br><span class="line">    nova-rootwrap = oslo_rootwrap.cmd:main</span><br></pre></td></tr></table></figure></p>
+<p>以nova为例。</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line"><span class="attr">console_scripts</span> =</span><br><span class="line">    nova-api = nova.cmd.api:main</span><br><span class="line">    nova-compute = nova.cmd.compute:main</span><br><span class="line">    nova-conductor = nova.cmd.conductor:main</span><br><span class="line">    nova-console = nova.cmd.console:main</span><br><span class="line">    nova-manage = nova.cmd.manage:main</span><br><span class="line">    nova-policy = nova.cmd.policy:main</span><br><span class="line">    nova-rootwrap = oslo_rootwrap.cmd:main</span><br></pre></td></tr></table></figure>
+
 <p>可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。</p>
 <h3 id="调用rootwrap-shell脚本"><a href="#调用rootwrap-shell脚本" class="headerlink" title="调用rootwrap shell脚本"></a>调用rootwrap shell脚本</h3>
             
@@ -256,7 +290,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/Rootwrap/">Rootwrap</a>
 
@@ -342,7 +376,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -495,7 +529,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -505,7 +539,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -513,7 +547,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -531,5 +565,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

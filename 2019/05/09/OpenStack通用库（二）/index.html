@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（二） - Wang kuntian&#39;s Blog</title>
@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.config用于解析命令行和配置文件中的配置项。\n\n定义和注册配置选项12345678910111213141516171819202122232425262728293031323334353637service.pyimport osfrom oslo_config import cfgopts = [    cfg.StrOpt(        'host',        default='127.0.0.1',        help='host of node'    ),    cfg.IntOpt(        'collector_workers',        default=2,        help='Number of workers for collector service.'    ),]# 注册配置选项cfg.CONF.register_opts(opts)# 将配置选项注册为命令行选项cli_opts = [    cfg.StrOpt(        'os-tenant-id',        deprecated_group='DEFAULT',        default=os.environ.get('OS_TENANT_ID', ''),        help='Tenant ID to use for Openstack service access.'    ),    cfg.BoolOpt(        'insecure',        default=False,        help='xxx'    ),]cfg.CONF.register_cli_opts(cli_opts, group='service_credentials')\n配置选项支持的类型如下。\n\n\n\n类名\n说明\n\n\n\n\noslo_config.cfg.StrOpt\n字符串类型\n\n\noslo_config.cfg.BoolOpt\n布尔型\n\n\noslo_config.cfg.IntOpt\n整数类型\n\n\noslo_config.cfg.FloatOpt\n浮点数类型\n\n\noslo_config.cfg.ListOpt\n字符串列表类型\n\n\noslo_config.cfg.DictOpt\n字典类型，字典中的值需要是字符串类型。\n\n\noslo_config.cfg.MultiStrOpt\n可以分多次配置的字符串列表\n\n\noslo_config.cfg.IPOpt\nIP地址类型\n\n\noslo_config.cfg.HostnameOpt\n域名类型\n\n\noslo_config.cfg.URIOpt\nURI类型\n\n\n\n定义后的配置项，必须要注册才能使用。\n配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。\n注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。\n\n新的定义配置选项的方式1234567891011121314from oslo_config import cfgfrom oslo_config import typesPortType = types.Integer(1, 65535)common_opts = [    cfg.Opt(        'bind_port',        type=PortType(),        default=8080,        help='Port number to listen on.'    )]\n相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。\n使用配置文件和命令行选项指定配置选项为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。123from olso_config import cfgconf(sys.argv[1:], project='xyz')\n初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。12~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf\n配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。123456[DEFULT]host = 127.0.0.1collector_workers = 3[service_credentials]insecure = True\n用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。\n\n1--service_credentials-os-tenant-id abc123\n使用其他模块中已经注册过的配置选项对于已经注册过的配置选项，开发者可以直接访问。12345from oslo_config import cfgimport servicehost = cfg.CONF.hosttenant_id = cfg.CONF.service_credentials.os-tenant-id\n还可以使用import_opt来申明在别的模块中定义的配置选项。1234from oslo_config import cfgcfg.CONF.import_opt('host', 'service')host = cfg.CONF.host\n","dateCreated":"2019-05-09T16:49:58+08:00","dateModified":"2019-05-21T11:14:03+08:00","datePublished":"2019-05-09T16:49:58+08:00","description":"oslo.config用于解析命令行和配置文件中的配置项。","headline":"OpenStack通用库（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/","keywords":"OpenStack, Oslo, Config","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"oslo.config用于解析命令行和配置文件中的配置项。\n\n\n\n\n定义和注册配置选项12345678910111213141516171819202122232425262728293031323334353637service.pyimport osfrom oslo_config import cfgopts = [    cfg.StrOpt(        'host',        default='127.0.0.1',        help='host of node'    ),    cfg.IntOpt(        'collector_workers',        default=2,        help='Number of workers for collector service.'    ),]# 注册配置选项cfg.CONF.register_opts(opts)# 将配置选项注册为命令行选项cli_opts = [    cfg.StrOpt(        'os-tenant-id',        deprecated_group='DEFAULT',        default=os.environ.get('OS_TENANT_ID', ''),        help='Tenant ID to use for Openstack service access.'    ),    cfg.BoolOpt(        'insecure',        default=False,        help='xxx'    ),]cfg.CONF.register_cli_opts(cli_opts, group='service_credentials')\n\n配置选项支持的类型如下。\n\n\n\n类名\n说明\n\n\n\noslo_config.cfg.StrOpt\n字符串类型\n\n\noslo_config.cfg.BoolOpt\n布尔型\n\n\noslo_config.cfg.IntOpt\n整数类型\n\n\noslo_config.cfg.FloatOpt\n浮点数类型\n\n\noslo_config.cfg.ListOpt\n字符串列表类型\n\n\noslo_config.cfg.DictOpt\n字典类型，字典中的值需要是字符串类型。\n\n\noslo_config.cfg.MultiStrOpt\n可以分多次配置的字符串列表\n\n\noslo_config.cfg.IPOpt\nIP地址类型\n\n\noslo_config.cfg.HostnameOpt\n域名类型\n\n\noslo_config.cfg.URIOpt\nURI类型\n\n\n定义后的配置项，必须要注册才能使用。\n配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。\n注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。\n\n\n新的定义配置选项的方式1234567891011121314from oslo_config import cfgfrom oslo_config import typesPortType = types.Integer(1, 65535)common_opts = [    cfg.Opt(        'bind_port',        type=PortType(),        default=8080,        help='Port number to listen on.'    )]\n\n相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。\n使用配置文件和命令行选项指定配置选项为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。\n123from olso_config import cfgconf(sys.argv[1:], project='xyz')\n\n初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。\n12~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf\n\n配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。\n123456[DEFULT]host = 127.0.0.1collector_workers = 3[service_credentials]insecure = True\n\n用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。\n\n1--service_credentials-os-tenant-id abc123\n\n使用其他模块中已经注册过的配置选项对于已经注册过的配置选项，开发者可以直接访问。\n12345from oslo_config import cfgimport servicehost = cfg.CONF.hosttenant_id = cfg.CONF.service_credentials.os-tenant-id\n\n还可以使用import_opt来申明在别的模块中定义的配置选项。\n1234from oslo_config import cfgcfg.CONF.import_opt('host', 'service')host = cfg.CONF.host","dateCreated":"2019-05-09T16:49:58+08:00","dateModified":"2019-05-21T11:14:03+08:00","datePublished":"2019-05-09T16:49:58+08:00","description":"oslo.config用于解析命令行和配置文件中的配置项。","headline":"OpenStack通用库（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/","keywords":"OpenStack, Oslo, Config","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.config用于解析命令行和配置文件中的配置项。">
 <meta name="keywords" content="OpenStack,Oslo,Config">
 <meta property="og:type" content="blog">
@@ -54,14 +54,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -78,10 +78,11 @@
     </div>
     
         
-            <a class="header-right-picture " href="#about">
+            <a  class="header-right-picture "
+                href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -99,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -113,7 +114,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/ " title="Home">
+                        <a  class="sidebar-button-link "
+                             href="/ "
+                            
+                            title="Home"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
@@ -122,7 +127,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-categories" title="Categories">
+                        <a  class="sidebar-button-link "
+                             href="/all-categories"
+                            
+                            title="Categories"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
@@ -131,7 +140,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-tags" title="Tags">
+                        <a  class="sidebar-button-link "
+                             href="/all-tags"
+                            
+                            title="Tags"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
@@ -140,7 +153,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/all-archives" title="Archives">
+                        <a  class="sidebar-button-link "
+                             href="/all-archives"
+                            
+                            title="Archives"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
@@ -149,7 +166,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link open-algolia-search" href="#search" title="Search">
+                        <a  class="sidebar-button-link open-algolia-search"
+                             href="#search"
+                            
+                            title="Search"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
@@ -158,7 +179,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="#about" title="About">
+                        <a  class="sidebar-button-link "
+                             href="#about"
+                            
+                            title="About"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
@@ -171,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -180,7 +205,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
+                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
                     
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
@@ -193,7 +218,11 @@
             
                 <li class="sidebar-button">
                     
-                        <a class="sidebar-button-link " href="/atom.xml" title="RSS">
+                        <a  class="sidebar-button-link "
+                             href="/atom.xml"
+                            
+                            title="RSS"
+                        >
                     
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
@@ -208,7 +237,9 @@
             
         <div class="post-header-cover
                     text-center
-                    post-header-cover--full" style="background-image:url('/images/PROJECT-Vayne.jpg');" data-behavior="4">
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
     
@@ -242,75 +273,88 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p><a href="https://github.com/openstack/oslo.config" target="_blank" rel="noopener">oslo.config</a>用于解析命令行和配置文件中的配置项。<br><a id="more"></a></p>
+            <p><a href="https://github.com/openstack/oslo.config" target="_blank" rel="noopener">oslo.config</a>用于解析命令行和配置文件中的配置项。</p>
+<a id="more"></a>
+
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#定义和注册配置选项"><span class="toc-text">定义和注册配置选项</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#新的定义配置选项的方式"><span class="toc-text">新的定义配置选项的方式</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#使用配置文件和命令行选项指定配置选项"><span class="toc-text">使用配置文件和命令行选项指定配置选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#使用其他模块中已经注册过的配置选项"><span class="toc-text">使用其他模块中已经注册过的配置选项</span></a></li></ol>
+
 <h3 id="定义和注册配置选项"><a href="#定义和注册配置选项" class="headerlink" title="定义和注册配置选项"></a>定义和注册配置选项</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">service.py</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">opts = [</span><br><span class="line">    cfg.StrOpt(</span><br><span class="line">        <span class="string">'host'</span>,</span><br><span class="line">        default=<span class="string">'127.0.0.1'</span>,</span><br><span class="line">        help=<span class="string">'host of node'</span></span><br><span class="line">    ),</span><br><span class="line">    cfg.IntOpt(</span><br><span class="line">        <span class="string">'collector_workers'</span>,</span><br><span class="line">        default=<span class="number">2</span>,</span><br><span class="line">        help=<span class="string">'Number of workers for collector service.'</span></span><br><span class="line">    ),</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 注册配置选项</span></span><br><span class="line">cfg.CONF.register_opts(opts)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 将配置选项注册为命令行选项</span></span><br><span class="line">cli_opts = [</span><br><span class="line">    cfg.StrOpt(</span><br><span class="line">        <span class="string">'os-tenant-id'</span>,</span><br><span class="line">        deprecated_group=<span class="string">'DEFAULT'</span>,</span><br><span class="line">        default=os.environ.get(<span class="string">'OS_TENANT_ID'</span>, <span class="string">''</span>),</span><br><span class="line">        help=<span class="string">'Tenant ID to use for Openstack service access.'</span></span><br><span class="line">    ),</span><br><span class="line">    cfg.BoolOpt(</span><br><span class="line">        <span class="string">'insecure'</span>,</span><br><span class="line">        default=<span class="keyword">False</span>,</span><br><span class="line">        help=<span class="string">'xxx'</span></span><br><span class="line">    ),</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">cfg.CONF.register_cli_opts(cli_opts, group=<span class="string">'service_credentials'</span>)</span><br></pre></td></tr></table></figure>
+
 <p>配置选项支持的类型如下。</p>
 <table>
 <thead>
 <tr>
-<th style="text-align:left">类名</th>
-<th style="text-align:left">说明</th>
+<th align="left">类名</th>
+<th align="left">说明</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td style="text-align:left">oslo_config.cfg.StrOpt</td>
-<td style="text-align:left">字符串类型</td>
+<tbody><tr>
+<td align="left">oslo_config.cfg.StrOpt</td>
+<td align="left">字符串类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.BoolOpt</td>
-<td style="text-align:left">布尔型</td>
+<td align="left">oslo_config.cfg.BoolOpt</td>
+<td align="left">布尔型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.IntOpt</td>
-<td style="text-align:left">整数类型</td>
+<td align="left">oslo_config.cfg.IntOpt</td>
+<td align="left">整数类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.FloatOpt</td>
-<td style="text-align:left">浮点数类型</td>
+<td align="left">oslo_config.cfg.FloatOpt</td>
+<td align="left">浮点数类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.ListOpt</td>
-<td style="text-align:left">字符串列表类型</td>
+<td align="left">oslo_config.cfg.ListOpt</td>
+<td align="left">字符串列表类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.DictOpt</td>
-<td style="text-align:left">字典类型，字典中的值需要是字符串类型。</td>
+<td align="left">oslo_config.cfg.DictOpt</td>
+<td align="left">字典类型，字典中的值需要是字符串类型。</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.MultiStrOpt</td>
-<td style="text-align:left">可以分多次配置的字符串列表</td>
+<td align="left">oslo_config.cfg.MultiStrOpt</td>
+<td align="left">可以分多次配置的字符串列表</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.IPOpt</td>
-<td style="text-align:left">IP地址类型</td>
+<td align="left">oslo_config.cfg.IPOpt</td>
+<td align="left">IP地址类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.HostnameOpt</td>
-<td style="text-align:left">域名类型</td>
+<td align="left">oslo_config.cfg.HostnameOpt</td>
+<td align="left">域名类型</td>
 </tr>
 <tr>
-<td style="text-align:left">oslo_config.cfg.URIOpt</td>
-<td style="text-align:left">URI类型</td>
+<td align="left">oslo_config.cfg.URIOpt</td>
+<td align="left">URI类型</td>
 </tr>
-</tbody>
-</table>
+</tbody></table>
 <div class="alert info no-icon"><p>定义后的配置项，必须要注册才能使用。</p>
 <p>配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。</p>
 <p>注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。</p>
 </div>
+
 <h4 id="新的定义配置选项的方式"><a href="#新的定义配置选项的方式" class="headerlink" title="新的定义配置选项的方式"></a>新的定义配置选项的方式</h4><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> types</span><br><span class="line"></span><br><span class="line">PortType = types.Integer(<span class="number">1</span>, <span class="number">65535</span>)</span><br><span class="line"></span><br><span class="line">common_opts = [</span><br><span class="line">    cfg.Opt(</span><br><span class="line">        <span class="string">'bind_port'</span>,</span><br><span class="line">        type=PortType(),</span><br><span class="line">        default=<span class="number">8080</span>,</span><br><span class="line">        help=<span class="string">'Port number to listen on.'</span></span><br><span class="line">    )</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
 <p>相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。</p>
-<h3 id="使用配置文件和命令行选项指定配置选项"><a href="#使用配置文件和命令行选项指定配置选项" class="headerlink" title="使用配置文件和命令行选项指定配置选项"></a>使用配置文件和命令行选项指定配置选项</h3><p>为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> olso_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">conf(sys.argv[<span class="number">1</span>:], project=<span class="string">'xyz'</span>)</span><br></pre></td></tr></table></figure></p>
-<p>初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf</span><br></pre></td></tr></table></figure></p>
-<p>配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。<br><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[DEFULT]</span></span><br><span class="line"><span class="attr">host</span> = <span class="number">127.0</span>.<span class="number">0.1</span></span><br><span class="line"><span class="attr">collector_workers</span> = <span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="section">[service_credentials]</span></span><br><span class="line"><span class="attr">insecure</span> = <span class="literal">True</span></span><br></pre></td></tr></table></figure></p>
+<h3 id="使用配置文件和命令行选项指定配置选项"><a href="#使用配置文件和命令行选项指定配置选项" class="headerlink" title="使用配置文件和命令行选项指定配置选项"></a>使用配置文件和命令行选项指定配置选项</h3><p>为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> olso_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">conf(sys.argv[<span class="number">1</span>:], project=<span class="string">'xyz'</span>)</span><br></pre></td></tr></table></figure>
+
+<p>初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf</span><br></pre></td></tr></table></figure>
+
+<p>配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[DEFULT]</span></span><br><span class="line"><span class="attr">host</span> = <span class="number">127.0</span>.<span class="number">0.1</span></span><br><span class="line"><span class="attr">collector_workers</span> = <span class="number">3</span></span><br><span class="line"></span><br><span class="line"><span class="section">[service_credentials]</span></span><br><span class="line"><span class="attr">insecure</span> = <span class="literal">True</span></span><br></pre></td></tr></table></figure>
+
 <div class="alert info no-icon"><p>用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。</p>
 </div>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--service_credentials-os-tenant-id abc123</span><br></pre></td></tr></table></figure>
-<h3 id="使用其他模块中已经注册过的配置选项"><a href="#使用其他模块中已经注册过的配置选项" class="headerlink" title="使用其他模块中已经注册过的配置选项"></a>使用其他模块中已经注册过的配置选项</h3><p>对于已经注册过的配置选项，开发者可以直接访问。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">from oslo_config import cfg</span><br><span class="line">import service</span><br><span class="line"></span><br><span class="line">host = cfg.CONF.host</span><br><span class="line">tenant_id = cfg.CONF.service_credentials.os-tenant-id</span><br></pre></td></tr></table></figure></p>
-<p>还可以使用import_opt来申明在别的模块中定义的配置选项。<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">cfg.CONF.import_opt(<span class="string">'host'</span>, <span class="string">'service'</span>)</span><br><span class="line">host = cfg.CONF.host</span><br></pre></td></tr></table></figure></p>
 
+<h3 id="使用其他模块中已经注册过的配置选项"><a href="#使用其他模块中已经注册过的配置选项" class="headerlink" title="使用其他模块中已经注册过的配置选项"></a>使用其他模块中已经注册过的配置选项</h3><p>对于已经注册过的配置选项，开发者可以直接访问。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">from oslo_config import cfg</span><br><span class="line">import service</span><br><span class="line"></span><br><span class="line">host = cfg.CONF.host</span><br><span class="line">tenant_id = cfg.CONF.service_credentials.os-tenant-id</span><br></pre></td></tr></table></figure>
+
+<p>还可以使用import_opt来申明在别的模块中定义的配置选项。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">cfg.CONF.import_opt(<span class="string">'host'</span>, <span class="string">'service'</span>)</span><br><span class="line">host = cfg.CONF.host</span><br></pre></td></tr></table></figure>
             
 
         </div>
@@ -318,7 +362,7 @@
     <div id="post-footer" class="post-footer main-content-wrap">
         
             <div class="post-footer-tags">
-                <span class="text-color-light text-small">TAGGED IN</span><br>
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
     <a class="tag tag--primary tag--small t-link" href="/tags/Config/">Config</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a>
 
@@ -404,7 +448,7 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
 <div id="vcomments"></div>
 <script>
     new Valine({
@@ -557,7 +601,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture">
+            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
@@ -567,7 +611,7 @@
         
             <div id="about-card-job">
                 <i class="fa fa-briefcase"></i>
-                <br>
+                <br/>
                 <p>Software Engineer</p>
 
             </div>
@@ -575,7 +619,7 @@
         
             <div id="about-card-location">
                 <i class="fa fa-map-marker-alt"></i>
-                <br>
+                <br/>
                 Beijing
             </div>
         
@@ -593,5 +637,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?0c58a1486de42ac6cc1c59c7d98ae887"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618},"display":{"superSample":2,"width":100,"height":200,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"log":false,"pluginJsPath":"lib/","pluginModelPath":"assets/","pluginRootPath":"live2dw/","tagMode":false});</script></body>
 </html>

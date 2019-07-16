@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Docker入门（四） - Wang kuntian&#39;s Blog</title>
@@ -64,14 +64,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -291,15 +291,15 @@
 <h3 id="创建容器"><a href="#创建容器" class="headerlink" title="创建容器"></a>创建容器</h3><h4 id="新建容器"><a href="#新建容器" class="headerlink" title="新建容器"></a>新建容器</h4><p>可以使用docker create命令新建一个容器。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-create.png" alt="docker-create"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-create.png" alt="docker-create"></p>
 <p>使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker start [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-start.png" alt="docker-start"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-start.png" alt="docker-start"></p>
 <h4 id="新建并启动容器"><a href="#新建并启动容器" class="headerlink" title="新建并启动容器"></a>新建并启动容器</h4><p>启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-run.png" alt="docker-run"><br>当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：</p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-run.png" alt="docker-run"><br>当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：</p>
 <ol>
 <li>检查本地是否存在指定的镜像，不存在就从公有仓库下载。</li>
 <li>利用镜像创建并启动一个容器。</li>
@@ -312,7 +312,7 @@
 <p>下面的命令将启动一个bash终端，允许用户进行交互。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -t -i ubuntu /bin/bash</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-run-it.png" alt="docker-run-it"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-run-it.png" alt="docker-run-it"></p>
 <div class="alert danger no-icon"><p>可选参数<br><strong>-t</strong> docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。<br><strong>-i</strong> 容器的标准输入保持打开。</p>
 </div>
 <div class="alert warning no-icon"><p>用户可以使用Ctrl+d或者exit命令退出容器。<br>对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。<br>因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。</p>
@@ -340,31 +340,31 @@
 <h4 id="attach命令"><a href="#attach命令" class="headerlink" title="attach命令"></a>attach命令</h4><p>docker attach是docker自带的命令。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker attach [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-attach.png" alt="docker-attach"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-attach.png" alt="docker-attach"></p>
 <div class="alert warning no-icon"><p>但是使用attach命令有时并不方便。<br>当多个窗口同时attach到同一容器是，所有窗口都会同步显示。<br>当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。</p>
 </div>
 
 <h4 id="exec命令"><a href="#exec命令" class="headerlink" title="exec命令"></a>exec命令</h4><p>docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker <span class="built_in">exec</span> [OPTIONS] CONTAINER COMMAND [ARG...]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-exec.png" alt="docker-exec"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-exec.png" alt="docker-exec"></p>
 <h4 id="nsenter工具"><a href="#nsenter工具" class="headerlink" title="nsenter工具"></a>nsenter工具</h4><p>这里不做讨论。</p>
 <h3 id="删除容器"><a href="#删除容器" class="headerlink" title="删除容器"></a>删除容器</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>可选参数<br><strong>-f，–force=false</strong> 强行终止并删除一个运行中的容器。<br><strong>-l，–link=false</strong> 删除容器的连接，但保留容器。<br><strong>-v，–volumes=false</strong> 删除容器挂载的数据卷。</p>
 </div>
-<p><img src="images/docker-rm.png" alt="docker-rm"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-rm.png" alt="docker-rm"></p>
 <div class="alert info no-icon"><p>删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。</p>
 </div>
 
 <h3 id="导入和导出容器"><a href="#导入和导出容器" class="headerlink" title="导入和导出容器"></a>导入和导出容器</h3><h4 id="导出容器"><a href="#导出容器" class="headerlink" title="导出容器"></a>导出容器</h4><p>导出容器是指导出一个已经创建的容器到一个文件中。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker export [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-export.png" alt="docker-export"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-export.png" alt="docker-export"></p>
 <h4 id="导入容器"><a href="#导入容器" class="headerlink" title="导入容器"></a>导入容器</h4><p>导出的文件又可以使用docker import命令导入，成为镜像。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-import.png" alt="docker-import"></p>
+<p><img src="/2018/09/18/Docker入门（四）/images/docker-import.png" alt="docker-import"></p>
 <div class="alert danger no-icon"><p>docker load和docker import比较。<br>docker load导入镜像存储文件到本地镜像库。<br>docker import导入容器快照到本地镜像库。<br>区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。</p>
 </div>
 
@@ -650,5 +650,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

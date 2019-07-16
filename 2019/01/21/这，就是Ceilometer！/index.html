@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>这，就是Ceilometer！ - Wang kuntian&#39;s Blog</title>
@@ -58,14 +58,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -284,7 +284,7 @@
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#架构"><span class="toc-text">架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#数据"><span class="toc-text">数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#数据收集"><span class="toc-text">数据收集</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据处理"><span class="toc-text">数据处理</span></a></li></ol></li></ol>
 
 <h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p>Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。</p>
-<p><img src="images/architecture.png" alt="architecture"></p>
+<p><img src="/2019/01/21/这，就是Ceilometer！/images/architecture.png" alt="architecture"></p>
 <p>Ceilometer提供两种核心服务。</p>
 <ol>
 <li>polling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。</li>
@@ -341,11 +341,11 @@
 </li>
 <li>Notification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。</li>
 </ol>
-<p><img src="images/ceilometer-collector.png" alt="ceilometer-collector"></p>
+<p><img src="/2019/01/21/这，就是Ceilometer！/images/ceilometer-collector.png" alt="ceilometer-collector"></p>
 <div class="alert danger no-icon"><p>pulish方式定义在/etc/ceilometer/pipline.yml中。</p>
 </div>
 
-<p><img src="images/gather-data.png" alt="gather-data"></p>
+<p><img src="/2019/01/21/这，就是Ceilometer！/images/gather-data.png" alt="gather-data"></p>
 <h4 id="数据处理"><a href="#数据处理" class="headerlink" title="数据处理"></a>数据处理</h4><p>Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。</p>
             
 
@@ -629,5 +629,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

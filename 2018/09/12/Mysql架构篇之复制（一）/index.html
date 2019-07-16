@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Mysql架构篇之复制（一） - Wang kuntian&#39;s Blog</title>
@@ -63,14 +63,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -304,7 +304,7 @@
 <li><p>主库推送二进制日志文件Binlog中的事件到从库的中继日志Relay Log，之后从库根据中继日志Relay Log重做数据变更操作，通过逻辑复制以此来达到主库和从库的数据一致。</p>
 </li>
 </ol>
-<p>Mysql通过3个线程来完成主从库的数据复制：其中Binlog Dump线程跑在主库上，I/O线程和SQL线程跑在从库上。当在从库上启动复制（START SLAVE）时，首先创建I/O线程连接主库，主库随后创建Binlog Dump线程读取数据库事件并发送给I/O线程，I/O线程获取到事件数据后更新到从库的中继日志Relay Log中去，之后从库上的SQL线程读取中继日志Relay Log中更新的数据库事件并应用，如下图。<br><img src="images/mysql-replication.png" alt="mysql-replication"></p>
+<p>Mysql通过3个线程来完成主从库的数据复制：其中Binlog Dump线程跑在主库上，I/O线程和SQL线程跑在从库上。当在从库上启动复制（START SLAVE）时，首先创建I/O线程连接主库，主库随后创建Binlog Dump线程读取数据库事件并发送给I/O线程，I/O线程获取到事件数据后更新到从库的中继日志Relay Log中去，之后从库上的SQL线程读取中继日志Relay Log中更新的数据库事件并应用，如下图。<br><img src="/2018/09/12/Mysql架构篇之复制（一）/images/mysql-replication.png" alt="mysql-replication"></p>
 <p>可以通过show processlist命令在主库上查看Binlog Dump线程，从Binlog Dump线程的状态可以看到，Mysql的复制品是主库主动推送日志到从库去的，是属于“推”日志的方式来做同步。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
@@ -357,19 +357,19 @@
 
 <h3 id="复制架构"><a href="#复制架构" class="headerlink" title="复制架构"></a>复制架构</h3><p>复制的3种常见架构有一主多从复制架构、多级复制架构和双主复制/Dual Master架构。</p>
 <h4 id="一主多从复制架构"><a href="#一主多从复制架构" class="headerlink" title="一主多从复制架构"></a>一主多从复制架构</h4><p>在主库读取请求压力非常大的场景下，可以通过配置一主多从复制架构实现读写分离，把大量对实时性要求不是特别高的读请求通过负载均衡分布到多个从库上，降低主库的读取压力。</p>
-<p><img src="images/mysql-replication-infrastructure-1.png" alt="mysql-replication-infrastructure"></p>
+<p><img src="/2018/09/12/Mysql架构篇之复制（一）/images/mysql-replication-infrastructure-1.png" alt="mysql-replication-infrastructure"></p>
 <div class="alert info"><p>在主库出现异常宕机的情况下，可以把一个从库切换为主库继续提供服务。</p>
 </div>
 
 <h4 id="多级复制架构"><a href="#多级复制架构" class="headerlink" title="多级复制架构"></a>多级复制架构</h4><p>一主多从的架构能够解决大部分读取请求压力特别大的场景的需求，考虑到Mysql的复制是主库“推送”Binlog日志到从库，主库的I/O压力和网络压力会随着从库的增加而增长（每个从库都会在主库上有一个独立的Binlog Dump线程来发送事件），而多级复制架构解决一主多从场景下，主库额外的I/O和网络压力。</p>
-<p><img src="images/mysql-replication-infrastructure-2.png" alt="mysql-replication-infrastructure"></p>
+<p><img src="/2018/09/12/Mysql架构篇之复制（一）/images/mysql-replication-infrastructure-2.png" alt="mysql-replication-infrastructure"></p>
 <p>对比一主多从的架构，多级复制仅仅是在主库Master-1复制到从库Slave-1、Slave-2、Slave-3的中间增加一个二级主库Master-2，这样Master-1只需要给一个从库Master-2“推送”Binlog日志即可，减轻主库Master-1推送的压力。二级主库Master-2再“推送”Binlog日志给从库Slave-1、Slave-2、Slave-3。</p>
 <p>多级复制解决了一主多从场景下，主库的I/O负载和网络压力，当然也要缺点： Mysql的复制是异步复制，多级复制场景下主库的数据经过两次复制才到达从库，期间的延时比一主多从复制场景下的要大。</p>
 <div class="alert info no-icon"><p>可以通过在二级主库Master-2上选择表引擎为BLACKHOLE来降低多级复制的延时。<br>BLACKHOLE引擎是一个“黑洞”引擎，写入到BLACKHOLE表的数据不会写回到磁盘上，BLACKHOLE表永远是一个空表，Insert/Update/Delete操作仅仅在Binlog中记录事件。</p>
 </div>
 
 <h4 id="双主复制-Dual-Master架构"><a href="#双主复制-Dual-Master架构" class="headerlink" title="双主复制/Dual Master架构"></a>双主复制/Dual Master架构</h4><p>双主/Dual Master架构特别适用DBA做维护等需要主从切换的场景，通过双主/Dual Master架构避免了重复搭建从库的麻烦。</p>
-<p><img src="images/mysql-replication-infrastructure-3.png" alt="mysql-replication-infrastructure"></p>
+<p><img src="/2018/09/12/Mysql架构篇之复制（一）/images/mysql-replication-infrastructure-3.png" alt="mysql-replication-infrastructure"></p>
 <p>主库Master-1和Master-2互为主从，所有Web Client 客户端的写请求都访问主库Master-1，而读请求可以选择访问主库Master-1或者Master-2。假如，DBA需要做日常维护操作，为了避免影响服务：</p>
 <ol>
 <li>首先，在Master-1库上停止Slave线程（Stop Slave），避免后续对Master-2库的维护操作被实时复制到Master-1库上，对服务造成影响。</li>
@@ -378,7 +378,7 @@
 <li>最后，确认Master-1库上无应用访问后，打开Master-1的Slave线程（Start Slave）。</li>
 </ol>
 <p>通过双主复制/Dual Master架构能大大减轻一主多从架构下主库进行维护带来的额外搭建从库的工作。<br>当然，双主复制还能和主从复制联合起来使用：在Master-2库下配置从库Slave-1、Slave-2等，这样既可通过从库Slave-1等来分担读取压力，同时在DBA做维护的同时，避免了重建从库的额外工作。Mysql的双主多级复制架构如下图：</p>
-<p><img src="images/mysql-replication-infrastructure-4.png" alt="mysql-replication-infrastructure"></p>
+<p><img src="/2018/09/12/Mysql架构篇之复制（一）/images/mysql-replication-infrastructure-4.png" alt="mysql-replication-infrastructure"></p>
 <div class="alert warning no-icon"><p>Mysql的Binlog中会记录事件初始发生的server id。<br>Mysql库只应用和自己server id不同的Binlog日志，Mysql通过判断Binlog事件中的不同server id即可判断当前库是否是事件发生的初始发生server，所以双主复制加上级联复制（打开了log_slave_update）也不会出现循环复制。</p>
 </div>
 
@@ -664,5 +664,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

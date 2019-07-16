@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用技术（一） - Wang kuntian&#39;s Blog</title>
@@ -58,14 +58,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -295,7 +295,7 @@
 
 <h3 id="AMQP"><a href="#AMQP" class="headerlink" title="AMQP"></a>AMQP</h3><p>Openstack所支持的消息队列类型中，大部分都是基于AMQP（Advanced Message Queuing Protocol，高级消息队列协议）。</p>
 <p>AMQP是一个异步消息传递所使用的开放的应用层协议规范，主要包括消息的导向、队列、路由、可靠性和安全性。oslo.messaging中支持的AMQP主要包括两版本，AMQP 0.9.1和AMQP 1.0，这两个版本有很大的差别。</p>
-<p>AMQP架构。<br><img src="images/amqp.png" alt="AMQP"></p>
+<p>AMQP架构。<br><img src="/2019/03/01/OpenStack通用技术（一）/images/amqp.png" alt="AMQP"></p>
 <p>对与一个实现了AMQP的中间件服务（Server/Broker）来说，当不同的消息由生产者（Producer）发送到Server时，它会根据不同的条件把消息传递给不同的消费者（Consumer）。如果消费者无法接收消息或者接收消息不够快时，它会把消息缓存在内存或者磁盘上。</p>
 <div class="alert info no-icon"><p>AMQP模型中，上述操作分别由Exchange（消息交换）和Queue（消息队列）来实现。<br>此处的虚拟主机（Virtual Host）指的是Exchange和Queue的集合。</p>
 </div>
@@ -335,7 +335,7 @@
 </div>
 
 <h3 id="基于AMQP实现RPC"><a href="#基于AMQP实现RPC" class="headerlink" title="基于AMQP实现RPC"></a>基于AMQP实现RPC</h3><p>基于AMQP实现远程调用RPC的过程。</p>
-<p><img src="images/amqp-rpc.png" alt="amqp-rpc"></p>
+<p><img src="/2019/03/01/OpenStack通用技术（一）/images/amqp-rpc.png" alt="amqp-rpc"></p>
 <br>
 * 客户端发送一个请求消息给Exchange，指定routing key为“op_queue”，同时指明一个消息队列名用来获取响应，图中为“res_queue”。
 * Exchange把消息转发到消息队列op_queue。
@@ -348,7 +348,7 @@
 <p>oslo.messaging底层实现了两种不同的driver来支持RabbitMQ，分别是kombu和pika。它们的主要区别在于使用了不同的Python library。</p>
 <h4 id="AMQP-1-0"><a href="#AMQP-1-0" class="headerlink" title="AMQP 1.0"></a>AMQP 1.0</h4><p>支持实现了AMQP 1.0协议的消息总线应用，相比AMQP 0.9协议，AMQP 1.0更加灵活和复杂。</p>
 <p>除了常见的AMQP broker模式，AMQP 1.0还实现了一种消息路由模式，位于调用者和服务器之间的不再是单节点的broker，而是有一群互相连接的消息路由组成的路由网，路由不具备队列（queue），没有储存信息的能力，它们的作用就是单纯地传递消息，路由节点之间通过TCP链接进行通信，调用者通过TCP链接连接到路由网中的某个路由，从而接入路由网。</p>
-<p><img src="images/amqp-1.png" alt="AMQP"><br>当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。</p>
+<p><img src="/2019/03/01/OpenStack通用技术（一）/images/amqp-1.png" alt="AMQP"><br>当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。</p>
 <h4 id="OMQ（ZeroMQ）"><a href="#OMQ（ZeroMQ）" class="headerlink" title="ØMQ（ZeroMQ）"></a>ØMQ（ZeroMQ）</h4><p>ZeroMQ是一个开源的高性能异步消息库，和实现了AMQP的RabbitMQ和Qpid不同，ZeroMQ系统可以在没有Server/Broker的情况下工作，消息的发送者需要负责消息路由以找到正确的消息目的地，消息接收者需要负责消息的入队/出对等操作。</p>
 <p>由于没有了集中式的Broker，ZeroMQ可以实现一般AMQP Broker所达不到的很低的延迟和较大的带宽，特别适合消息数量特别巨大的应用场景。</p>
 <p>ZeroMQ使用自己的通信协议ZMTP（ZeroMQ Message Transfer Protocol）来进行通信。ZeroMQ的库使用C++编写，使用LGPL许可证发行。</p>
@@ -636,5 +636,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

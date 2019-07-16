@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Mysql基础篇之SQL基础 - Wang kuntian&#39;s Blog</title>
@@ -68,14 +68,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -416,25 +416,25 @@
 <ul>
 <li><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by <span class="string">'&lt;password&gt;'</span>;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-create-user.png" alt="mysql_create_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-user.png" alt="mysql_create_user"></p>
 </li>
 <li><h4 id="查看所有用户-root-用户下"><a href="#查看所有用户-root-用户下" class="headerlink" title="查看所有用户(root 用户下)"></a>查看所有用户(root 用户下)</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; use mysql;</span><br><span class="line">mysql&gt; select user from mysql.user;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-select-user.png" alt="mysql_select_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-select-user.png" alt="mysql_select_user"></p>
 </li>
 <li><h4 id="修改用户密码"><a href="#修改用户密码" class="headerlink" title="修改用户密码"></a>修改用户密码</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by <span class="string">'&lt;new_password&gt;'</span>;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-alter-user.png" alt="mysql_alter_user"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-alter-user.png" alt="mysql_alter_user"></p>
 </li>
 <li><h4 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 </li>
 <li><h4 id="用户授权"><a href="#用户授权" class="headerlink" title="用户授权"></a>用户授权</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-grant.png" alt="mysql_grant"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-grant.png" alt="mysql_grant"></p>
 </li>
 <li><h4 id="查看授权-root-用户下"><a href="#查看授权-root-用户下" class="headerlink" title="查看授权(root 用户下)"></a>查看授权(root 用户下)</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show grants <span class="keyword">for</span> &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-show-grants.png" alt="mysql_show_grants"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show-grants.png" alt="mysql_show_grants"></p>
 </li>
 <li><h4 id="撤销授权"><a href="#撤销授权" class="headerlink" title="撤销授权"></a>撤销授权</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 
@@ -443,20 +443,20 @@
 <h3 id="Mysql帮助"><a href="#Mysql帮助" class="headerlink" title="Mysql帮助"></a>Mysql帮助</h3><ul>
 <li><h4 id="按照层次看帮助"><a href="#按照层次看帮助" class="headerlink" title="按照层次看帮助"></a>按照层次看帮助</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? content;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-content.png" alt="mysql_content"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-content.png" alt="mysql_content"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? data types;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? double;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-double.png" alt="mysql_double"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-double.png" alt="mysql_double"></p>
 </li>
 <li><h4 id="快速查阅帮助"><a href="#快速查阅帮助" class="headerlink" title="快速查阅帮助"></a>快速查阅帮助</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? show;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-show.png" alt="mysql_show"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show.png" alt="mysql_show"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? create table;</span><br></pre></td></tr></table></figure>
 
-<p>  <img src="images/mysql-create-table.png" alt="mysql_create_table"></p>
+<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-table.png" alt="mysql_create_table"></p>
 </li>
 </ul>
 
@@ -742,5 +742,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Trove的高级操作之Guest镜像的构建 - Wang kuntian&#39;s Blog</title>
@@ -61,14 +61,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -309,12 +309,12 @@
 <h4 id="Elements"><a href="#Elements" class="headerlink" title="Elements"></a>Elements</h4><ol>
 <li>DIB中的elements</li>
 </ol>
-<p>DIB中有大量的元件。DIB的元件在diskimage-builder项目中的/diskimage_builder/elements的目录下。<br><img src="images/dib-element-ls.png" alt="dib-element-ls"></p>
+<p>DIB中有大量的元件。DIB的元件在diskimage-builder项目中的/diskimage_builder/elements的目录下。<br><img src="/2018/09/06/Trove的高级操作之Guest镜像的构建/images/dib-element-ls.png" alt="dib-element-ls"></p>
 <ol start="2">
 <li>Trove中的elements</li>
 </ol>
 <p>除了DIB提供的元件，Trove也提供自己所支持的数据库的元件。可以在trove项目下的integration/scripts/files/elements中找到trove的相关元件。</p>
-<p><img src="images/trove-element-ls.png" alt="trove-element-ls"></p>
+<p><img src="/2018/09/06/Trove的高级操作之Guest镜像的构建/images/trove-element-ls.png" alt="trove-element-ls"></p>
 <h4 id="设置变量"><a href="#设置变量" class="headerlink" title="设置变量"></a>设置变量</h4><ul>
 <li><p>官网的变量</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># assign a suitable value for each of these environment</span></span><br><span class="line"><span class="comment"># variables that change the way the elements behave.</span></span><br><span class="line"><span class="built_in">export</span> HOST_USERNAME</span><br><span class="line"><span class="built_in">export</span> HOST_SCP_USERNAME</span><br><span class="line"><span class="built_in">export</span> GUEST_USERNAME</span><br><span class="line"><span class="built_in">export</span> CONTROLLER_IP</span><br><span class="line"><span class="built_in">export</span> TROVESTACK_SCRIPTS</span><br><span class="line"><span class="built_in">export</span> SERVICE_TYPE</span><br><span class="line"><span class="built_in">export</span> PATH_TROVE</span><br><span class="line"><span class="built_in">export</span> ESCAPED_PATH_TROVE</span><br><span class="line"><span class="built_in">export</span> SSH_DIR</span><br><span class="line"><span class="built_in">export</span> GUEST_LOGDIR</span><br><span class="line"><span class="built_in">export</span> ESCAPED_GUEST_LOGDIR</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_DATASOURCES=<span class="string">"ConfigDrive"</span></span><br><span class="line"><span class="built_in">export</span> DATASTORE_PKG_LOCATION</span><br><span class="line"><span class="built_in">export</span> BRANCH_OVERRIDE</span><br><span class="line"></span><br><span class="line"><span class="comment"># you typically do not have to change these variables</span></span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH=<span class="variable">$TROVESTACK_SCRIPTS</span>/files/elements</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH+=:<span class="variable">$PATH_DISKIMAGEBUILDER</span>/elements</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH+=:<span class="variable">$PATH_TRIPLEO_ELEMENTS</span>/elements</span><br><span class="line"><span class="built_in">export</span> DIB_APT_CONF_DIR=/etc/apt/apt.conf.d</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_ETC_HOSTS=<span class="literal">true</span></span><br><span class="line"><span class="built_in">local</span> QEMU_IMG_OPTIONS=$(! $(qemu-img | grep -q <span class="string">'version 1'</span>) &amp;&amp; <span class="built_in">echo</span> <span class="string">"--qemu-img-options compat=0.10"</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># run disk-image-create that actually causes the image to be built</span></span><br><span class="line"><span class="variable">$&#123;PATH_DISKIMAGEBUILDER&#125;</span>/bin/disk-image-create -a amd64 -o <span class="string">"<span class="variable">$&#123;VM&#125;</span>"</span> \</span><br><span class="line">    -x <span class="variable">$&#123;QEMU_IMG_OPTIONS&#125;</span> <span class="variable">$&#123;DISTRO&#125;</span> <span class="variable">$&#123;EXTRA_ELEMENTS&#125;</span> vm \</span><br><span class="line">    cloud-init-datasources <span class="variable">$&#123;DISTRO&#125;</span>-guest <span class="variable">$&#123;DISTRO&#125;</span>-<span class="variable">$&#123;SERVICE_TYPE&#125;</span></span><br></pre></td></tr></table></figure>
@@ -401,7 +401,7 @@
 <p>进入到trove-api的Docker中。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># docker ps | grep trove</span></span><br><span class="line">root@controller-1:~<span class="comment"># docker exec -it trove_api bash</span></span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-ps.png" alt="docker-ps"></p>
+<p><img src="/2018/09/06/Trove的高级操作之Guest镜像的构建/images/docker-ps.png" alt="docker-ps"></p>
 <p>注册新的数据库类型</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove-manage --config-file=/etc/trove/trove.conf datastore_update mysql <span class="string">''</span></span><br></pre></td></tr></table></figure>
 
@@ -743,5 +743,22 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+      all[i].SourceElement().parentNode.className += ' has-jax';
+    }
+  });
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
+</script>
+<!-- End: Injected MathJax -->
+<!-- hexo-inject:end --></body>
 </html>

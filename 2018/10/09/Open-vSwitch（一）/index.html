@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Open vSwitch（一） - Wang kuntian&#39;s Blog</title>
@@ -60,14 +60,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -294,9 +294,9 @@
 <div class="alert info no-icon"><p>考虑添加至少一个额外的网络节点，以便为具有固定IP地址的实例提供高可用性。 有关更多信息，请参阅使用VRRP查看分布式虚拟路由。</p>
 </div>
 
-<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="images/deploy-ovs-ha-dvr-overview.png" alt="deploy-ovs-ha-dvr-overview"></p>
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="/2018/10/09/Open-vSwitch（一）/images/deploy-ovs-ha-dvr-overview.png" alt="deploy-ovs-ha-dvr-overview"></p>
 <p>下图显示了一个self-service network和一个未标记（平面）网络的组件和连接。在此特定情况下，实例与网络的DHCP代理驻留在同一计算节点上。如果DHCP代理驻留在另一个计算节点上，则后者仅包含具有OVS集成桥上端口的DHCP命名空间。</p>
-<p><img src="images/deploy-ovs-ha-dvr-compconn1.png" alt="deploy-ovs-ha-dvr-compconn"></p>
+<p><img src="/2018/10/09/Open-vSwitch（一）/images/deploy-ovs-ha-dvr-compconn1.png" alt="deploy-ovs-ha-dvr-compconn"></p>
 <h3 id="Network-traffic-flow"><a href="#Network-traffic-flow" class="headerlink" title="Network traffic flow"></a>Network traffic flow</h3><p>以下部分描述了几种常见方案中的网络流量流。南北网络流量在实例和外部网络（如Internet）之间传输。东西向网络流量在相同或不同网络上的实例之间传输。在所有情况下，物理网络基础设施处理提供商网络和外部网络（例如因特网）之间的交换和路由。每种情况都引用一个或多个以下组件：</p>
 <ul>
 <li>Provider network (VLAN)<ul>
@@ -320,7 +320,7 @@
 <li>Instance 1</li>
 <li>Instance 2</li>
 </ul>
-<h4 id="North-south-scenario-1-Instance-with-a-fixed-IP-address"><a href="#North-south-scenario-1-Instance-with-a-fixed-IP-address" class="headerlink" title="North-south scenario 1: Instance with a fixed IP address"></a>North-south scenario 1: Instance with a fixed IP address</h4><p>除了网络节点上的路由器命名空间成为SNAT命名空间。 网络节点仍然包含路由器命名空间，但在这种情况下它没有用处。<br><img src="images/deploy-ovs-ha-dvr-flowns1.png" alt="deploy-ovs-ha-dvr-flowns"><br>计算节点的步骤：</p>
+<h4 id="North-south-scenario-1-Instance-with-a-fixed-IP-address"><a href="#North-south-scenario-1-Instance-with-a-fixed-IP-address" class="headerlink" title="North-south scenario 1: Instance with a fixed IP address"></a>North-south scenario 1: Instance with a fixed IP address</h4><p>除了网络节点上的路由器命名空间成为SNAT命名空间。 网络节点仍然包含路由器命名空间，但在这种情况下它没有用处。<br><img src="/2018/10/09/Open-vSwitch（一）/images/deploy-ovs-ha-dvr-flowns1.png" alt="deploy-ovs-ha-dvr-flowns"><br>计算节点的步骤：</p>
 <ol>
 <li>实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。</li>
 <li>安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。</li>
@@ -363,7 +363,7 @@
 <li>实例1驻留在计算节点1上并使用自助服务网络[self-service network]1。</li>
 <li>Internet上的主机将数据包发送到实例。</li>
 </ul>
-<p><img src="images/deploy-ovs-ha-dvr-flowns2.png" alt="deploy-ovs-ha-dvr-flowns"></p>
+<p><img src="/2018/10/09/Open-vSwitch（一）/images/deploy-ovs-ha-dvr-flowns2.png" alt="deploy-ovs-ha-dvr-flowns"></p>
 <p>计算节点步骤：</p>
 <ol>
 <li>物理网络基础设施[physical network infrastructure]（1）将分组转发到provider物理网络接口[physical network interface]（2）。</li>
@@ -387,7 +387,7 @@
 <div class="alert info no-icon"><p>此方案将实例放在不同的计算节点上以显示最复杂的情况。</p>
 </div>
 
-<p><img src="images/deploy-ovs-ha-dvr-flowew1.png" alt="deploy-ovs-ha-dvr-flowew"></p>
+<p><img src="/2018/10/09/Open-vSwitch（一）/images/deploy-ovs-ha-dvr-flowew1.png" alt="deploy-ovs-ha-dvr-flowew"></p>
 <p>计算节点1步骤：</p>
 <ol>
 <li>实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。</li>
@@ -699,5 +699,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

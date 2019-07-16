@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Neutron端口转发 - Wang kuntian&#39;s Blog</title>
@@ -65,14 +65,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -286,7 +286,7 @@
         <div class="main-content-wrap">
             <!-- excerpt -->
 
-<p><img src="images/dvr.png" alt="DVR"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/dvr.png" alt="DVR"></p>
 <p>租户T2在外部通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。</p>
 <div class="alert info no-icon"><p>外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1</p>
 </div>
@@ -294,45 +294,45 @@
 <h3 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h3><p>找到路由器位于的控制节点，并切换到对应节点。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">neutron l3-agent-list-router [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/neutron-l3-agent-list-router.png" alt="neutron-l3-agent-list-router"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/neutron-l3-agent-list-router.png" alt="neutron-l3-agent-list-router"></p>
 <p>找到路由器的网络命名空间。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]s</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-netns.png" alt="ip-netns"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/ip-netns.png" alt="ip-netns"></p>
 <h4 id="查看规则"><a href="#查看规则" class="headerlink" title="查看规则"></a>查看规则</h4><p>进入snat网络命名空间，查看端口转发的规则是否被添加。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> snat-[router-id] iptables -t nat -S</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-t.png" alt="iptables-t"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/iptables-t.png" alt="iptables-t"></p>
 <h4 id="抓包测试"><a href="#抓包测试" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>查看snat网络命名空间中的网卡设备。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns exec snat-[router-id] ip a</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-a.png" alt="ip-a"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/ip-a.png" alt="ip-a"></p>
 <p>利用tcpdump抓取相应网卡设备上的数据包。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> snat-[router-id] tcpdump -i [device-name] -n</span><br></pre></td></tr></table></figure>
 
 <h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><h4 id="抓包测试-1"><a href="#抓包测试-1" class="headerlink" title="抓包测试"></a>抓包测试</h4><p>首先在控制节点上找到虚拟机所在的计算节点。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">. openrc</span><br><span class="line">openstack server show [vm-uuid]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/server-show.png" alt="server-show"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/server-show.png" alt="server-show"></p>
 <p>切换到虚拟机所在的计算节点，并找到对应的虚拟机。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh list</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/virsh-list.png" alt="virsh-list"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/virsh-list.png" alt="virsh-list"></p>
 <p>找到虚拟机对应的tap设备和qvr设备。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh edit [vm-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/virsh-edit.png" alt="virsh-edit"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/virsh-edit.png" alt="virsh-edit"></p>
 <p>利用tcpdump抓取tap设备和qbr设备上的网包。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i tap-[xxxx] -n</span><br><span class="line">tcpdump -i qbr-[xxxx] -n</span><br></pre></td></tr></table></figure>
 
 <p>找到qrouter的网络命名空间。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-netns-1.png" alt="ip-netns"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/ip-netns-1.png" alt="ip-netns"></p>
 <p>查qrouter网络命名空间中的网卡设备。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qrouter-[router-id] ip a</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-a-1.png" alt="ip-a"></p>
+<p><img src="/2018/11/20/Neutron端口转发/images/ip-a-1.png" alt="ip-a"></p>
 <p>利用tcpdump抓取qr网卡上的网包。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qr-[xxxx]</span><br></pre></td></tr></table></figure>
 
@@ -622,5 +622,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

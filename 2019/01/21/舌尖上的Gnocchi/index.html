@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>舌尖上的Gnocchi - Wang kuntian&#39;s Blog</title>
@@ -61,14 +61,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -289,7 +289,7 @@
 
 <h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>Gnocchi - Metric as a Service<br>Gnocchi是一个多租户时间序列、计量和资源数据库。Gnocchi设计用于超大规模计量数据的存储，同时向操作者和用户提供对度量和资源信息的访问。</p>
 <p>Gnocchi采用独特的时间序列存储方法：它不是存储原始数据点，而是在存储之前聚合它们。此内置功能与大多数其他时间序列数据库不同，后者通常支持此机制作为可选项并在查询时计算聚合（平均值，最小值等）。</p>
-<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="images/architecture.png" alt="architecture"></p>
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="/2019/01/21/舌尖上的Gnocchi/images/architecture.png" alt="architecture"></p>
 <h4 id="gnocchi-api"><a href="#gnocchi-api" class="headerlink" title="gnocchi-api"></a>gnocchi-api</h4><p>提供HTTP REST API。</p>
 <h4 id="gnocchi-statsd"><a href="#gnocchi-statsd" class="headerlink" title="gnocchi-statsd"></a>gnocchi-statsd</h4><p>Statsd是一个网络守护程序，它侦听使用TCP或UDP通过网络发送的统计信息，然后聚合发送到另一个后端。</p>
 <p>gnocchi-statsd可以监听通过网络发送的指标。</p>
@@ -308,18 +308,18 @@
 <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><h4 id="Resource"><a href="#Resource" class="headerlink" title="Resource"></a>Resource</h4><p>资源。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/resource.png" alt="resource"></p>
+<p><img src="/2019/01/21/舌尖上的Gnocchi/images/resource.png" alt="resource"></p>
 <h4 id="Resource-types"><a href="#Resource-types" class="headerlink" title="Resource types"></a>Resource types</h4><p>资源类型。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list-types</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/resource-types.png" alt="resource-types"></p>
+<p><img src="/2019/01/21/舌尖上的Gnocchi/images/resource-types.png" alt="resource-types"></p>
 <div class="alert no-icon danger"><p>当把某个resource删除后，gnocchi会自动创建一个同名的resource，需要重启ceilometer-collector服务。<br>这时，每个metric的arivce-policy是lancer。</p>
 </div>
 
 <h4 id="Metric"><a href="#Metric" class="headerlink" title="Metric"></a>Metric</h4><p>度量，归属于resource。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric list</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/metric-list.png" alt="metric-list"></p>
+<p><img src="/2019/01/21/舌尖上的Gnocchi/images/metric-list.png" alt="metric-list"></p>
 <p>创建一个metric。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric create \</span><br><span class="line">--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \</span><br><span class="line">--archive-policy-name low \</span><br><span class="line">cpu_util</span><br></pre></td></tr></table></figure>
 
@@ -332,10 +332,10 @@
 <h4 id="Measures"><a href="#Measures" class="headerlink" title="Measures"></a>Measures</h4><p>测量数据，归属于metric。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">gnocchi measures show \</span><br><span class="line">--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \</span><br><span class="line">--start 2019-02-14T01:00 \</span><br><span class="line">--stop 2019-02-14T02:00 \</span><br><span class="line">--granularity 300 \</span><br><span class="line">cpu_util</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/measures-show.png" alt="measures-show"></p>
+<p><img src="/2019/01/21/舌尖上的Gnocchi/images/measures-show.png" alt="measures-show"></p>
 <h4 id="Archive-policy"><a href="#Archive-policy" class="headerlink" title="Archive policy"></a>Archive policy</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi archive-policy list</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/archive-policy.png" alt="archive-policy"></p>
+<p><img src="/2019/01/21/舌尖上的Gnocchi/images/archive-policy.png" alt="archive-policy"></p>
 <div class="alert no-icon info"><p>points，存储的点的数量。<br>granularity，监控的时间间隔。<br>timespan，保留时间。</p>
 </div>
 
@@ -632,5 +632,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Docker入门（三） - Wang kuntian&#39;s Blog</title>
@@ -65,14 +65,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -295,7 +295,7 @@
 <p>从Docker Hub的Ubuntu仓库下载最新的Ubuntu操作系统的镜像。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker pull ubuntu</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-pull-ubuntu.png" alt="docker-pull-ubuntu"><br>下载过程中，镜像文件一般由若干层组成，行首的afde35469481字符串代表了各层的ID。</p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-pull-ubuntu.png" alt="docker-pull-ubuntu"><br>下载过程中，镜像文件一般由若干层组成，行首的afde35469481字符串代表了各层的ID。</p>
 <div class="alert info no-icon"><p>层（Layer）其实是AUFS（Advanced Union File System，一种联合文件系统）中的重要概念，是实现增量保存于更新的基础。</p>
 </div>
 
@@ -305,19 +305,19 @@
 <h3 id="查看镜像信息"><a href="#查看镜像信息" class="headerlink" title="查看镜像信息"></a>查看镜像信息</h3><p>使用docker images命令可以查看本地主机上已有的镜像。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker images</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-images.png" alt="docker-pull-ubuntu"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-images.png" alt="docker-pull-ubuntu"></p>
 <div class="alert info no-icon"><p><strong>pepository</strong> 来自哪个仓库<br><strong>tag</strong> 镜像的标签信息<br><strong>image id</strong> 镜像的id（唯一）<br><strong>created</strong> 创建时间<br><strong>virtual size</strong> 镜像大小</p>
 </div>
 
 <p>使用docker inspect获取镜像的详细信息</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker inspect [image id]</span><br></pre></td></tr></table></figure>
 
-<div class="figure fig-100 center" style="width:;"><img class="fig-img" src="images/docker-inspect.png" alt=""></div><div style="clear:both;"></div>
+<div class="figure fig-100 center" style="width:;"><img class="fig-img" src="/2018/09/14/Docker入门（三）/images/docker-inspect.png" alt=""></div><div style="clear:both;"></div>
 
 <p>docker inspect命令返回的是一个Json格式的消息，获取其中一项内容可以使用-f参数指定。获取镜像的Created信息。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker inspect [image id] -f &#123;&#123;<span class="string">".Created"</span>&#125;&#125;</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-inspect-f.png" alt="docker-pull-ubuntu"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-inspect-f.png" alt="docker-pull-ubuntu"></p>
 <div class="alert danger no-icon"><p>在指定镜像ID的时候，同常使用该ID的前若干个字符组成的可区分字符串来代替完整的ID</p>
 </div>
 
@@ -327,7 +327,7 @@
 <div class="alert info no-icon"><p>可选参数<br><strong>–automated=false</strong> 仅显示自动创建的镜像。<br><strong>–no-trunc=false</strong> 输出信息不截断显示<br><strong>-s，–starts=0</strong> 指定仅显示评级未指定星级以上的镜像</p>
 </div>
 
-<p><img src="images/docker-search.png" alt="docker-search"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-search.png" alt="docker-search"></p>
 <div class="alert info no-icon"><p><strong>name</strong> 镜像的名字<br><strong>description</strong> 描述<br><strong>stars</strong> 星级<br><strong>official</strong> 是否官方创建<br><strong>automated</strong> 是否自动创建</p>
 </div>
 
@@ -336,7 +336,7 @@
 <p>或者</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker rmi [image id|tag]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-image-rm.png" alt="docker-image-rm"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-image-rm.png" alt="docker-image-rm"></p>
 <div class="alert danger no-icon"><p>强行删除镜像可以使用-f参数。</p>
 </div>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker images rm [image id tag] -f</span><br></pre></td></tr></table></figure>
@@ -356,22 +356,22 @@
 <p>提交镜像。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">king@ubuntu ~ sudo docker commit -m <span class="string">"Added a new file"</span> -a <span class="string">"Docker Newbee"</span> d12bc42d52bc <span class="built_in">test</span></span><br><span class="line">sha256:1150ce2e62f8ddb58c2fea2de546636d3d7fee0793483f7ecb56c30b3a5bf3fc</span><br></pre></td></tr></table></figure>
 
-<p>此时查看本地镜像列表，可以看到新创建的镜像。<br><img src="images/docker-images-a.png" alt="docker-images"></p>
+<p>此时查看本地镜像列表，可以看到新创建的镜像。<br><img src="/2018/09/14/Docker入门（三）/images/docker-images-a.png" alt="docker-images"></p>
 <h4 id="基于本地模板导入"><a href="#基于本地模板导入" class="headerlink" title="基于本地模板导入"></a>基于本地模板导入</h4><p>从一个操作系统模板文件导入一个镜像。这里使用的是OpenVZ提供的模板来创建。<br><a href="https://download.openvz.org/template/precreated/" target="_blank" rel="noopener">下载地址</a></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/docker-import.png" alt="docker-import"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-import.png" alt="docker-import"></p>
 <h4 id="基于Dockerfile创建"><a href="#基于Dockerfile创建" class="headerlink" title="基于Dockerfile创建"></a>基于Dockerfile创建</h4><p>下次讲</p>
 <h3 id="存储和载入镜像"><a href="#存储和载入镜像" class="headerlink" title="存储和载入镜像"></a>存储和载入镜像</h3><h4 id="存储镜像"><a href="#存储镜像" class="headerlink" title="存储镜像"></a>存储镜像</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker save [OPTIONS] IMAGE [IMAGE...]</span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>可选参数<br><strong>-o, –output string</strong> 写到文件中。</p>
 </div>
-<p><img src="images/docker-save.png" alt="docker-save"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-save.png" alt="docker-save"></p>
 <h4 id="载入镜像"><a href="#载入镜像" class="headerlink" title="载入镜像"></a>载入镜像</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker load [OPTIONS]</span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>可选参数<br><strong>-i, –input string</strong> 文件名。<br><strong>-q, –quiet</strong> Suppress the load output.</p>
 </div>
-<p><img src="images/docker-load.png" alt="docker-load"></p>
+<p><img src="/2018/09/14/Docker入门（三）/images/docker-load.png" alt="docker-load"></p>
 <h3 id="上传镜像"><a href="#上传镜像" class="headerlink" title="上传镜像"></a>上传镜像</h3><p>可以使用docker push命令上传镜像到仓库，默认上传到DockerHub官方仓库（需要登录）。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker push [OPTIONS] NAME[:TAG]</span><br></pre></td></tr></table></figure>
 
@@ -658,5 +658,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

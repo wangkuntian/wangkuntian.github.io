@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Understand Neutron（二） - Wang kuntian&#39;s Blog</title>
@@ -62,14 +62,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -313,7 +313,7 @@
 </tbody></table>
 <h4 id="东西向"><a href="#东西向" class="headerlink" title="东西向"></a>东西向</h4><p>东西向意味着租户同一个数据中心内不同子网之间的相互访问。</p>
 <h5 id="同一机器"><a href="#同一机器" class="headerlink" title="同一机器"></a>同一机器</h5><p>对于同一主机的不同子网之间访问，路由器直接在br-int上转发即可，不需要经过外部网桥。</p>
-<h5 id="不同机器"><a href="#不同机器" class="headerlink" title="不同机器"></a>不同机器</h5><p><img src="images/dvr.png" alt="DVR"></p>
+<h5 id="不同机器"><a href="#不同机器" class="headerlink" title="不同机器"></a>不同机器</h5><p><img src="/2018/11/12/Understand-Neutron（二）/images/dvr.png" alt="DVR"></p>
 <p>如图所示，租户T1的两台虚机VM1（计算节点1）和VM4（计算节点2）分别属于不同的子网，位于不同的计算节点。</p>
 <p>VM1要访问VM4，由计算节点1上的IR1起到路由器功能。返程的网包，则由计算节点2上的路由器IR2起作用。两个路由器的ID、内部接口、功能等其实都是一样的。即同一个路由器，但是实际上在多个计算节点上同时存在。</p>
 <div class="alert info no-icon"><p>VM1 -&gt; BR-INT -&gt; IR1 -&gt; BR-INT -&gt; BR-TUN（Node 1） -&gt; BR-TUN（Node 2）-&gt; VM4</p>
@@ -322,12 +322,12 @@
 <p>这里可能有人会想到，多台同样的路由器，如果都暴露在外部网络上，会出现冲突。例如当VM1的请求包离开计算节点1时，带的源mac是路由器目标接口的mac，而这个mac在计算节点2上的路由器上同样存在。</p>
 <p>因此，需要拦截路由器对外的暴露信息。一个是让每个路由器只应答本机的mac请求；另一个是绝对不让带着路由器mac地址的包直接扔出去。实现在br-int上进行拦截，修改其源mac为tunnel端口的mac。同样的，计算节点2在br-int上拦截源mac为这个tunnel端口的mac，替换为正常的子网网关的mac，直接扔给目标虚拟机所在的主机。</p>
 <h4 id="南北向"><a href="#南北向" class="headerlink" title="南北向"></a>南北向</h4><h5 id="无floating-IP"><a href="#无floating-IP" class="headerlink" title="无floating IP"></a>无floating IP</h5><p>这种情况（即SNAT）下，跟传统模式很类似。外部访问内部子网。</p>
-<p><img src="images/dvr.png" alt="DVR"></p>
+<p><img src="/2018/11/12/Understand-Neutron（二）/images/dvr.png" alt="DVR"></p>
 <p>租户T2在外部，通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。</p>
 <div class="alert info no-icon"><p>外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1</p>
 </div>
 
-<p><img src="images/dvr.png" alt="DVR"></p>
+<p><img src="/2018/11/12/Understand-Neutron（二）/images/dvr.png" alt="DVR"></p>
 <p>反过来，租户T2内部子网的VM1试图访问外部网络，则仍然经过网络节点上的T2-SNAT路由器。</p>
 <div class="alert info no-icon"><p>T2-VM1 -&gt; BR-INT（Node1） -&gt; IR2 -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Network Node） -&gt; BR-INT -&gt; T2-SNAT -&gt; BR-EX -&gt; 外网</p>
 </div>
@@ -337,7 +337,7 @@
 <p>当然，如果以后每个计算节点上都可以带有这样一个SNAT默认外部地址的话，这种情况下的流量也是可以直接从计算节点出去的。</p>
 </div>
 
-<h5 id="有floating-IP"><a href="#有floating-IP" class="headerlink" title="有floating IP"></a>有floating IP</h5><p><img src="images/dvr.png" alt="DVR"></p>
+<h5 id="有floating-IP"><a href="#有floating-IP" class="headerlink" title="有floating IP"></a>有floating IP</h5><p><img src="/2018/11/12/Understand-Neutron（二）/images/dvr.png" alt="DVR"></p>
 <p>这种情况下，计算节点上的专门负责的外部路由器将负责进行转发，即计算节点1上的IR2和计算节点2上的IR1。</p>
 <div class="alert info no-icon"><p>T1-VM2 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网</p>
 <p>T1-VM4 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网</p>
@@ -347,7 +347,7 @@
 <p>命名空间上会多一个专门的snat-xxx命名空间，处理来自计算节点的无floating IP的南北向流量。</p>
 <h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><p>需要额外启用l3_agent（dvr模式），以及metadata agent。</p>
 <p>其实，跟传统情况下的网络节点十分类似。每一个东西向路由器有自己的命名空间，负责跨子网的转发。另外，多一个floating路由器，专门负责经由floating地址的南北向转发。</p>
-<h4 id="东西流量"><a href="#东西流量" class="headerlink" title="东西流量"></a>东西流量</h4><p><img src="images/east-west.png" alt="EAST-WEST"></p>
+<h4 id="东西流量"><a href="#东西流量" class="headerlink" title="东西流量"></a>东西流量</h4><p><img src="/2018/11/12/Understand-Neutron（二）/images/east-west.png" alt="EAST-WEST"></p>
 <p>如上图所示，租户两个子网，红色和绿色，分别有VM1和VM2，位于节点CN1和CN2上。</p>
 <p>VM1访问VM2的网包步骤如下，整个过程IP保持不变。</p>
 <ol>
@@ -358,9 +358,9 @@
 <li>节点CN2的网桥BR-TUN-CN2会从Tunnel收到这个包，解封包，并带上本地vlan tag，最终抵达网桥BR-INT-CN2。</li>
 <li>BR-INT-CN2上替换网包的源mac（此时为DVR-CN1-mac）为本地路由器的绿色子网网关接口，然后发给VM2。</li>
 </ol>
-<h4 id="南北流量"><a href="#南北流量" class="headerlink" title="南北流量"></a>南北流量</h4><p><img src="images/south-north.png" alt="South-North"></p>
+<h4 id="南北流量"><a href="#南北流量" class="headerlink" title="南北流量"></a>南北流量</h4><p><img src="/2018/11/12/Understand-Neutron（二）/images/south-north.png" alt="South-North"></p>
 <p>所不同的是，单独有一个qfloat-XXX路由器（也在一个独立命名空间中）来负责处理带有floating IP的南北向流量。</p>
-<p><img src="images/floating-ip.png" alt="Floating-IP"></p>
+<p><img src="/2018/11/12/Understand-Neutron（二）/images/floating-ip.png" alt="Floating-IP"></p>
 <h5 id="流表规则"><a href="#流表规则" class="headerlink" title="流表规则"></a>流表规则</h5><p>为了实现上面描述的功能需要下面几种流表规则。</p>
 <h6 id="所有对网关的arp-request不能出到外部网络"><a href="#所有对网关的arp-request不能出到外部网络" class="headerlink" title="所有对网关的arp request不能出到外部网络"></a>所有对网关的arp request不能出到外部网络</h6><p>在tunnel网桥上看到的一律丢弃。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">DVR PROCESS Table 1 (New table for dvr):</span><br><span class="line">table=1, prioity=4, dl_vlan=red1-L-vlan, dl_type=arp, ar_tpa=r1-red-ip actions:drop</span><br><span class="line">table=1, prioity=4, dl_vlan=grn1-L-vlan, dl_type=arp, ar_tpa=r1-grn-ip actions:drop</span><br></pre></td></tr></table></figure>
@@ -682,5 +682,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>DVR去哪儿了 - Wang kuntian&#39;s Blog</title>
@@ -65,14 +65,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -335,7 +335,7 @@
 <h6 id="添加bond0-107子接口"><a href="#添加bond0-107子接口" class="headerlink" title="添加bond0.107子接口"></a>添加bond0.107子接口</h6><p>首先查看当前计算节点的网桥。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/brctl-show.png" alt="brctl-show"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/brctl-show.png" alt="brctl-show"></p>
 <div class="alert info no-icon"><p>br-mgmt为管理网络，子接口为bound0.104，br-ex需要和br-mgmt用同一网络设备。<br>bond0.107为br-ex上的子接口，计算节点不同，网络设备不同，这里的名字也要修改。<br>107是vxlan id。</p>
 </div>
 
@@ -385,33 +385,33 @@
 <h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><h4 id="路由器创建测试"><a href="#路由器创建测试" class="headerlink" title="路由器创建测试"></a>路由器创建测试</h4><p>在界面创建路由器，进入控制节点查看路由器的详细信息。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">neutron router-show [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/router-show-1.png" alt="router-show"></p>
-<p><img src="images/router-show-2.png" alt="router-show"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/router-show-1.png" alt="router-show"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/router-show-2.png" alt="router-show"></p>
 <div class="alert info no-icon"><p>distributed的值为True，说明路由器为分布式。</p>
 </div>
 
 <h4 id="检查路由器的网络命名空间"><a href="#检查路由器的网络命名空间" class="headerlink" title="检查路由器的网络命名空间"></a>检查路由器的网络命名空间</h4><h5 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h5><p>查看当前路由器所在的控制节点。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">neutron l3-agent-list-hosting-router [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/l3-agent-list-hosting-router.png" alt="l3-agent-list-hosting-router"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/l3-agent-list-hosting-router.png" alt="l3-agent-list-hosting-router"></p>
 <div class="alert info no-icon"><p>active，表示路由器在当前的控制节点上。</p>
 </div>
 
 <p>进入相应的控制节点，并查看是否有路由器的网络命名空间。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-netns-1.png" alt="ip-nents"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/ip-netns-1.png" alt="ip-nents"></p>
 <div class="alert info no-icon"><p>snat-xxx的网络命名空间包含端口转发的详细规则。</p>
 </div>
 
 <h5 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h5><p>找到虚拟机位于的计算节点。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova show [uuid]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/nova-show.png" alt="nova-show"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/nova-show.png" alt="nova-show"></p>
 <p>进入计算节点，并查看路由器的网络命名空间。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/ip-netns-2.png" alt="ip-nents"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/ip-netns-2.png" alt="ip-nents"></p>
 <div class="alert danger no-icon"><p>当且仅当计算节点有qrouter-xxx的网络命名空间时，可以判定DVR部署成功。</p>
 </div>
 
@@ -427,13 +427,13 @@
 <p>还可以利用netstat命令查看Apache服务占用的端口。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">netstat -anp | grep httpd</span><br></pre></td></tr></table></figure>
 
-<p>通过界面，在路由器上面添加端口转发规则。<br><img src="images/add-rule.png" alt="add-rule"></p>
-<p>通过界面，在安全组开放对端口的访问。<br><img src="images/add-safe-group.png" alt="add_safe_group"></p>
+<p>通过界面，在路由器上面添加端口转发规则。<br><img src="/2018/12/24/DVR去哪儿了/images/add-rule.png" alt="add-rule"></p>
+<p>通过界面，在安全组开放对端口的访问。<br><img src="/2018/12/24/DVR去哪儿了/images/add-safe-group.png" alt="add_safe_group"></p>
 <p>最后，利用浏览器测试端口转发。</p>
 <h4 id="带宽限速测试"><a href="#带宽限速测试" class="headerlink" title="带宽限速测试"></a>带宽限速测试</h4><p>虚拟机安装<a href="https://github.com/sivel/speedtest-cli" target="_blank" rel="noopener">speedtest-cli</a>，可以对公网IP和路由器带宽进行测速。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">speedtest</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/speedtest.png" alt="speedtest"></p>
+<p><img src="/2018/12/24/DVR去哪儿了/images/speedtest.png" alt="speedtest"></p>
 <h3 id="验证脚本"><a href="#验证脚本" class="headerlink" title="验证脚本"></a>验证脚本</h3><h4 id="verify-yml"><a href="#verify-yml" class="headerlink" title="verify.yml"></a>verify.yml</h4><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="attr">- name:</span> <span class="string">verify</span></span><br><span class="line"><span class="attr">  include:</span> <span class="string">check_interface_command.yml</span> <span class="string">command='ip</span> <span class="string">a</span> <span class="string">show</span> <span class="string">&#123;&#123;item&#125;&#125;'</span></span><br><span class="line"><span class="attr">  with_items:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">br-ex</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">br-floating</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">'<span class="template-variable">&#123;&#123;interface&#125;&#125;</span><span class="template-variable">&#123;&#123;port&#125;&#125;</span>'</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">br-manage</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">p_ff798dba-0</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">p_ff798dba-1</span></span><br><span class="line"><span class="attr">  when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups['compute']</span></span><br><span class="line"></span><br><span class="line"><span class="attr">- name:</span> <span class="string">compute</span> <span class="string">check</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line"><span class="attr">  include:</span> <span class="string">check_service_command.yml</span> <span class="string">command='service</span> <span class="string">neutron-vpn-agent</span> <span class="string">status'</span></span><br><span class="line"><span class="attr">  when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups['compute']</span></span><br><span class="line"></span><br><span class="line"><span class="attr">- name:</span> <span class="string">network</span> <span class="string">check</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line"><span class="attr">  include:</span> <span class="string">check_service_command.yml</span> <span class="string">command='service</span> <span class="string">neutron-vpn-agent</span> <span class="string">status'</span></span><br><span class="line"><span class="attr">  when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups['network']</span></span><br><span class="line"></span><br><span class="line"><span class="attr">- name:</span> <span class="string">controller</span> <span class="string">check</span> <span class="string">neutron-server</span></span><br><span class="line"><span class="attr">  include:</span> <span class="string">check_service_command.yml</span> <span class="string">command='service</span> <span class="string">neutron-server</span> <span class="string">status'</span></span><br><span class="line"><span class="attr">  when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups['controller']</span></span><br></pre></td></tr></table></figure>
 
 <h4 id="check-interface-command-yml"><a href="#check-interface-command-yml" class="headerlink" title="check_interface_command.yml"></a>check_interface_command.yml</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">- name: check interface</span><br><span class="line">  shell: <span class="string">'&#123;&#123; command &#125;&#125;'</span></span><br><span class="line">  register: result</span><br><span class="line"></span><br><span class="line">- name: check result</span><br><span class="line">  fail:</span><br><span class="line">    msg: <span class="string">'&#123;&#123;result&#125;&#125;'</span></span><br><span class="line">  when: <span class="string">'"DOWN" in result.stdout'</span></span><br></pre></td></tr></table></figure>
@@ -723,5 +723,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

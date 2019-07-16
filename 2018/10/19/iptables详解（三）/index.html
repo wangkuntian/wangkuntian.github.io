@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <meta charset="UTF-8">
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（三） - Wang kuntian&#39;s Blog</title>
@@ -68,14 +68,14 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script>
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
 
 
     
 </head>
 
     <body>
-        <div id="blog">
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
             <!-- Define author's picture -->
 
 
@@ -295,61 +295,61 @@
 <h4 id="插入规则"><a href="#插入规则" class="headerlink" title="插入规则"></a>插入规则</h4><p>给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-1.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-1.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）</p>
 </div>
 
-<p>ping测试，没有通过，规则起作用。<br><img src="images/ping-1.png" alt="ping"></p>
+<p>ping测试，没有通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-1.png" alt="ping"></p>
 <h4 id="追加规则"><a href="#追加规则" class="headerlink" title="追加规则"></a>追加规则</h4><p>给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-2.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-2.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-A，表示追加到哪条链。（最后一个）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）</p>
 </div>
 
-<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="images/ping-2.png" alt="ping"></p>
+<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-2.png" alt="ping"></p>
 <p>给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-3.png" alt="iptables"></p>
-<p>ping测试，通过，规则起作用。<br><img src="images/ping-3.png" alt="ping"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-3.png" alt="iptables"></p>
+<p>ping测试，通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-3.png" alt="ping"></p>
 <div class="alert info no-icon"><p>规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。</p>
 </div>
 
 <h3 id="删除规则"><a href="#删除规则" class="headerlink" title="删除规则"></a>删除规则</h3><h4 id="根据规则的编号删除规则"><a href="#根据规则的编号删除规则" class="headerlink" title="根据规则的编号删除规则"></a>根据规则的编号删除规则</h4><p>查看filter表中INPUT链中的规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables --line -vnL INPUT</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-4.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-4.png" alt="iptables"></p>
 <p>删除第3条规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT 3</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-5.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-5.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-D，表示删除指定链中的某条规则。</p>
 </div>
 
 <h4 id="根据具体匹配条件与动作删除规则"><a href="#根据具体匹配条件与动作删除规则" class="headerlink" title="根据具体匹配条件与动作删除规则"></a>根据具体匹配条件与动作删除规则</h4><p>删除源地址为10.211.55.2，动作为ACCEPT的规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-6.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-6.png" alt="iptables"></p>
 <p>删除指定表中的所有规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -F</span><br></pre></td></tr></table></figure>
 
-<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="images/iptables-7.png" alt="iptables"></p>
+<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="/2018/10/19/iptables详解（三）/images/iptables-7.png" alt="iptables"></p>
 <p>修改规则中的动作从DROP改为REJECT。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-8.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-8.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-R INPUT 1，表示修改INPUT链中的第1条规则。</p>
 </div>
 
 <div class="alert warning no-icon"><p>必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。</p>
 </div>
 
-<p>ping测试。<br><img src="images/ping-4.png" alt="ping"></p>
+<p>ping测试。<br><img src="/2018/10/19/iptables详解（三）/images/ping-4.png" alt="ping"></p>
 <h5 id="指定默认策略"><a href="#指定默认策略" class="headerlink" title="指定默认策略"></a>指定默认策略</h5><p>修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -P INPUT DROP</span><br></pre></td></tr></table></figure>
 
-<p><img src="images/iptables-9.png" alt="iptables"></p>
+<p><img src="/2018/10/19/iptables详解（三）/images/iptables-9.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-P INPUT DROP，将表中INPUT链的默认策略改为DROP。</p>
 </div>
 
@@ -636,5 +636,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":8,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.6},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
 </html>

@@ -6,10 +6,10 @@
     <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
-    <title>Glance接口测试 - Wang kuntian&#39;s Blog</title>
+    <title>Neutron OpenvSwitch + GRE/VxLAN虚拟网络 - Wang kuntian&#39;s Blog</title>
     <meta name="author" content="Wang kuntian">
     
-        <meta name="keywords" content="Glance">
+        <meta name="keywords" content="Neutron">
     
     
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
@@ -17,19 +17,19 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n镜像创建POST  /v2/images\n\n\nRequest\n\n\n\n名称\n位于\n类型\n描述\n\n\n\n12345678910111213141516curl \\-X POST  \\-H 'Content-Type: application/json; charset=UTF-8' \\-H 'X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb' \\-d '&#123;    \"container_format\": \"bare\",    \"disk_format\": \"qcow2\",    \"min_disk\": 10,    \"min_ram\": 1024,    \"name\": \"image_test\",    \"protected\": false,    \"visibility\": \"public\",    \"image_label\": \"CentOS\",    \"image_type\": \"distribution\"&#125;' \\http://2.3.3.54:9292/v2/images | python -m json.tool\n\nResponse\n12345678910111213141516171819202122&#123;    \"checksum\": null,    \"container_format\": \"bare\",    \"created_at\": \"2019-05-15T02:30:31Z\",    \"disk_format\": \"qcow2\",    \"file\": \"/v2/images/993bc534-3973-492c-979b-403aea654fd0/file\",    \"id\": \"993bc534-3973-492c-979b-403aea654fd0\",    \"locations\": [],    \"min_disk\": 10,    \"min_ram\": 1024,    \"name\": \"image_test\",    \"owner\": \"e1163a30a063441cad01e392be6eb57e\",    \"protected\": false,    \"schema\": \"/v2/schemas/image\",    \"self\": \"/v2/images/993bc534-3973-492c-979b-403aea654fd0\",    \"size\": null,    \"status\": \"queued\",    \"tags\": [],    \"updated_at\": \"2019-05-15T02:30:31Z\",    \"virtual_size\": null,    \"visibility\": \"public\"&#125;\n\n镜像上传PUT  /v2/images/{image_id}/file\na\n\n\n123456curl -i \\-X PUT \\-H \"X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb\" \\-H \"Content-Type: application/octet-stream\" \\-d @/root/images/centos7.qcow2 \\http://2.3.3.54:9292/v2/images/993bc534-3973-492c-979b-403aea654fd0/file| python -m json.tool","dateCreated":"2019-05-15T10:16:57+08:00","dateModified":"2019-05-16T09:43:16+08:00","datePublished":"2019-05-15T10:16:57+08:00","description":"Glance接口测试","headline":"Glance接口测试","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/15/Glance接口测试/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/05/15/Glance接口测试/","keywords":"Glance","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
-    <meta name="description" content="Glance接口测试">
-<meta name="keywords" content="Glance">
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n","dateCreated":"2019-09-19T17:04:53+08:00","dateModified":"2019-09-19T17:08:29+08:00","datePublished":"2019-09-19T17:04:53+08:00","description":"Neutron OpenvSwitch + GRE/VxLAN虚拟网络","headline":"Neutron OpenvSwitch + GRE/VxLAN虚拟网络","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron OpenvSwitch + GRE/VxLAN虚拟网络">
+<meta name="keywords" content="Neutron">
 <meta property="og:type" content="blog">
-<meta property="og:title" content="Glance接口测试">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/index.html">
+<meta property="og:title" content="Neutron OpenvSwitch + GRE&#x2F;VxLAN虚拟网络">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
-<meta property="og:description" content="Glance接口测试">
+<meta property="og:description" content="Neutron OpenvSwitch + GRE/VxLAN虚拟网络">
 <meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-05-16T01:43:16.508Z">
+<meta property="og:updated_time" content="2019-09-19T09:08:29.664Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Glance接口测试">
-<meta name="twitter:description" content="Glance接口测试">
+<meta name="twitter:title" content="Neutron OpenvSwitch + GRE&#x2F;VxLAN虚拟网络">
+<meta name="twitter:description" content="Neutron OpenvSwitch + GRE/VxLAN虚拟网络">
     
     
         
@@ -39,8 +39,8 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/15/Glance接口测试/images/PROJECT-Vayne.jpg" />
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/images/PROJECT-Vayne.jpg" />
     
     
     <!--STYLES-->
@@ -244,14 +244,14 @@
                 <div class="post-header main-content-wrap text-center">
     
         <h1 class="post-title">
-            Glance接口测试
+            Neutron OpenvSwitch + GRE/VxLAN虚拟网络
         </h1>
     
     
         <div class="post-meta">
-    <time datetime="2019-05-15T10:16:57+08:00">
+    <time datetime="2019-09-19T17:04:53+08:00">
 	
-		    May 15, 2019
+		    Sep 19, 2019
     	
     </time>
     
@@ -274,31 +274,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <!-- excerpt -->
-
-<h3 id="镜像创建"><a href="#镜像创建" class="headerlink" title="镜像创建"></a>镜像创建</h3><div class="alert info no-icon"><p>POST  /v2/images</p>
-</div>
-
-<p>Request</p>
-<table>
-<thead>
-<tr>
-<th align="left">名称</th>
-<th align="left">位于</th>
-<th align="left">类型</th>
-<th align="left">描述</th>
-</tr>
-</thead>
-</table>
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">curl \</span><br><span class="line">-X POST  \</span><br><span class="line">-H 'Content-Type: application/json; charset=UTF-8' \</span><br><span class="line">-H 'X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb' \</span><br><span class="line">-d '&#123;</span><br><span class="line">    "container_format": "bare",</span><br><span class="line">    "disk_format": "qcow2",</span><br><span class="line">    "min_disk": 10,</span><br><span class="line">    "min_ram": 1024,</span><br><span class="line">    "name": "image_test",</span><br><span class="line">    "protected": false,</span><br><span class="line">    "visibility": "public",</span><br><span class="line">    "image_label": "CentOS",</span><br><span class="line">    "image_type": "distribution"</span><br><span class="line">&#125;' \</span><br><span class="line">http://2.3.3.54:9292/v2/images | python -m json.tool</span><br></pre></td></tr></table></figure>
-
-<p>Response</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"checksum"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"container_format"</span>: <span class="string">"bare"</span>,</span><br><span class="line">    <span class="attr">"created_at"</span>: <span class="string">"2019-05-15T02:30:31Z"</span>,</span><br><span class="line">    <span class="attr">"disk_format"</span>: <span class="string">"qcow2"</span>,</span><br><span class="line">    <span class="attr">"file"</span>: <span class="string">"/v2/images/993bc534-3973-492c-979b-403aea654fd0/file"</span>,</span><br><span class="line">    <span class="attr">"id"</span>: <span class="string">"993bc534-3973-492c-979b-403aea654fd0"</span>,</span><br><span class="line">    <span class="attr">"locations"</span>: [],</span><br><span class="line">    <span class="attr">"min_disk"</span>: <span class="number">10</span>,</span><br><span class="line">    <span class="attr">"min_ram"</span>: <span class="number">1024</span>,</span><br><span class="line">    <span class="attr">"name"</span>: <span class="string">"image_test"</span>,</span><br><span class="line">    <span class="attr">"owner"</span>: <span class="string">"e1163a30a063441cad01e392be6eb57e"</span>,</span><br><span class="line">    <span class="attr">"protected"</span>: <span class="literal">false</span>,</span><br><span class="line">    <span class="attr">"schema"</span>: <span class="string">"/v2/schemas/image"</span>,</span><br><span class="line">    <span class="attr">"self"</span>: <span class="string">"/v2/images/993bc534-3973-492c-979b-403aea654fd0"</span>,</span><br><span class="line">    <span class="attr">"size"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"status"</span>: <span class="string">"queued"</span>,</span><br><span class="line">    <span class="attr">"tags"</span>: [],</span><br><span class="line">    <span class="attr">"updated_at"</span>: <span class="string">"2019-05-15T02:30:31Z"</span>,</span><br><span class="line">    <span class="attr">"virtual_size"</span>: <span class="literal">null</span>,</span><br><span class="line">    <span class="attr">"visibility"</span>: <span class="string">"public"</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="镜像上传"><a href="#镜像上传" class="headerlink" title="镜像上传"></a>镜像上传</h3><div class="alert info no-icon"><p>PUT  /v2/images/{image_id}/file</p>
-</div>a
-
-
-<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">curl -i \</span><br><span class="line">-X PUT \</span><br><span class="line">-H "X-Auth-Token: 1f682c33d4ed442faecd6103f42fb9eb" \</span><br><span class="line">-H "Content-Type: application/octet-stream" \</span><br><span class="line">-d @/root/images/centos7.qcow2 \</span><br><span class="line">http://2.3.3.54:9292/v2/images/993bc534-3973-492c-979b-403aea654fd0/file| python -m json.tool</span><br></pre></td></tr></table></figure>
+<h1 id="table-of-contents">目录</h1>
             
 
         </div>
@@ -308,7 +284,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Glance/">Glance</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/">Neutron</a>
 
             </div>
         
@@ -318,8 +294,7 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/OpenStack通用库（四）/" data-tooltip="OpenStack通用库（四）" aria-label="PREVIOUS: OpenStack通用库（四）">
+                    <a class="post-action-btn btn btn--disabled">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -328,7 +303,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（三）/" data-tooltip="OpenStack通用库（三）" aria-label="NEXT: OpenStack通用库（三）">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/09/18/Neutron-OpenvSwitch-VLAN虚拟网络/" data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络" aria-label="NEXT: Neutron OpenvSwitch + VLAN 虚拟网络">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -346,7 +321,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -354,7 +329,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -362,7 +337,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -372,7 +347,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -433,8 +408,7 @@
         <ul class="post-actions post-action-nav">
             <li class="post-action">
                 
-                    
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/15/OpenStack通用库（四）/" data-tooltip="OpenStack通用库（四）" aria-label="PREVIOUS: OpenStack通用库（四）">
+                    <a class="post-action-btn btn btn--disabled">
                 
                     <i class="fa fa-angle-left" aria-hidden="true"></i>
                     <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
@@ -443,7 +417,7 @@
             <li class="post-action">
                 
                     
-                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/05/09/OpenStack通用库（三）/" data-tooltip="OpenStack通用库（三）" aria-label="NEXT: OpenStack通用库（三）">
+                    <a class="post-action-btn btn btn--default tooltip--top" href="/2019/09/18/Neutron-OpenvSwitch-VLAN虚拟网络/" data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络" aria-label="NEXT: Neutron OpenvSwitch + VLAN 虚拟网络">
                 
                     <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
                     <i class="fa fa-angle-right" aria-hidden="true"></i>
@@ -461,7 +435,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Weibo">
+                <a class="post-action-btn btn btn--default" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/" title="Share on Weibo">
                     <i class="fab fa-weibo" aria-hidden="true"></i>
                 </a>
             </li>
@@ -469,7 +443,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试" title="Share on QQ">
+                <a class="post-action-btn btn btn--default" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络" title="Share on QQ">
                     <i class="fab fa-qq" aria-hidden="true"></i>
                 </a>
             </li>
@@ -477,7 +451,7 @@
             
             
             <li class="post-action hide-xs">
-                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/" title="Share on Qzone">
+                <a class="post-action-btn btn btn--default" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/" title="Share on Qzone">
                     <i class="fa fa-star" aria-hidden="true"></i>
                 </a>
             </li>
@@ -487,7 +461,7 @@
         
         <li class="post-action">
             
-                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
             
                 <i class="fa fa-list" aria-hidden="true"></i>
             </a>
@@ -505,7 +479,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/15/Glance接口测试/">
+                    <a class="share-option-btn" target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/">
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
                     </a>
                 </li>
@@ -513,7 +487,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/&amp;title=Glance接口测试">
+                    <a class="share-option-btn" target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络">
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
                     </a>
                 </li>
@@ -521,7 +495,7 @@
                 
                 
                 <li class="share-option">
-                    <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/15/Glance接口测试/">
+                    <a class="share-option-btn" target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/">
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
                     </a>
                 </li>

@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n文本工具文本截取工具\n文本内容： less、more和cat、tac、rev\n文本截取： head和tail\n按列截取： cut和paste\n关键字截取： grep\n\ncatcat [OPTIONS] [FILES]将文件连接到标准输出，查看文本。如果没有文件，或者当文件为-时，读取标准输入。\n\n\n\nOPTIONS\n含义\n\n\n\n-A, –show-all\n相当于-vET\n\n\n-b, –number-nonblank\n非空行编号\n\n\n-e\n相当于-vE\n\n\n-E, –show-ends\n显示行结束符$\n\n\n-n, –number\n显示行号\n\n\n-s, –squeeze-blank\n连续空行成一行\n\n\n-t\n相当于-vT\n\n\n-T, –show-tabs\n显示制表符为^I\n\n\n-v, –show-nonprinting\n使用^和M-引用，除了LFD和TAB\n\n\ntest.txt\n1234567891011121314151617Mutability  by Percy Bysshe ShelleyThe flower that smiles to-dayTo-morrow dies;All that we wish to stayTempts and then flies.What is this world’s delight?Lightning that mocks the night,Brief even as bright.\n\n\ncat\n\ntac上下倒序\n\nrev左右倒序\n\nmoremore [OPTIONS] [FILES]分页查看文本。\n\n\n\nOPTIONS\n含义\n\n\n\n-d\n显示翻页提示\n\n\n-[number]\n每个屏幕的行数\n\n\n+[number]\n从行号[number]开始显示\n\n\n+/[string]\n查找从[string]开始显示\n\n\n\n\n\n\n\n\n\n\nb\n上一页\n\n\n空格\n下一页\n\n\n回车\n下一行\n\n\nlessless is moreless [OPTIONS] [FILES]\n\n\n\n\n\n\n\n\nh\n帮助\n\n\nq\n退出\n\n\ne\n下一行\n\n\ny\n上一行\n\n\nb\n上一页\n\n\nz f\n下一页\n\n\nF\n一直打印，相当于tail -f\n\n\n/pattern\n向后查找\n\n\n?pattern\n向前查找\n\n\n&amp;pattern\n只显示符合的行\n\n\ng\n首行\n\n\nG\n最后一行\n\n\np%\n到文件开头，或者是文件的百分之p\n\n\nmore和less的区别：less可以使用键盘上下方向键显示上下内容，more不能。less不必读取整个文件，加载速度会比more更快。less退出后shell不会留下刚显示的内容，而more会。\n\n\nheadhead [OPTIONS] [FILES]打印每个文件的前十行。超过一个文件时，会打印文件名。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes=[-]NUM\n打印每个文件的前几个字节。NUM为负时，打印每个文件的除最后NUM字节的全部内容\n\n\n-n, –lines=[-]NUM\n打印每个文件的前几行（默认是10）。NUM为负时，打印每个文件的除最后NUM行的全部内容\n\n\n-q, –quiet, –silent\n不打印文件名\n\n\n-v, –verbose\n总是打印文件名\n\n\ntailtail [OPTIONS] [FILES]打印每个文件的最后十行。超过一个文件时，会打印文件名。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes=[+]NUM\n打印每个文件的最后几个字节。-c +NUM，打印每个文件的除开头NUM字节的全部内容\n\n\n-f, –follow[={name\ndescriptor}]\n\n\n-F\n相当于–follow=name –retry\n\n\n-n, –lines=[+]NUM\n打印每个文件的最后几行（默认是10）。-n +NUM，打印每个文件的除开头前NUM行的全部内容\n\n\n-q, –quiet, –silent\n不打印文件名\n\n\n–retry\n如果文件不可访问，会继续尝试打开它\n\n\n-v, –verbose\n总是打印文件名\n\n\ntail -f、tail -F与tailf三者的区别：tail -f相当于tail –follow=descriptor，根据文件描述进行追踪，当文件改名或删除后，停止追踪。tail -F相当于tail –follow=name –retry，根据文件名字进行追踪，当文件改名或者删除后，保持重试，当有新的文件和她同名时，继续追踪。tailf相当于tail -f -n 10。与tail -f不同的是，如果文件不增长，它不会去访问磁盘文件，所以tailf特别适合便携机上追踪日志文件，因为它减少了磁盘访问，可以省电。\n\n\ncutcut [OPTIONS] [FILES]打印每个文件的每一行被选定的部分。\n\n\n\nOPTIONS\n含义\n\n\n\n-b, –bytes=LIST\n截取LIST字节\n\n\n-c, –character=LIST\n截取LIST字符\n\n\n-d, –delimiter=DELIM\n指定分隔符string，默认tab\n\n\n-f, –fields=LIST\n分隔后的几列\n\n\n–complement\n去除选定的字节、字符或字段集\n\n\n-s, –only-delimited\n不打印不包含限定的行\n\n\n–output-delimiter=STRING\n输出分隔符string\n\n\nLIST的格式可以为：N 第N个字节、字符或者列，从1开始。N- 从第N个字节、字符或者列开始到文件最后。N-M 从第N个字节、字符或者列开始到第M个字节、字符或者列。-M 从文件开始到第M个字节、字符或者列。\n\n\n\ncut -b 1 test.txt\n\ncut -c 2-5 test.txt\n\ncut -d t -f 1 test.txt\n\ncut -d t -f 1 -s test.txt\n\ncut -d t -f 1-2 -s --output-delimiter / test.txt\n\npastepaste [OPTIONS] [FILES]合并文件同行号的到一行。\n\n\n\nOPTIONS\n含义\n\n\n\n-d, –delimiters=LIST\n指定分隔符，默认tab\n\n\n-s, –serial\npaste one file at a time instead of in parallel\n\n\n\npaste -d _wang test.txt test.txt\n\npaste -s test.txt test.txt\n\n\n文本分析工具wcwc [OPTIONS] [FILES]打印文件的行数、字数、字节数和文件名到一行。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes\n打印字节数\n\n\n-m, –chars\n打印字符数\n\n\n-l, –lines\n打印行数\n\n\n-L, –max-line-length\n打印最长行的长度\n\n\n-w, –words\n打印单词数\n\n\n\nwc /etc/passwd\n\n\nsortsort [OPTIONS] [FILES]文本排序。\n\n\n\nORDERING OPTIONS\n含义\n\n\n\n-b, –ignore-leading-blanks\n忽略开头的空格\n\n\n-d, –dictionary-order\n只考虑空格、字符和数字\n\n\n-f, –ignore-case\n忽略大小写\n\n\n-g, –general-numeric-sort\n按数字排序\n\n\n-i, –ignore-nonprinting\n只考虑可被打印的字符\n\n\n-M, –month-sort\n月份排序（(unknown) &lt; ‘JAN’ &lt; … &lt; ‘DEC’）\n\n\n-h, –human-numeric-sort\n按可阅读的数字排序（例如：2K 1G）\n\n\n-n, –numeric-sort\n按数字排序\n\n\n-R, –random-sort\n随机\n\n\n-r, –reverse\n反向\n\n\n\n\n\nOTHER OPTIONS\n含义\n\n\n\n-k, –key=KEYDEF\n指定KEY排序，KEYDEF定义位置和类型信息\n\n\n-o, –output=FILE\n输出文件\n\n\n-t, –field-separator=SEP\n分隔符，排序时按指定字符分隔\n\n\n-u, –unique\n去除重复行\n\n\n\nsort test.txt\n\nsort -b test.txt\n\nsort -f test.txt\n\ncat num.txt\n\nsort -n -r num.txt\n\ncat date.txt\n\nsort -t - -k 2 date.txt\n\nsort -t - -k 3 date.txt\n\n\n\n正则表达式","dateCreated":"2019-08-21T16:35:08+08:00","dateModified":"2019-08-28T11:53:59+08:00","datePublished":"2019-08-21T16:35:08+08:00","description":"Linux文本处理工具","headline":"Linux命令大全（三）文本处理工具","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n文本工具文本截取工具\n文本内容： less、more和cat、tac、rev\n文本截取： head和tail\n按列截取： cut和paste\n关键字截取： grep\n\ncatcat [OPTIONS] [FILES]将文件连接到标准输出，查看文本。如果没有文件，或者当文件为-时，读取标准输入。\n\n\n\nOPTIONS\n含义\n\n\n\n-A, –show-all\n相当于-vET\n\n\n-b, –number-nonblank\n非空行编号\n\n\n-e\n相当于-vE\n\n\n-E, –show-ends\n显示行结束符$\n\n\n-n, –number\n显示行号\n\n\n-s, –squeeze-blank\n连续空行成一行\n\n\n-t\n相当于-vT\n\n\n-T, –show-tabs\n显示制表符为^I\n\n\n-v, –show-nonprinting\n使用^和M-引用，除了LFD和TAB\n\n\ntest.txt\n1234567891011121314151617Mutability  by Percy Bysshe ShelleyThe flower that smiles to-dayTo-morrow dies;All that we wish to stayTempts and then flies.What is this world’s delight?Lightning that mocks the night,Brief even as bright.\n\n\ncat\n\ntac上下倒序\n\nrev左右倒序\n\nmoremore [OPTIONS] [FILES]分页查看文本。\n\n\n\nOPTIONS\n含义\n\n\n\n-d\n显示翻页提示\n\n\n-[number]\n每个屏幕的行数\n\n\n+[number]\n从行号[number]开始显示\n\n\n+/[string]\n查找从[string]开始显示\n\n\n\n\n\n\n\n\n\n\nb\n上一页\n\n\n空格\n下一页\n\n\n回车\n下一行\n\n\nlessless is moreless [OPTIONS] [FILES]\n\n\n\n\n\n\n\n\nh\n帮助\n\n\nq\n退出\n\n\ne\n下一行\n\n\ny\n上一行\n\n\nb\n上一页\n\n\nz f\n下一页\n\n\nF\n一直打印，相当于tail -f\n\n\n/pattern\n向后查找\n\n\n?pattern\n向前查找\n\n\n&amp;pattern\n只显示符合的行\n\n\ng\n首行\n\n\nG\n最后一行\n\n\np%\n到文件开头，或者是文件的百分之p\n\n\nmore和less的区别：less可以使用键盘上下方向键显示上下内容，more不能。less不必读取整个文件，加载速度会比more更快。less退出后shell不会留下刚显示的内容，而more会。\n\n\nheadhead [OPTIONS] [FILES]打印每个文件的前十行。超过一个文件时，会打印文件名。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes=[-]NUM\n打印每个文件的前几个字节。NUM为负时，打印每个文件的除最后NUM字节的全部内容\n\n\n-n, –lines=[-]NUM\n打印每个文件的前几行（默认是10）。NUM为负时，打印每个文件的除最后NUM行的全部内容\n\n\n-q, –quiet, –silent\n不打印文件名\n\n\n-v, –verbose\n总是打印文件名\n\n\ntailtail [OPTIONS] [FILES]打印每个文件的最后十行。超过一个文件时，会打印文件名。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes=[+]NUM\n打印每个文件的最后几个字节。-c +NUM，打印每个文件的除开头NUM字节的全部内容\n\n\n-f, –follow[={name\ndescriptor}]\n\n\n-F\n相当于–follow=name –retry\n\n\n-n, –lines=[+]NUM\n打印每个文件的最后几行（默认是10）。-n +NUM，打印每个文件的除开头前NUM行的全部内容\n\n\n-q, –quiet, –silent\n不打印文件名\n\n\n–retry\n如果文件不可访问，会继续尝试打开它\n\n\n-v, –verbose\n总是打印文件名\n\n\ntail -f、tail -F与tailf三者的区别：tail -f相当于tail –follow=descriptor，根据文件描述进行追踪，当文件改名或删除后，停止追踪。tail -F相当于tail –follow=name –retry，根据文件名字进行追踪，当文件改名或者删除后，保持重试，当有新的文件和她同名时，继续追踪。tailf相当于tail -f -n 10。与tail -f不同的是，如果文件不增长，它不会去访问磁盘文件，所以tailf特别适合便携机上追踪日志文件，因为它减少了磁盘访问，可以省电。\n\n\ncutcut [OPTIONS] [FILES]打印每个文件的每一行被选定的部分。\n\n\n\nOPTIONS\n含义\n\n\n\n-b, –bytes=LIST\n截取LIST字节\n\n\n-c, –character=LIST\n截取LIST字符\n\n\n-d, –delimiter=DELIM\n指定分隔符string，默认tab\n\n\n-f, –fields=LIST\n分隔后的几列\n\n\n–complement\n去除选定的字节、字符或字段集\n\n\n-s, –only-delimited\n不打印不包含限定的行\n\n\n–output-delimiter=STRING\n输出分隔符string\n\n\nLIST的格式可以为：N 第N个字节、字符或者列，从1开始。N- 从第N个字节、字符或者列开始到文件最后。N-M 从第N个字节、字符或者列开始到第M个字节、字符或者列。-M 从文件开始到第M个字节、字符或者列。\n\n\n\ncut -b 1 test.txt\n\ncut -c 2-5 test.txt\n\ncut -d t -f 1 test.txt\n\ncut -d t -f 1 -s test.txt\n\ncut -d t -f 1-2 -s --output-delimiter / test.txt\n\npastepaste [OPTIONS] [FILES]合并文件同行号的到一行。\n\n\n\nOPTIONS\n含义\n\n\n\n-d, –delimiters=LIST\n指定分隔符，默认tab\n\n\n-s, –serial\npaste one file at a time instead of in parallel\n\n\n\npaste -d _wang test.txt test.txt\n\npaste -s test.txt test.txt\n\n\n文本分析工具wcwc [OPTIONS] [FILES]打印文件的行数、字数、字节数和文件名到一行。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –bytes\n打印字节数\n\n\n-m, –chars\n打印字符数\n\n\n-l, –lines\n打印行数\n\n\n-L, –max-line-length\n打印最长行的长度\n\n\n-w, –words\n打印单词数\n\n\n\nwc /etc/passwd\n\n1234[root@controller-1 /root]$wc /etc/passwd  32   40     1643    /etc/passwd  |    |        |         | 行数  字数    字节数      文件名\n\nsortsort [OPTIONS] [FILES]文本排序。\n\n\n\nORDERING OPTIONS\n含义\n\n\n\n-b, –ignore-leading-blanks\n忽略开头的空格\n\n\n-d, –dictionary-order\n只考虑空格、字符和数字\n\n\n-f, –ignore-case\n忽略大小写\n\n\n-g, –general-numeric-sort\n按数字排序\n\n\n-i, –ignore-nonprinting\n只考虑可被打印的字符\n\n\n-M, –month-sort\n月份排序（(unknown) &lt; ‘JAN’ &lt; … &lt; ‘DEC’）\n\n\n-h, –human-numeric-sort\n按可阅读的数字排序（例如：2K 1G）\n\n\n-n, –numeric-sort\n按数字排序\n\n\n-R, –random-sort\n随机\n\n\n-r, –reverse\n反向\n\n\n\n\n\nOTHER OPTIONS\n含义\n\n\n\n-k, –key=KEYDEF\n指定KEY排序，KEYDEF定义位置和类型信息\n\n\n-o, –output=FILE\n输出文件\n\n\n-t, –field-separator=SEP\n分隔符，排序时按指定字符分隔\n\n\n-u, –unique\n去除重复行\n\n\n\nsort test.txt\n\nsort -b test.txt\n\nsort -f test.txt\n\ncat num.txt\n\nsort -n -r num.txt -o num.txt\n\ncat date.txt\n\nsort -t - -k 2 date.txt\n\nsort -t - -k 3 date.txt\n\n\nuniquniq [OPTIONS] [FILES]去除重复行。\n\n\n\nOPTIONS\n含义\n\n\n\n-c, –count\n在每一行前面打印重复行的出现次数\n\n\n-d, –repeated\n只打印重复行\n\n\n-D\n打印重复行（所有的）\n\n\n-i, –ignore-case\n忽略大小写\n\n\n-s, –skip-chars=N\n忽略前N个字符\n\n\n-u, –unique\n只打印不重复行\n\n\n\nuniq -c num.txt\n\nuniq -d num.txt\n\nuniq -D num.txt\n\nuniq -u num.txt\n\n\ndiffdiff [OPTIONS] [FILES]按行比较文件。\n\n\n\nOPTIONS\n含义\n\n\n\n–normal\n打印普通结果，默认\n\n\n-q, –brief\n当文件不同时，打印提示\n\n\n-s, –report-identical-file\n当文件相同时，打印提示\n\n\n-c, -C NUM, –context[=NUM]\n打印NUM（默认3）行上下文，以分开的方式\n\n\n-u, -U NUM, –unified[=NUM]\n打印NUM（默认3）行上下文，以合并的方式\n\n\n-e, –ed\n输出ed脚本\n\n\n-y, –side-by-side\n打印两列\n\n\n-W, –width=NUM\n每列至少NUM（默认130）宽度，配合-y使用\n\n\n–left-column\n只打印左边列，配合-y使用\n\n\n–suppress-common-lines\n只打印不同行，配合-y使用\n\n\n-p, –show-c-function\n若比较C语言的程序文件时，显示差异所在的函数名\n\n\n–label LABEL\n标签名替换文件名和时间戳，配合-c或-u使用\n\n\n-t, –expand-tabs\n在输出时，将tab字符展开\n\n\n-T, –initial-tab\n在每行前面加上tab字符\n\n\n–tabsize=NUM\ntab字符大小（默认8）\n\n\n-l, –paginate\n分页\n\n\n-r, –recursive\n递归比较找到的所有子目录\n\n\n–no-dereference\n不遵循符号链接\n\n\n-N, –new-file\n将没有的文件视为空\n\n\n–ignore-file-name-case\n比较文件名时忽略大小写\n\n\n–no-ignore-file-name-case\n比较文件名时不忽略大小写\n\n\n-x, –exclude=PAT\n不比较指定文件PAT\n\n\n-X, –exclude-from=FILE\n不比较指定文件中的文件\n\n\n-S, –starting-file=FILE\n从指定目录开始比较\n\n\n–from-file=FILE1\n用FILE1和其他文件比较，FILE1可以是目录\n\n\n–to-file=FILE2\n用其他文件和FILE2比较, FILE2可以是目录\n\n\n-i, –ignore-case\n比较文件内容时，忽略大小写\n\n\n-E, –ignore-tab-expansion\n比较文件内容时，忽略tab扩展\n\n\n-Z, –ignore-trailing-space\n忽略行尾的空格\n\n\n-b, –ignore-space-change\n忽略空格数量\n\n\n-w, –ignore-all-space\n忽略所有空格\n\n\n-B, –ignore-blank-lines\n忽略空行\n\n\n-I, –ignore-matching-lines=RE\n忽略符合RE的行\n\n\n-a, –text\n将所有文件视为文本文件\n\n\n-d, –minimal\n以较小的单位来做比较\n\n\n–color[=WHEN]\n颜色，WHEN可以是never、always或者auto（默认auto）\n\n\n\ncat test-1.txt\n\ndiff test.txt test-1.txt\n\ndiff -c test.txt test-1.txt\n\ndiff -u test.txt test-1.txt\n\ndiff -y test.txt test-1.txt\n\ndiff -i test.txt test-1.txt\n\n\ngrepgrep [OPTIONS] PATTERN [FILES]\nPATTERN\n\n\n\nOPTIONS\n含义\n\n\n\n-E, –extended-regexp\nPATTERN是扩展正则表达式\n\n\n正则表达式基本正则表达式字符匹配\n\n\n\n字符\n含义\n\n\n\n.\n匹配单个字符\n\n\n[]\n匹配中括号里任意字符\n\n\n[^]\n排除中括号里任意字符\n\n\n[:alnum:]\n匹配字母和数字\n\n\n[:digit:]\n匹配数字\n\n\n[:alpha:]\n匹配字母\n\n\n[:lower:]\n匹配小写字母\n\n\n[:upper:]\n匹配大写字母\n\n\n[:blank:]\n匹配空白字符（空格和tab）\n\n\n[:space:]\n匹配水平和垂直空白符\n\n\n[:cntrl:]\n匹配不可打印控制字符\n\n\n[:graph:]\n匹配可打印的非空字符\n\n\n[:print:]\n匹配可打印的字符\n\n\n[:punct:]\n匹配标点符号\n\n\n匹配次数\n\n\n\n字符\n含义\n\n\n\n*\n匹配前面的字符&gt;0次\n\n\n.*\n匹配任意长度的任意字符\n\n\n\\?\n匹配前面的字符0或1次\n\n\n\\+\n匹配前面的字符&gt;1次\n\n\n\\{n\\}\n匹配前面字符n次\n\n\n\\{m, n\\}\n匹配前面字符至少m次，最多n次\n\n\n{, n\\}\n匹配前面字符最多n次\n\n\n{n, \\}\n匹配前面字符最少n次\n\n\n位置匹配\n\n\n\n字符\n含义\n\n\n\n^\n行首\n\n\n$\n行尾\n\n\n^$\n空行\n\n\n\\&lt; 或 \\b\n词首\n\n\n\\&gt; 或 \\b\n词尾\n\n\n\\&lt;WORD\\&gt;\n整个单词\n\n\n分组\n\n\n\n字符\n含义\n\n\n\n\\(WORD\\)\n字符串作为整体\n\n\n\\|\n或者\n\n\n\\1 \\2\n分组引用\n\n","dateCreated":"2019-08-21T16:35:08+08:00","dateModified":"2019-09-06T11:50:09+08:00","datePublished":"2019-08-21T16:35:08+08:00","description":"Linux文本处理工具","headline":"Linux命令大全（三）文本处理工具","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Linux文本处理工具">
 <meta name="keywords" content="Linux">
 <meta property="og:type" content="blog">
@@ -45,7 +45,17 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/cat-date.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/sort-t.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/sort-k.png">
-<meta property="og:updated_time" content="2019-08-28T03:53:59.002Z">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/uniq-c.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/uniq-d.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/uniq-d-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/uniq-u.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/cat-test.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/diff.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/diff-c.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/diff-u.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/diff-y.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/21/Linux命令大全（三）/images/diff-i.png">
+<meta property="og:updated_time" content="2019-09-06T03:50:09.900Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Linux命令大全（三）文本处理工具">
 <meta name="twitter:description" content="Linux文本处理工具">
@@ -64,7 +74,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-c4ozcsklz4kht2pebhp44xorvyverh23toayhn7i6ubrpyedak24hv1v0hyd.min.css">
+    <link rel="stylesheet" href="/assets/css/style-iedf0ooulz7mbs5ba0a0tbfw3gjjomwt3xweiti1ic75mn9we2ee3vljszyc.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -295,7 +305,7 @@
         <div class="main-content-wrap">
             <!-- excerpt -->
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#文本工具"><span class="toc-text">文本工具</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#文本截取工具"><span class="toc-text">文本截取工具</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#cat"><span class="toc-text">cat</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#more"><span class="toc-text">more</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#less"><span class="toc-text">less</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#head"><span class="toc-text">head</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#tail"><span class="toc-text">tail</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#cut"><span class="toc-text">cut</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#paste"><span class="toc-text">paste</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#文本分析工具"><span class="toc-text">文本分析工具</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#wc"><span class="toc-text">wc</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#sort"><span class="toc-text">sort</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#正则表达式"><span class="toc-text">正则表达式</span></a></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#文本工具"><span class="toc-text">文本工具</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#文本截取工具"><span class="toc-text">文本截取工具</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#cat"><span class="toc-text">cat</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#more"><span class="toc-text">more</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#less"><span class="toc-text">less</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#head"><span class="toc-text">head</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#tail"><span class="toc-text">tail</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#cut"><span class="toc-text">cut</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#paste"><span class="toc-text">paste</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#文本分析工具"><span class="toc-text">文本分析工具</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#wc"><span class="toc-text">wc</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#sort"><span class="toc-text">sort</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#uniq"><span class="toc-text">uniq</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#diff"><span class="toc-text">diff</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#grep"><span class="toc-text">grep</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#正则表达式"><span class="toc-text">正则表达式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#基本正则表达式"><span class="toc-text">基本正则表达式</span></a></li></ol></li></ol>
 <h3 id="文本工具"><a href="#文本工具" class="headerlink" title="文本工具"></a>文本工具</h3><h4 id="文本截取工具"><a href="#文本截取工具" class="headerlink" title="文本截取工具"></a>文本截取工具</h4><ul>
 <li>文本内容： less、more和cat、tac、rev</li>
 <li>文本截取： head和tail</li>
@@ -637,6 +647,7 @@
 <br>
 <div class="figure " style="width:;"><a class="fancybox" href="images/wc.png" title="wc /etc/passwd" data-caption="wc /etc/passwd" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/wc.png" alt="wc /etc/passwd"></a><span class="caption">wc /etc/passwd</span></div>
 <br>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[root@controller-1 /root]<span class="variable">$wc</span> /etc/passwd</span><br><span class="line">  32   40     1643    /etc/passwd</span><br><span class="line">  |    |        |         |</span><br><span class="line"> 行数  字数    字节数      文件名</span><br></pre></td></tr></table></figure>
 
 <h5 id="sort"><a href="#sort" class="headerlink" title="sort"></a>sort</h5><p>sort [OPTIONS] [FILES]<br>文本排序。</p>
 <table>
@@ -720,7 +731,7 @@
 <br>
 <div class="figure " style="width:;"><a class="fancybox" href="images/cat-num.png" title="cat num.txt" data-caption="cat num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/cat-num.png" alt="cat num.txt"></a><span class="caption">cat num.txt</span></div>
 <br>
-<div class="figure " style="width:;"><a class="fancybox" href="images/sort-n.png" title="sort -n -r num.txt" data-caption="sort -n -r num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/sort-n.png" alt="sort -n -r num.txt"></a><span class="caption">sort -n -r num.txt</span></div>
+<div class="figure " style="width:;"><a class="fancybox" href="images/sort-n.png" title="sort -n -r num.txt -o num.txt" data-caption="sort -n -r num.txt -o num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/sort-n.png" alt="sort -n -r num.txt -o num.txt"></a><span class="caption">sort -n -r num.txt -o num.txt</span></div>
 <br>
 <div class="figure " style="width:;"><a class="fancybox" href="images/cat-date.png" title="cat date.txt" data-caption="cat date.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/cat-date.png" alt="cat date.txt"></a><span class="caption">cat date.txt</span></div>
 <br>
@@ -729,8 +740,390 @@
 <div class="figure " style="width:;"><a class="fancybox" href="images/sort-k.png" title="sort -t - -k 3 date.txt" data-caption="sort -t - -k 3 date.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/sort-k.png" alt="sort -t - -k 3 date.txt"></a><span class="caption">sort -t - -k 3 date.txt</span></div>
 <br>
 
+<h5 id="uniq"><a href="#uniq" class="headerlink" title="uniq"></a>uniq</h5><p>uniq [OPTIONS] [FILES]<br>去除重复行。</p>
+<table>
+<thead>
+<tr>
+<th align="left">OPTIONS</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-c, –count</td>
+<td align="left">在每一行前面打印重复行的出现次数</td>
+</tr>
+<tr>
+<td align="left">-d, –repeated</td>
+<td align="left">只打印重复行</td>
+</tr>
+<tr>
+<td align="left">-D</td>
+<td align="left">打印重复行（所有的）</td>
+</tr>
+<tr>
+<td align="left">-i, –ignore-case</td>
+<td align="left">忽略大小写</td>
+</tr>
+<tr>
+<td align="left">-s, –skip-chars=N</td>
+<td align="left">忽略前N个字符</td>
+</tr>
+<tr>
+<td align="left">-u, –unique</td>
+<td align="left">只打印不重复行</td>
+</tr>
+</tbody></table>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/uniq-c.png" title="uniq -c num.txt" data-caption="uniq -c num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/uniq-c.png" alt="uniq -c num.txt"></a><span class="caption">uniq -c num.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/uniq-d.png" title="uniq -d num.txt" data-caption="uniq -d num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/uniq-d.png" alt="uniq -d num.txt"></a><span class="caption">uniq -d num.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/uniq-d-2.png" title="uniq -D num.txt" data-caption="uniq -D num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/uniq-d-2.png" alt="uniq -D num.txt"></a><span class="caption">uniq -D num.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/uniq-u.png" title="uniq -u num.txt" data-caption="uniq -u num.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/uniq-u.png" alt="uniq -u num.txt"></a><span class="caption">uniq -u num.txt</span></div>
+<br>
 
-<h3 id="正则表达式"><a href="#正则表达式" class="headerlink" title="正则表达式"></a>正则表达式</h3>
+<h5 id="diff"><a href="#diff" class="headerlink" title="diff"></a>diff</h5><p>diff [OPTIONS] [FILES]<br>按行比较文件。</p>
+<table>
+<thead>
+<tr>
+<th align="left">OPTIONS</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">–normal</td>
+<td align="left">打印普通结果，默认</td>
+</tr>
+<tr>
+<td align="left">-q, –brief</td>
+<td align="left">当文件不同时，打印提示</td>
+</tr>
+<tr>
+<td align="left">-s, –report-identical-file</td>
+<td align="left">当文件相同时，打印提示</td>
+</tr>
+<tr>
+<td align="left">-c, -C NUM, –context[=NUM]</td>
+<td align="left">打印NUM（默认3）行上下文，以分开的方式</td>
+</tr>
+<tr>
+<td align="left">-u, -U NUM, –unified[=NUM]</td>
+<td align="left">打印NUM（默认3）行上下文，以合并的方式</td>
+</tr>
+<tr>
+<td align="left">-e, –ed</td>
+<td align="left">输出ed脚本</td>
+</tr>
+<tr>
+<td align="left">-y, –side-by-side</td>
+<td align="left">打印两列</td>
+</tr>
+<tr>
+<td align="left">-W, –width=NUM</td>
+<td align="left">每列至少NUM（默认130）宽度，配合-y使用</td>
+</tr>
+<tr>
+<td align="left">–left-column</td>
+<td align="left">只打印左边列，配合-y使用</td>
+</tr>
+<tr>
+<td align="left">–suppress-common-lines</td>
+<td align="left">只打印不同行，配合-y使用</td>
+</tr>
+<tr>
+<td align="left">-p, –show-c-function</td>
+<td align="left">若比较C语言的程序文件时，显示差异所在的函数名</td>
+</tr>
+<tr>
+<td align="left">–label LABEL</td>
+<td align="left">标签名替换文件名和时间戳，配合-c或-u使用</td>
+</tr>
+<tr>
+<td align="left">-t, –expand-tabs</td>
+<td align="left">在输出时，将tab字符展开</td>
+</tr>
+<tr>
+<td align="left">-T, –initial-tab</td>
+<td align="left">在每行前面加上tab字符</td>
+</tr>
+<tr>
+<td align="left">–tabsize=NUM</td>
+<td align="left">tab字符大小（默认8）</td>
+</tr>
+<tr>
+<td align="left">-l, –paginate</td>
+<td align="left">分页</td>
+</tr>
+<tr>
+<td align="left">-r, –recursive</td>
+<td align="left">递归比较找到的所有子目录</td>
+</tr>
+<tr>
+<td align="left">–no-dereference</td>
+<td align="left">不遵循符号链接</td>
+</tr>
+<tr>
+<td align="left">-N, –new-file</td>
+<td align="left">将没有的文件视为空</td>
+</tr>
+<tr>
+<td align="left">–ignore-file-name-case</td>
+<td align="left">比较文件名时忽略大小写</td>
+</tr>
+<tr>
+<td align="left">–no-ignore-file-name-case</td>
+<td align="left">比较文件名时不忽略大小写</td>
+</tr>
+<tr>
+<td align="left">-x, –exclude=PAT</td>
+<td align="left">不比较指定文件PAT</td>
+</tr>
+<tr>
+<td align="left">-X, –exclude-from=FILE</td>
+<td align="left">不比较指定文件中的文件</td>
+</tr>
+<tr>
+<td align="left">-S, –starting-file=FILE</td>
+<td align="left">从指定目录开始比较</td>
+</tr>
+<tr>
+<td align="left">–from-file=FILE1</td>
+<td align="left">用FILE1和其他文件比较，FILE1可以是目录</td>
+</tr>
+<tr>
+<td align="left">–to-file=FILE2</td>
+<td align="left">用其他文件和FILE2比较, FILE2可以是目录</td>
+</tr>
+<tr>
+<td align="left">-i, –ignore-case</td>
+<td align="left">比较文件内容时，忽略大小写</td>
+</tr>
+<tr>
+<td align="left">-E, –ignore-tab-expansion</td>
+<td align="left">比较文件内容时，忽略tab扩展</td>
+</tr>
+<tr>
+<td align="left">-Z, –ignore-trailing-space</td>
+<td align="left">忽略行尾的空格</td>
+</tr>
+<tr>
+<td align="left">-b, –ignore-space-change</td>
+<td align="left">忽略空格数量</td>
+</tr>
+<tr>
+<td align="left">-w, –ignore-all-space</td>
+<td align="left">忽略所有空格</td>
+</tr>
+<tr>
+<td align="left">-B, –ignore-blank-lines</td>
+<td align="left">忽略空行</td>
+</tr>
+<tr>
+<td align="left">-I, –ignore-matching-lines=RE</td>
+<td align="left">忽略符合RE的行</td>
+</tr>
+<tr>
+<td align="left">-a, –text</td>
+<td align="left">将所有文件视为文本文件</td>
+</tr>
+<tr>
+<td align="left">-d, –minimal</td>
+<td align="left">以较小的单位来做比较</td>
+</tr>
+<tr>
+<td align="left">–color[=WHEN]</td>
+<td align="left">颜色，WHEN可以是never、always或者auto（默认auto）</td>
+</tr>
+</tbody></table>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/cat-test.png" title="cat test-1.txt" data-caption="cat test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/cat-test.png" alt="cat test-1.txt"></a><span class="caption">cat test-1.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/diff.png" title="diff test.txt test-1.txt" data-caption="diff test.txt test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/diff.png" alt="diff test.txt test-1.txt"></a><span class="caption">diff test.txt test-1.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/diff-c.png" title="diff -c test.txt test-1.txt" data-caption="diff -c test.txt test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/diff-c.png" alt="diff -c test.txt test-1.txt"></a><span class="caption">diff -c test.txt test-1.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/diff-u.png" title="diff -u test.txt test-1.txt" data-caption="diff -u test.txt test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/diff-u.png" alt="diff -u test.txt test-1.txt"></a><span class="caption">diff -u test.txt test-1.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/diff-y.png" title="diff -y test.txt test-1.txt" data-caption="diff -y test.txt test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/diff-y.png" alt="diff -y test.txt test-1.txt"></a><span class="caption">diff -y test.txt test-1.txt</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/diff-i.png" title="diff -i test.txt test-1.txt" data-caption="diff -i test.txt test-1.txt" data-fancybox="default"><img class="fig-img" src="/2019/08/21/Linux命令大全（三）/images/diff-i.png" alt="diff -i test.txt test-1.txt"></a><span class="caption">diff -i test.txt test-1.txt</span></div>
+<br>
+
+<h5 id="grep"><a href="#grep" class="headerlink" title="grep"></a>grep</h5><p>grep [OPTIONS] PATTERN [FILES]</p>
+<p>PATTERN</p>
+<table>
+<thead>
+<tr>
+<th align="left">OPTIONS</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">-E, –extended-regexp</td>
+<td align="left">PATTERN是扩展正则表达式</td>
+</tr>
+</tbody></table>
+<h3 id="正则表达式"><a href="#正则表达式" class="headerlink" title="正则表达式"></a>正则表达式</h3><h4 id="基本正则表达式"><a href="#基本正则表达式" class="headerlink" title="基本正则表达式"></a>基本正则表达式</h4><p>字符匹配</p>
+<table>
+<thead>
+<tr>
+<th align="left">字符</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">.</td>
+<td align="left">匹配单个字符</td>
+</tr>
+<tr>
+<td align="left">[]</td>
+<td align="left">匹配中括号里任意字符</td>
+</tr>
+<tr>
+<td align="left">[^]</td>
+<td align="left">排除中括号里任意字符</td>
+</tr>
+<tr>
+<td align="left">[:alnum:]</td>
+<td align="left">匹配字母和数字</td>
+</tr>
+<tr>
+<td align="left">[:digit:]</td>
+<td align="left">匹配数字</td>
+</tr>
+<tr>
+<td align="left">[:alpha:]</td>
+<td align="left">匹配字母</td>
+</tr>
+<tr>
+<td align="left">[:lower:]</td>
+<td align="left">匹配小写字母</td>
+</tr>
+<tr>
+<td align="left">[:upper:]</td>
+<td align="left">匹配大写字母</td>
+</tr>
+<tr>
+<td align="left">[:blank:]</td>
+<td align="left">匹配空白字符（空格和tab）</td>
+</tr>
+<tr>
+<td align="left">[:space:]</td>
+<td align="left">匹配水平和垂直空白符</td>
+</tr>
+<tr>
+<td align="left">[:cntrl:]</td>
+<td align="left">匹配不可打印控制字符</td>
+</tr>
+<tr>
+<td align="left">[:graph:]</td>
+<td align="left">匹配可打印的非空字符</td>
+</tr>
+<tr>
+<td align="left">[:print:]</td>
+<td align="left">匹配可打印的字符</td>
+</tr>
+<tr>
+<td align="left">[:punct:]</td>
+<td align="left">匹配标点符号</td>
+</tr>
+</tbody></table>
+<p>匹配次数</p>
+<table>
+<thead>
+<tr>
+<th align="left">字符</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">*</td>
+<td align="left">匹配前面的字符&gt;0次</td>
+</tr>
+<tr>
+<td align="left">.*</td>
+<td align="left">匹配任意长度的任意字符</td>
+</tr>
+<tr>
+<td align="left">\?</td>
+<td align="left">匹配前面的字符0或1次</td>
+</tr>
+<tr>
+<td align="left">\+</td>
+<td align="left">匹配前面的字符&gt;1次</td>
+</tr>
+<tr>
+<td align="left">\{n\}</td>
+<td align="left">匹配前面字符n次</td>
+</tr>
+<tr>
+<td align="left">\{m, n\}</td>
+<td align="left">匹配前面字符至少m次，最多n次</td>
+</tr>
+<tr>
+<td align="left">{, n\}</td>
+<td align="left">匹配前面字符最多n次</td>
+</tr>
+<tr>
+<td align="left">{n, \}</td>
+<td align="left">匹配前面字符最少n次</td>
+</tr>
+</tbody></table>
+<p>位置匹配</p>
+<table>
+<thead>
+<tr>
+<th align="left">字符</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">^</td>
+<td align="left">行首</td>
+</tr>
+<tr>
+<td align="left">$</td>
+<td align="left">行尾</td>
+</tr>
+<tr>
+<td align="left">^$</td>
+<td align="left">空行</td>
+</tr>
+<tr>
+<td align="left">\&lt; 或 \b</td>
+<td align="left">词首</td>
+</tr>
+<tr>
+<td align="left">\&gt; 或 \b</td>
+<td align="left">词尾</td>
+</tr>
+<tr>
+<td align="left">\&lt;WORD\&gt;</td>
+<td align="left">整个单词</td>
+</tr>
+</tbody></table>
+<p>分组</p>
+<table>
+<thead>
+<tr>
+<th align="left">字符</th>
+<th align="left">含义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">\(WORD\)</td>
+<td align="left">字符串作为整体</td>
+</tr>
+<tr>
+<td align="left">\|</td>
+<td align="left">或者</td>
+</tr>
+<tr>
+<td align="left">\1 \2</td>
+<td align="left">分组引用</td>
+</tr>
+</tbody></table>
             
 
         </div>
@@ -1006,14 +1399,8 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-dbd16rvloemmuxdzniplmnxxvwoz24eya9wol0b7vvmlokgqsjivmb8dnscy.min.js"></script>
-<!--SCRIPTS END-->
-
-    
-
-
-
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
+<script src="/assets/js/script-eotw9o1iocacienns2m3hop7j4jln8dmkce2oh4z8bked1c8ffrixyj1rskq.min.js"></script>
+<!--SCRIPTS END--><!-- hexo-inject:begin --><!-- Begin: Injected MathJax -->
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
 </script>
@@ -1030,5 +1417,11 @@
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js">
 </script>
 <!-- End: Injected MathJax -->
-<!-- hexo-inject:end --></body>
+<!-- hexo-inject:end -->
+
+    
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":360,"position":"right","hOffset":0,"vOffset":-20},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/shizuku.model.json"},"log":false});</script></body>
 </html>

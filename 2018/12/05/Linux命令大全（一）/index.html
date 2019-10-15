@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。\n\n\n\n\n\nip link\n查看当前所有的网络接口的状态1ip link\n\n启动接口1ip link set qg-3127fe33-2f up\n\n删除接口1ip link delete qg-3127fe33-2f\n\nip addr\n查看所有网络接口的mac地址和ip地址等1ip addr\n\n查看指定网络接口的mac地址和ip地址等1ip addr show [device]\n\n\n作用域（scope）\n\nglobal 全局可用，即两个接口进来的数据我都可以响应。是默认状态。\nlink 仅链接可用，进来的数据只有直接相连的那个接口能够响应。\nhost 本机可用，即只能自己访问。\n\n\n\n增加ip1ip addr add [ip]/[netmask] dev [interface]\n\n删除ip1ip addr del [ip]/[netmask] dev [interface]\n\n清空指定网卡的所有ip1ip addr flush dev [interface]\n\n使用命令的方式增肌或者删除ip，都是临时的，如果重启network服务，那么操作就会失效。\n\n\nip addrlabel\n添加别名1ip addr add [ip]/[netmask] dev [interface] label [name]\n\n相当于给网卡多绑定了一个ip。\n\n\n删除别名1ip addr del [ip]/[netmask] dev [interface] label [name]\n\n使用命令设置别名，重启服务就会失效。\n\n\nip route\n查看所有路由信息1ip route\n\n\n添加路由\n添加到达目标主机的路由\n1ip route add [host] via [gateway]\n\n添加到达网络的路由\n1ip route add [network]/[netmask] via [gateway]\n\n添加默认路由\n1ip route add default via [gateway]\n\n\n\n删除路由12ip route del [network]/[netmask]ip route del default via [gateway]\n\n刷新路由缓存创建完路由若需要立即生效。\n1ip route flush table [id]\n\n使用命令的方式增加或者删除路由，都是临时的，如果重启network服务，那么操作就会失效。\n\n\n\n\n路由表查看路由表\n12ip route [list|show] table [table-id]ip route [list|show] table [table-name]\n\nLinux系统中，可以定义从1~252个路由表，其中，系统维护了4个路由表。\n\n0表。系统保留表。\n253表。default table没什么特别指定的默认路由都会放在该表。\n254表。main table没指明路由表的所有路由都放在该表。\n255表。locale table保存了本地接口地址，广播地址、NAT地址，由系统维护，用户不得更改。\n\n\n\n添加路由\n12ip route add default via [ip] table [id]ip route add [network]/[netmask] via [gateway] table [id]\n\n删除路由\n12ip route del default table [id]ip route del [network]/[netmask] table [id]\n\nip rule\n查看路由策略规则1ip rule\n\n\n在Linux系统启动时，内核会为路由策略数据库配置三条缺省的规则。\n\n0 匹配任何条件 查询路由表local（ID 255）路由表local是一个特殊的路由表，包含对本地和广播地址的高优先级控制路由。rule 0非常特殊不能被删除或者覆盖。\n\n32766 匹配任何条件 查询路由表main（ID 254）路由表main是一个通常的表，包含所有的无策略路由。系统管理员可以删除或者使用另外的规则覆盖这条规则。\n\n32767 匹配任何条件 查询路由表default（ID 253）路由表default是一个空表，它是为一些后续处理保留的。对于前面的缺省策略没有匹配到的数据包，系统使用这个策略进行处理，这个规则也可以删除。\n\n\n\n\n规则指向路由表，多个规则可以引用一个路由表，而某些路由表可以没有策略指向它。\n如果系统管理员删除了指向某个路由表的所有规则，这个表就没有用了，但是仍然存在，直到里面的所有路由都被删除，它才会消失。\n\n\n删除路由策略规则1ip rule del [ip]/[netmask] from table [id]\n\nip neigh\n查看接入所在局域网的设备的mac地址。\n1ip neigh\n\n\nip netns\n查看所有网络命名空间1ip netns\n\n\n进入网络命名空间1ip netns exec [name] [command]\n\noptions-V -version输出ip命令的版本并退出。\n-h输出帮助信息。\n-s -stats -statistics输出更多信息。\n-d输出详细信息。\n-l指定IP地址刷新逻辑将尝试的最大循环次数，默认是10.\n-f -family指定要使用的协议族。协议可以是一个inet、intet6、bridge、ipx、dnet或者link。\n-4是-family inet的简写。\n-6是-family inet6的简写。\n-0是-family link的简写。\n-I是-family ipx的简写。\n-o -oneline单行输出。\n-n -netns交换机的IP到指定的网络空间netns。\n-r -resolve使用系统名称解析来打印DNS名称而不是主机地址。\n-t使用监视器选项时显示当前时间。\n-a -all对所有的对象执行指定的命令，这取决于命令是否支持这个选项。\n-rc -rcvbuf（size）设置Netlink套接字接收缓冲区的大小设置，默认为1MB。\nss -lnt\nlsof -p\n","dateCreated":"2018-12-05T17:54:30+08:00","dateModified":"2019-08-21T16:26:59+08:00","datePublished":"2018-12-05T17:54:30+08:00","description":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。","headline":"Linux命令大全（一）ip 命令大全","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/05/Linux命令大全（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/12/05/Linux命令大全（一）/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。\n\n\n\n\n\nip link\n查看当前所有的网络接口的状态1ip link\n\n启动接口1ip link set qg-3127fe33-2f up\n\n删除接口1ip link delete qg-3127fe33-2f\n\nip addr\n查看所有网络接口的mac地址和ip地址等1ip addr\n\n查看指定网络接口的mac地址和ip地址等1ip addr show [device]\n\n\n作用域（scope）\n\nglobal 全局可用，即两个接口进来的数据我都可以响应。是默认状态。\nlink 仅链接可用，进来的数据只有直接相连的那个接口能够响应。\nhost 本机可用，即只能自己访问。\n\n\n\n增加ip1ip addr add [ip]/[netmask] dev [interface]\n\n删除ip1ip addr del [ip]/[netmask] dev [interface]\n\n清空指定网卡的所有ip1ip addr flush dev [interface]\n\n使用命令的方式增肌或者删除ip，都是临时的，如果重启network服务，那么操作就会失效。\n\n\nip addrlabel\n添加别名1ip addr add [ip]/[netmask] dev [interface] label [name]\n\n相当于给网卡多绑定了一个ip。\n\n\n删除别名1ip addr del [ip]/[netmask] dev [interface] label [name]\n\n使用命令设置别名，重启服务就会失效。\n\n\nip route\n查看所有路由信息1ip route\n\n\n添加路由\n添加到达目标主机的路由\n1ip route add [host] via [gateway]\n\n添加到达网络的路由\n1ip route add [network]/[netmask] via [gateway]\n\n添加默认路由\n1ip route add default via [gateway]\n\n\n\n删除路由12ip route del [network]/[netmask]ip route del default via [gateway]\n\n刷新路由缓存创建完路由若需要立即生效。\n1ip route flush table [id]\n\n使用命令的方式增加或者删除路由，都是临时的，如果重启network服务，那么操作就会失效。\n\n\n\n\n路由表查看路由表\n12ip route [list|show] table [table-id]ip route [list|show] table [table-name]\n\nLinux系统中，可以定义从1~252个路由表，其中，系统维护了4个路由表。\n\n0表。系统保留表。\n253表。default table没什么特别指定的默认路由都会放在该表。\n254表。main table没指明路由表的所有路由都放在该表。\n255表。locale table保存了本地接口地址，广播地址、NAT地址，由系统维护，用户不得更改。\n\n\n\n添加路由\n12ip route add default via [ip] table [id]ip route add [network]/[netmask] via [gateway] table [id]\n\n删除路由\n12ip route del default table [id]ip route del [network]/[netmask] table [id]\n\nip rule\n查看路由策略规则1ip rule\n\n\n在Linux系统启动时，内核会为路由策略数据库配置三条缺省的规则。\n\n0 匹配任何条件 查询路由表local（ID 255）路由表local是一个特殊的路由表，包含对本地和广播地址的高优先级控制路由。rule 0非常特殊不能被删除或者覆盖。\n\n32766 匹配任何条件 查询路由表main（ID 254）路由表main是一个通常的表，包含所有的无策略路由。系统管理员可以删除或者使用另外的规则覆盖这条规则。\n\n32767 匹配任何条件 查询路由表default（ID 253）路由表default是一个空表，它是为一些后续处理保留的。对于前面的缺省策略没有匹配到的数据包，系统使用这个策略进行处理，这个规则也可以删除。\n\n\n\n\n规则指向路由表，多个规则可以引用一个路由表，而某些路由表可以没有策略指向它。\n如果系统管理员删除了指向某个路由表的所有规则，这个表就没有用了，但是仍然存在，直到里面的所有路由都被删除，它才会消失。\n\n\n删除路由策略规则1ip rule del [ip]/[netmask] from table [id]\n\nip neigh\n查看接入所在局域网的设备的mac地址。\n1ip neigh\n\n\nip netns\n查看所有网络命名空间1ip netns\n\n\n进入网络命名空间1ip netns exec [name] [command]\n\noptions-V -version输出ip命令的版本并退出。\n-h输出帮助信息。\n-s -stats -statistics输出更多信息。\n-d输出详细信息。\n-l指定IP地址刷新逻辑将尝试的最大循环次数，默认是10.\n-f -family指定要使用的协议族。协议可以是一个inet、intet6、bridge、ipx、dnet或者link。\n-4是-family inet的简写。\n-6是-family inet6的简写。\n-0是-family link的简写。\n-I是-family ipx的简写。\n-o -oneline单行输出。\n-n -netns交换机的IP到指定的网络空间netns。\n-r -resolve使用系统名称解析来打印DNS名称而不是主机地址。\n-t使用监视器选项时显示当前时间。\n-a -all对所有的对象执行指定的命令，这取决于命令是否支持这个选项。\n-rc -rcvbuf（size）设置Netlink套接字接收缓冲区的大小设置，默认为1MB。\nss -lnt\nlsof -p\n","dateCreated":"2018-12-05T17:54:30+08:00","dateModified":"2019-08-21T16:26:59+08:00","datePublished":"2018-12-05T17:54:30+08:00","description":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。","headline":"Linux命令大全（一）ip 命令大全","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/05/Linux命令大全（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/12/05/Linux命令大全（一）/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。">
 <meta name="keywords" content="Linux">
 <meta property="og:type" content="blog">
@@ -49,7 +49,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -96,7 +96,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -114,7 +114,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -210,7 +210,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -675,7 +675,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。\n\n\n\n\n\nNeutron支持一下5种网络拓扑。\n\n单一平面网络。\n多平面网络。\n混合平面私有网络。\n通过私有网络实现运行商路由功能。\n通过私有网络实现每个租户创建自己专属的网络区段。\n\n在一个典型的生产环境中，我们一般将网络分为以下几种：\n\n公共网络，即外网网络。\n管理网络，即OpenStack自身组件所使用的网络，通常为管理组件之间通信所使用的网络。\n服务网络，即虚拟机所使用的内网网络。\n存储网络，存储专用网络，一般和管理网络同网段。\n\n单一平面网络单一平面网络是指所有的租户共享一个相同的服务网络和公共网络，意味着一个租户下的虚拟机能够访问其他租户下的虚拟机，隔离性不好。\n\n多平面网络多平面网络虽然也是服务网络与公共网络相同，但是可以有多个共享网络，当两个虚拟机需要相互通信时，虚拟机内部可以通过多网卡同时共享一个网段。这些共享网络是对所有租户共享的。\n\n混合平面私有网络混合平面私有网络是指每个租户拥有自己的服务网络，同时共享相同的公共网络。\n\n通过私有网络实现运营商路由功能通过私有网络实现运营商路由功能，是指每个租户拥有自己的服务网络，并且虚拟机可以直接通过提供商路由所提供的SNAT功能，访问外部网络命名空间。\n\n通过私有网络实现每个租户创建自己专属的网络区段通过私有网络实现每个租户创建自己专属的网络区段，支持命名空间功能，每个网络可以选择拥有自己独立的提供商路由——一般来讲是虚拟路由。\n\n","dateCreated":"2018-10-25T17:15:18+08:00","dateModified":"2019-08-02T14:59:51+08:00","datePublished":"2018-10-25T17:15:18+08:00","description":"由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。","headline":"深入浅出Neutron（三）Neutron支持的部署拓扑","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/25/深入浅出Neutron（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/25/深入浅出Neutron（三）/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。\n\n\n\n\n\nNeutron支持一下5种网络拓扑。\n\n单一平面网络。\n多平面网络。\n混合平面私有网络。\n通过私有网络实现运行商路由功能。\n通过私有网络实现每个租户创建自己专属的网络区段。\n\n在一个典型的生产环境中，我们一般将网络分为以下几种：\n\n公共网络，即外网网络。\n管理网络，即OpenStack自身组件所使用的网络，通常为管理组件之间通信所使用的网络。\n服务网络，即虚拟机所使用的内网网络。\n存储网络，存储专用网络，一般和管理网络同网段。\n\n单一平面网络单一平面网络是指所有的租户共享一个相同的服务网络和公共网络，意味着一个租户下的虚拟机能够访问其他租户下的虚拟机，隔离性不好。\n\n多平面网络多平面网络虽然也是服务网络与公共网络相同，但是可以有多个共享网络，当两个虚拟机需要相互通信时，虚拟机内部可以通过多网卡同时共享一个网段。这些共享网络是对所有租户共享的。\n\n混合平面私有网络混合平面私有网络是指每个租户拥有自己的服务网络，同时共享相同的公共网络。\n\n通过私有网络实现运营商路由功能通过私有网络实现运营商路由功能，是指每个租户拥有自己的服务网络，并且虚拟机可以直接通过提供商路由所提供的SNAT功能，访问外部网络命名空间。\n\n通过私有网络实现每个租户创建自己专属的网络区段通过私有网络实现每个租户创建自己专属的网络区段，支持命名空间功能，每个网络可以选择拥有自己独立的提供商路由——一般来讲是虚拟路由。\n\n","dateCreated":"2018-10-25T17:15:18+08:00","dateModified":"2019-08-02T14:59:51+08:00","datePublished":"2018-10-25T17:15:18+08:00","description":"由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。","headline":"深入浅出Neutron（三）Neutron支持的部署拓扑","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/25/深入浅出Neutron（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/25/深入浅出Neutron（三）/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。">
 <meta name="keywords" content="Neutron">
 <meta property="og:type" content="blog">
@@ -41,7 +41,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -88,7 +88,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -106,7 +106,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -202,7 +202,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -557,7 +557,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

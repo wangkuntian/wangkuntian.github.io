@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Ansible基础元素\n\n\n\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。\n1ansible &lt;host-pattern&gt; [options]\n\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。\n1ansible-playbook playbook.yml\n\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Ansible基础元素\n\n\n\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。\n1ansible &lt;host-pattern&gt; [options]\n\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。\n1ansible-playbook playbook.yml\n\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ansible基础元素">
 <meta name="keywords" content="Ansible">
 <meta property="og:type" content="blog">
@@ -35,7 +35,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -82,7 +82,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -100,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -196,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -550,7 +550,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

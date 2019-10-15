@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。\n\n\n\n\nEventletEventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。\n123456789import eventletdef output(a):    print agt = eventlet.spawn(output, 'Hello world')gt.wait()\n\neventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。\n协程目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。\n与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。\n使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。\n协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。\n","dateCreated":"2019-03-06T15:51:59+08:00","dateModified":"2019-05-17T11:34:03+08:00","datePublished":"2019-03-06T15:51:59+08:00","description":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。","headline":"OpenStack通用技术（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/","keywords":"OpenStack, Eventlet","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。\n\n\n\n\nEventletEventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。\n123456789import eventletdef output(a):    print agt = eventlet.spawn(output, 'Hello world')gt.wait()\n\neventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。\n协程目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。\n与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。\n使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。\n协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。\n","dateCreated":"2019-03-06T15:51:59+08:00","dateModified":"2019-05-17T11:34:03+08:00","datePublished":"2019-03-06T15:51:59+08:00","description":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。","headline":"OpenStack通用技术（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/","keywords":"OpenStack, Eventlet","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。">
 <meta name="keywords" content="OpenStack,Eventlet">
 <meta property="og:type" content="blog">
@@ -35,7 +35,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -82,7 +82,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -100,7 +100,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -196,7 +196,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -533,7 +533,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

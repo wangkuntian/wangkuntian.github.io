@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"SQLAlchemy和数据库\n\n\n架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n例子users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n1\n1\nwang@qq.com\n\n\n2\n2\nkun@qq.com\n\n\n3\n3\ntian@qq.com\n\n\nSQL语句。\n123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = 'users'    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = 'addresses'    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey('users.id'))    user = relationship('User', backref=backref('addresses', order_by=id))engine = create_engine('mysql+mysqlconnector://root:19941221@localhost:3306/test')Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a","dateCreated":"2019-03-01T18:07:57+08:00","dateModified":"2019-03-05T15:49:55+08:00","datePublished":"2019-03-01T18:07:57+08:00","description":"SQLAlchemy和数据库","headline":"OpenStack通用技术（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/","keywords":"OpenStack, Oslo, SQLAlchemy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"SQLAlchemy和数据库\n\n\n架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n例子users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n1\n1\nwang@qq.com\n\n\n2\n2\nkun@qq.com\n\n\n3\n3\ntian@qq.com\n\n\nSQL语句。\n123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = 'users'    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = 'addresses'    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey('users.id'))    user = relationship('User', backref=backref('addresses', order_by=id))engine = create_engine('mysql+mysqlconnector://root:19941221@localhost:3306/test')Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a","dateCreated":"2019-03-01T18:07:57+08:00","dateModified":"2019-03-05T15:49:55+08:00","datePublished":"2019-03-01T18:07:57+08:00","description":"SQLAlchemy和数据库","headline":"OpenStack通用技术（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/","keywords":"OpenStack, Oslo, SQLAlchemy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="SQLAlchemy和数据库">
 <meta name="keywords" content="OpenStack,Oslo,SQLAlchemy">
 <meta property="og:type" content="blog">
@@ -37,7 +37,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -84,7 +84,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -102,7 +102,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -198,7 +198,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -587,7 +587,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

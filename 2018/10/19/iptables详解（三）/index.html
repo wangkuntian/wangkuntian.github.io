@@ -17,7 +17,7 @@
     
         <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg"},"articleBody":"\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/","mailto:wangkuntian1994@163.com"],"image":"1.jpg","logo":{"@type":"ImageObject","url":"1.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="规则管理">
 <meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
@@ -49,7 +49,7 @@
         
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
     
@@ -96,7 +96,7 @@
                 href="#about">
         
         
-            <img class="header-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
         </a>
     
@@ -114,7 +114,7 @@
         
             <div class="sidebar-profile">
                 <a href="/#about">
-                    <img class="sidebar-profile-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
@@ -210,7 +210,7 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/" target="_blank" rel="noopener" title="GitHub">
+                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
                     
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
@@ -600,7 +600,7 @@
             <i class="fa fa-times"></i>
         </div>
         
-            <img id="about-card-picture" src="/assets/images/1.jpg" alt="Author&#39;s picture"/>
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
         
             <h4 id="about-card-name">Wang kuntian</h4>
         

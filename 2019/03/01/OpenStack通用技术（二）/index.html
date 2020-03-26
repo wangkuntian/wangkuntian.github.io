@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"SQLAlchemy和数据库\n\n\n架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n例子users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n1\n1\nwang@qq.com\n\n\n2\n2\nkun@qq.com\n\n\n3\n3\ntian@qq.com\n\n\nSQL语句。\n123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = 'users'    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = 'addresses'    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey('users.id'))    user = relationship('User', backref=backref('addresses', order_by=id))engine = create_engine('mysql+mysqlconnector://root:19941221@localhost:3306/test')Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a","dateCreated":"2019-03-01T18:07:57+08:00","dateModified":"2019-03-05T15:49:55+08:00","datePublished":"2019-03-01T18:07:57+08:00","description":"SQLAlchemy和数据库","headline":"OpenStack通用技术（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack通用技术（二）/","keywords":"OpenStack, Oslo, SQLAlchemy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="SQLAlchemy和数据库">
@@ -46,7 +48,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -93,7 +95,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +118,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -132,12 +134,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -145,12 +148,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -158,12 +162,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -171,12 +176,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -184,12 +190,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -197,12 +204,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -214,8 +222,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -223,8 +238,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -236,12 +258,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -475,7 +498,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -502,9 +524,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -701,7 +724,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove基础架构Trove和其他OpenStack服务类似。它暴露了一个RESTful的公共API并在基础设施数据库中存储了一些持久性数据。\n\n    \n    ![trove](images/trove-1.png)\n    \n\nTrove的所有用户端，包括CLI（command-line interface）和Horizon仪表盘，都是通过这个公共API与Trove交互的。基础设施数据库可以与其他OpenStack服务共享，也可以是一个专用的数据库。\n通常这个数据库是Mysql（或某些变体），但理论上可以是SQLAlchemy所支持的任何数据库。Mysql是最常用的后端基础设施数据库。\n\nTrove是OpenStack的其他服务如Nova（计算）、Cinder（块存储）、Swift（对象存储）、Keystone（身份管理）等的用户端。Trove和这些服务交互时，会通过各自的公共API请求进行交互。\n\n![trove](images/trove-2.png)\n\n\nTrove 由三个服务组成：Trove API、Trove conductor 和 Trove task manager。此外，每个Trove实例都有一个安装了特定的数据库类型的guest agent。\n\n![trove](images/trove-3.png)\n\n\n上图左边是Trove，由暴露着公共API的Trove API、Trove task manager和Trove conductor组成。Trove服务在基础设施数据库上存储持久化型数据。上图中右上部分是OpenStack基本服务的安装和这些服务的基础架构的数据库。右下部分是计算基础设施，包括服务器和存储器，向Nova、Cinder、Swift和Neutron请求计算、存储和网络资源。\nTrove API和Trove task manager是不同的OpenStack服务的用户端，它们使用各自的公共的API和这些服务进行交互。当Nova创建了一个计算实例时，它在计算基础设施上完成这个操作。一个Trove实例是一个特殊的Nova实例，包含一个guest数据库和Trove guest agent服务。Trove guest agent 在安装了Trove服务的Trove guest实例上执行操作，并利用消息队列和Trove服务进行通信。","dateCreated":"2018-09-11T14:11:50+08:00","dateModified":"2019-02-28T18:18:43+08:00","datePublished":"2018-09-11T14:11:50+08:00","description":"Trove基础架构","headline":"Trove的概念和架构（一）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（一）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
     <meta name="description" content="Trove基础架构">
@@ -47,7 +49,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -94,7 +96,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -117,7 +119,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -133,12 +135,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -146,12 +149,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -159,12 +163,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -172,12 +177,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -185,12 +191,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -198,12 +205,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -215,8 +223,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -224,8 +239,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -237,12 +259,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -435,7 +458,6 @@ Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表�
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -462,9 +484,10 @@ Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表�
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -661,7 +684,7 @@ Trove的所有用户端，包括CLI（command-line interface）和Horizon仪表�
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

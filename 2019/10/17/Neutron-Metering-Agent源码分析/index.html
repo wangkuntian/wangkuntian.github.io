@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n介绍Neutron-metering-agent用来监控公网IP的流量。文档\n版本Rocky\n插件加载neutron-server在启动时会加载ml2和service_plugins，service_plugins中就包括插件metering。\n12345# setup.cfg[entry_points]neutron.service_plugins =    metering = neutron.services.metering.metering_plugin:MeteringPlugin\n\nMeteringPlugin中定义了metering的rpc_listener，时刻监听从neutron-metering-agent发送过来的消息。\n服务启动文件setup.cfg中定义neutron-metering-agent服务启动方法。\n12345# setup.cfg[entry_points]console_scripts =     neutron-metering-agent = neutron.cmd.eventlet.services.metering_agent:main\n\n可以看到neutron-metering-agent的启动方法是位于neutron.cmd.eventlet.services.metering_agent的main方法。\n1234567# neutron/cmd/eventlet/services/metering_agent.pyfrom neutron.services.metering.agents import metering_agentdef main():    metering_agent.main()\n\n紧接着找到python文件neutron/services/metering/agents/metering_agent.py。\n1234567891011121314151617181920212223242526# neutron/services/metering/agents/metering_agent.pydef main():    conf = cfg.CONF    # 注册服务需要的配置项    metering_agent.register_metering_agent_opts()    config.register_agent_state_opts_helper(conf)    # 设置配置文件    common_config.init(sys.argv[1:])    # 启动日志    config.setup_logging()    config.setup_privsep()    # 创建服务    server = neutron_service.Service.create(        binary='neutron-metering-agent',        topic=topics.METERING_AGENT,        report_interval=cfg.CONF.AGENT.report_interval,        manager='neutron.services.metering.agents.'                'metering_agent.MeteringAgentWithStateReport')        # 启动服务    service.launch(cfg.CONF, server, restart_method='mutate').wait()\n\n创建服务过程中，会指定neutron-metering-agent的manager为neutron.services.metering.agents.metering_agent.MeteringAgentWithStateReport。来看一下MeteringAgentWithStateReport的代码。\n1234567891011121314151617181920212223242526272829303132333435363738394041424344class MeteringAgentWithStateReport(MeteringAgent):    def __init__(self, host, conf=None):        super(MeteringAgentWithStateReport, self).__init__(host=host,                                                           conf=conf)        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)        self.agent_state = &#123;            'binary': 'neutron-metering-agent',            'host': host,            'topic': topics.METERING_AGENT,            'configurations': &#123;                # 驱动，默认是neutron.services.metering.drivers.noop.noop_driver.NoopMeteringDriver                'metering_driver': self.conf.driver,                # 监控间隔，默认30秒                'measure_interval':                # 数据发送间隔，默认300秒                self.conf.measure_interval,                'report_interval': self.conf.report_interval            &#125;,            'start_flag': True,            'agent_type': constants.AGENT_TYPE_METERING&#125;        report_interval = cfg.CONF.AGENT.report_interval        self.use_call = True        if report_interval:            self.heartbeat = loopingcall.FixedIntervalLoopingCall(                self._report_state)            self.heartbeat.start(interval=report_interval)    def _report_state(self):        try:            self.state_rpc.report_state(self.context, self.agent_state,                                        self.use_call)            self.agent_state.pop('start_flag', None)            self.use_call = False        except AttributeError:            # This means the server does not support report_state            LOG.warning(\"Neutron server does not support state report. \"                        \"State report for this agent will be disabled.\")            self.heartbeat.stop()        except Exception:            LOG.exception(\"Failed reporting state!\")    def agent_updated(self, context, payload):        LOG.info(\"agent_updated by server side %s!\", payload)\n\nMeteringAgentWithStateReport的基类是MeteringAgent，neutron-metering-agent最主要的部分都是由MeteringAgent来实现的。\n1234567891011121314151617181920class MeteringAgent(MeteringPluginRpc, manager.Manager):    def __init__(self, host, conf=None):        self.conf = conf or cfg.CONF        # 加载驱动        self._load_drivers()        self.context = context.get_admin_context_without_session()        # 创建定时任务        self.metering_loop = loopingcall.FixedIntervalLoopingCall(            self._metering_loop        )        measure_interval = self.conf.measure_interval        self.last_report = 0        self.metering_loop.start(interval=measure_interval)        self.host = host        self.label_tenant_id = &#123;&#125;        self.routers = &#123;&#125;        self.metering_infos = &#123;&#125;        super(MeteringAgent, self).__init__(host=host)\n\n其中self.metering_loop是负责监控流量的定时任务，来看一下定时执行的任务_metering_loop。\n12345678910111213141516def _metering_loop(self):    # 获取监控数据    self._add_metering_infos()    ts = timeutils.utcnow_ts()    delta = ts - self.last_report    report_interval = self.conf.report_interval    # 时间间隔超过报告时间，就将监控数据发送。    if delta &gt;= report_interval:        # 发送监控数据        self._metering_notification()        # 清空监控数据        self._purge_metering_info()        self.last_report = ts\n\nMeteringAgent还有一个_sync_routers_task方法，用来在服务启动一开始同步router的信息。\n1234567891011121314@periodic_task.periodic_task(run_immediately=True)    def _sync_routers_task(self, context):        routers = self._get_sync_data_metering(self.context)        routers_on_agent = set(self.routers.keys())        routers_on_server = set(            [router['id'] for router in routers] if routers else [])        for router_id in routers_on_agent - routers_on_server:            del self.routers[router_id]            self._invoke_driver(context, router_id, 'remove_router')        if not routers:            return        self._update_routers(context, routers)\n\n收集监控数据监控数据的收集主要由MeteringAgent中的_add_metering_infos方法负责。\n123456789101112131415def _add_metering_infos(self):    self.label_tenant_id = &#123;&#125;    for router in self.routers.values():        tenant_id = router['tenant_id']        labels = router.get(n_const.METERING_LABEL_KEY, [])        for label in labels:            label_id = label['id']            self.label_tenant_id[label_id] = tenant_id    accs = self._get_traffic_counters(self.context, self.routers.values())    if not accs:        return    for label_id, acc in accs.items():        self._add_metering_info(label_id, acc['pkts'], acc['bytes'])\n\n其中_get_traffic_counters用来获取监控的数据。\n1234def _get_traffic_counters(self, context, routers):    LOG.debug(\"Get router traffic counters\")    # 调用Driver的get_traffic_counters方法    return self._invoke_driver(context, routers, 'get_traffic_counters')\n\n123456789101112131415161718192021222324252627282930313233343536373839# neutron/services/metering/drivers/iptables/iptables_driver.py@log_helpers.log_method_call    def get_traffic_counters(self, context, routers):        accs = &#123;&#125;        routers_to_reconfigure = set()        for router in routers:            rm = self.routers.get(router['id'])            if not rm:                continue            for label_id in rm.metering_labels:                try:                    chain = iptables_manager.get_chain_name(WRAP_NAME +                                                            LABEL +                                                            label_id,                                                            wrap=False)                    chain_acc = rm.iptables_manager.get_traffic_counters(                        chain, wrap=False, zero=True)                except RuntimeError:                    LOG.exception('Failed to get traffic counters, '                                  'router: %s', router)                    routers_to_reconfigure.add(router['id'])                    continue                if not chain_acc:                    continue                acc = accs.get(label_id, &#123;'pkts': 0, 'bytes': 0&#125;)                acc['pkts'] += chain_acc['pkts']                acc['bytes'] += chain_acc['bytes']                accs[label_id] = acc        for router_id in routers_to_reconfigure:            del self.routers[router_id]        return accs","dateCreated":"2019-10-17T10:48:11+08:00","dateModified":"2019-10-17T10:56:39+08:00","datePublished":"2019-10-17T10:48:11+08:00","description":"Neutron-Metering-Agent源码分析","headline":"Neutron-Metering-Agent源码分析","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent源码分析/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent源码分析/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Neutron-Metering-Agent源码分析">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -444,7 +467,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -471,9 +493,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -670,7 +693,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

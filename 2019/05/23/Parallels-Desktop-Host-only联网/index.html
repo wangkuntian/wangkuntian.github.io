@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n最近用Parallels Desktop安装虚拟机的时候联网的时候碰到了一些问题。我想使用Host-only但是虚拟机还需要联网，于是就有了这篇文章。这里有关于Parallels Desktop三种联网方式的解释。\n\n\n设置Network打开Parallels Desktop的偏好设置，设置Shared Network，也可以不设置，默认设置即可。\n设置Host-Only Network。\n确保启动顺序。\nUbuntu Desktop 18.04添加并设置网卡安装好虚拟机后，先关机，添加第二块网卡，Parallels Desktop默认第一块网卡的联网方式是Shared也就是Nat，我们先不管它。\n我们来配置第二块网卡，将来源source选择相应的Host-Only网络。\nsource\n\n查看网卡开机，进入终端，执行ip a命令。\n可以看到en0s5卡，也就是第一块网卡，ip地址是192.168.0.3。en0s6卡，host-only网络，ip地址是10.0.0.4。\n测试连通性ping 114.114.114.114和ping 10.0.0.1\n外网，内网都能ping通，测试通过。\n静态IP在设置Host-Only的时候，我选择开启了DHCP，这不是我想要的，这里我配置一下Host-Only网络的静态IP。\n添加网络配置因为是Ubuntu Desktop，所以我们不着急去配置/etc/network/interfaces，毕竟有界面支持。打开Ubuntu的设置界面，找到Network一项。\n添加Host-Only的网络配置。\n\n手动设置IP地址和子网掩码和子网网关。\n\n\n我们还可以为Shared网络添加一个网络配置，虽然没什么必要。\n\n\n\n添加配置完成后。\n查看网卡状态，进入终端执行ip a命令。\n这时，en0s6网卡的IP地址已经变成我们想要的10.0.0.11了。\n测试连通性。通过。\nUbuntu Server 18.04连接方式和Ubuntu Desktop一致，主要不同在静态IP的设置。\n静态IP修改/etc/network/interfaces文件\n1234567891011auto loiface lo inet loopbackauto enp0s5iface enp0s5 inet dhcpauto enp0s6iface enp0s6 inet staticaddress 10.0.0.11netmask 255.255.255.0# gateway 10.0.0.1","dateCreated":"2019-05-23T15:57:35+08:00","dateModified":"2019-05-24T14:39:36+08:00","datePublished":"2019-05-23T15:57:35+08:00","description":"Parallels Desktop Host-only联网","headline":"Parallels Desktop Host-only联网","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only联网/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only联网/","keywords":"Parallels Desktop","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Parallels Desktop Host-only联网">
@@ -60,7 +62,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -107,7 +109,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -130,7 +132,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -146,12 +148,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -159,12 +162,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -172,12 +176,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -185,12 +190,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -198,12 +204,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -211,12 +218,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -228,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -237,8 +252,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -250,12 +272,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -459,7 +482,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -486,9 +508,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -685,7 +708,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.policy用于控制用户的权限，能够执行什么样的操作。\n\nOpenStack的每个项目都有一个/etc//policy.yaml文件，通过这个配置文件来实现对用户的权限管理。\n将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。\npolicy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。\n各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。\nNova API示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445def authorize(context, action, target, do_raise=True, exc=None):    \"\"\"Verifies that the action is valid on the target in this context.       :param context: nova context       :param action: string representing the action to be checked           this should be colon separated for clarity.           i.e. ``compute:create_instance``,           ``compute:attach_volume``,           ``volume:attach_volume``       :param target: dictionary representing the object of the action           for object creation this should be a dictionary representing the           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``       :param do_raise: if True (the default), raises PolicyNotAuthorized;           if False, returns False       :param exc: Class of the exception to raise if the check fails.                   Any remaining arguments passed to :meth:`authorize` (both                   positional and keyword arguments) will be passed to                   the exception class. If not specified,                   :class:`PolicyNotAuthorized` will be used.       :raises nova.exception.PolicyNotAuthorized: if verification fails           and do_raise is True. Or if 'exc' is specified it will raise an           exception of that type.       :return: returns a non-False value (not necessarily \"True\") if           authorized, and the exact value False if not authorized and           do_raise is False.    \"\"\"    init()    credentials = context.to_policy_values()    if not exc:        exc = exception.PolicyNotAuthorized    try:        result = _ENFORCER.authorize(action, target, credentials,                                     do_raise=do_raise, exc=exc, action=action)    except policy.PolicyNotRegistered:        with excutils.save_and_reraise_exception():            LOG.exception(_LE('Policy not registered'))    except Exception:        with excutils.save_and_reraise_exception():            LOG.debug('Policy check for %(action)s failed with credentials '                      '%(credentials)s',                      &#123;'action': action, 'credentials': credentials&#125;)    return result\n\n对应/etc/nova/policy.json文件内容如下：\n123456&#123;    \"context_is_admin\":  \"role:admin\",    \"admin_or_owner\":  \"is_admin:True or project_id:%(project_id)s\",    \"default\": \"rule:admin_or_owner\"    ......&#125;\n\n从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。\n","dateCreated":"2019-05-20T17:57:18+08:00","dateModified":"2019-05-21T10:49:38+08:00","datePublished":"2019-05-20T17:57:18+08:00","description":"oslo.policy用于控制用户的权限，能够执行什么样的操作。","headline":"OpenStack通用库（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/","keywords":"OpenStack, Oslo, Policy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.policy用于控制用户的权限，能够执行什么样的操作。">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -421,7 +444,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -448,9 +470,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -647,7 +670,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

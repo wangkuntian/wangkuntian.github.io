@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。\n\n\n\n\n创建容器新建容器可以使用docker create命令新建一个容器。\n1sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n\n使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。\n1sudo docker start [OPTIONS] CONTAINER [CONTAINER...]\n\n\n新建并启动容器启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。\n1sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：\n\n检查本地是否存在指定的镜像，不存在就从公有仓库下载。\n利用镜像创建并启动一个容器。\n分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。\n从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。\n从地址池配置一个IP地址给容器。\n执行用户指定的应用程序。\n执行完毕后容器就被终止。\n\n下面的命令将启动一个bash终端，允许用户进行交互。\n1sudo docker run -t -i ubuntu /bin/bash\n\n\n可选参数-t docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。-i 容器的标准输入保持打开。\n\n用户可以使用Ctrl+d或者exit命令退出容器。对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。\n\n\n守护态运行更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。\n1sudo docker run -d ubuntu /bin/sh -c \"while ture; do echo hello world; sleep 1; done\"\n\nps：要获取容器的输出信息可以通过docker logs命令\n\n1sudo docker logs [OPTIONS] CONTAINER\n\n终止容器1sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]\n\n可选参数-t，–time=10 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。\n\n\ndocker kill命令会直接发送SIGKILL信号强行终止容器。\n\n\ndocker start命令可以重新启动已经终止的容器。docker restart命令将会让一个运行的容器终止，然后重新启动。\n\n\n进入容器在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。\nattach命令docker attach是docker自带的命令。\n1sudo docker attach [OPTIONS] CONTAINER\n\n\n但是使用attach命令有时并不方便。当多个窗口同时attach到同一容器是，所有窗口都会同步显示。当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。\n\n\nexec命令docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。\n1sudo docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\n\nnsenter工具这里不做讨论。\n删除容器1sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]\n\n可选参数-f，–force=false 强行终止并删除一个运行中的容器。-l，–link=false 删除容器的连接，但保留容器。-v，–volumes=false 删除容器挂载的数据卷。\n\n\n删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。\n\n\n导入和导出容器导出容器导出容器是指导出一个已经创建的容器到一个文件中。\n1sudo docker export [OPTIONS] CONTAINER\n\n\n导入容器导出的文件又可以使用docker import命令导入，成为镜像。\n1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\n\ndocker load和docker import比较。docker load导入镜像存储文件到本地镜像库。docker import导入容器快照到本地镜像库。区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。\n\n","dateCreated":"2018-09-18T17:23:08+08:00","dateModified":"2019-02-14T16:03:45+08:00","datePublished":"2018-09-18T17:23:08+08:00","description":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。","headline":"Docker入门（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/18/Docker入门（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/18/Docker入门（四）/","keywords":"Docker, 容器","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。">
@@ -54,7 +56,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -101,7 +103,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -124,7 +126,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -140,12 +142,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -153,12 +156,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -166,12 +170,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -179,12 +184,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -192,12 +198,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -205,12 +212,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -222,8 +230,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -231,8 +246,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -244,12 +266,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -502,7 +525,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -529,9 +551,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -728,7 +751,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

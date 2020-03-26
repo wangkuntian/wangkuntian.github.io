@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。Mysql默认支持多种存储引擎，以适应不同领域的数据库应用需要，用户可以通过选择不同的存储引擎提高应用的效率，提供灵活的存储，用户甚至可以按照自己的需要定制和使用自己的存储引擎，以实现最大程度的可定制性。\n创建新表时如果不指定存储引擎，那么系统会使用默认存储引擎，Mysql 5.5之前的默认存储引擎是MyISAM，之后改为了InnoDB。\n\n\n\n常用查看默认存储引擎12345678910mysql&gt; show variables like '%storage_engine%';+----------------------------------+-----------+| Variable_name                    | Value     |+----------------------------------+-----------+| default_storage_engine           | InnoDB    || default_tmp_storage_engine       | InnoDB    || disabled_storage_engines         |           || internal_tmp_disk_storage_engine | InnoDB    || internal_tmp_mem_storage_engine  | TempTable |+----------------------------------+-----------+\n\n查询当前数据库支持的存储引擎1mysql&gt; show engines;\n\n查看当前表的存储引擎1mysql&gt; show status table;\n\n设置存储引擎12345mysql&gt; create table student (\t  id int not null auto_increment,\t  name varchar(10) not null,\t  primary key(id)\t  )engine = myisam default charset=gbk;\n\n修改存储引擎1mysql&gt; alter table student engine = innodb;\n\n常用存储引擎对比\n\n\n特点\nMyISAM\nInnoDB\nMEMORY\nMERGE\nNDB\n\n\n\n存储限制\n有\n64TB\n有\n没有\n有\n\n\n事物安全\n\n支持\n\n\n\n\n\n锁机制\n表锁\n行锁\n表锁\n表锁\n行所\n\n\nB树索引\n支持\n支持\n支持\n支持\n支持\n\n\n哈希索引\n\n\n支持\n\n支持\n\n\n全文索引\n支持\n\n\n\n\n\n\n集群索引\n\n支持\n\n\n\n\n\n数据缓存\n\n支持\n支持\n\n支持\n\n\n索引缓存\n支持\n支持\n支持\n支持\n支持\n\n\n数据可压缩\n支持\n\n\n\n\n\n\n空间使用\n低\n高\nN/A\n低\n高\n\n\n内存使用\n低\n高\n中等\n低\n高\n\n\n批量插入的速度\n高\n低\n高\n高\n高\n\n\n支持外键\n\n支持\n\n\n\n\n\n适用环境InnDB用于事务处理应用程序，支持外键。如果应用对事物的完整性\b有较高的要求，在并发条件下\b要求数据的一致性，数据操作除了插入和查询以外，还包括很多的更新、删除操作。有效的降低由于删除和更新导致的锁定，还可以确保事物的完整提交(Commit)和回滚(RollBack)。适用于对于类似计费系统或者财务系统等对数据准确性要求较高的系统。\nMyISAM以读操作和插入操作为主，只有很少的更新和删除操作，并且对事物的完整性、并发性要求不是很高。是在Web、数据仓储\b\b和其他应用环境下最常使用的存储引擎之一。\nMEMORY将所有的数据保存在RAM中，在需要快速定位记录和其他类似数据的环境下，可以提供极快的访问。缺陷是对表的大小\b\b有限制，太大的表无法缓存在内存中，其次是\b要确保表的数据可以恢复，数据库异常终止后表中的数据是可以\b恢复的。常用于更新不太频的小表，用以快速地得到访问结果。\nMERGE用于将一系列等同的MyISAM表以逻辑方式组合在一起，并作为一个对象引用它们。优点在于可以突破对单个MyISAM表大小的限制，并且通过将不同的表分布在多个磁盘上，可以有效地改善MERAGE表的访问效率。对于诸如数据仓储等VLDB环境十分适合。\n","dateCreated":"2018-07-18T14:00:00+08:00","dateModified":"2019-02-28T18:14:59+08:00","datePublished":"2018-07-18T14:00:00+08:00","description":"插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。","headline":"Mysql开发篇之数据库引擎","image":["covers/LOL/Vayne/Project-Vayne-2.jpg","covers/LOL/Vayne/Project-Vayne-2.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之数据库引擎/","keywords":"Mysql, 数据库引擎","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-2.jpg"}</script>
     <meta name="description" content="插件式存储引擎是Mysql数据库最重要的特性之一，用户可以根据应用的需要选择如何存储和索引数据、是否使用事务等。">
@@ -47,7 +49,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -94,7 +96,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -117,7 +119,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -133,12 +135,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -146,12 +149,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -159,12 +163,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -172,12 +177,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -185,12 +191,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -198,12 +205,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -215,8 +223,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -224,8 +239,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -237,12 +259,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -556,7 +579,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -583,9 +605,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -782,7 +805,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

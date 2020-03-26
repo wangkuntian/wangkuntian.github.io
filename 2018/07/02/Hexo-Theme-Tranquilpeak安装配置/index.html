@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n安装下载安装下载主题：hexo-theme-tranquilpeak，解压缩之后重命名为tranquilpeak复制到博客themes目录下。\nGit安装采用git的方式获取，这样可以随时pull最新的版本。\n123456789cd &lt;hexo dir&gt;git submodule add https://github.com/LouisBarranqueiro/tranquilpeak-hexo-theme themes/tranquilpeakcd themes/tranquilpeak# install bower and grunt if not installednpm install -g bower grunt-clinpm installbower installgrunt build\n\nHexo设置修改Hexo的_config.yml。\n1theme: tranquilpeak\n\nTranquilpeak设置修改Tranquilpeak的_config.yml。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990# 图片存储路径image_dir: assets/images # 侧边栏sidebar:    menu:        home:            title: global.home            url: /            icon: fa fa-home        categories:            title: global.categories            url: /all-categories            icon: fa fa-bookmark        tags:            title: global.tags            url: /all-tags            icon: fa fa-tags        archives:            title: global.archives            url: /all-archives            icon: fa fa-archive        search:            title: global.search            url: /#search            icon: fa fa-search            class: open-algolia-search        about:            title: global.about            url: /#about            icon: fa fa-question    author_links:        github:            title: global.github            url: https://github.com/wangkuntian            icon: fab fa-github        mail:            title: global.mail            url: mailto:wangkuntian1994@163.com            icon: fa fa-envelope    rss:        rss:            title: global.rss            url: /atom.xml            icon: fa fa-rss# 头header:    right_link:        url: /#about        icon:        class:# 作者author:    email: wangkuntian1994@163.com    location: Beijing    picture: faker.jpg# 分享sharing_options:   weibo:       title: \"Weibo\"       icon: \"fab fa-weibo\"       url: \"http://service.weibo.com/share/share.php?&amp;title=&#123;&#123;post.permalink&#125;&#125;\"   qq:       title: \"QQ\"       icon: \"fab fa-qq\"       url: \"http://connect.qq.com/widget/shareqq/index.html?url=&#123;&#123;post.permalink&#125;&#125;&amp;title=&#123;&#123;post.title&#125;&#125;\"   qzone:       title: \"Qzone\"       icon: \"fa fa-star\"       url: \"http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=&#123;&#123;post.permalink&#125;&#125;\"# 评论系统valine:  enable: true  appId: xxxxxxx  appKey: xxxxxxx  placeholder: ヾﾉ≧∀≦)o来啊，快活啊!   notify: false # mail notifier  verify: false # Verification code  avatar: wavatar  pageSize: 10  lang: zh-cn  visitor: true  highlight: true# 谷歌分析google_analytics_id: xxxxxxx\n\n自定义设置thumbnailImageTranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。\n修改Tranquilpeak目录layout/_partial/index.ejs\n123456var thumbnailImageUrl = null;if (post.thumbnailImage != null) &#123;    // 修改文章图片的路径    // url_for在路径前加上根路径    thumbnailImageUrl = url_for(post.thumbnailImage);&#125;\n\n修改Tranquilpeak目录layout/_partial/post/header-cover.ejs\n123456789101112&lt;%    // Generate cover image url    var coverImageUrl;    if (post.coverImage) &#123;        if (is_remote_url(post.coverImage)) &#123;            coverImageUrl = post.coverImage;        &#125;        else &#123;            coverImageUrl = url_for(post.coverImage);        &#125;%&gt;\n\n增加Valine评论系统Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。\n修改Tranquilpeak目录layout/_partial/post.ejs\n123456// 在文件最后面添加&lt;div class=\"main-content-wrap\"&gt;    &lt;% if (theme.valine.enable) &#123; %&gt;        &lt;%- partial('post/valine') %&gt;      &lt;% &#125; %&gt;&lt;/div&gt;\n\n新建文件layout/_partial/post/valine.ejs\n123456789101112131415161718192021&lt;script src=\"//cdn1.lncld.net/static/js/3.0.4/av-min.js\"&gt;&lt;/script&gt;&lt;script src='//unpkg.com/valine/dist/Valine.min.js'&gt;&lt;/script&gt;&lt;div id=\"vcomments\"&gt;&lt;/div&gt;&lt;script&gt;    new Valine(&#123;        el: '#vcomments',          appId: '&lt;%= theme.valine.appId %&gt;',        appKey: '&lt;%= theme.valine.appKey %&gt;',         placeholder: '&lt;%= theme.valine.placeholder %&gt;' ,        notify: '&lt;%= theme.valine.notify %&gt;',        verity: '&lt;%= theme.valine.verity %&gt;',        path: window.location.pathname,        avatar: '&lt;%= theme.valine.avatar %&gt;',        meta: ['nick','mail','link'],        pageSize: '&lt;%= theme.valine.pageSize %&gt;',        lang: '&lt;%= theme.valine.lang %&gt;',        visitor: '&lt;%= theme.valine.visitor %&gt;',        highlight: '&lt;%= theme.valine.highlight %&gt;'    &#125;);&lt;/script&gt;\n\n设置语言Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。\n在Tranquilpeak目录languages新建zh-en.yml文件。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081# date format displayed everywhere in the blogdate_format: \"MMM DD, YYYY\"global:    home: \"Home\"    categories: \"Categories\"    category: \"Category\"    tags: \"Tags\"    tag: \"Tag\"    archives: \"Archives\"    search: \"Search\"    about: \"About\"    author_picture: \"Author's picture\"    github: \"GitHub\"    stack_overflow: \"Stack Overflow\"    twitter: \"Twitter\"    facebook: \"Facebook\"    google_plus: \"Google +\"    weibo: \"Weibo\"    qq: \"QQ\"    qzone: \"Qzone\"    renren: \"Renren\"    vk: \"VK\"    odnoklassniki: \"Odnoklassniki\"    linkedin: \"LinkedIn\"    mail: \"Mail\"    rss: \"RSS\"    share_on_facebook: \"Share on Facebook\"    share_on_twitter: \"Share on Twitter\"    share_on_google_plus: \"Share on Google+\"    share_on_weibo: \"Share on Weibo\"    share_on_qq: \"Share on QQ\"    share_on_qzone: \"Share on Qzone\"    share_on_renren: \"Share on Renren\"    share_on_vk: \"Share on VK\"    share_on_odnoklassniki: \"Share on Odnoklassniki\"    search_category: \"Search category\"    search_tag: \"Search tag\"    search_date: \"Search date (YYYY/MM/DD)\"    posts_found:        zero: \"no post found\"        one: \"1 post found\"        other: \"&#123;n&#125; posts found\"    categories_found:        zero: \"no category found\"        one: \"1 cartegory found\"        other: \"&#123;n&#125; categories found\"    tags_found:        zero: \"no tag found\"        one: \"1 tag found\"        other: \"&#123;n&#125; tags found\"pagination:    page: \"page %d\"    of: \"of %d\"    newer_posts: \"上一页\"    older_posts: \"下一页\"    previous: \"PREVIOUS\"    next: \"NEXT\"post:    no_title : \"no title\"    categorized_in: \"in\"    tagged_in: \"TAGGED IN\"    toc: \"目录\"    back_to_top: \"Back to top\"    read_more: \"Continue reading\"    go_to_website: \"Go to website\"    comment_and_share: \"Comment and share\"    comment: \"Leave a comment\"    share: \"Share this post\"    gallery: \"Gallery\"    image:        one: \"image\"        other: \"%d images\"author:    # Your biography (Markdown and HTML supported)    bio: \"Hi\"    # Your job    job: \"Software Engineer\"\n\n最后在Hexo的_config.yml设置一下语言。\n1language: zh-en","dateCreated":"2018-07-02T17:20:29+08:00","dateModified":"2019-10-17T10:51:44+08:00","datePublished":"2018-07-02T17:20:29+08:00","description":"Hexo Theme Tranquilpeak安装配置","headline":"Hexo Theme Tranquilpeak安装配置","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/","keywords":"Hexo","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Hexo Theme Tranquilpeak安装配置">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -440,7 +463,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -467,9 +489,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -666,7 +689,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

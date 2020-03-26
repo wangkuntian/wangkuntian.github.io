@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Open vSwitch: High availability using DVR\n\n此体系结构示例使用分布式虚拟路由器（DVR）高可用性机制扩充了自助部署示例，该机制在计算节点上提供自助服务和提供商网络之间的连接，而不是针对特定方案的网络节点。 对于具有浮动IPv4地址的实例，自助服务和提供商网络之间的路由完全驻留在计算节点上，以消除网络节点的单点故障和性能问题。 对于具有固定或浮动IPv4地址的实例，路由也完全驻留在计算节点上，使用同一分布式虚拟路由器上的自助服务网络。 但是，具有固定IP地址的实例仍依赖于网络节点在自助服务和提供商网络之间进行路由和SNAT服务。\n请考虑此高可用性机制的以下属性，以确定您的环境中的实用性：\n\n仅当实例驻留在具有浮动IPv4地址的self-service network上时，才通过实例所在的计算节点提供与实例的连接。仅具有IPv6地址或IPv4和IPv6地址的自助服务网络上的实例依赖于网络节点进行IPv6连接。\n每个计算节点上的路由器实例在其包含网关的provider network上使用IPv4地址。\n\n先决条件使用以下组件修改计算节点：\n\n安装OpenStack Networking layer-3 agent。\n\n考虑添加至少一个额外的网络节点，以便为具有固定IP地址的实例提供高可用性。 有关更多信息，请参阅使用VRRP查看分布式虚拟路由。\n\n\n架构\n下图显示了一个self-service network和一个未标记（平面）网络的组件和连接。在此特定情况下，实例与网络的DHCP代理驻留在同一计算节点上。如果DHCP代理驻留在另一个计算节点上，则后者仅包含具有OVS集成桥上端口的DHCP命名空间。\n\nNetwork traffic flow以下部分描述了几种常见方案中的网络流量流。南北网络流量在实例和外部网络（如Internet）之间传输。东西向网络流量在相同或不同网络上的实例之间传输。在所有情况下，物理网络基础设施处理提供商网络和外部网络（例如因特网）之间的交换和路由。每种情况都引用一个或多个以下组件：\n\nProvider network (VLAN)\nVLAN ID 101 (tagged)\n\n\nSelf-service network 1 (VXLAN)\nVXLAN ID (VNI) 101\n\n\nSelf-service network 2 (VXLAN)\nVXLAN ID (VNI) 102\n\n\nSelf-service router\nGateway on the provider network\nInterface on self-service network 1\nInterface on self-service network 2\n\n\nInstance 1\nInstance 2\n\nNorth-south scenario 1: Instance with a fixed IP address除了网络节点上的路由器命名空间成为SNAT命名空间。 网络节点仍然包含路由器命名空间，但在这种情况下它没有用处。计算节点的步骤：\n\n实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。\n安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。\n安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥为内部隧道ID交换内部VLAN标记。\nOVS集成网桥补丁端口[patch port]（6）将数据包转发到OVS隧道网桥补丁端口[patch port]（7）。\nOVS隧道网桥（8）使用VNI 101打包分组。\n用于覆盖网络[overlay networks]的底层物理接口（9）经由覆盖网络[overlay networks]（10）将分组转发到网络节点。\n\n网络节点步骤：\n\n覆盖网络[overlay networks]的底层物理接口（11）将分组转发到OVS隧道网桥（12）。\n\nOVS隧道网桥解包并为其添加内部隧道ID。\n\nOVS隧道网桥为内部VLAN标记交换内部隧道ID。\n\nOVS隧道网桥补丁端口[patch port]（13）将数据包转发到OVS集成网桥补丁端口[patch port]（14）。\n\n用于自助服务网络[self-service network]（15）的OVS集成网桥端口移除内部VLAN标记并将该分组转发到SNAT命名空间中的自助服务网络[self-service network]接口（16）。\n \n\nSNAT将数据包转发到提供商网络[provider network]的OVS集成网桥端口（18）\n\nOVS集成网桥将内部VLAN标记添加到数据包。\n\nOVS集成网桥接器int-br-provider补丁端口[patch port]（19）将分组转发到OVS rovider bridge的phy-br-provider补丁端口[patch port]（20）。\n\nOVS provider bridge将内部VLAN标记与实际VLAN标记101交换。\n\nOVS provider bridge网络端口（21）将分组转发到物理网络接口（22）。\n\n物理网络接口通过物理网络基础设施将数据包转发到Internet（23）。\n\n\nNorth-south scenario 2: Instance with a floating IPv4 address对于在分布式路由器上使用自助服务网络[self-service network]的浮动IPv4地址的实例，包含该实例的计算节点在从实例传递到外部网络（例如因特网和南北流量的DNAT）的南北流量上执行SNAT从外部网络到实例。浮动IP地址和NAT不适用于IPv6。因此，网络节点在此方案中路由IPv6流量。实例与外部网络（如Internet）之间传递的南北流量。\n\n实例1驻留在计算节点1上并使用自助服务网络[self-service network]1。\nInternet上的主机将数据包发送到实例。\n\n\n计算节点步骤：\n\n物理网络基础设施[physical network infrastructure]（1）将分组转发到provider物理网络接口[physical network interface]（2）。\nprovider物理网络接口[physical network interface]将数据包转发到OVS provider bridge provider network port（3）。\nOVS provider bridge将实际VLAN标记101与内部VLAN标记交换。\nOVS provider bridge phy-br-provider port（4）将数据包转发到OVS integration bridge int-br-provider port（5）。\nprovider network（6）的OVS integration bridge port删除内部VLAN标记，并将数据包转发到浮动IP名称空间中的provider network interface（7）。此接口响应实例浮动IPv4地址的任何ARP请求。\n浮动IP命名空间使用DVR内部网络上的一对IP地址将分组（8）路由到分布式路由器命名空间（9）。此命名空间包含实例浮动IPv4地址。\n路由器在数据包上执行DNAT，通过自助服务网络接口[self-service network interface]（10）将目标IP地址更改为自助服务网络[self-service network]上的实例IP地址。\n路由器将数据包转发到自助服务网络[ self-service network]的OVS集成网桥端口（11）。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥从数据包中删除内部VLAN标记。\nOVS集成网桥安全组端口（12）通过veth对将数据包转发到安全组网桥OVS端口（13）。\n安全组网桥上的安全组规则（14）处理数据包的防火墙和连接跟踪。\n安全组网桥实例端口（15）通过veth对将数据包转发到实例接口（16）。\n\n出口流量反向遵循类似的步骤，除了SNAT将数据包的源IPv4地址更改为浮动IPv4地址。\n\n\nEast-west scenario 1: Instances on different networks on the same router在同一计算节点上具有固定IPv4/IPv6地址或浮动IPv4地址的实例通过计算节点上的路由器进行通信。不同计算节点上的实例通过每个计算节点上的路由器实例进行通信。\n此方案将实例放在不同的计算节点上以显示最复杂的情况。\n\n\n\n计算节点1步骤：\n\n实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。\n安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。\n安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。\nOVS集成网桥为数据包添加内部VLAN标记。\n用于自助服务网络[self-service network]1（6）的OVS集成桥接端口移除内部VLAN标记并将分组转发到分布式路由器命名空间中的自助服务网络[self-service network]1接口（6）。\n分布式路由器命名空间（8）将分组路由到自助服务网络[self-service network]2。\n分布式路由器命名空间（8）中的自助服务网络[self-service network]2接口将分组转发到用于自助服务网络[self-service network]2（9）的OVS集成网桥端口。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥为内部隧道ID交换内部VLAN标记。\nOVS集成网桥patch-tun端口（10）将数据包转发到OVS隧道网桥patch-int端口（11）。\nOVS隧道网桥（12）使用VNI 101包裹分组。\n用于覆盖网络[overlay networks]的底层物理接口（13）经由覆盖网络[overlay networks]（14）将分组转发到计算节点2。\n\n计算节点2步骤：\n\n覆盖网络[overlay networks]的底层物理接口（15）将分组转发到OVS隧道网桥（16）。\nOVS隧道网桥解包并为其添加内部隧道ID。\nOVS隧道网桥为内部VLAN标记交换内部隧道ID。\nOVS隧道网桥patch-int补丁端口[patch port]（17）将数据包转发到OVS集成网桥patch-tun补丁端口[patch port]（18）。\nOVS集成网桥从数据包中删除内部VLAN标记。\nOVS集成网桥安全组端口（19）通过veth对将数据包转发到安全组网桥OVS端口（20）。\n安全组网桥上的安全组规则（21）处理数据包的防火墙和连接跟踪。\n安全组网桥实例端口（22）通过veth对将数据包转发到实例2接口（23）。\n\n自助服务网络[self-service network]之间的路由发生在包含发送数据包的实例的计算节点上。 在这种情况下，路由发生在计算节点1上，用于从实例1到实例2的数据包，在计算节点2上，用于从实例2到实例1的数据包。\n\n","dateCreated":"2018-10-09T09:23:11+08:00","dateModified":"2019-02-14T16:06:20+08:00","datePublished":"2018-10-09T09:23:11+08:00","description":"Open vSwitch: High availability using DVR","headline":"Open vSwitch（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/09/Open-vSwitch（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/09/Open-vSwitch（一）/","keywords":"Open vSwitch","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Open vSwitch: High availability using DVR">
@@ -50,7 +52,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -97,7 +99,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -120,7 +122,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -136,12 +138,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -149,12 +152,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -162,12 +166,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -175,12 +180,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -188,12 +194,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -201,12 +208,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -218,8 +226,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -227,8 +242,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -240,12 +262,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -551,7 +574,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -578,9 +600,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -777,7 +800,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\ngnocchi部署节点运行。\n1ansible-playbook -i inventory/cloude_nodes gnocchi_setup.yml\n\ngnocchi_setup.yml12345678910111213---- name: Setup gnocchi  hosts:    - controller  vars_files:    - vars/common.yml    - vars/deploy.yml    - vars/astute.yaml    - vars/globals.yaml  vars:    action: deploy  roles:    - role: gnocchi\n\n配置文件gnocchi-api的配置文件wsgi-gnocchi.conf，位于/etc/oceanstack/gnocchi/gnocchi-api，映射到名为gnocchi_api的Docker容器的/etc/apache2/sites-enabled/的路径下，改名为gnocchi-api.conf。\n12345678910111213141516Listen 2.3.3.54:8041TraceEnable off&lt;VirtualHost *:8041&gt;  ErrorLog \"/var/log/kolla/gnocchi/gnocchi-api-error.log\"  LogFormat \"%&#123;X-Forwarded-For&#125;i %l %u %t \\\"%r\\\" %&gt;s %b %D \\\"%&#123;Referer&#125;i\\\" \\\"%&#123;User-Agent&#125;i\\\"\" logformat  CustomLog \"/var/log/kolla/gnocchi/gnocchi-api-access.log\" logformat  WSGIApplicationGroup %&#123;GLOBAL&#125;  WSGIDaemonProcess gnocchi group=gnocchi processes=8 threads=1 user=gnocchi  WSGIProcessGroup gnocchi  WSGIScriptAlias / \"/usr/bin/gnocchi-api\"  &lt;Directory \"/usr/bin\"&gt;        Require all granted  &lt;/Directory&gt;&lt;/VirtualHost&gt;\n\nceilometer部署节点运行。\n1ansible-playbook -i inventory/cloude_nodes ceilometer_gnocchi_integration.yml\n\nceilometer_gnocchi_integration.yml12345678---- name: ceilometer_gnocchi_integration  hosts:    - node  vars:    action: integrate  roles:    - role: ceilometer\n\nintegrate.yml12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273---- name: modify ceilometer.conf meter_dispatchers  lineinfile:    path: /etc/ceilometer/ceilometer.conf    regexp: '^meter_dispatchers'    line: 'meter_dispatchers = gnocchi'- name: modify ceilometer.conf event_dispatchers  lineinfile:    path: /etc/ceilometer/ceilometer.conf    regexp: '^event_dispatchers'    line: 'event_dispatchers = gnocchi'- name: add ceilometer.conf filter_service_activity  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: '^#filter_service_activity'    line: 'filter_service_activity = False'- name: add ceilometer.conf resources_definition_file  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: '^#resources_definition_file'    line: 'resources_definition_file = gnocchi_resources.yaml'- name: add ceilometer.conf archive_policy  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: '^#archive_policy'    line: 'archive_policy = lancer'- name: add ceilometer.conf url  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: '^#url = &lt;None&gt;'    line: 'url = http://2.3.3.52:8041'- name: add ceilometer.conf filter_project  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: '^#filter_project'    line: 'filter_project = services'- name: restart ceilometer-agent-central  when: inventory_hostname in groups['controller']  service:    name: ceilometer-agent-central    state: restarted  - name: restart ceilometer-agent-notification  when: inventory_hostname in groups['controller']  service:    name: ceilometer-agent-notification    state: restarted- name: restart ceilometer-api  when: inventory_hostname in groups['controller']  service:    name: ceilometer-api    state: restarted- name: restart ceilometer-collector  when: inventory_hostname in groups['controller']  service:    name: ceilometer-collector    state: restarted- name: restart ceilometer-polling  service:    name: ceilometer-polling    state: restarted\n\n新建archive-policy新建名为lancer的archive-policy。\n12345678gnocchi archive-policy create \\-d granularity:1m,points:10080 \\-d granularity:5m,points:8640 \\-d granularity:15m,points:2880 \\-d granularity:30m,points:1440 \\-d granularity:60m,points:8760 \\-d granularity:360m,points:21600 \\lancer\n\n删除archive-policy-rule删除名为default的archive-policy-rule。\n1gnocchi archive-policy-rule delete default\n\n新建名为lancer的archive-policy-rule。\n1gnocchi archive-policy-rule create -a lancer -m * lancer\n\n-a，–archive-policy-name，archive-policy的名字。-m，–metric-pattern，要匹配的指标名称。*为全部匹配。\n\n\nupgrade进入每一个控制节点上的gnocchi_api容器，执行。\n1gnocchi-upgrade\n\n进入每一个控制节点上的ceilometer_notification容器，执行。\n1ceilometer-upgrade --noskip-gnocchi-resource-types\n\n验证Resource1gnocchi resource list\n\n\nResource types1gnocchi resource list-types\n\n\nMetric1gnocchi metric list\n\n\nMeasures123456gnocchi measures show \\--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\--start 2019-02-14T01:00 \\--stop 2019-02-14T02:00 \\--granularity 300 \\cpu_util\n\n12345gnocchi measures show \\--start 2019-04-09T02:20 \\--granularity 60 \\--resource-id f4545548-c353-49dc-92a0-516057f6a265 \\network_in_rate\n\n\n遇到的问题资源类型只为instance或instance_diskGnocchi部署完成后，资源类型成功创建。\n但是，创建的资源的类型只有instance和instance_disk两种\n在gnocchi_api容器内执行gnocchi-upgrade，在ceilometer_notification容器内执行ceilometer-upgrade，结果均未发生变换。\n相关服务。","dateCreated":"2019-02-14T14:50:43+08:00","dateModified":"2019-04-22T11:16:16+08:00","datePublished":"2019-02-14T14:50:43+08:00","description":"Ceilometer和Gnocchi的集成","headline":"Ceilometer和Gnocchi","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/02/14/Ceilometer和Gnocchi/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/02/14/Ceilometer和Gnocchi/","keywords":"Ceilometer, Gnocchi","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ceilometer和Gnocchi的集成">
@@ -52,7 +54,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -99,7 +101,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -122,7 +124,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -138,12 +140,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -151,12 +154,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -164,12 +168,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -177,12 +182,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -190,12 +196,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -203,12 +210,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -220,8 +228,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -229,8 +244,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -242,12 +264,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -472,7 +495,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -499,9 +521,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -698,7 +721,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

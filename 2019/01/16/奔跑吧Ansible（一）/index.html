@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Ansible基础入门\n\n\n\n\nAnsible是什么Ansible是一种IT自动化工具。它可以配置系统，部署软件以及协调更高级的IT任务，例如持续部署或零停机滚动更新。\nAnsible发展史Ansible第一个版本是0.0.1，发布于2012年3月9日，创始人是Michael DeHaan。\n为什么选择Ansible\n完全基于Python开发，而DevOps在国内已然是一种趋势，Python被逐步普及，运维人员自己开发工具的门槛逐步降低，得益于此，方便对Ansible二次开发。\nAnsible丰富的内置模块，甚至还有专门为商业平台开发的功能模块。\n在Ansible去中心化概念下，一个简单的复制操作即可完成管理配置中心的迁移。\nAgentless（无客户端)，客户端无需任何配置，由管理端配置好后即可使用。\n\nAnsible是如何工作的Ansible没有客户端，因此底层通信依赖于系统软件，Linux系统下基于OpenSSH通信，Windows系统下基于PowerShell，管理端必须是Linux系统。使用者认证通过后，在管理节点通过Ansible工具调用各应用模块，将指令推送至被管理端执行，并在执行完毕后自动删除产生的临时文件。\n按角色根据Ansible使用过程的不同角色，将其分为：\n\n使用者\nAnsible工具集\n作用对象\n\n使用者Ansible使用者来源于多种维度，有4种方式。\n\nCMDB（Configuration Management Database，配置管理数据库）。CMDB存储和管理着企业IT架构中的各项配置信息，是构建ITIL（IT基础架构库）项目的核心工具。运维人员可以组合CMDB和Ansible，通过CMDB直接下发指令调用Ansible工具集完成操作者所希望达成的目标。\nPUBLIC/PRUVATE方式。Ansible除了丰富的内置模块外，同时提供丰富的API语言接口，如PHP、Python、PERL等语言，基于PUBLIC（公有云）/PRIVATE（私有云），Ansible以API调用的方式运行。\nUSERS直接使用Ad-Hoc临时命令集调用Ansible工具集来完成任务。\nUSERS预先编写好的ANSBILE PLAYBOOKS，通过执行playbooks中预先编排好的任务集按序完成任务。\n\nAnsible工具集ansible命令是Ansible的核心工具，ansible工具集包括，INVENTORY（命令执行的目标对象标配文件）、API（供第三方程序调用的应用程序编程接口）、MODULES（丰富的内置模块）、PLUGINS（内置和可自定义的插件）。\n作用对象Ansible的作用对象，不仅仅是Linux和非Linux操作系统的主机（HOSTS），同样可以作用域各类公有云/私有云，商业和非商业设备的网络设施。\n按Ansible工具集组成ANSIBLE PLAYBOOKS任务剧本（任务集），编排定义Ansible任务集的配置文件，由Ansibke顺序依次执行，通常是JSON格式的YML文件。\nINVENTORYAnsible管理主机的清单。\nMODULESAnsible执行命令的功能模块，多数为内置核心模块，也可以自定义。\nPLUGINS模块功能的补充，如连接类型插件、循环插件、变量插件、过滤插件等。\nAPI供第三方程序调用的应用程序编程接口\nAnsible通信发展史Ansible SSH工作机制Ansible通信方式发展历程Paramiko通信模块OpenSSH加速模式Faster OpenSSH in Ansible 1.5+Ansible应用场景运维操作角度文件传输文件的本地传输和异地传输，所有文件的空间形态、时间形态变化均构成文件传输类操作。\n命令执行终端所有操作对系统来讲都是指令的组成，最终转换为基础硬件可接受的电信号完成任务集。对运维操作的用户行为来讲，除文件传输的其他操作均可以成为命令执行。\n自动化工作类型角度应用部署配置管理任务流编排Ansible安装部署PIP\n安装python-pip及python-devel。\n1yum install python-pip python-devel -y\n\n安装Ansible服务。\n123yum install gcc glibc-devel zlib-devel rpm-build openssl-devel -ypip install --upgrade pippip install ansible -upgrade\n\n\n\nPython多环境扩展管理PyenvVirtualenv","dateCreated":"2019-01-16T14:23:50+08:00","dateModified":"2019-01-16T16:15:31+08:00","datePublished":"2019-01-16T14:23:50+08:00","description":"Ansible基础入门","headline":"奔跑吧Ansible（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（一）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ansible基础入门">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -453,7 +476,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -480,9 +502,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -679,7 +702,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

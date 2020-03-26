@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nCHAR与VARCHARCHAR属于固定长度的字符类型，VARCHAR属于可变长度的字符类型。\n\n\n\n值\nCHAR(4)\n存储需求\nVARCHAR(4)\n存储需求\n\n\n\n‘’\n‘&nbsp;&nbsp;&nbsp;&nbsp;’\n4个字节\n‘&nbsp;’\n1个字节\n\n\n‘ab’\n‘ab&nbsp;’\n4个字节\n‘ab&nbsp;’\n3个字节\n\n\n‘abcd’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n‘abcdefgh’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n由于CHAR长度固定，所以它处理速度比VARCHAR要快很多，但是缺点是浪费存储空间，程序需要对行尾空格进行处理。对于长度变化不大并且对查询速度有较高要求的数据可以考虑使用CHAR类型来存储。\n\n不同的存储引擎对CHAR和VARCHAR的使用原则有所不同。\n\n\nInnoDB  建议使用VARCHAR类型。对于InnoDB数据表，内部的行存储格式没有区分固定长度和可变长度列(所有数据行都使用指向数据列值的头指针)，\b因此本质上，使用固定长度的CHAR不一定比使用可变长度VARCHAR列性能要好。因而，主要的性能因素是数据行使用的存储总量。由于CHAR平均占用的空间多于VARCHAR，因此使用VARCHAR来最小化需要处理的数据行的存储总量和磁盘I/O是比较好的。\n\nMyISAM  建议使用固定长度的数据列代替\b可变长度的数据列。\n\nMEMORY  都使用固定长度的数据行存储，因此无论使用CHAR或者VARCHAR列都没有关系。两者都是作为CHAR类型处理。\n\n\nTEXT与BLOBBLOB能用来保存二进制数据，比如照片；Text只能保存字符数据，比如一篇文章或者日记。\n常见问题\nBLOB和TEXT值会引起一些性能问题，特别是在执行大量的删除操作时。删除操作会在数据表中留下很大的“空洞”，以后填入这些\b“空洞”的记录在插入的性能上会有影响。为了提高性能，建议定期使用optimize table 功能对这类表进行碎片整理，避免因为“空洞”导致性能问题。\n\n使用合成的(Synthetic)索引来提高文本字段(BLOB或TEXT)的查询性能。合成索引就是根据大文本字段的内容建立一个散列值，并将这个值存储在单独的数据列中，通过检索散列值就可以找到数据行(只能用于精确匹配的查询)。可以使用MD5()、SHA1()、CRC32()生成散列值。\n\n在不必要的时候避免检索大型的BLOB或TEXT值。\n\n把BLOB或者TEXT列分离到单独的表中。\n\n\n浮点数与定点数浮点数一般用于表示含有小数部分的数值。\n当一个字段被定义为\b浮点类型后，如果被插入数据的精度超过该列定义的实际精度，则插入值会被四舍五入到实际定义的精度值，然后插入，四舍五入的过程不会报错。\b在Mysql中float、double(或real)用来表示浮点数。\n定点数不同于浮点数，定点数实际上是以字符串的形式存放的，所以定点数可以更精确地保存数据。如果实际插入的数值精度大于实际定义的精度，\b则Mysql会进行警告(默认的SQLModel下)，但是\b数据会按照\b实际精度四舍五入后插入；如果SQLModel是在Tranditional(传统模式)下，则系统会直接报错，导致数据无法插入。在Mysql中，decimal(或\bnumberic)用来表示定点数。\b\b\b\n在今后的\b关于浮点数和定点数的应用中，要考虑到：\n\n浮点数存在误差\n对于货币等对精度敏感的数据，应该应用定点数标书或存储。\n在编程中，如果用到浮点数，要特别注意误差问题，并尽量避免做浮点数比较。\n要注意浮点数中一些特殊值的处理。\n\n日期类型Mysql提供的常用的日期类型有D\bATE、TIME、DATETIME、TIMESTAMP。\b日期选择原则：\n\n根据实际需要选择能够满足应用最小的存储的日期类型。这样不仅能节约存储，更能提高表的操作效率。\n\n如果要记录年月日时分秒，并且记录的年份比较久远，最好使用DATETIME,不要使用TIMESTAMP。因为TIMESTAMP表示的日期范围比DATETIME\b要短得多。\n\n如果记录的日期需要要让不同时区的用户使用，那么最好是使用TIMESTAMP，因为日期类型中只有它能够和实际时区相对应。\n\n\n总结\n对于字符类型，要根据存储引擎来进行相应的选择。\n\n对于精度要求较高的应用中，建议使用定点数来存储数值，以保证结果的正确性。\n\n对于含有TEXT和BOLG字段的表，如果经常做删除和修改记录的操作要定时执行optimize table功能\b对表进行碎片整理。\n\n日期类型要根据实际需要选择能够满足应用的最小存储的日期类型。\n\n","dateCreated":"2018-07-18T14:30:00+08:00","dateModified":"2019-02-28T18:15:44+08:00","datePublished":"2018-07-18T14:30:00+08:00","description":"选择合适的数据类型","headline":"Mysql开发篇之选择合适的数据类型","image":["covers/LOL/Vayne/Firecracker-Vayne-1.jpg","covers/LOL/Vayne/Firecracker-Vayne-1.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql开发篇之选择合适的数据类型/","keywords":"Mysql, 数据类型","thumbnailUrl":"covers/LOL/Vayne/Firecracker-Vayne-1.jpg"}</script>
     <meta name="description" content="选择合适的数据类型">
@@ -47,7 +49,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -94,7 +96,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -117,7 +119,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -133,12 +135,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -146,12 +149,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -159,12 +163,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -172,12 +177,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -185,12 +191,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -198,12 +205,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -215,8 +223,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -224,8 +239,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -237,12 +259,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -506,7 +529,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -533,9 +555,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -732,7 +755,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

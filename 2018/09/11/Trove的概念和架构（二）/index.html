@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove服务Trove APITrove API实现了一个WSGI（web服务器网关接口），并与同Trove交互的所有用户端交互。当Trove API接收到一个请求时，它使用配置的身份验证机制（默认为Keystone服务）验证请求者，验证其身份过后，验证凭据将被附加在该请求上。这些将成为请求者的上下文并在整个进程中被使用。一些简单的请求完全由Trove API进行处理，对于其他请求则可能需要其他的服务的参与。\nTrove API在Trove控制节点运行。\n\n\nTrove Task Managertask manager执行Trove的大部分复杂操作。它作为一个RPC服务器监听特定topic的消息队列。请求者发送消息到task manager，task manager在请求者的上下文中调用相应的程序去执行这些请求。Task manager 处理的一些操作：实例的创建、删除；与其他服务如Nova、Cinder、Swift等的交互；一些更复杂的Trove操作如复制和集群；对实例的整个生命周期的管理。配置文件trove-taskmanager.conf的taskmanager_manager条目中定义了Trove Task Manager的入口。\n12root@controller-1: grep taskmanager_manager /etc/trove/trove-taskmanager.conftaskmanager_manager=trove.taskmanager.manager.Manager\n\nTrove task manager在Trove控制节点运行。\n\n\nTrove ConductorTrove conductor主要用来接收和处理来自guest agent的各种类型的状态更新，在某些情况下是更新Trove基础设施数据库或提供信息给其他服务。Trove conductor作为一个RPC服务器监听特定topic的消息队列。Guest agent发送消息给conductor，conductor通过调用相应的程序执行这些请求。Conductor处理guest agent心跳和备份状态等信息。配置文件trove-conductor.conf中的conductor_manager条目定义了Trove Conductor的入口。\nTrove conductor在Trove控制节点上运行。\n\n\nTrove Guest AgentTrove旨在提供一个一个与数据库无关的功能集合和一个可以实现和扩展的框架。Trove建立的框架依赖于一个guest agent，并提供特定的数据库功能，这些都是通过代码在guest实例上实现的，当有请求时通过task manager调用。Trove guest agent的主要目的是作为一个RPC服务器使其他Trove服务可以在Trove guest实例上执行操作。它监听特定topic的消息队列，并在本地执行代码来完成数据库的任务。Trove task manager将消息发送到guest agent，guest agent通过调用相应的程序执行这些请求。Guest agent在guest实例上处理所有的请求如prepare()（guest的初始设置过程中调用）、restart()等控制操作。它也处理创建和管理用户、数据库，以及启动备份等操作。Trove Guest Agent的入口是由在Task Manager创建实例时的过程中设置的datastore_manager配置参数定义的。每一种数据库都有与之对应的不同的Guest Agent。trove.guestagent.dbaas中。\n1234567891011121314151617181920212223242526defaults = &#123;    'mysql':        'trove.guestagent.datastore.mysql.manager.Manager',    'percona':        'trove.guestagent.datastore.experimental.percona.manager.Manager',    'pxc':        'trove.guestagent.datastore.experimental.pxc.manager.Manager',    'redis':        'trove.guestagent.datastore.experimental.redis.manager.Manager',    'cassandra':        'trove.guestagent.datastore.experimental.cassandra.manager.Manager',    'couchbase':        'trove.guestagent.datastore.experimental.couchbase.manager.Manager',    'mongodb':        'trove.guestagent.datastore.experimental.mongodb.manager.Manager',    'postgresql':        'trove.guestagent.datastore.experimental.postgresql.manager.Manager',    'couchdb':        'trove.guestagent.datastore.experimental.couchdb.manager.Manager',    'vertica':        'trove.guestagent.datastore.experimental.vertica.manager.Manager',    'db2':        'trove.guestagent.datastore.experimental.db2.manager.Manager',    'mariadb':        'trove.guestagent.datastore.experimental.mariadb.manager.Manager'&#125;\n\nTrove guest agent在Trove guest节点上运行。\n","dateCreated":"2018-09-11T15:32:39+08:00","dateModified":"2019-02-28T18:18:50+08:00","datePublished":"2018-09-11T15:32:39+08:00","description":"Trove服务","headline":"Trove的概念和架构（二）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
     <meta name="description" content="Trove服务">
@@ -47,7 +49,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -94,7 +96,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -117,7 +119,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -133,12 +135,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -146,12 +149,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -159,12 +163,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -172,12 +177,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -185,12 +191,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -198,12 +205,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -215,8 +223,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -224,8 +239,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -237,12 +259,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -433,7 +456,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -460,9 +482,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -659,7 +682,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

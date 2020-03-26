@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"利用Python语言的特性，运行时动态载入代码变得更加容易。很多Python应用程序利用这样的特性在运行时发现和载入所谓的“插件”（plugin），使得自己更易于扩展。Python库stevedore就是在Setuptools的entry points基础上，构造了一层抽象层，使开发者可以更容易地在运行时发现和载入插件。\n\n\nentry points的每一个命名空间里，可以包含多个entry point项。stevedore要求每一项都符合如下格式：\n1name = module:importable\n\n左边是插件的名字，右边是它的具体实现，中间用等号分隔开。插件的具体实现用“模块:可导入的对象”的形式来指定。\n\n\n12345678ceilometer.compute.virt =    libvirt = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector    hyperv = ceilometer.compute.virt.hyperv.inspector:HyperVInspector    vsphere = ceilometer.compute.virt.vmware.inspector:VsphereInspector    xenapi = ceilometer.compute.virt.xenapi.inspector:XenapiInspectorceilometer.hardware.inspectors =    snmp = ceilometer.hardware.inspector.snmp:SNMPInspector\n\n示例中显示了两个不同的entry points的命名空间，”ceilometer.compute.virt“和”ceilometer.hardware.inspectors“，分别注册了4个和1个插件。\n根据每个插件在entry point中名字和具体实现的数量之间的对应关系不同，stevedore提供了多种不同的类来帮助开发者发现和载入插件。\n\n\n\n插件名称: 具体实现\n建议选用stevedore中的类\n\n\n\n1: 1\nstevedore.driver.DriverManager\n\n\n1: n\nstevedore.hook.HookManager\n\n\nm: n\nstevedore.extension.ExtensionManager\n\n\n使用stevedore来帮助程序动态载入插件的过程主要分为3个部分：插件的实现、插件的注册和插件的载入。\n插件的实现Ceilometer的inspector驱动，为不从不同类型hypervisor中获取相关数据提供统一的接口以供compute agent使用。下面是它的基类。\n12345678910111213141516# ceilometer/compute/virt/inspector.pyclass Inspector(object):    def __init__(self, conf):        self.conf = conf    def inspect_instance(self, instance, duration):        \"\"\"Inspect the CPU statistics for an instance.        :param instance: the target instance        :param duration: the last 'n' seconds, over which the value should be               inspected        :return: the instance stats        \"\"\"        raise ceilometer.NotImplementedError\n\nceilometer/compute/virt/hyperv/inspector.py，ceilometer/compute/virt/libvirt/inspector.py，ceilometer/compute/virt/vmware/inspector.py和ceilometer/compute/virt/xenapi/inspector.py分别为hyperv、kvm、vsphere和xenapi4种不同hypervisor的具体实现。\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071from ceilometer.compute.virt import inspector as virt_inspectorclass LibvirtInspector(virt_inspector.Inspector):    def __init__(self, conf):        super(LibvirtInspector, self).__init__(conf)        # NOTE(sileht): create a connection on startup        self.connection    @property    def connection(self):        return libvirt_utils.refresh_libvirt_connection(self.conf, self)    @libvirt_utils.raise_nodata_if_unsupported    @libvirt_utils.retry_on_disconnect    def inspect_instance(self, instance, duration=None):        domain = self._get_domain_not_shut_off_or_raise(instance)        memory_used = memory_resident = None        memory_swap_in = memory_swap_out = None        memory_stats = domain.memoryStats()        # Stat provided from libvirt is in KB, converting it to MB.        if 'available' in memory_stats and 'unused' in memory_stats:            memory_used = (memory_stats['available'] -                           memory_stats['unused']) / units.Ki        if 'rss' in memory_stats:            memory_resident = memory_stats['rss'] / units.Ki        if 'swap_in' in memory_stats and 'swap_out' in memory_stats:            memory_swap_in = memory_stats['swap_in'] / units.Ki            memory_swap_out = memory_stats['swap_out'] / units.Ki        # TODO(sileht): stats also have the disk/vnic info        # we could use that instead of the old method for Queen        stats = self.connection.domainListGetStats([domain], 0)[0][1]        cpu_time = 0        current_cpus = stats.get('vcpu.current')        # Iterate over the maximum number of CPUs here, and count the        # actual number encountered, since the vcpu.x structure can        # have holes according to        # https://libvirt.org/git/?p=libvirt.git;a=blob;f=src/libvirt-domain.c        # virConnectGetAllDomainStats()        for vcpu in six.moves.range(stats.get('vcpu.maximum', 0)):            try:                cpu_time += (stats.get('vcpu.%s.time' % vcpu) +                             stats.get('vcpu.%s.wait' % vcpu))                current_cpus -= 1            except TypeError:                # pass here, if there are too many holes, the cpu count will                # not match, so don't need special error handling.                pass        if current_cpus:            # There wasn't enough data, so fall back            cpu_time = stats.get('cpu.time')        return virt_inspector.InstanceStats(            cpu_number=stats.get('vcpu.current'),            cpu_time=cpu_time,            memory_usage=memory_used,            memory_resident=memory_resident,            memory_swap_in=memory_swap_in,            memory_swap_out=memory_swap_out,            cpu_cycles=stats.get(\"perf.cpu_cycles\"),            instructions=stats.get(\"perf.instructions\"),            cache_references=stats.get(\"perf.cache_references\"),            cache_misses=stats.get(\"perf.cache_misses\"),            memory_bandwidth_total=stats.get(\"perf.mbmt\"),            memory_bandwidth_local=stats.get(\"perf.mbml\"),            cpu_l3_cache_usage=stats.get(\"perf.cmt\"),        )\n\n插件的注册上述的插件需要在Setuptools的相关文件中注册后，才能被stevedore库所认识。\n1234567# setup.cfgceilometer.compute.virt =    libvirt = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector    hyperv = ceilometer.compute.virt.hyperv.inspector:HyperVInspector    vsphere = ceilometer.compute.virt.vmware.inspector:VsphereInspector    xenapi = ceilometer.compute.virt.xenapi.inspector:XenapiInspector\n\n插件的载入12345678910111213# ceilometer/compute/virt/inspector.pydef get_hypervisor_inspector(conf):    try:        namespace = 'ceilometer.compute.virt'        mgr = driver.DriverManager(namespace,                                   conf.hypervisor_inspector,                                   invoke_on_load=True,                                   invoke_args=(conf, ))        return mgr.driver    except ImportError as e:        LOG.error(\"Unable to load the hypervisor inspector: %s\" % e)        return Inspector(conf)\n\nCeilometer的compute agent通过调用函数get_hypervisor_inspector来载入具体的某一个插件。此处由于插件和具体实现之间是一对一的关系，所以选用了stevedore的DriverManager类。\n\n\n\n参数 = 默认值\n类型\n说明\n\n\n\nnamespace\n字符串\n命名空间\n\n\nname\n字符串\n插件名\n\n\ninvoke_on_load = False\n布尔型\n是否调用entrypoint所返回的插件对象。(这个例子中，由于entrypoint所指向的是类，相当于是否实例化对象)\n\n\ninvoke_args = ()\n元组\n调用插件对象时所需要的位置参数\n\n\ninvoke_kwds = {}\n字典\n调用插件对象所需的命名参数\n\n\non_load_failure_callback = None\n函数类型\n载入某个entrypoint失败时返回的回调函数，参数为(manager, entrypoint, exception)\n\n\nverify_requirements = False\n布尔型\n是否调用setuptools来确保此插件的依赖关系都是满足的\n\n\nwarn_on_missing_entrypoint = True\n布尔型\n是否在未成功加载相对应的entrypoint打出warn日志\n\n\n","dateCreated":"2019-05-17T14:47:15+08:00","dateModified":"2019-05-21T11:13:04+08:00","datePublished":"2019-05-17T14:47:15+08:00","description":"利用Python语言的特性，运行时动态载入代码变得更加容易。很多Python应用程序利用这样的特性在运行时发现和载入所谓的“插件”（plugin），使得自己更易于扩展。Python库stevedore就是在Setuptools的entry points基础上，构造了一层抽象层，使开发者可以更容易地在运行时发现和载入插件。","headline":"OpenStack通用库（五）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（五）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（五）/","keywords":"OpenStack, Stevedore","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="利用Python语言的特性，运行时动态载入代码变得更加容易。很多Python应用程序利用这样的特性在运行时发现和载入所谓的“插件”（plugin），使得自己更易于扩展。Python库stevedore就是在Setuptools的entry points基础上，构造了一层抽象层，使开发者可以更容易地在运行时发现和载入插件。">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -503,7 +526,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -530,9 +552,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -729,7 +752,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

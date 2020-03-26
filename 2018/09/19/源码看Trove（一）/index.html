@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Trove create 源码解析\n\n\ntrove create命令（python-troveclient仓库的一部分）封装了用户提供的所有命令行参数，并发送一个POST到Trove公共API定义的URI /v1.0/{tenant_id}/instances。\ntrove在api-paste.ini中定义程序的入口。\n12[app:troveapp]paste.app_factory = trove.common.api:app_factory\n\n可以在trove.common.api.py文件中，找到API类。其中它的_instance_router定义了实例的路由路径和被调用的方法。\n123456789101112131415161718def app_factory(global_conf, **local_conf):    return API()class API(wsgi.Router):\"\"\"Defines the API routes.\"\"\"    def __init__(self):        mapper = routes.Mapper()        super(API, self).__init__(mapper)        self._instance_router(mapper)        ...    def _instance_router(self, mapper):        instance_resource = InstanceController().create_resource()        mapper.connect(\"/&#123;tenant_id&#125;/instances\",                        controller=instance_resource,                        action=\"create\",                        conditions=&#123;'method': ['POST']&#125;)        ...\n\nInstanceController类在trove.instance.service.py文件中被定义。实例创建时将会调用create()。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112class InstanceController(wsgi.Controller):    ...    def create(self, req, body, tenant_id):        # TODO(hub-cap): turn this into middleware        LOG.info(_LI(\"Creating a database instance for tenant '%s'\"),                 tenant_id)        LOG.debug(\"req : '%s'\\n\\n\", strutils.mask_password(req))        LOG.debug(\"body : '%s'\\n\\n\", strutils.mask_password(body))        context = req.environ[wsgi.CONTEXT_KEY]        policy.authorize_on_tenant(context, 'instance:create')        # 消息        context.notification = notification.DBaaSInstanceCreate(context,                                                                request=req)        # 数据库参数        datastore_args = body['instance'].get('datastore', &#123;&#125;)        # 验证并获取数据库以及版本        datastore, datastore_version = (            datastore_models.get_datastore_version(**datastore_args))        # 镜像        image_id = datastore_version.image_id        # 实例名        name = body['instance']['name']        # flavor        flavor_ref = body['instance']['flavorRef']        flavor_id = utils.get_id_from_href(flavor_ref)        # 配置组        configuration = self._configuration_parse(context, body)        databases = populate_validated_databases(            body['instance'].get('databases', []))        database_names = [database.get('_name', '') for database in databases]        users = None        try:            users = populate_users(body['instance'].get('users', []),                                   database_names)        except ValueError as ve:            raise exception.BadRequest(msg=ve)        modules = body['instance'].get('modules')        # The following operations have their own API calls.        # We need to make sure the same policies are enforced when        # creating an instance.        # i.e. if attaching configuration group to an existing instance is not        # allowed, it should not be possible to create a new instance with the        # group attached either        if configuration:            policy.authorize_on_tenant(context, 'instance:update')        if modules:            policy.authorize_on_tenant(context, 'instance:module_apply')        if users:            policy.authorize_on_tenant(                context, 'instance:extension:user:create')        if databases:            policy.authorize_on_tenant(                context, 'instance:extension:database:create')        # 卷        if 'volume' in body['instance']:            volume_info = body['instance']['volume']            volume_size = int(volume_info['size'])            volume_type = volume_info.get('type')        else:            volume_size = None            volume_type = None        # 备份        if 'restorePoint' in body['instance']:            backupRef = body['instance']['restorePoint']['backupRef']            backup_id = utils.get_id_from_href(backupRef)        else:            backup_id = None        availability_zone = body['instance'].get('availability_zone')        nics = body['instance'].get('nics')        # 复制        slave_of_id = body['instance'].get('replica_of',                                           # also check for older name                                           body['instance'].get('slave_of'))        replica_count = body['instance'].get('replica_count')        locality = body['instance'].get('locality')        if locality:            locality_domain = ['affinity', 'anti-affinity']            locality_domain_msg = (\"Invalid locality '%s'. \"                                   \"Must be one of ['%s']\" %                                   (locality,                                    \"', '\".join(locality_domain)))            if locality not in locality_domain:                raise exception.BadRequest(msg=locality_domain_msg)            if slave_of_id:                dupe_locality_msg = (                    'Cannot specify locality when adding replicas to existing '                    'master.')                raise exception.BadRequest(msg=dupe_locality_msg)        region_name = body['instance'].get('region_name', CONF.os_region_name)        instance = models.Instance.create(context, name, flavor_id,                                          image_id, databases, users,                                          datastore, datastore_version,                                          volume_size, backup_id,                                          availability_zone, nics,                                          configuration, slave_of_id,                                          replica_count=replica_count,                                          volume_type=volume_type,                                          modules=modules,                                          locality=locality,                                          region_name=region_name)        view = views.InstanceDetailView(instance, req=req)        return wsgi.Result(view.data(), 200)    ...\n\n在拆包并理解了接收到的req和body中的参数的意义后，信息被传递到trove.instances.models.py中（见第98行代码）的create() 方法中。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248@classmethoddef create(cls, context, name, flavor_id, image_id, databases, users,          datastore, datastore_version, volume_size, backup_id,          availability_zone=None, nics=None,          configuration_id=None, slave_of_id=None, cluster_config=None,          replica_count=None, volume_type=None, modules=None,          locality=None, region_name=None):   region_name = region_name or CONF.os_region_name   call_args = &#123;       'name': name,       'flavor_id': flavor_id,       'datastore': datastore.name if datastore else None,       'datastore_version': datastore_version.name,       'image_id': image_id,       'availability_zone': availability_zone,       'region_name': region_name,   &#125;   # All nova flavors are permitted for a datastore-version unless one   # or more entries are found in datastore_version_metadata,   # in which case only those are permitted.   bound_flavors = DBDatastoreVersionMetadata.find_all(       datastore_version_id=datastore_version.id,       key='flavor', deleted=False   )   if bound_flavors.count() &gt; 0:       valid_flavors = tuple(f.value for f in bound_flavors)       if flavor_id not in valid_flavors:           raise exception.DatastoreFlavorAssociationNotFound(               datastore=datastore.name,               datastore_version=datastore_version.name,               flavor_id=flavor_id)   datastore_cfg = CONF.get(datastore_version.manager)   # 调用Nova检查flavor是否有效。   client = create_nova_client(context)   try:       flavor = client.flavors.get(flavor_id)   except nova_exceptions.NotFound:       raise exception.FlavorNotFound(uuid=flavor_id)   # If a different region is specified for the instance, ensure   # that the flavor and image are the same in both regions   if region_name and region_name != CONF.os_region_name:       cls._validate_remote_datastore(context, region_name, flavor,                                      datastore, datastore_version)   deltas = &#123;'instances': 1&#125;   volume_support = datastore_cfg.volume_support   if volume_support:       call_args['volume_type'] = volume_type       dvm.validate_volume_type(context, volume_type,                                datastore.name, datastore_version.name)       call_args['volume_size'] = volume_size       validate_volume_size(volume_size)       deltas['volumes'] = volume_size       # Instance volume should have enough space for the backup       # Backup, and volume sizes are in GBs       target_size = volume_size   else:       target_size = flavor.disk  # local_storage       if volume_size is not None:           raise exception.VolumeNotSupported()       if datastore_cfg.device_path:           if flavor.ephemeral == 0:               raise exception.LocalStorageNotSpecified(flavor=flavor_id)           target_size = flavor.ephemeral  # ephemeral_Storage   # 从现有的备份启动一个实例。（用户指定一个备份作为实例的源。）   if backup_id:       call_args['backup_id'] = backup_id       backup_info = Backup.get_by_id(context, backup_id)       if not backup_info.is_done_successfuly:           raise exception.BackupNotCompleteError(               backup_id=backup_id, state=backup_info.state)       if backup_info.size &gt; target_size:           raise exception.BackupTooLarge(               backup_size=backup_info.size, disk_size=target_size)       if not backup_info.check_swift_object_exist(               context,               verify_checksum=CONF.verify_swift_checksum_on_restore):           raise exception.BackupFileNotFound(               location=backup_info.location)       if (backup_info.datastore_version_id               and backup_info.datastore.name != datastore.name):           raise exception.BackupDatastoreMismatchError(               datastore1=backup_info.datastore.name,               datastore2=datastore.name)   # 启动一个实例作为另一个实例的副本。（用户启动复制。）   if slave_of_id:       call_args['replica_of'] = slave_of_id       call_args['replica_count'] = replica_count       replication_support = datastore_cfg.replication_strategy       if not replication_support:           raise exception.ReplicationNotSupported(               datastore=datastore.name)       try:           # looking for replica source           replica_source = DBInstance.find_by(               context,               id=slave_of_id,               deleted=False)           if replica_source.slave_of_id:               raise exception.Forbidden(                   _(\"Cannot create a replica of a replica %(id)s.\")                   % &#123;'id': slave_of_id&#125;)           # load the replica source status to check if           # source is available           load_simple_instance_server_status(               context,               replica_source)           replica_source_instance = Instance(               context, replica_source,               None,               InstanceServiceStatus.find_by(                   context,                   instance_id=slave_of_id))           replica_source_instance.validate_can_perform_action()       except exception.ModelNotFoundError:           LOG.exception(               _(\"Cannot create a replica of %(id)s \"                 \"as that instance could not be found.\"),               &#123;'id': slave_of_id&#125;)           raise exception.NotFound(uuid=slave_of_id)   elif replica_count and replica_count != 1:       raise exception.Forbidden(_(           \"Replica count only valid when creating replicas. Cannot \"           \"create %(count)d instances.\") % &#123;'count': replica_count&#125;)   multi_replica = slave_of_id and replica_count and replica_count &gt; 1   instance_count = replica_count if multi_replica else 1   if locality:       call_args['locality'] = locality   if not nics:       nics = []   if CONF.default_neutron_networks:       nics = [&#123;\"net-id\": net_id&#125;               for net_id in CONF.default_neutron_networks] + nics   if nics:       call_args['nics'] = nics   if cluster_config:       call_args['cluster_id'] = cluster_config.get(\"id\", None)   if not modules:       modules = []   module_ids = [mod['id'] for mod in modules]   modules = module_models.Modules.load_by_ids(context, module_ids)   auto_apply_modules = module_models.Modules.load_auto_apply(       context, datastore.id, datastore_version.id)   for aa_module in auto_apply_modules:       if aa_module.id not in module_ids:           modules.append(aa_module)   module_models.Modules.validate(       modules, datastore.id, datastore_version.id)   module_list = module_views.convert_modules_to_list(modules)   def _create_resources():       if cluster_config:           cluster_id = cluster_config.get(\"id\", None)           shard_id = cluster_config.get(\"shard_id\", None)           instance_type = cluster_config.get(\"instance_type\", None)       else:           cluster_id = shard_id = instance_type = None       ids = []       names = []       root_passwords = []       root_password = None       for instance_index in range(0, instance_count):           # 实例的创建被记录在基础设施数据库中，           # 并且该实例被标记为InstanceTasks.BUILDING状态           db_info = DBInstance.create(               name=name, flavor_id=flavor_id, tenant_id=context.tenant,               volume_size=volume_size,               datastore_version_id=datastore_version.id,               task_status=InstanceTasks.BUILDING,               configuration_id=configuration_id,               slave_of_id=slave_of_id, cluster_id=cluster_id,               shard_id=shard_id, type=instance_type,               region_id=region_name)           LOG.debug(\"Tenant %(tenant)s created new Trove instance \"                     \"%(db)s in region %(region)s.\",                     &#123;'tenant': context.tenant, 'db': db_info.id,                      'region': region_name&#125;)           instance_id = db_info.id           cls.add_instance_modules(context, instance_id, modules)           instance_name = name           ids.append(instance_id)           names.append(instance_name)           root_passwords.append(None)           # change the name to be name + replica_number if more than one           if multi_replica:               replica_number = instance_index + 1               names[instance_index] += '-' + str(replica_number)               setattr(db_info, 'name', names[instance_index])               db_info.save()           # if a configuration group is associated with an instance,           # generate an overrides dict to pass into the instance creation           # method           config = Configuration(context, configuration_id)           overrides = config.get_configuration_overrides()           service_status = InstanceServiceStatus.create(               instance_id=instance_id,               status=tr_instance.ServiceStatuses.NEW)           if CONF.trove_dns_support:               dns_client = create_dns_client(context)               hostname = dns_client.determine_hostname(instance_id)               db_info.hostname = hostname               db_info.save()           # 如果用户需要指定一个root密码，则必须在启动时指定。           # root密码在这时生成。           if cls.get_root_on_create(                   datastore_version.manager) and not backup_id:               root_password = utils.generate_random_password()               root_passwords[instance_index] = root_password       if instance_count &gt; 1:           instance_id = ids           instance_name = names           root_password = root_passwords       # Trove API发送一个请求给Trove task manager来做其余的工作。       # 将用户请求的实例的上下文和用户端提供的所有参数都传递给task manager。       task_api.API(context).create_instance(           instance_id, instance_name, flavor, image_id, databases, users,           datastore_version.manager, datastore_version.packages,           volume_size, backup_id, availability_zone, root_password,           nics, overrides, slave_of_id, cluster_config,           volume_type=volume_type, modules=module_list,           locality=locality)       return SimpleInstance(context, db_info, service_status,                             root_password, locality=locality)with StartNotification(context, **call_args):    return run_with_quotas(context.tenant, deltas, _create_resources)\n\nTrove API发送请求到task manager。在trove.taskmanager.api.py文件中。\n12345678910111213141516171819202122232425262728def create_instance(self, instance_id, name, flavor,                       image_id, databases, users, datastore_manager,                       packages, volume_size, backup_id=None,                       availability_zone=None, root_password=None,                       nics=None, overrides=None, slave_of_id=None,                       cluster_config=None, volume_type=None,                       modules=None, locality=None):       LOG.debug(\"Making async call to create instance %s \", instance_id)       version = self.API_BASE_VERSION       self._cast(\"create_instance\", version=version,                  instance_id=instance_id, name=name,                  flavor=self._transform_obj(flavor),                  image_id=image_id,                  databases=databases,                  users=users,                  datastore_manager=datastore_manager,                  packages=packages,                  volume_size=volume_size,                  backup_id=backup_id,                  availability_zone=availability_zone,                  root_password=root_password,                  nics=nics,                  overrides=overrides,                  slave_of_id=slave_of_id,                  cluster_config=cluster_config,                  volume_type=volume_type,                  modules=modules, locality=locality)\n\n该api得到了被提供的所有信息，并发送一个异步_cast()调用到task manager。\n_cast()是异步请求。call()是同步请求。\n\n\n程序进入到trove.taskmanager.manager.py文件下，并执行下面的create_instance方法\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950def _create_instance(self, context, instance_id, name, flavor,                     image_id, databases, users, datastore_manager,                     packages, volume_size, backup_id, availability_zone,                     root_password, nics, overrides, slave_of_id,                     cluster_config, volume_type, modules, locality):    # 创建现有实例的副本    if slave_of_id:        self._create_replication_slave(context, instance_id, name,                                       flavor, image_id, databases, users,                                       datastore_manager, packages,                                       volume_size,                                       availability_zone, root_password,                                       nics, overrides, slave_of_id,                                       backup_id, volume_type, modules)    else:        if type(instance_id) in [list]:            raise AttributeError(_(                \"Cannot create multiple non-replica instances.\"))        instance_tasks = FreshInstanceTasks.load(context, instance_id)        scheduler_hints = srv_grp.ServerGroup.build_scheduler_hint(            context, locality, instance_id)        instance_tasks.create_instance(flavor, image_id, databases, users,                                       datastore_manager, packages,                                       volume_size, backup_id,                                       availability_zone, root_password,                                       nics, overrides, cluster_config,                                       None, volume_type, modules,                                       scheduler_hints)        timeout = (CONF.restore_usage_timeout if backup_id                   else CONF.usage_timeout)        instance_tasks.wait_for_instance(timeout, flavor)def create_instance(self, context, instance_id, name, flavor,                    image_id, databases, users, datastore_manager,                    packages, volume_size, backup_id, availability_zone,                    root_password, nics, overrides, slave_of_id,                    cluster_config, volume_type, modules, locality):    with EndNotification(context,                         instance_id=(instance_id[0]                                      if isinstance(instance_id, list)                                      else instance_id)):        self._create_instance(context, instance_id, name, flavor,                              image_id, databases, users,                              datastore_manager, packages, volume_size,                              backup_id, availability_zone,                              root_password, nics, overrides, slave_of_id,                              cluster_config, volume_type, modules,                              locality)\n\n在第24行代码中，instance_tasks在trove.taskmanager.models.py中。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293class FreshInstanceTasks(FreshInstance, NotifyMixin, ConfigurationMixin):    def create_instance(self, flavor, image_id, databases, users,                        datastore_manager, packages, volume_size,                        backup_id, availability_zone, root_password, nics,                        overrides, cluster_config, snapshot, volume_type,                        modules, scheduler_hints):        # It is the caller's responsibility to ensure that        # FreshInstanceTasks.wait_for_instance is called after        # create_instance to ensure that the proper usage event gets sent        LOG.info(_(\"Creating instance %s.\"), self.id)        security_groups = None        if CONF.trove_security_groups_support:            try:                security_groups = self._create_secgroup(datastore_manager)            except Exception as e:                msg = (_(\"Error creating security group for instance: %s\") %                       self.id)                err = inst_models.InstanceTasks.BUILDING_ERROR_SEC_GROUP                self._log_and_raise(e, msg, err)            else:                LOG.debug(\"Successfully created security group for \"                          \"instance: %s\", self.id)        # 获取发送到guest的文件。（下面会讲到）        files = self.get_injected_files(datastore_manager)        cinder_volume_type = volume_type or CONF.cinder_volume_type        # 根据系统的配置，可以单独调用两种种方法来创建服务器和卷。        # 分别是使用Nova创建实例和卷、单独创建Nova实例和卷。        # 两种方法，配置文件都被一起传入（Nova调用注入）。        if use_nova_server_volume:            volume_info = self._create_server_volume(                            flavor['id'],                            image_id,                            security_groups,                            datastore_manager,                            volume_size,                            availability_zone,                            nics,                            files,                            scheduler_hints)        else:            volume_info = self._create_server_volume_individually(                            flavor['id'],                            image_id,                            security_groups,                            datastore_manager,                            volume_size,                            availability_zone,                            nics,                            files,                            cinder_volume_type,                            scheduler_hints)        config = self._render_config(flavor)        backup_info = None        if backup_id is not None:            backup = bkup_models.Backup.get_by_id(self.context, backup_id)            backup_info = &#123;'id': backup_id,                           'instance_id': backup.instance_id,                           'location': backup.location,                           'type': backup.backup_type,                           'checksum': backup.checksum,                           &#125;        # 最终转换为调用guest agent的prepare()方法。        self._guest_prepare(flavor['ram'], volume_info,                            packages, databases, users, backup_info,                            config.config_contents, root_password,                            overrides,                            cluster_config, snapshot, modules)        if root_password:            self.report_root_enabled()        if not self.db_info.task_status.is_error:            self.reset_task_status()        # when DNS is supported, we attempt to add this after the        # instance is prepared.  Otherwise, if DNS fails, instances        # end up in a poorer state and there's no tooling around        # re-sending the prepare call; retrying DNS is much easier.        try:            self._create_dns_entry()        except Exception as e:            msg = _(\"Error creating DNS entry for instance: %s\") % self.id            err = inst_models.InstanceTasks.BUILDING_ERROR_DNS            self._log_and_raise(e, msg, err)\n\nget_injected_files()在第28行代码中被调用。该方法是执行创建工作流程中最为关键的部分。其生成的配置文件将在启动时被发送到guest实例，并提供给guest agent后续操作的信息。\n1234567891011121314151617181920212223242526272829303132333435# 构建files集合。# 包含了guest_info和trove-guestagent.conf这两个文件。def get_injected_files(self, datastore_manager):    injected_config_location = CONF.get('injected_config_location')    guest_info = CONF.get('guest_info')    if ('/' in guest_info):        # Set guest_info_file to exactly guest_info from the conf file.        # This should be /etc/guest_info for pre-Kilo compatibility.        guest_info_file = guest_info    else:        guest_info_file = os.path.join(injected_config_location,                                       guest_info)    files = &#123;guest_info_file: (        \"[DEFAULT]\\n\"        \"guest_id=%s\\n\"        \"datastore_manager=%s\\n\"        \"tenant_id=%s\\n\"        % (self.id, datastore_manager, self.tenant_id))&#125;    instance_key = get_instance_encryption_key(self.id)    if instance_key:        files = &#123;guest_info_file: (            \"%s\"            \"instance_rpc_encr_key=%s\\n\" % (                files.get(guest_info_file),                instance_key))&#125;    if os.path.isfile(CONF.get('guest_config')):        with open(CONF.get('guest_config'), \"r\") as f:            files[os.path.join(injected_config_location,                               \"trove-guestagent.conf\")] = f.read()    return files\n\n_create_server_volume在trove.taskmanager.manager.py文件下的_create_instance中被调用(第36行代码)。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748def _create_server_volume(self, flavor_id, image_id, security_groups,                          datastore_manager, volume_size,                          availability_zone, nics, files,                          scheduler_hints):    LOG.debug(\"Begin _create_server_volume for id: %s\", self.id)    try:        # 准备用户的数据。        userdata = self._prepare_userdata(datastore_manager)        name = self.hostname or self.name        volume_desc = (\"datastore volume for %s\" % self.id)        volume_name = (\"datastore-%s\" % self.id)        volume_ref = &#123;'size': volume_size, 'name': volume_name,                      'description': volume_desc&#125;        config_drive = CONF.use_nova_server_config_drive        # 调用Nova（公共API）创建一个实例。        server = self.nova_client.servers.create(            name, image_id, flavor_id,            files=files, volume=volume_ref,            security_groups=security_groups,            availability_zone=availability_zone,            nics=nics, config_drive=config_drive,            userdata=userdata, scheduler_hints=scheduler_hints)        server_dict = server._info        LOG.debug(\"Created new compute instance %(server_id)s \"                  \"for id: %(id)s\\nServer response: %(response)s\",                  &#123;'server_id': server.id, 'id': self.id,                   'response': server_dict&#125;)        volume_id = None        for volume in server_dict.get('os:volumes', []):            volume_id = volume.get('id')        # Record the server ID and volume ID in case something goes wrong.        self.update_db(compute_instance_id=server.id, volume_id=volume_id)    except Exception as e:        msg = _(\"Error creating server and volume for \"                \"instance %s\") % self.id        LOG.debug(\"End _create_server_volume for id: %s\", self.id)        err = inst_models.InstanceTasks.BUILDING_ERROR_SERVER        self._log_and_raise(e, msg, err)    device_path = self.device_path    mount_point = CONF.get(datastore_manager).mount_point    volume_info = &#123;'device_path': device_path, 'mount_point': mount_point&#125;    LOG.debug(\"End _create_server_volume for id: %s\", self.id)    return volume_info\n\n_prepare_userdata在上面的第9行被调用。其目的是生成不许传递给Nova的用户数据。\n12345678def _prepare_userdata(self, datastore_manager):    userdata = None    cloudinit = os.path.join(CONF.get('cloudinit_location'),                             \"%s.cloudinit\" % datastore_manager)    if os.path.isfile(cloudinit):        with open(cloudinit, \"r\") as f:            userdata = f.read()    return userdata\n\n由get_injected_files()生成配置文件，根据设定的方式传递到guest agent。\n最后，guest agent调用prepare()方法，在trove.guestagent.api.py文件中。\n12345678910111213141516171819202122232425262728293031def prepare(self, memory_mb, packages, databases, users,            device_path='/dev/vdb', mount_point='/mnt/volume',            backup_info=None, config_contents=None, root_password=None,            overrides=None, cluster_config=None, snapshot=None,            modules=None):    \"\"\"Make an asynchronous call to prepare the guest       as a database container optionally includes a backup id for restores    \"\"\"    LOG.debug(\"Sending the call to prepare the Guest.\")    version = self.API_BASE_VERSION    # Taskmanager is a publisher, guestagent is a consumer. Usually    # consumer creates a queue, but in this case we have to make sure    # \"prepare\" doesn't get lost if for some reason guest was delayed and    # didn't create a queue on time.    # 初始化与guest沟通的进程间的通信（IPC）。    self._create_guest_queue()    packages = packages.split()    # 发送prepare()到队列中。    # 一旦实例启动并连接到这个消息队列，则这个prepare()调用将被    # guest实例上的guest agent获取。    self._cast(        \"prepare\", version=version, packages=packages,        databases=databases, memory_mb=memory_mb, users=users,        device_path=device_path, mount_point=mount_point,        backup_info=backup_info, config_contents=config_contents,        root_password=root_password, overrides=overrides,        cluster_config=cluster_config, snapshot=snapshot, modules=modules)\n\nprepare()方法在每个guest agent都可以找到实现方法。\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546def do_prepare(self, context, packages, databases, memory_mb, users,               device_path, mount_point, backup_info,               config_contents, root_password, overrides,               cluster_config, snapshot):    \"\"\"This is called from prepare in the base class.\"\"\"    app = self.mysql_app(self.mysql_app_status.get())    app.install_if_needed(packages)    if device_path:        # stop and do not update database        app.stop_db(            do_not_start_on_reboot=self.volume_do_not_start_on_reboot)        device = volume.VolumeDevice(device_path)        # unmount if device is already mounted        device.unmount_device(device_path)        device.format()        if os.path.exists(mount_point):            # rsync existing data to a \"data\" sub-directory            # on the new volume            device.migrate_data(mount_point, target_subdir=\"data\")        # mount the volume        device.mount(mount_point)        operating_system.chown(mount_point, service.MYSQL_OWNER,                               service.MYSQL_OWNER,                               recursive=False, as_root=True)        LOG.debug(\"Mounted the volume at %s.\", mount_point)        # We need to temporarily update the default my.cnf so that        # mysql will start after the volume is mounted. Later on it        # will be changed based on the config template        # (see MySqlApp.secure()) and restart.        app.set_data_dir(mount_point + '/data')        app.start_mysql()    if backup_info:        self._perform_restore(backup_info, context,                              mount_point + \"/data\", app)    app.secure(config_contents)    enable_root_on_restore = (backup_info and                              self.mysql_admin().is_root_enabled())    if enable_root_on_restore:        app.secure_root(secure_remote_root=False)        self.mysql_app_status.get().report_root(context, 'root')    else:        app.secure_root(secure_remote_root=True)    if snapshot:        self.attach_replica(context, snapshot, snapshot['config'])\n\n在prepare()调用完成后，guest数据库就可以使用了。\n","dateCreated":"2018-09-19T10:51:46+08:00","dateModified":"2019-02-14T16:09:48+08:00","datePublished":"2018-09-19T10:51:46+08:00","description":"Trove create 源码解析","headline":"源码看Trove（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/19/源码看Trove（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/19/源码看Trove（一）/","keywords":"Trove","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Trove create 源码解析">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -454,7 +477,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -481,9 +503,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -680,7 +703,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

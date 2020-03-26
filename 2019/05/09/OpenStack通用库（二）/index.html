@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.config用于解析命令行和配置文件中的配置项。\n\n\n\n\n定义和注册配置选项12345678910111213141516171819202122232425262728293031323334353637service.pyimport osfrom oslo_config import cfgopts = [    cfg.StrOpt(        'host',        default='127.0.0.1',        help='host of node'    ),    cfg.IntOpt(        'collector_workers',        default=2,        help='Number of workers for collector service.'    ),]# 注册配置选项cfg.CONF.register_opts(opts)# 将配置选项注册为命令行选项cli_opts = [    cfg.StrOpt(        'os-tenant-id',        deprecated_group='DEFAULT',        default=os.environ.get('OS_TENANT_ID', ''),        help='Tenant ID to use for Openstack service access.'    ),    cfg.BoolOpt(        'insecure',        default=False,        help='xxx'    ),]cfg.CONF.register_cli_opts(cli_opts, group='service_credentials')\n\n配置选项支持的类型如下。\n\n\n\n类名\n说明\n\n\n\noslo_config.cfg.StrOpt\n字符串类型\n\n\noslo_config.cfg.BoolOpt\n布尔型\n\n\noslo_config.cfg.IntOpt\n整数类型\n\n\noslo_config.cfg.FloatOpt\n浮点数类型\n\n\noslo_config.cfg.ListOpt\n字符串列表类型\n\n\noslo_config.cfg.DictOpt\n字典类型，字典中的值需要是字符串类型。\n\n\noslo_config.cfg.MultiStrOpt\n可以分多次配置的字符串列表\n\n\noslo_config.cfg.IPOpt\nIP地址类型\n\n\noslo_config.cfg.HostnameOpt\n域名类型\n\n\noslo_config.cfg.URIOpt\nURI类型\n\n\n定义后的配置项，必须要注册才能使用。\n配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。\n注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。\n\n\n新的定义配置选项的方式1234567891011121314from oslo_config import cfgfrom oslo_config import typesPortType = types.Integer(1, 65535)common_opts = [    cfg.Opt(        'bind_port',        type=PortType(),        default=8080,        help='Port number to listen on.'    )]\n\n相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。\n使用配置文件和命令行选项指定配置选项为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。\n123from olso_config import cfgconf(sys.argv[1:], project='xyz')\n\n初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。\n12~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf\n\n配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。\n123456[DEFULT]host = 127.0.0.1collector_workers = 3[service_credentials]insecure = True\n\n用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。\n\n1--service_credentials-os-tenant-id abc123\n\n使用其他模块中已经注册过的配置选项对于已经注册过的配置选项，开发者可以直接访问。\n12345from oslo_config import cfgimport servicehost = cfg.CONF.hosttenant_id = cfg.CONF.service_credentials.os-tenant-id\n\n还可以使用import_opt来申明在别的模块中定义的配置选项。\n1234from oslo_config import cfgcfg.CONF.import_opt('host', 'service')host = cfg.CONF.host","dateCreated":"2019-05-09T16:49:58+08:00","dateModified":"2019-05-21T11:14:03+08:00","datePublished":"2019-05-09T16:49:58+08:00","description":"oslo.config用于解析命令行和配置文件中的配置项。","headline":"OpenStack通用库（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/","keywords":"OpenStack, Oslo, Config","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.config用于解析命令行和配置文件中的配置项。">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -489,7 +512,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -516,9 +538,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -715,7 +738,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

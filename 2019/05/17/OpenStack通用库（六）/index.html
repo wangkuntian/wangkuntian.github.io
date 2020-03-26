@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。\n\n\n\n\n示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142from taskflow import enginesfrom taskflow.patterns import linear_flow as lffrom taskflow import taskclass CallJim(task.Task):    def execute(self, jim_number, *args, **kwargs):        print 'Calling Jim %s.' % jim_number    def revert(self, jim_number, *args, **kwargs):        print 'Calling %s and apologizing.' % jim_numberclass CallJoe(task.Task):    def execute(self, joe_number, *args, **kwargs):        print 'Calling Joe %s.' % joe_number    def revert(self, joe_number, *args, **kwargs):        print 'Calling %s and apologizing.' % joe_numberclass CallHY(task.Task):    def execute(self, hy_number, *args, **kwargs):        raise IOError('HY not at home right now.')flow = lf.Flow('simple-linear').add(    CallJim(),    CallJoe(),    CallHY())try:    engines.run(        flow=flow,        engine_conf=&#123;'engine': 'serial'&#125;,        store=dict(jim_number=444,                   joe_number=555,                   hy_number=666)    )except Exception as e:    print 'Flow failed: %s' % e\n\ntask这个示例首先定义了三个task：CallJim、CallJoe和CallHY。在TaskFlow库中，task是拥有执行（execute）和回滚（revert）功能的最小单位（TaskFlow中最小的单位是atom，其他所有类包括Task都是Atom类的子类）。在Task类中，允许开发者定义自己的execute函数和revert函数，分别用来执行task和回退task到之前一次的执行结果。\n然后新新建一个线性流flow，并在其中顺序加入上述3个task对象。TaskFlow中的流flow用来关联各个task，并且规范这些task之间的执行和回滚顺序。\nTaskFlow中所支持的流类型。\n\n\n\n流类型\n说明\n\n\n\nlinear_flow.Flow\n线性流，流中的task/flow按加入顺序执行，按加入顺序的倒序回滚。\n\n\nunordered_flow.Flow\n无顺序流，流中的task/flow的执行和回滚可以按任意顺序。\n\n\ngraph_flow.Flow\n图流，流中的task/flow按照显式指定的依赖关系，或者通过其间provides和requires属性之间的隐含依赖关系，来执行或回滚。\n\n\n这个示例中，由于采用的是线性流，所以这个流中task的执行顺序为：CallJim -&gt; CallJoe -&gt; CallHY，回滚顺序是其倒序。\nretry流中不仅可以加入任务，还可以嵌套加入其他的流。此外，流还可以通过retry来控制当错误发生时，该如何重试。\nTaskFlow支持的retry类型。\n\n\n\nRetry类型\n说明\n\n\n\nAlwaysRevert\n错误发生时，回滚子流。\n\n\nAlwaysRevertAll\n错误发生时，回滚所有子流。\n\n\nTimes\n错误发生时，重试子流。\n\n\nForEach\n每次错误发生时，为子流中的atom提供一个新的值，然后重试，直到成功或者此retry中定义的值用光为止。\n\n\nParameterizedForEach\n类似ForEach，但是是从后台存储中获取重试的值\n\n\n示例。\n12345678910111213141516171819202122232425class EchoTask(task.Task):    def execute(self, name, *args, **kwargs):        print 'my name is %s' % name    def revert(self, name, *args, **kwargs):        print 'sorry, my name is %s' % nameflow = lf.Flow('f1').add(    EchoTask('t1'),    lf.Flow(        'f2',        retry=retry.ForEach(            values=['a', 'b', 'c'],            name='r1',            provides='value'        )    ).add(        EchoTask('t2'),        EchoTask('t3', requires='value')    ),    EchoTask('t4'))\n\n上面的示例，构造了一个线性流f1，它按顺序执行任务t1、子线性流f2、和任务t4。子流f2按序执行任务t2和t3。\n子流f2定义了ForEach类型的retry“r1”。当任务t2或者t3失败时，子流t2首先会回滚。然后“r1”会指导子流f2使用值“a”来重新运行。如果再次失败，子流f2回滚后会再次使用“b”运行；仍然失败后回滚使用值“c”运行。如果值“c”也运行失败，由于“r1”中能够提供的值已经被完全用完，子流f2回滚后不会重新运行。\nengineTaskFlow库中的engine用来载入一个flow，然后驱动flow中的task/flow运行。可以通过engine_conf来指明不同的engine类型。\n\n\n\nengine类型\n说明\n\n\n\n‘serial’\n所有的task都在调用engine.run的那个线程中运行。\n\n\n‘parallel’\ntask可能会被调度到不同的线程中并发运行。\n\n\n‘worker-based’\ntask会被调度到不同的worker中运行。一个worker是一个单独的专门用来运行某些特定task的进程，这个worker进程可以在远程机器上，利用AMQP来通信。\n\n\ntask和flow的输入/输出示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354from taskflow.patterns import graph_flow as gffrom taskflow.patterns import linear_flow as lffrom taskflow import taskfrom taskflow import enginesclass Adder(task.Task):    def execute(self, x, y, *args, **kwargs):        return x + yflow = gf.Flow('root').add(    lf.Flow('nested_linear').add(        # 从后台存储中读取名为y3和y4的参数值，并以参数x，y传递给execute方法        # x2 = y3 + y4        Adder('add2', provides='x2', rebind=['y3', 'y4']),        # x1 = y1 + y2        Adder('add1', provides='x1', rebind=['y1', 'y2']),    ),    # x5 = x1 + x3    Adder('add5', provides='x5', rebind=['x1', 'x3']),    # x3 = x1 + x2    Adder('add3', provides='x3', rebind=['x1', 'x2']),    # x4 = x2 + y5    Adder('add4', provides='x4', rebind=['x2', 'y5']),    # x6 = x5 + x4    Adder('add6', provides='x6', rebind=['x5', 'x4']),    # x7 = x6 + x6    Adder('add7', provides='x7', rebind=['x6', 'x6']))store = &#123;    'y1': 1,    'y2': 3,    'y3': 5,    'y4': 7,    'y5': 9&#125;result = engines.run(    flow=flow,    store=store,    engine_conf='serial')print 'single thread engine result %s' % resultresult = engines.run(    flow=flow,    store=store,    engine_conf='parallel')print 'multi thread engine result %s' % result\n\n上面的示例中，定义了一个Task对象Adder，作用是完成一个加法。接下去生成一个图类型的流root，其中的task都通过provides和rebind来指明它们的输出和输入。\n在engine运行时，通过store参数为流root提供所需要的输入参数，engine会把store的值保存在后台存储中：在执行各个task的过程中，各个task的输入都是从后台存储中获取，输出都保存在后台存储中。这个程序的输出结果如下：\n12Single thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.Multi thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.\n\nTaskFlow中的Task和Retry都是Atom的子类。对于任何一种Atom对象，都可以通过requires属性来了解它所要求的输入参数，和通过provides属性来了解它能够提供的输出结果的名字。requires和provides的类型都是包含参数名称的集合（set）。\nrequiresTask对象的requires可以由execute方法获得。比如示例中的Adder对象，由于execute方法的参数是execute(self, x, y)，所以它的requires为：\n123Adder().requiresOrderedSet(['x', 'y'])\n\n注意，execute方法的可选参数和args和*kwargs并不会出现在requires中。\n\n\n1234567class MyTask(task.Task):    def execute(self, spam, eggs=(), *args, **kwargs):        return spam + eggsMyTask().requiresOrderedSet(['spam'])\n\n1234567class UniTask(task.Task):    def execute(self, *args, **kwargs):        passUniTask().requiresOrderedSet([])\n\n此外，也可以在创建Task时明确指定它的输入参数要求，这些参数在调用execute()方法时可以通过kwargs获得：\n12345678class Dog(task.Task):    def execute(self, food, *args, **kwargs):        passdog = Dog(requires=('water', 'grass'))dog.requiresOrderedSet(['food', 'water', 'grass'])\n\nrebind在有些情况下，传递给某个task的输入参数名称和其所需要的参数名不同，这个时候可以通过rebind来处理。\n123456789101112131415161718192021from taskflow import taskclass SpawnVMTask(task.Task):    def execute(self, vm_name, vm_image_id, *args, **kwargs):        pass# engine执行下面这个task时，会从后台存储中获取到名为'name'的参数值# 然后把它当做vm_name参数传递给task的execute()方法s = SpawnVMTask(rebind=&#123;'vm_name': 'name'&#125;)s.requiresOrderedSet(['name', 'vm_image_id'])# engine执行下面这个task时，会从后台存储中获取到名为'name', 'image_id'# 和'admin_key_name'的参数值，把name和image_id分别当做vm_name# 和vm_image_id参数，把admin_key_name当做args参数中的某一项传递# 给task的execute()方法s = SpawnVMTask(rebind=('name', 'image_id', 'admin_key_name'))s.requiresOrderedSet(['name', 'image_id', 'admin_key_name'])\n\nprovidestask的输出结果一般是指其execute()方法的返回值。但是由于Python返回值是没有名字的，所有需要通过Task对象的provides属性指明返回值以什么名称存入后台存储中。根据execute()返回值类型的不同，provides可以有不同的方式指定。\n\n如果execute()方法返回的是一个单一的值。\n12345678910111213141516171819from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass TheAnswerReturningTask(task.Task):    def execute(self, *args, **kwargs):        return 24t = TheAnswerReturningTask(provides='the_answer')flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'the_answer': 24&#125;\n\n如果execute()方法返回元组tuple。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return 'Bits', 'Pieces't = BitsAndPiecesTask(provides=('bits', 'pieces'))flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'bits': 'Bits', 'pieces': 'Pieces'&#125;\n\n如果execute()方法返回字典。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return &#123;'Bits': 123, 'Pieces': 321&#125;t = BitsAndPiecesTask(provides=&#123;'Bits', 'Pieces'&#125;)flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'Bits': 123, 'Pieces': 321&#125;\n\n\n\n","dateCreated":"2019-05-17T16:31:13+08:00","dateModified":"2019-05-20T17:56:07+08:00","datePublished":"2019-05-17T16:31:13+08:00","description":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。","headline":"OpenStack通用库（六）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/","keywords":"OpenStack, TaskFlow","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="通过TaskFlow库，可以更容易地控制任务（Task）的执行。">
@@ -46,7 +48,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -93,7 +95,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +118,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -132,12 +134,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -145,12 +148,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -158,12 +162,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -171,12 +176,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -184,12 +190,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -197,12 +204,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -214,8 +222,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -223,8 +238,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -236,12 +258,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -535,7 +558,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -562,9 +584,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -761,7 +784,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

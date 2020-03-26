@@ -1,0 +1,774 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Python面试问题汇总 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Python">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\nPython语言特性类变量和实例变量类变量\n\n是可在类的所有实例之间共享的值（也就是说，它们不是单独分配给每个实例的）。\n\n例如下例中，num_of_instance 就是类变量，用于跟踪存在着多少个Test 的实例。\n实例变量\n\n实例化之后，每个实例单独拥有的变量。\n\n12345678910111213class Test(object):      num_of_instance = 0      def __init__(self, name):          self.name = name          Test.num_of_instance += 1    if __name__ == '__main__':      print Test.num_of_instance   # 0    t1 = Test('wkt')      print Test.num_of_instance   # 1    t2 = Test('hy')      print t1.name , t1.num_of_instance  # wkt 2    print t2.name , t2.num_of_instance  # hy 2\n\n补充\n1234567891011121314151617181920class Student(object):    name = \"hy\"s1 = Student()s2 = Student()s1.name = \"wkt\"print s1.name  # wktprint s2.name  # hyprint Student.name  # hyclass Teacher:    students = []t1 = Teacher()t2 = Teacher()t1.students.append(1)print t1.students  # [1]print t2.students  # [1]print Teacher.students  # [1]\n\nmetaclass\nobject是所有类的超类，而且type也是继承自object；所有对象创建自type，而且object也是type的实例。\nobject和type是python中的两个源对象，事实上，它们是互相依赖对方来定义，所以它们不能分开而论。\n通过这两个源对象可以繁育出一堆对象：list、tuple、dict等。元类就是这些类的类，这些类是元类的实例。\nmetaclass是type的子类，通过替换type的call运算符重载机制，“超越变形”正常的类。\n\nPython自省自省就是面向对象的语言所写程序在运行时，所能知道对象的类型。运行时能获得对象的类型。比如type()、dir()、getattr()、hasattr()、isinstance()\nnew和init区别\nnew是一个静态方法，而init是一个实例方法。\nnew方法会返回一个创建的实例，而init什么都不会返回。\n只有在new返回一个cls的实例后，init才会被调用。\n当创建一个新实例时调用new，初始化一个实例时调用init。\n\nmetaclass是创建类时起作用，所以我们可以分别使用metaclass、new和init来分别在类创建，实例创建和实例初始化的时候做一些小手脚.\n单例模式\n使用new方法\n123456789class Singleton(object):    def __new__(cls, *args, **kw):        if not hasattr(cls, '_instance')            orig = super(Singleton, cls)            cls._instance = orig.__new__(cls, *args, **kw)        return cls._instanceclass Test(Singleton):    pass\n\n装饰器\n1234567891011def singleton(cls):    instances = &#123;&#125;    def get_instance(*args, **kw)        if cls not in instances:            instances[cls] = cls(*arg, **kw)        return instances[cls]    return get_instance@singletonclass Test:    pass\n\nimport\n\n\n12345678# singleton.pyclass My_Singleton(object):    passmy_singleton = My_Singleton()# usefrom singleton import my_singleton\n\nGIL线程全局锁线程全局锁（Global Interpreter Lock），Python为了保证线程安全而采取的独立线程运行的限制，一个核只能在同一时间运行一个线程。Python中的多线程是假的多线程，Python解释器虽然可以开启多个线程，但同一时间只有一个线程能在解释器中执行，而做到这一点正是由于GIL锁的存在，它的存在使得CPU资源同一时间只会给一个线程使用。\n解决办法就是多进程和协程（协程也只是单CPU，但是能减少切换代价而提升性能）。\n进程和线程的区别进程是资源（CPU、内存）分配的基本单位，它是执行程序是的一个实例。程序运行时系统会创建一个进程，并为它分配资源，然后把该进程放入进程就绪队列，进程调度器选中它的时候就会为它分配CPU时间，程序开始真正运行。\n线程是程序执行时的最小单位，它是进程的执行流，是CPU调度和分派的基本单位，一个进程可以由多个线程组成，线程间共享进程的所有资源，每个进程都有自己的堆栈和局部变量。线程由CPU独立调度执行，在多CPU环境下就允许多个线程同时运行。同样多线程也可以实现并发操作，每个请求分配一个线程来处理。\n区别\n\n进程是资源分配的最小单位，线程是程序执行的最小单位。\n进程有自己的独立空间，每启动一个进程，系统就会为它分配地址空间，建立数据表来维护代码段、堆栈段和数据段，这种操作非常昂贵。而线程是共享进程中的数据的，使用相同的地址空间，因此CPU切换一个线程的花费远比进程要小很多，同时创建一个线程的开销也比进程要小很多。\n线程之间的通信更方便，同一进程下的线程共享全局变量、静态变量等数据，而进程之间的通信需要以通信的方式（IPC）进行。不过如何处理好同步与互斥是编写多线程程序的难点。\n多进程程序更健壮，多线程程序只要有一个线程死掉，整个进程也死掉了，而一个进程死掉并不会对另外一个进程造成影响，因为进程有自己独立的地址空间。\n\n协程协程是一种用户态的轻量级线程，即线程是由用户程序自己控制调度的。\n优点：\n\n协程的开销更小，属于程序级别的切换，操作系统完全感知不到，因而更加轻量级。\n单线程内就能实现并发的效率，最大限度的利用CPU。\n\n缺点\n\n协程的本质是单线程下，无法利用多核，可以是一个程序开启多个进程，每个进程开启多个线程，每个线程开启协程。\n协程是单个线程，因而一旦协程出现阻塞，将会阻塞整个线程。\n\n特点\n\n必须在只有一个单线程里实现并发。\n修改共享数据不需加锁。\n用户程序里自己保存多个控制流的上下文栈。\n一个协程遇到IO操作自动切换到其它协程。\n\n并行和并发并行（parallel）指在同一时刻，有多条指令在多个处理器上同时执行。所以无论从微观还是从宏观来看，二者都是一起执行的。\n并发(concurrency)：指在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个进程快速交替的执行。\nPython垃圾回收机制Python GC主要使用引用计数（Reference Counting）来跟踪和回收垃圾。在引用计数的基础上，通过“标记-清除”（Mark and Sweep）解决容器对象可能产生的循环引用问题，通过“分代回收”（Generation Collection）以空间换时间的方法提高垃圾回收效率。\n\n引用计数PyObject是每个对象必须有的内容，其中ob_refcnt就是作为引用计数。当一个对象有新的引用是，它的ob_refcnt就会增加，当引用它的对象被删除，它的ob_refcnt就会被减少。引用计数为0时，该对象生命就结束了。\n\n优点：\n\n简单\n实时性\n\n缺点：\n\n维护引用计数消耗资源\n循环引用\n\n\n标记-清除机制基本思路是先按需分配，等到没有空闲内存的时候从寄存器和程序栈上的引用出发，遍历以对象为节点、以引用为边构成的图，把所有可以访问到的对象打上标记，然后清扫一遍内存空间，把所有没有标记的对象释放。\n\n分代技术分代回收的整体思想是：将系统中的所有内存块根据其存活时间划分为不同的集合，每一个集合就成为一个“代”，垃圾手机频率随着“代”的存活时间的增大而减小，存活时间通常利用经过几次垃圾回收来度量。\n\n\nPython默认定义了三代对象集合，索引数越大，对象存活越长。\n举例： 当某些内存块M经过了3次垃圾收集的清洗之后还存活时，我们就将内存块M划到一个集合A中去，而新分配的内存都划分到集合B中去。当垃圾收集开始工作时，大多数情况都只对集合B进行垃圾回收，而对集合A进行垃圾回收要隔相当长一段时间后才进行，这就使得垃圾收集机制需要处理的内存少了，效率自然就提高了。在这个过程中，集合B中的某些内存块由于存活时间长而会被转移到集合A中，当然，集合A中实际上也存在一些垃圾，这些垃圾的回收会因为这种分代的机制而被延迟。\nPython的魔法方法魔法方法就是可以给你的类增加魔力的特殊方法，如果你的对象实现（重载）了这些方法中的某一个，那么这个方法就会在特殊的情况下被Python所调用，它们通常是两个下划线包围起来命名的（比如init、len）\n\n\n\n浅拷贝是拷贝一层，深层次的对象级别的就拷贝引用；深拷贝是拷贝多层，每一级别的数据都会拷贝出来；","dateCreated":"2020-02-21T10:53:07+08:00","dateModified":"2020-03-02T22:57:42+08:00","datePublished":"2020-02-21T10:53:07+08:00","description":"Python面试问题汇总","headline":"Python面试问题汇总","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/","keywords":"Python","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Python面试问题汇总">
+<meta name="keywords" content="Python">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Python面试问题汇总">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Python面试问题汇总">
+<meta property="og:locale" content="zh-en">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/images/magic_method_1.png">
+<meta property="og:updated_time" content="2020-03-02T14:57:42.791Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python面试问题汇总">
+<meta name="twitter:description" content="Python面试问题汇总">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/images/magic_method_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+
+
+    
+
+    
+        
+    
+</head>
+
+    <body>
+        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/ "
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Python面试问题汇总
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-02-21T10:53:07+08:00">
+	
+		    Feb 21, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Python语言特性"><span class="toc-text">Python语言特性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#类变量和实例变量"><span class="toc-text">类变量和实例变量</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#metaclass"><span class="toc-text">metaclass</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Python自省"><span class="toc-text">Python自省</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#new和init区别"><span class="toc-text">new和init区别</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#单例模式"><span class="toc-text">单例模式</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#GIL线程全局锁"><span class="toc-text">GIL线程全局锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#进程和线程的区别"><span class="toc-text">进程和线程的区别</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#协程"><span class="toc-text">协程</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#并行和并发"><span class="toc-text">并行和并发</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Python垃圾回收机制"><span class="toc-text">Python垃圾回收机制</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Python的魔法方法"><span class="toc-text">Python的魔法方法</span></a></li></ol></li></ol>
+
+<h3 id="Python语言特性"><a href="#Python语言特性" class="headerlink" title="Python语言特性"></a>Python语言特性</h3><h4 id="类变量和实例变量"><a href="#类变量和实例变量" class="headerlink" title="类变量和实例变量"></a>类变量和实例变量</h4><p><strong>类变量</strong></p>
+<blockquote>
+<p>是可在类的所有实例之间共享的值（也就是说，它们不是单独分配给每个实例的）。</p>
+</blockquote>
+<p>例如下例中，num_of_instance 就是类变量，用于跟踪存在着多少个Test 的实例。</p>
+<p><strong>实例变量</strong></p>
+<blockquote>
+<p>实例化之后，每个实例单独拥有的变量。</p>
+</blockquote>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Test</span><span class="params">(object)</span>:</span>  </span><br><span class="line">    num_of_instance = <span class="number">0</span>  </span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span><span class="params">(self, name)</span>:</span>  </span><br><span class="line">        self.name = name  </span><br><span class="line">        Test.num_of_instance += <span class="number">1</span>  </span><br><span class="line">  </span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">'__main__'</span>:  </span><br><span class="line">    <span class="keyword">print</span> Test.num_of_instance   <span class="comment"># 0</span></span><br><span class="line">    t1 = Test(<span class="string">'wkt'</span>)  </span><br><span class="line">    <span class="keyword">print</span> Test.num_of_instance   <span class="comment"># 1</span></span><br><span class="line">    t2 = Test(<span class="string">'hy'</span>)  </span><br><span class="line">    <span class="keyword">print</span> t1.name , t1.num_of_instance  <span class="comment"># wkt 2</span></span><br><span class="line">    <span class="keyword">print</span> t2.name , t2.num_of_instance  <span class="comment"># hy 2</span></span><br></pre></td></tr></table></figure>
+
+<p>补充</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Student</span><span class="params">(object)</span>:</span></span><br><span class="line">    name = <span class="string">"hy"</span></span><br><span class="line"></span><br><span class="line">s1 = Student()</span><br><span class="line">s2 = Student()</span><br><span class="line">s1.name = <span class="string">"wkt"</span></span><br><span class="line"><span class="keyword">print</span> s1.name  <span class="comment"># wkt</span></span><br><span class="line"><span class="keyword">print</span> s2.name  <span class="comment"># hy</span></span><br><span class="line"><span class="keyword">print</span> Student.name  <span class="comment"># hy</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Teacher</span>:</span></span><br><span class="line">    students = []</span><br><span class="line"></span><br><span class="line">t1 = Teacher()</span><br><span class="line">t2 = Teacher()</span><br><span class="line">t1.students.append(<span class="number">1</span>)</span><br><span class="line"><span class="keyword">print</span> t1.students  <span class="comment"># [1]</span></span><br><span class="line"><span class="keyword">print</span> t2.students  <span class="comment"># [1]</span></span><br><span class="line"><span class="keyword">print</span> Teacher.students  <span class="comment"># [1]</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="metaclass"><a href="#metaclass" class="headerlink" title="metaclass"></a>metaclass</h4><ul>
+<li>object是所有类的超类，而且type也是继承自object；所有对象创建自type，而且object也是type的实例。</li>
+<li>object和type是python中的两个源对象，事实上，它们是互相依赖对方来定义，所以它们不能分开而论。</li>
+<li>通过这两个源对象可以繁育出一堆对象：list、tuple、dict等。元类就是这些类的类，这些类是元类的实例。</li>
+<li>metaclass是type的子类，通过替换type的<strong>call</strong>运算符重载机制，“超越变形”正常的类。</li>
+</ul>
+<h4 id="Python自省"><a href="#Python自省" class="headerlink" title="Python自省"></a>Python自省</h4><p>自省就是面向对象的语言所写程序在运行时，所能知道对象的类型。运行时能获得对象的类型。比如type()、dir()、getattr()、hasattr()、isinstance()</p>
+<h4 id="new和init区别"><a href="#new和init区别" class="headerlink" title="new和init区别"></a><strong>new</strong>和<strong>init</strong>区别</h4><ol>
+<li><strong>new</strong>是一个静态方法，而<strong>init</strong>是一个实例方法。</li>
+<li><strong>new</strong>方法会返回一个创建的实例，而<strong>init</strong>什么都不会返回。</li>
+<li>只有在<strong>new</strong>返回一个cls的实例后，<strong>init</strong>才会被调用。</li>
+<li>当创建一个新实例时调用<strong>new</strong>，初始化一个实例时调用<strong>init</strong>。</li>
+</ol>
+<p><strong>metaclass</strong>是创建类时起作用，所以我们可以分别使用<strong>metaclass</strong>、<strong>new</strong>和<strong>init</strong>来分别在类创建，实例创建和实例初始化的时候做一些小手脚.</p>
+<h4 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h4><ol>
+<li><p>使用<strong>new</strong>方法</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Singleton</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__new__</span><span class="params">(cls, *args, **kw)</span>:</span></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> hasattr(cls, <span class="string">'_instance'</span>)</span><br><span class="line">            orig = super(Singleton, cls)</span><br><span class="line">            cls._instance = orig.__new__(cls, *args, **kw)</span><br><span class="line">        <span class="keyword">return</span> cls._instance</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Test</span><span class="params">(Singleton)</span>:</span></span><br><span class="line">    <span class="keyword">pass</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>装饰器</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">singleton</span><span class="params">(cls)</span>:</span></span><br><span class="line">    instances = &#123;&#125;</span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">get_instance</span><span class="params">(*args, **kw)</span></span></span><br><span class="line"><span class="function">        <span class="title">if</span> <span class="title">cls</span> <span class="title">not</span> <span class="title">in</span> <span class="title">instances</span>:</span></span><br><span class="line">            instances[cls] = cls(*arg, **kw)</span><br><span class="line">        <span class="keyword">return</span> instances[cls]</span><br><span class="line">    <span class="keyword">return</span> get_instance</span><br><span class="line"></span><br><span class="line"><span class="meta">@singleton</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Test</span>:</span></span><br><span class="line">    <span class="keyword">pass</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>import</p>
+</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># singleton.py</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">My_Singleton</span><span class="params">(object)</span>:</span></span><br><span class="line">    <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">my_singleton = My_Singleton()</span><br><span class="line"></span><br><span class="line"><span class="comment"># use</span></span><br><span class="line"><span class="keyword">from</span> singleton <span class="keyword">import</span> my_singleton</span><br></pre></td></tr></table></figure>
+
+<h4 id="GIL线程全局锁"><a href="#GIL线程全局锁" class="headerlink" title="GIL线程全局锁"></a>GIL线程全局锁</h4><p>线程全局锁（Global Interpreter Lock），Python为了保证线程安全而采取的独立线程运行的限制，一个核只能在同一时间运行一个线程。Python中的多线程是假的多线程，Python解释器虽然可以开启多个线程，但同一时间只有一个线程能在解释器中执行，而做到这一点正是由于GIL锁的存在，它的存在使得CPU资源同一时间只会给一个线程使用。</p>
+<p>解决办法就是多进程和协程（协程也只是单CPU，但是能减少切换代价而提升性能）。</p>
+<h4 id="进程和线程的区别"><a href="#进程和线程的区别" class="headerlink" title="进程和线程的区别"></a>进程和线程的区别</h4><p>进程是资源（CPU、内存）分配的基本单位，它是执行程序是的一个实例。程序运行时系统会创建一个进程，并为它分配资源，然后把该进程放入进程就绪队列，进程调度器选中它的时候就会为它分配CPU时间，程序开始真正运行。</p>
+<p>线程是程序执行时的最小单位，它是进程的执行流，是CPU调度和分派的基本单位，一个进程可以由多个线程组成，线程间共享进程的所有资源，每个进程都有自己的堆栈和局部变量。线程由CPU独立调度执行，在多CPU环境下就允许多个线程同时运行。同样多线程也可以实现并发操作，每个请求分配一个线程来处理。</p>
+<p>区别</p>
+<ol>
+<li>进程是资源分配的最小单位，线程是程序执行的最小单位。</li>
+<li>进程有自己的独立空间，每启动一个进程，系统就会为它分配地址空间，建立数据表来维护代码段、堆栈段和数据段，这种操作非常昂贵。而线程是共享进程中的数据的，使用相同的地址空间，因此CPU切换一个线程的花费远比进程要小很多，同时创建一个线程的开销也比进程要小很多。</li>
+<li>线程之间的通信更方便，同一进程下的线程共享全局变量、静态变量等数据，而进程之间的通信需要以通信的方式（IPC）进行。不过如何处理好同步与互斥是编写多线程程序的难点。</li>
+<li>多进程程序更健壮，多线程程序只要有一个线程死掉，整个进程也死掉了，而一个进程死掉并不会对另外一个进程造成影响，因为进程有自己独立的地址空间。</li>
+</ol>
+<h4 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h4><p>协程是一种用户态的轻量级线程，即线程是由用户程序自己控制调度的。</p>
+<p>优点：</p>
+<ol>
+<li>协程的开销更小，属于程序级别的切换，操作系统完全感知不到，因而更加轻量级。</li>
+<li>单线程内就能实现并发的效率，最大限度的利用CPU。</li>
+</ol>
+<p>缺点</p>
+<ol>
+<li>协程的本质是单线程下，无法利用多核，可以是一个程序开启多个进程，每个进程开启多个线程，每个线程开启协程。</li>
+<li>协程是单个线程，因而一旦协程出现阻塞，将会阻塞整个线程。</li>
+</ol>
+<p>特点</p>
+<ol>
+<li>必须在只有一个单线程里实现并发。</li>
+<li>修改共享数据不需加锁。</li>
+<li>用户程序里自己保存多个控制流的上下文栈。</li>
+<li>一个协程遇到IO操作自动切换到其它协程。</li>
+</ol>
+<h4 id="并行和并发"><a href="#并行和并发" class="headerlink" title="并行和并发"></a>并行和并发</h4><p>并行（parallel）指在同一时刻，有多条指令在多个处理器上同时执行。所以无论从微观还是从宏观来看，二者都是一起执行的。</p>
+<p>并发(concurrency)：指在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个进程快速交替的执行。</p>
+<h4 id="Python垃圾回收机制"><a href="#Python垃圾回收机制" class="headerlink" title="Python垃圾回收机制"></a>Python垃圾回收机制</h4><p>Python GC主要使用引用计数（Reference Counting）来跟踪和回收垃圾。在引用计数的基础上，通过“标记-清除”（Mark and Sweep）解决容器对象可能产生的循环引用问题，通过“分代回收”（Generation Collection）以空间换时间的方法提高垃圾回收效率。</p>
+<ul>
+<li>引用计数<br>PyObject是每个对象必须有的内容，其中ob_refcnt就是作为引用计数。当一个对象有新的引用是，它的ob_refcnt就会增加，当引用它的对象被删除，它的ob_refcnt就会被减少。引用计数为0时，该对象生命就结束了。</li>
+</ul>
+<p>优点：</p>
+<ol>
+<li>简单</li>
+<li>实时性</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>维护引用计数消耗资源</li>
+<li>循环引用</li>
+</ol>
+<ul>
+<li><p>标记-清除机制<br>基本思路是先按需分配，等到没有空闲内存的时候从寄存器和程序栈上的引用出发，遍历以对象为节点、以引用为边构成的图，把所有可以访问到的对象打上标记，然后清扫一遍内存空间，把所有没有标记的对象释放。</p>
+</li>
+<li><p>分代技术<br>分代回收的整体思想是：将系统中的所有内存块根据其存活时间划分为不同的集合，每一个集合就成为一个“代”，垃圾手机频率随着“代”的存活时间的增大而减小，存活时间通常利用经过几次垃圾回收来度量。</p>
+</li>
+</ul>
+<p>Python默认定义了三代对象集合，索引数越大，对象存活越长。</p>
+<p>举例： 当某些内存块M经过了3次垃圾收集的清洗之后还存活时，我们就将内存块M划到一个集合A中去，而新分配的内存都划分到集合B中去。当垃圾收集开始工作时，大多数情况都只对集合B进行垃圾回收，而对集合A进行垃圾回收要隔相当长一段时间后才进行，这就使得垃圾收集机制需要处理的内存少了，效率自然就提高了。在这个过程中，集合B中的某些内存块由于存活时间长而会被转移到集合A中，当然，集合A中实际上也存在一些垃圾，这些垃圾的回收会因为这种分代的机制而被延迟。</p>
+<h4 id="Python的魔法方法"><a href="#Python的魔法方法" class="headerlink" title="Python的魔法方法"></a>Python的魔法方法</h4><p>魔法方法就是可以给你的类增加魔力的特殊方法，如果你的对象实现（重载）了这些方法中的某一个，那么这个方法就会在特殊的情况下被Python所调用，它们通常是两个下划线包围起来命名的（比如<strong>init</strong>、<strong>len</strong>）<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/magic_method_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="/2020/02/21/Python面试问题汇总/images/magic_method_1.png" alt=""></a></div>
+
+
+<p>浅拷贝是拷贝一层，深层次的对象级别的就拷贝引用；深拷贝是拷贝多层，每一级别的数据都会拷贝出来；</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-link" href="/tags/Python/">Python</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/深入浅出Neutron（六）/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="NEXT: OpenTracing"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/&amp;title=Python面试问题汇总"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+<div class="main-content-wrap">
+    
+        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<div id="vcomments"></div>
+<script>
+    new Valine({
+        el: '#vcomments',
+        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
+        appKey: '56G0KI3088RN76r5dTyRcsao', 
+        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
+        notify: 'false',
+        verity: '',
+        path: window.location.pathname,
+        avatar: 'wavatar',
+        meta: ['nick','mail','link'],
+        pageSize: '10',
+        lang: 'zh-cn',
+        visitor: 'true',
+        highlight: 'true'
+
+    });
+</script>
+    
+</div>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/深入浅出Neutron（六）/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="NEXT: OpenTracing"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/&amp;title=Python面试问题汇总"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/&amp;title=Python面试问题汇总"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python面试问题汇总/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Love Python Love LOL</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+</html>

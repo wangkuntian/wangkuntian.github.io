@@ -15,7 +15,9 @@
         <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
     
     
-        <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Neutron在OpenStack中提供网络服务。\n\n\n概述在OpenStack发展的初期，虚拟网络的创建和管理是由Nova项目来实现的，叫作Nova-network。Nova-network可以提供简单的网络拓扑和L2的网络服务。随着OpenStack项目的发展，以及云计算中对网络更为复杂和高级的要求，Nova-network已经无法满足这方面的要求。于是，社区孵化了一个单独的网络项目，称为Quantum，后来由于名称版权问题，更名为Neutron。\nNeutron基于一个可插拔的架构，提供基于租户隔离的从二层到七层的虚拟网络服务。它作为一个框架提供了统一的网络资源模型，而各个网络厂商或者不同的网络方案可以基于这个统一的模型来做具体的实现，也就是Neutron中的插件。\nNeutron为传统的二层到七层网络服务提供统一的北向编程接口，并且为二层到七层的网络分别实现了可扩展的插件结构，如支持二层网络的ML2插件，支持三层网络的核心插件，实现高级网络服务的服务框架以及在此框架下的VPN服务插件、负载均衡插件等。这样，各类网络设备厂商都可以通过扩展插件，即在插件中加入自己的驱动来实现对Neutron项目的支持。\nNeutron组件架构Neutron作为OpenStack的网络服务项目，在二层到七层都提供了某种程度的插件结构用于支持各种网络设备和网络服务：\n\n二层网络。提供ML2 Plug-in加上L2 Agent支持二层网络设备。\n三层网络。Plugin-in结构由高级服务中的L3 Agent服务提供。\n四层到七层网络。由高级服务框架提供对四层到七层网络设备和服务的支持。\n\n当网卡收到数据之后，硬件网卡会给CPU发硬中断，CPU在指令周期内指示操作系统软件从网卡缓冲区取走数据，然后操作系统将数据交给TCP/IP栈（内核态的一个进程）来处理，在处理过程中，通过解析二层网络数据帧头中的MAC地址来决定在二层网络中的转发，如需三层网络转发就继续由TCP/IP栈来解析三层网络数据包头中的IP地址来决定三层网络中的转发。\n以此类推，二层网络主要通过MAC地址进行帧转发，主机只接受和它MAC地址相同的数据帧。二层网络没有控制平面，即没有一个全局的地方记录IP和MAC地址的映射关系，于是通过地址解析协议（ARP）解析广播来为IP找到对应的MAC地址。特别是在云环境下，一台物理机上有可能存在上百个容器，整个云环境大二层的规模是相当巨大的，所以容易产生广播风暴。\nVLAN网络将同时结合MAC地址与VLAN号进行帧转发，主机只接受和它的MAC地址与VLAN ID都匹配的数据帧，这样，缩小了广播域，有可能避免广播风暴。但标准的TCP/IP二层帧头仅支持最多4094个VLAN，这样，在云环境中可能不够用。另外，VLAN网络需要人工地去为每一个物理交换机的相关端口配置VLAN号，这些限制了VLAN的使用。\n对于大二层的网络技术，如VXLAN、GRE、Neutron实现了L2 population的特性，在网络上的端口发生变换是，根据Neutron所存储的网络拓扑，自动增加广播地址学习的记录。这样，对于目的MAC未知的单播请求，只将其发送到所学要的L2代理上，从而避免未知单播发送给所有隧道引起的广播风暴。三层网络主要通过IP地址进行数据包转发，控制分组传送系统的操作，选择路由等，它能够通过路由学习建立控制平面。\n\n","dateCreated":"2018-10-11T11:13:10+08:00","dateModified":"2019-08-02T10:57:50+08:00","datePublished":"2018-10-11T11:13:10+08:00","description":"Neutron在OpenStack中提供网络服务。","headline":"深入浅出Neutron（一）Neutron是什么","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/11/深入浅出Neutron（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/11/深入浅出Neutron（一）/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Neutron在OpenStack中提供网络服务。">
@@ -44,7 +46,7 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-lxa1sltsk3ddtffg5uh3vdx7ntu8ykaybe5oktyfswyogp6k0vq54fsvys2f.min.css">
+    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -91,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -114,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -130,12 +132,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/ "
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
                             
+                            rel="noopener"
                             title="Home"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Home</span>
                     </a>
@@ -143,12 +146,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-categories"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
                             
+                            rel="noopener"
                             title="Categories"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Categories</span>
                     </a>
@@ -156,12 +160,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-tags"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
                             
+                            rel="noopener"
                             title="Tags"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Tags</span>
                     </a>
@@ -169,12 +174,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/all-archives"
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
                             
+                            rel="noopener"
                             title="Archives"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Archives</span>
                     </a>
@@ -182,12 +188,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link open-algolia-search"
-                             href="#search"
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
                             
+                            rel="noopener"
                             title="Search"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Search</span>
                     </a>
@@ -195,12 +202,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="#about"
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
                             
+                            rel="noopener"
                             title="About"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">About</span>
                     </a>
@@ -212,8 +220,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="https://github.com/wangkuntian" target="_blank" rel="noopener" title="GitHub">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
                         <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">GitHub</span>
                     </a>
@@ -221,8 +236,15 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link " href="mailto:wangkuntian1994@163.com" target="_blank" rel="noopener" title="Mail">
-                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
                         <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">Mail</span>
                     </a>
@@ -234,12 +256,13 @@
             
                 <li class="sidebar-button">
                     
-                        <a  class="sidebar-button-link "
-                             href="/atom.xml"
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
                             
+                            rel="noopener"
                             title="RSS"
                         >
-                    
                         <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
                         <span class="sidebar-button-desc">RSS</span>
                     </a>
@@ -425,7 +448,6 @@
         
     </div>
 </article>
-
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
@@ -452,9 +474,10 @@
     
 </div>
 
+
                 <footer id="footer" class="main-content-wrap">
     <span class="copyrights">
-        Copyrights &copy; 2019 Wang kuntian. All Rights Reserved.
+        Copyrights &copy; 2020 Wang kuntian. All Rights Reserved.
     </span>
 </footer>
 
@@ -651,7 +674,7 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
-<script src="/assets/js/script-zhrd3k5vfeubarwmlscsmgv7w7tgiqrfnwyd0vt87yvibpblnbjgzwmbfbxj.min.js"></script>
+<script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
 <!--SCRIPTS END-->
 
 

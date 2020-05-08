@@ -93,7 +93,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Öffne den Link: /#about"
+                aria-label="Open the link: /#about"
             >
         
         
@@ -116,7 +116,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Lesen Sie mehr über den Autor"
+                    aria-label="Read more about the author"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -336,23 +336,23 @@
 </div>
 
 <h4 id="LABEL"><a href="#LABEL" class="headerlink" title="LABEL"></a>LABEL</h4><p>为镜像指定标签。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="bash"> &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;</span></span><br><span class="line"><span class="bash"></span></span><br><span class="line"><span class="bash">一个Dockerfile可以有多个LABEL。</span></span><br><span class="line"><span class="bash">LABEL com.example.label-with-value=<span class="string">"foo"</span></span></span><br><span class="line"><span class="bash">LABEL version=<span class="string">"1.0"</span></span></span><br><span class="line"><span class="bash">LABEL description=<span class="string">"This text illustrates that label-values \</span></span></span><br><span class="line"><span class="bash">can span multiple lines.<span class="string">"</span></span></span><br><span class="line"><span class="bash"></span></span><br><span class="line"><span class="bash">但不建议这么写，最好写成一行，可以使用\换行。</span></span><br><span class="line"><span class="bash">LABEL multi.label1=<span class="string">"value1"</span> \</span></span><br><span class="line"><span class="bash">multi.label2=<span class="string">"value2"</span> \</span></span><br><span class="line"><span class="bash">other=<span class="string">"value3"</span></span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="bash"> &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;</span></span><br><span class="line"></span><br><span class="line">一个Dockerfile可以有多个<span class="keyword">LABEL</span><span class="bash">。</span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> com.example.label-with-value=<span class="string">"foo"</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> version=<span class="string">"1.0"</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> description=<span class="string">"This text illustrates that label-values \</span></span></span><br><span class="line"><span class="bash">can span multiple lines.<span class="string">"</span></span></span><br><span class="line"></span><br><span class="line">但不建议这么写，最好写成一行，可以使用\换行。</span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> multi.label1=<span class="string">"value1"</span> \</span></span><br><span class="line"><span class="bash">multi.label2=<span class="string">"value2"</span> \</span></span><br><span class="line"><span class="bash">other=<span class="string">"value3"</span></span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>LABEL会继承基础镜像的LABEL，遇到相同key的，则值被覆盖。</p>
 </div>
 
 <h4 id="ADD"><a href="#ADD" class="headerlink" title="ADD"></a>ADD</h4><p>复制文件到镜像中。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="bash">ADD [<span class="string">"&lt;src&gt;"</span> ... <span class="string">"&lt;dest&gt;"</span>]</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> [<span class="string">"&lt;src&gt;"</span> ... <span class="string">"&lt;dest&gt;"</span>]</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>路径可以是容器内的绝对路径，也可以是相对于工作目录的相对路径，推荐写成绝对路径。<br>可以是一个本地文件，还可以是一个url，相当于wget。</p>
 </div>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="bash"> <span class="built_in">test</span> relativeDir/</span></span><br><span class="line"><span class="bash">ADD <span class="built_in">test</span> /relativeDir</span></span><br><span class="line"><span class="bash">ADD http://example.com/<span class="built_in">test</span> /</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="bash"> <span class="built_in">test</span> relativeDir/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> <span class="built_in">test</span> /relativeDir</span></span><br><span class="line"><span class="keyword">ADD</span><span class="bash"> http://example.com/<span class="built_in">test</span> /</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>scr为一个目录时，会自动把目录下的文件复制过去，目录本身不会复制。<br>如果scr为多个文件，dest一个是一个目录。</p>
 </div>
 
 <h4 id="COPY"><a href="#COPY" class="headerlink" title="COPY"></a>COPY</h4><p>复制文件到镜像中。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">COPY</span><span class="bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="bash">COPY [<span class="string">"&lt;src&gt;"</span> ... <span class="string">"&lt;dest&gt;"</span>]</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">COPY</span><span class="bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> [<span class="string">"&lt;src&gt;"</span> ... <span class="string">"&lt;dest&gt;"</span>]</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>与ADD的区别：COPY只能是本地文件，其他用法一致。</p>
 </div>
@@ -379,7 +379,7 @@
 </div>
 
 <h4 id="RUN"><a href="#RUN" class="headerlink" title="RUN"></a>RUN</h4><p>运行指定命令。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">RUN</span><span class="bash"> &lt;<span class="built_in">command</span>&gt;</span></span><br><span class="line"><span class="bash">RUN [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">RUN</span><span class="bash"> &lt;<span class="built_in">command</span>&gt;</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>第一种后面直接跟shell命令。</p>
 <ul>
@@ -393,10 +393,10 @@
 </div>
 
 <h4 id="CMD"><a href="#CMD" class="headerlink" title="CMD"></a>CMD</h4><p>容器启动时要运行的命令。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br><span class="line"><span class="bash">CMD [<span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br><span class="line"><span class="bash">CMD <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"param1"</span>, <span class="string">"param2"</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
 
 <p>示例：</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"sh"</span>, <span class="string">"-c"</span>, <span class="string">"echo <span class="variable">$HOME</span>"</span>]</span></span><br><span class="line"><span class="bash">CMD [<span class="string">"echo"</span>, <span class="string">"<span class="variable">$HOME</span>"</span>]</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"sh"</span>, <span class="string">"-c"</span>, <span class="string">"echo <span class="variable">$HOME</span>"</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"echo"</span>, <span class="string">"<span class="variable">$HOME</span>"</span>]</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert danger no-icon"><p>参数一定要用双引号包括。原因是参数传递后，docker解析的是一个JSON array。</p>
 </div>
@@ -409,7 +409,7 @@
 </div>
 
 <h4 id="ENTRYPOINT"><a href="#ENTRYPOINT" class="headerlink" title="ENTRYPOINT"></a>ENTRYPOINT</h4><p>启动时的默认命令。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]  </span></span><br><span class="line"><span class="bash">ENTRYPOINT <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"executable"</span>, <span class="string">"param1"</span>, <span class="string">"param2"</span>]  </span></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>ENTRYPOINT与CMD比较：</p>
 <ul>
@@ -419,10 +419,10 @@
 </div>
 
 <p>如果我们在Dockerfile中同时写了ENTRYPOINT和CMD，并且CMD指令不是一个完整可执行的命令，那么CMD指定的内容将会作为ENTRYPOINT的参数。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"top"</span>, <span class="string">"-b"</span>]</span></span><br><span class="line"><span class="bash">CMD [<span class="string">"-c"</span>]</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"top"</span>, <span class="string">"-b"</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> [<span class="string">"-c"</span>]</span></span><br></pre></td></tr></table></figure>
 
 <p>如果我们在Dcokerfile中同时写了ENTRYPOINT和CMD，并且CMD是一个完整的指令，那么他们会相互覆盖，谁在最后谁生效。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"top"</span>, <span class="string">"-b"</span>]</span></span><br><span class="line"><span class="bash">CMD ls -al</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="bash"> [<span class="string">"top"</span>, <span class="string">"-b"</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="bash"> ls -al</span></span><br></pre></td></tr></table></figure>
 
 <p>那么容器内将执行ls -al，top -b将不会被执行。</p>
 <h4 id="VOLUME"><a href="#VOLUME" class="headerlink" title="VOLUME"></a>VOLUME</h4><p>实现挂载功能，可将宿主机目录挂载到容器中。</p>
@@ -431,7 +431,7 @@
 <div class="alert info no-icon"><p>[“/data”]可以是一个JsonArray，也可以是多个值。</p>
 </div>
 
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">VOLUME</span><span class="bash"> [<span class="string">"/var/log"</span>]</span></span><br><span class="line"><span class="bash">VOLUME /var/<span class="built_in">log</span></span></span><br><span class="line"><span class="bash">VOLUME /var/<span class="built_in">log</span> /var/db</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">VOLUME</span><span class="bash"> [<span class="string">"/var/log"</span>]</span></span><br><span class="line"><span class="keyword">VOLUME</span><span class="bash"> /var/<span class="built_in">log</span></span></span><br><span class="line"><span class="keyword">VOLUME</span><span class="bash"> /var/<span class="built_in">log</span> /var/db</span></span><br></pre></td></tr></table></figure>
 
 <div class="alert info no-icon"><p>容器使用的是AUFS，这种文件系统不能持久化数据，当容器关闭后，所有的更改都会丢失。所以当数据需要持久化时使用这个命令。</p>
 </div>
@@ -445,10 +445,10 @@
 <h4 id="WORKDIR"><a href="#WORKDIR" class="headerlink" title="WORKDIR"></a>WORKDIR</h4><p>设置工作目录，对RUN，CMD，ENTRYPOINT，COPY和ADD生效。如果目录不存在会创建，也可以设置多次。</p>
 <figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /path/to/workdir</span></span><br></pre></td></tr></table></figure>
 
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /a</span></span><br><span class="line"><span class="bash">WORKDIR b</span></span><br><span class="line"><span class="bash">WORKDIR c</span></span><br><span class="line"><span class="bash">RUN <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> /a</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> b</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> c</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
 
 <p>pwd的执行结果是/a/b/c。<br>WORKDIR也可以解析环境变量。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENV</span> DIRPATH /path</span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> <span class="variable">$DIRPATH</span>/<span class="variable">$DIRNAME</span></span></span><br><span class="line"><span class="bash">RUN <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENV</span> DIRPATH /path</span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> <span class="variable">$DIRPATH</span>/<span class="variable">$DIRNAME</span></span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
 
 <p>pwd的执行结果是/path/$DIRNAME。</p>
 <h4 id="ARG"><a href="#ARG" class="headerlink" title="ARG"></a>ARG</h4><p>设置变量。ARG命令定义一个变量，在docker build创建镜像的时候，使用<strong>–build-arg=</strong>来指定参数。</p>
@@ -475,7 +475,7 @@
 <h4 id="STOPSIGNAL"><a href="#STOPSIGNAL" class="headerlink" title="STOPSIGNAL"></a>STOPSIGNAL</h4><p>当容器停止时给系统发送什么样的指令，默认是15.</p>
 <figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">STOPSIGNAL</span> signal</span><br></pre></td></tr></table></figure>
 
-<h4 id="HEALTHCHECK"><a href="#HEALTHCHECK" class="headerlink" title="HEALTHCHECK"></a>HEALTHCHECK</h4><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">HEALTHCHECK</span><span class="bash"> [OPTIONS] CMD <span class="built_in">command</span></span></span><br><span class="line"><span class="bash">HEALTHCHECK NONE</span></span><br></pre></td></tr></table></figure>
+<h4 id="HEALTHCHECK"><a href="#HEALTHCHECK" class="headerlink" title="HEALTHCHECK"></a>HEALTHCHECK</h4><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">HEALTHCHECK</span><span class="bash"> [OPTIONS] CMD <span class="built_in">command</span></span></span><br><span class="line"><span class="keyword">HEALTHCHECK</span><span class="bash"> NONE</span></span><br></pre></td></tr></table></figure>
 
 <ol>
 <li>在容器内部运行一个命令来检查容器的健康状况。</li>

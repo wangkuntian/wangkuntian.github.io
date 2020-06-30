@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenTracing - Wang kuntian&#39;s Blog</title>
@@ -21,20 +21,20 @@
     
     <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述微服务提供了强大的架构，但并非没有挑战，尤其是在调试和观察复杂网络中的分布式事务方面–仅仅是因为没有内存中的调用或堆栈追踪可以这样做。\n这就是为什么会出现分布式追踪。分布式追踪为描述和分析跨进程事务提供了一种解决方案。分布式追踪的一些使用案例包括异常检测，诊断状态问题，分布式分析，资源归因和微服务工作负载建模。\n分布式追踪模型\n\n\n1. Trace（追踪）：事务在分布式系统中移动时的描述。\n2. Span（跨度）：一种命名的定时操作，代表一部分工作流程。Span接受key:value标记以及附加到特定Span实例的细粒度，带时间戳的结构化日志。\n3. Span context（跨度上下文）：追踪伴随分布式事务的信息，包括它何时通过网络或通过消息总线将服务传递给服务。范围上下文包含追踪标识符，范围标识符以及追踪系统需要传播到下游服务的任何其他数据。\n\n四个方面从应用程序层分布式追踪系统的角度来看，现代软件系统如下图所示：\n\n\n现代软件系统中的组件可以分为三类： \n\n应用程序和业务逻辑：您的代码。 \n广泛共享的库：其他人的代码。 \n广泛共享的服务：其他人的基础架构。\n\n这三个组件具有不同的要求，并驱动着负责监视应用程序的分布式追踪系统的设计。最终的设计产生四个重要方面：\n\n追踪工具API：装饰应用程序代码的内容。 \n有线协议：在RPC请求中与应用程序数据一起发送的内容。\n数据协议：异步（带外）发送到您的分析系统的内容。 \n分析系统：用于处理追踪数据的数据库和交互式UI。\n\n分布式追踪分布式追踪（也称为分布式请求追踪）是一种用于对应用程序进行概要分析和监视的方法，尤其是使用微服务架构构建的应用程序。分布式追踪有助于查明哪里发生故障以及什么原因导致性能下降。\n使用者IT和DevOps团队可以使用分布式追踪来监视应用程序。分布式追踪特别适合调试和监视现代分布式软件体系结构，例如微服务。\n开发人员可以使用分布式追踪来帮助调试和优化他们的代码。\nOpenTracing\nOpenTracing不是程序。分布式追踪要求软件开发人员将规范添加到应用程序的代码或应用程序中使用的框架。\nOpenTracing不是标准。Cloud Native Computing Foundation（CNCF）不是官方标准机构。OpenTracing API项目正在努力为分布式追踪创建更多标准化的API和工具。\n\nOpenTracing由API规范，已实现该规范的框架和库以及该项目的文档组成。OpenTracing允许开发人员使用不会将其锁定到任何一种特定产品或供应商的API来向其应用程序代码中添加工具。\nSpan介绍Span是分布式追踪的主要构建块，代表分布式系统中完成的单个工作单元。\n分布式系统的每个组件都有一个Span–代表工作流一部分命名的定时操作。\nSpan可以包含对其他Span的引用，从而可以将多个Span组合成一个完整的追踪-可视化请求在分布式系统中移动时的生命周期。\n每个Span根据OpenTracing规范封装以下状态：\n\n操作名称\n开始时间戳和结束时间戳\n一组key:value Span标签\n一组key:value Span日志\nSpanContex\n\nTagsTags（标签）是key:value键值对，可启用用户定义的Span注释，以查询、过滤和理解追踪数据。Span Tags应该应用于整个跨度。在semantic_conventions.md上有一个列表，列出了常见场景的Span Tags。\nTags包括，例如db.instance来标识数据库主机；http.status_code代表HTTP响应代码；error，如果Span表示的操作失败，则可以将其设置为True。\nLogsLogs(日志)是key:value键值对，可用于捕获特定的Span的日志消息以及来自应用程序本身的其他调试或信息输出。Logs记录跨度内的特定时刻或事件（与应该应用于整个Span的Tags相反）。\nSpanContextSpanContext跨进程边界承载数据。具体来说，它具有两个主要组成部分：\n\n依赖于实现的状态来引用追踪中的不同范围，即实现Tracer对spanID和traceID的定义。\n一些Baggage Items\n这些是跨流程边界的key:value键值对。\n使某些数据可用于整个追踪访问。\n\n\n\n例子t=0            operation name: db_query               t=x\n\n +-----------------------------------------------------+\n | · · · · · · · · · ·    Span     · · · · · · · · · · |\n +-----------------------------------------------------+\n\nTags:\n- db.instance:&quot;jdbc:mysql://127.0.0.1:3306/customers\n- db.statement: &quot;SELECT * FROM mytable WHERE foo=&apos;bar&apos;;&quot;\n\nLogs:\n- message:&quot;Can&apos;t connect to mysql server on &apos;127.0.0.1&apos;(10061)&quot;\n\nSpanContext:\n- trace_id:&quot;abc123&quot;\n- span_id:&quot;xyz789&quot;\n- Baggage Items:\n- special_id:&quot;vsid1738&quot;Scopes and Threading介绍在任何给定线程中，都有一个“active”范围，主要负责由周围的应用程序代码（称为ActiveSpan）完成的工作。OpenTracing API允许线程中的一个Span在任何时间点都处于活动状态。这是使用Scope管理的，该范围正式确定了Span的启用和停用。\n同一线程所涉及的其他Span将满足以下条件之一：\n\nStarted\nNot finished\nNot “active”\n\n同一线程上可以有多个Span，Span需要满足以下条件：\n\nWaiting for I/O\nBlocked on a child Span\nOff of the critical path\n\n请注意，如果开发人员创建新的Span时存在Scope（作用域），则它将充当其父对象，除非程序员在buildSpan()时调用ignoreActiveSpan()或显式指定父上下文。\n\n\n访问当前Active Span由于在功能之间手动传递Active Span不方便，因此OpenTracing要求每个Tracer都包含一个ScopeManager。ScopeManager API通过Scope授予对Active Span的访问。这意味着开发人员可以通过Scope访问任何Active Span。\n在线程之间移动Span使用ScopeManager API，开发人员可以在不同线程之间传输Span。 Span的生命周期可能始于一个线程，而结束于另一个线程。ScopeManager API允许将Span传输到另一个线程或回调。不支持将Scope传递给另一个线程或回调。\nTracers介绍OpenTracing提供了一个开放的，与供应商无关的标准API，用于描述分布式事务，尤其是因果关系，语义和时间安排。它提供了一个通用的分布式上下文传播框架，该框架由以下API原语组成：\n\n在过程中传递元数据上下文\n编码和解码元数据上下文，以便通过网络传输它以进行进程间通信\n因果关系追踪：父子，分叉，联接\n\nOpenTracing消除了众多追踪器实现之间的差异。这意味着无论开发人员使用哪种追踪系统，仪器显示都将保持不变。为了使用OpenTracing规范对应用程序进行检测，必须部署兼容的OpenTracing追踪器。\nTracer InterfaceTracer界面创建Span，并了解如何跨进程边界Inject注入（序列化）和Extract提取（反序列化）其元数据。它具有以下功能：\n\nStart a new Span\nInject a SpanContext into a carrier\nExtract a SpanContext from a carrier\n\nSetting up a TracerTracer将记录跨度并将其发布到某个地方。应用程序如何处理实际的Tracer取决于开发人员：直接在整个应用程序中使用它，还是将其存储在GlobalTracer中，以便更轻松地用于已检测框架。\n不同的Tracer实现在初始化时接收方式和接收参数的方式有所不同，例如：\n\nComponent name for this application’s traces.\nTracing endpoint.\nTracing credentials.\nSampling strategy.\n\n获取Tracer实例后，就可以使用它来手动创建Span，或将其传递给框架和库的现有工具。\n为了不强迫用户始终围绕Tracer，io.opentracing.util实现包括io.opentracing.Tracer接口的帮助程序GlobalTracer类。顾名思义，GlobalTracer类，它是可以在任何地方使用的全局实例。它通过将所有操作转发到另一个基础的Tracer进行工作，该追踪器将在将来的某个时间进行注册。\n默认情况下，基础Tracer是no-nop实现。\nStarting a new Trace每当创建新的Span而不引用父Span时，就会开始新的追踪。创建新的Span时，需要指定一个“操作名称”，它是一种自由格式的字符串，可用于帮助您识别该Span所涉及的代码。我们新追踪中的下一个Span可能是子Span，可以看作是在主Span内执行的子程序的表示。因此，此子Span与父级具有ChildOf关系。另一种关系类型是FollowsFrom，在特殊情况下使用，新的Span独立于父Span，例如在异步过程中。\nAccessing the Active Span追踪器可用于启用对ActiveSpan的访问。还可以通过scopeManager以某些语言访问ActiveSpans。\nPropagating a Trace with Inject/Extract为了跨分布式系统中的进程边界进行追踪，服务需要能够继续由发送每个请求的客户端注入的trace。OpenTracing通过提供注入和提取方法来实现此目标，该方法将Span的上下文编码为载体。Inject方法允许将SpanContext传递给载体。例如，将追踪信息传递到客户的请求中，以便您将其发送到的服务器可以继续追踪。Extract方法完全相反，它从载体中提取SpanContext。例如，如果客户端存在活动请求，则开发人员必须使用io.opentracing.Tracer.extract方法提取SpanContext。\n\n\nTracing Systems下表列出了所有当前已知的OpenTracing追踪器：\n\n\n\nTracing System\nSupported Languages\n\n\n\nCNCF Jaeger\nJava, Go, Python, Node.js, C++, C#\n\n\nDatadog\nGo\n\n\ninspectIT\nJava\n\n\nInstana\nCrystal, Go, Java, Node.js, Python, Ruby\n\n\nLightStep\nGo, Python, JavaScript, Objective-C, Java, PHP, Ruby, C++\n\n\nstagemonitor\nJava\n\n","dateCreated":"2019-11-18T17:59:22+08:00","dateModified":"2019-11-21T11:16:51+08:00","datePublished":"2019-11-18T17:59:22+08:00","description":"分布式追踪","headline":"OpenTracing","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/11/18/OpenTracing/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/11/18/OpenTracing/","keywords":"OpenTracing","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="分布式追踪">
-<meta name="keywords" content="OpenTracing">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenTracing">
 <meta property="og:url" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="分布式追踪">
-<meta property="og:locale" content="zh-en">
+<meta property="og:locale" content="zh_EN">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_1.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_2.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/extract.png">
-<meta property="og:updated_time" content="2019-11-21T03:16:51.319Z">
+<meta property="article:published_time" content="2019-11-18T09:59:22.000Z">
+<meta property="article:modified_time" content="2019-11-21T03:16:51.319Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenTracing">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenTracing">
-<meta name="twitter:description" content="分布式追踪">
 <meta name="twitter:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_1.png">
     
     
@@ -50,7 +50,9 @@
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -60,7 +62,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -71,7 +73,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -86,7 +88,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -97,7 +99,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -120,7 +122,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -317,19 +319,19 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <!-- excerpt -->
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#概述"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#分布式追踪模型"><span class="toc-text">分布式追踪模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四个方面"><span class="toc-text">四个方面</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#分布式追踪"><span class="toc-text">分布式追踪</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#使用者"><span class="toc-text">使用者</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#OpenTracing"><span class="toc-text">OpenTracing</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Span"><span class="toc-text">Span</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tags"><span class="toc-text">Tags</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Logs"><span class="toc-text">Logs</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SpanContext"><span class="toc-text">SpanContext</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#例子"><span class="toc-text">例子</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Scopes-and-Threading"><span class="toc-text">Scopes and Threading</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍-1"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#访问当前Active-Span"><span class="toc-text">访问当前Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#在线程之间移动Span"><span class="toc-text">在线程之间移动Span</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Tracers"><span class="toc-text">Tracers</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍-2"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracer-Interface"><span class="toc-text">Tracer Interface</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Setting-up-a-Tracer"><span class="toc-text">Setting up a Tracer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Starting-a-new-Trace"><span class="toc-text">Starting a new Trace</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Accessing-the-Active-Span"><span class="toc-text">Accessing the Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Propagating-a-Trace-with-Inject-Extract"><span class="toc-text">Propagating a Trace with Inject/Extract</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracing-Systems"><span class="toc-text">Tracing Systems</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#概述"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#分布式追踪模型"><span class="toc-text">分布式追踪模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#四个方面"><span class="toc-text">四个方面</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#分布式追踪"><span class="toc-text">分布式追踪</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#使用者"><span class="toc-text">使用者</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#OpenTracing"><span class="toc-text">OpenTracing</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Span"><span class="toc-text">Span</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tags"><span class="toc-text">Tags</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Logs"><span class="toc-text">Logs</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SpanContext"><span class="toc-text">SpanContext</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#例子"><span class="toc-text">例子</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Scopes-and-Threading"><span class="toc-text">Scopes and Threading</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍-1"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#访问当前Active-Span"><span class="toc-text">访问当前Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#在线程之间移动Span"><span class="toc-text">在线程之间移动Span</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Tracers"><span class="toc-text">Tracers</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#介绍-2"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracer-Interface"><span class="toc-text">Tracer Interface</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Setting-up-a-Tracer"><span class="toc-text">Setting up a Tracer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Starting-a-new-Trace"><span class="toc-text">Starting a new Trace</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Accessing-the-Active-Span"><span class="toc-text">Accessing the Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Propagating-a-Trace-with-Inject-Extract"><span class="toc-text">Propagating a Trace with Inject&#x2F;Extract</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracing-Systems"><span class="toc-text">Tracing Systems</span></a></li></ol></li></ol>
 
 <h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>微服务提供了强大的架构，但并非没有挑战，尤其是在调试和观察复杂网络中的分布式事务方面–仅仅是因为没有内存中的调用或堆栈追踪可以这样做。</p>
 <p>这就是为什么会出现分布式追踪。分布式追踪为描述和分析跨进程事务提供了一种解决方案。分布式追踪的一些使用案例包括异常检测，诊断状态问题，分布式分析，资源归因和微服务工作负载建模。</p>
 <h3 id="分布式追踪模型"><a href="#分布式追踪模型" class="headerlink" title="分布式追踪模型"></a>分布式追踪模型</h3><br>
-<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="/2019/11/18/OpenTracing/images/tracing_1.png" alt=""></a></div>
+<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/tracing_1.png" alt=""></a></div>
 <br>
 1. Trace（追踪）：事务在分布式系统中移动时的描述。
 2. Span（跨度）：一种命名的定时操作，代表一部分工作流程。Span接受key:value标记以及附加到特定Span实例的细粒度，带时间戳的结构化日志。
 3. Span context（跨度上下文）：追踪伴随分布式事务的信息，包括它何时通过网络或通过消息总线将服务传递给服务。范围上下文包含追踪标识符，范围标识符以及追踪系统需要传播到下游服务的任何其他数据。
 
 <h3 id="四个方面"><a href="#四个方面" class="headerlink" title="四个方面"></a>四个方面</h3><p>从应用程序层分布式追踪系统的角度来看，现代软件系统如下图所示：<br><br></p>
-<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="/2019/11/18/OpenTracing/images/tracing_2.png" alt=""></a></div>
+<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/tracing_2.png" alt=""></a></div>
 
 <p>现代软件系统中的组件可以分为三类： </p>
 <ul>
@@ -437,7 +439,7 @@ SpanContext:
 <h4 id="Starting-a-new-Trace"><a href="#Starting-a-new-Trace" class="headerlink" title="Starting a new Trace"></a>Starting a new Trace</h4><p>每当创建新的Span而不引用父Span时，就会开始新的追踪。创建新的Span时，需要指定一个“操作名称”，它是一种自由格式的字符串，可用于帮助您识别该Span所涉及的代码。我们新追踪中的下一个Span可能是子Span，可以看作是在主Span内执行的子程序的表示。因此，此子Span与父级具有ChildOf关系。另一种关系类型是FollowsFrom，在特殊情况下使用，新的Span独立于父Span，例如在异步过程中。</p>
 <h4 id="Accessing-the-Active-Span"><a href="#Accessing-the-Active-Span" class="headerlink" title="Accessing the Active Span"></a>Accessing the Active Span</h4><p>追踪器可用于启用对ActiveSpan的访问。还可以通过scopeManager以某些语言访问ActiveSpans。</p>
 <h4 id="Propagating-a-Trace-with-Inject-Extract"><a href="#Propagating-a-Trace-with-Inject-Extract" class="headerlink" title="Propagating a Trace with Inject/Extract"></a>Propagating a Trace with Inject/Extract</h4><p>为了跨分布式系统中的进程边界进行追踪，服务需要能够继续由发送每个请求的客户端注入的trace。OpenTracing通过提供注入和提取方法来实现此目标，该方法将Span的上下文编码为载体。Inject方法允许将SpanContext传递给载体。例如，将追踪信息传递到客户的请求中，以便您将其发送到的服务器可以继续追踪。Extract方法完全相反，它从载体中提取SpanContext。例如，如果客户端存在活动请求，则开发人员必须使用io.opentracing.Tracer.extract方法提取SpanContext。<br><br></p>
-<div class="figure " style="width:;"><a class="fancybox" href="images/extract.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="/2019/11/18/OpenTracing/images/extract.png" alt=""></a></div>
+<div class="figure " style="width:;"><a class="fancybox" href="images/extract.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/extract.png" alt=""></a></div>
 
 <h4 id="Tracing-Systems"><a href="#Tracing-Systems" class="headerlink" title="Tracing Systems"></a>Tracing Systems</h4><p>下表列出了所有当前已知的OpenTracing追踪器：</p>
 <table>
@@ -482,7 +484,7 @@ SpanContext:
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/OpenTracing/">OpenTracing</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/OpenTracing/" rel="tag">OpenTracing</a>
 
             </div>
         
@@ -495,7 +497,7 @@ SpanContext:
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2020/02/21/Python面试问题汇总/"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
                     data-tooltip="Python面试问题汇总"
                     aria-label="PREVIOUS: Python面试问题汇总"
                 >
@@ -509,7 +511,7 @@ SpanContext:
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/10/17/Neutron-Metering-Agent源码分析/"
+                    href="/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
                     data-tooltip="Neutron-Metering-Agent源码分析"
                     aria-label="NEXT: Neutron-Metering-Agent源码分析"
                 >
@@ -593,26 +595,36 @@ SpanContext:
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/11/18/OpenTracing/"
+    class="leancloud_visitors"
+    data-flag-title="OpenTracing"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -634,7 +646,7 @@ SpanContext:
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2020/02/21/Python面试问题汇总/"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
                     data-tooltip="Python面试问题汇总"
                     aria-label="PREVIOUS: Python面试问题汇总"
                 >
@@ -648,7 +660,7 @@ SpanContext:
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/10/17/Neutron-Metering-Agent源码分析/"
+                    href="/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
                     data-tooltip="Neutron-Metering-Agent源码分析"
                     aria-label="NEXT: Neutron-Metering-Agent源码分析"
                 >
@@ -816,7 +828,9 @@ SpanContext:
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -825,5 +839,5 @@ SpanContext:
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

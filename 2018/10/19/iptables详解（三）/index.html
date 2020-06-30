@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（三） - Wang kuntian&#39;s Blog</title>
@@ -19,33 +19,33 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables详解（三）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save","dateCreated":"2018-10-19T17:08:00+08:00","dateModified":"2018-10-22T14:04:30+08:00","datePublished":"2018-10-19T17:08:00+08:00","description":"规则管理","headline":"iptables详解（三）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="规则管理">
-<meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="iptables详解（三）">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="规则管理">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-1.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/ping-1.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-2.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/ping-2.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-3.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/ping-3.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-4.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-5.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-6.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-7.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-8.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/ping-4.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-9.png">
-<meta property="og:updated_time" content="2018-10-22T06:04:30.398Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/ping-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/ping-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/ping-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-5.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-6.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-7.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-8.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/ping-4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-9.png">
+<meta property="article:published_time" content="2018-10-19T09:08:00.000Z">
+<meta property="article:modified_time" content="2018-10-22T06:04:30.398Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="iptables">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="iptables详解（三）">
-<meta name="twitter:description" content="规则管理">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/iptables-1.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/iptables-1.png">
     
     
         
@@ -55,12 +55,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/19/iptables详解（三）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -70,7 +72,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -81,7 +83,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -96,7 +98,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -107,7 +109,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -130,7 +132,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -334,61 +336,59 @@
 <h4 id="插入规则"><a href="#插入规则" class="headerlink" title="插入规则"></a>插入规则</h4><p>给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-1.png" alt="iptables"></p>
+<p><img src="images/iptables-1.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）</p>
 </div>
 
-<p>ping测试，没有通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-1.png" alt="ping"></p>
+<p>ping测试，没有通过，规则起作用。<br><img src="images/ping-1.png" alt="ping"></p>
 <h4 id="追加规则"><a href="#追加规则" class="headerlink" title="追加规则"></a>追加规则</h4><p>给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-2.png" alt="iptables"></p>
+<p><img src="images/iptables-2.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-A，表示追加到哪条链。（最后一个）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）</p>
 </div>
 
-<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-2.png" alt="ping"></p>
+<p>ping测试，依旧没有通过，规则没有起作用。<br><img src="images/ping-2.png" alt="ping"></p>
 <p>给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-3.png" alt="iptables"></p>
-<p>ping测试，通过，规则起作用。<br><img src="/2018/10/19/iptables详解（三）/images/ping-3.png" alt="ping"></p>
+<p><img src="images/iptables-3.png" alt="iptables"></p>
+<p>ping测试，通过，规则起作用。<br><img src="images/ping-3.png" alt="ping"></p>
 <div class="alert info no-icon"><p>规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。</p>
 </div>
 
 <h3 id="删除规则"><a href="#删除规则" class="headerlink" title="删除规则"></a>删除规则</h3><h4 id="根据规则的编号删除规则"><a href="#根据规则的编号删除规则" class="headerlink" title="根据规则的编号删除规则"></a>根据规则的编号删除规则</h4><p>查看filter表中INPUT链中的规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables --line -vnL INPUT</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-4.png" alt="iptables"></p>
+<p><img src="images/iptables-4.png" alt="iptables"></p>
 <p>删除第3条规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT 3</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-5.png" alt="iptables"></p>
+<p><img src="images/iptables-5.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-D，表示删除指定链中的某条规则。</p>
 </div>
 
 <h4 id="根据具体匹配条件与动作删除规则"><a href="#根据具体匹配条件与动作删除规则" class="headerlink" title="根据具体匹配条件与动作删除规则"></a>根据具体匹配条件与动作删除规则</h4><p>删除源地址为10.211.55.2，动作为ACCEPT的规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-6.png" alt="iptables"></p>
+<p><img src="images/iptables-6.png" alt="iptables"></p>
 <p>删除指定表中的所有规则。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -F</span><br></pre></td></tr></table></figure>
 
-<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="/2018/10/19/iptables详解（三）/images/iptables-7.png" alt="iptables"></p>
+<h3 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h3><p><img src="images/iptables-7.png" alt="iptables"></p>
 <p>修改规则中的动作从DROP改为REJECT。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-8.png" alt="iptables"></p>
+<p><img src="images/iptables-8.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-R INPUT 1，表示修改INPUT链中的第1条规则。</p>
 </div>
 
 <div class="alert warning no-icon"><p>必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。</p>
 </div>
 
-<p>ping测试。<br><img src="/2018/10/19/iptables详解（三）/images/ping-4.png" alt="ping"></p>
+<p>ping测试。<br><img src="images/ping-4.png" alt="ping"></p>
 <h5 id="指定默认策略"><a href="#指定默认策略" class="headerlink" title="指定默认策略"></a>指定默认策略</h5><p>修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -P INPUT DROP</span><br></pre></td></tr></table></figure>
 
-<p><img src="/2018/10/19/iptables详解（三）/images/iptables-9.png" alt="iptables"></p>
+<p><img src="images/iptables-9.png" alt="iptables"></p>
 <div class="alert danger no-icon"><p>-P INPUT DROP，将表中INPUT链的默认策略改为DROP。</p>
 </div>
 
@@ -403,7 +403,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/iptables/">iptables</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/iptables/" rel="tag">iptables</a>
 
             </div>
         
@@ -416,7 +416,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/22/iptables详解（四）/"
+                    href="/2018/10/22/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     data-tooltip="iptables详解（四）"
                     aria-label="PREVIOUS: iptables详解（四）"
                 >
@@ -430,7 +430,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/19/iptables详解（二）/"
+                    href="/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="iptables详解（二）"
                     aria-label="NEXT: iptables详解（二）"
                 >
@@ -457,7 +457,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -470,7 +470,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/&amp;title=iptables详解（三）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=iptables详解（三）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -483,7 +483,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -514,26 +514,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="iptables详解（三）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -555,7 +565,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/22/iptables详解（四）/"
+                    href="/2018/10/22/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     data-tooltip="iptables详解（四）"
                     aria-label="PREVIOUS: iptables详解（四）"
                 >
@@ -569,7 +579,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/19/iptables详解（二）/"
+                    href="/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="iptables详解（二）"
                     aria-label="NEXT: iptables详解（二）"
                 >
@@ -596,7 +606,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -609,7 +619,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/&amp;title=iptables详解（三）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=iptables详解（三）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -622,7 +632,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -656,7 +666,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -669,7 +679,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/&amp;title=iptables详解（三）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=iptables详解（三）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -682,7 +692,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables详解（三）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%89%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -737,7 +747,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -746,5 +758,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

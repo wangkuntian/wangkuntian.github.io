@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（二） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,21 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.config用于解析命令行和配置文件中的配置项。\n\n\n\n\n定义和注册配置选项12345678910111213141516171819202122232425262728293031323334353637service.pyimport osfrom oslo_config import cfgopts = [    cfg.StrOpt(        'host',        default='127.0.0.1',        help='host of node'    ),    cfg.IntOpt(        'collector_workers',        default=2,        help='Number of workers for collector service.'    ),]# 注册配置选项cfg.CONF.register_opts(opts)# 将配置选项注册为命令行选项cli_opts = [    cfg.StrOpt(        'os-tenant-id',        deprecated_group='DEFAULT',        default=os.environ.get('OS_TENANT_ID', ''),        help='Tenant ID to use for Openstack service access.'    ),    cfg.BoolOpt(        'insecure',        default=False,        help='xxx'    ),]cfg.CONF.register_cli_opts(cli_opts, group='service_credentials')\n\n配置选项支持的类型如下。\n\n\n\n类名\n说明\n\n\n\noslo_config.cfg.StrOpt\n字符串类型\n\n\noslo_config.cfg.BoolOpt\n布尔型\n\n\noslo_config.cfg.IntOpt\n整数类型\n\n\noslo_config.cfg.FloatOpt\n浮点数类型\n\n\noslo_config.cfg.ListOpt\n字符串列表类型\n\n\noslo_config.cfg.DictOpt\n字典类型，字典中的值需要是字符串类型。\n\n\noslo_config.cfg.MultiStrOpt\n可以分多次配置的字符串列表\n\n\noslo_config.cfg.IPOpt\nIP地址类型\n\n\noslo_config.cfg.HostnameOpt\n域名类型\n\n\noslo_config.cfg.URIOpt\nURI类型\n\n\n定义后的配置项，必须要注册才能使用。\n配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。\n注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。\n\n\n新的定义配置选项的方式1234567891011121314from oslo_config import cfgfrom oslo_config import typesPortType = types.Integer(1, 65535)common_opts = [    cfg.Opt(        'bind_port',        type=PortType(),        default=8080,        help='Port number to listen on.'    )]\n\n相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。\n使用配置文件和命令行选项指定配置选项为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。\n123from olso_config import cfgconf(sys.argv[1:], project='xyz')\n\n初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。\n12~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf\n\n配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。\n123456[DEFULT]host = 127.0.0.1collector_workers = 3[service_credentials]insecure = True\n\n用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。\n\n1--service_credentials-os-tenant-id abc123\n\n使用其他模块中已经注册过的配置选项对于已经注册过的配置选项，开发者可以直接访问。\n12345from oslo_config import cfgimport servicehost = cfg.CONF.hosttenant_id = cfg.CONF.service_credentials.os-tenant-id\n\n还可以使用import_opt来申明在别的模块中定义的配置选项。\n1234from oslo_config import cfgcfg.CONF.import_opt('host', 'service')host = cfg.CONF.host","dateCreated":"2019-05-09T16:49:58+08:00","dateModified":"2019-05-21T11:14:03+08:00","datePublished":"2019-05-09T16:49:58+08:00","description":"oslo.config用于解析命令行和配置文件中的配置项。","headline":"OpenStack通用库（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/","keywords":"OpenStack, Oslo, Config","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.config用于解析命令行和配置文件中的配置项。\n\n\n\n\n定义和注册配置选项12345678910111213141516171819202122232425262728293031323334353637service.pyimport osfrom oslo_config import cfgopts = [    cfg.StrOpt(        'host',        default='127.0.0.1',        help='host of node'    ),    cfg.IntOpt(        'collector_workers',        default=2,        help='Number of workers for collector service.'    ),]# 注册配置选项cfg.CONF.register_opts(opts)# 将配置选项注册为命令行选项cli_opts = [    cfg.StrOpt(        'os-tenant-id',        deprecated_group='DEFAULT',        default=os.environ.get('OS_TENANT_ID', ''),        help='Tenant ID to use for Openstack service access.'    ),    cfg.BoolOpt(        'insecure',        default=False,        help='xxx'    ),]cfg.CONF.register_cli_opts(cli_opts, group='service_credentials')\n配置选项支持的类型如下。\n\n\n\n类名\n说明\n\n\n\noslo_config.cfg.StrOpt\n字符串类型\n\n\noslo_config.cfg.BoolOpt\n布尔型\n\n\noslo_config.cfg.IntOpt\n整数类型\n\n\noslo_config.cfg.FloatOpt\n浮点数类型\n\n\noslo_config.cfg.ListOpt\n字符串列表类型\n\n\noslo_config.cfg.DictOpt\n字典类型，字典中的值需要是字符串类型。\n\n\noslo_config.cfg.MultiStrOpt\n可以分多次配置的字符串列表\n\n\noslo_config.cfg.IPOpt\nIP地址类型\n\n\noslo_config.cfg.HostnameOpt\n域名类型\n\n\noslo_config.cfg.URIOpt\nURI类型\n\n\n定义后的配置项，必须要注册才能使用。\n配置项还可以注册为命令行选项，之后，可以从命令行读取配置选项的值，并覆盖从配置文件中读取的值。\n注册配置选项时，可以把某些配置选项注册在一个特定的组下。默认的组是“DEFAULT”。\n\n\n新的定义配置选项的方式1234567891011121314from oslo_config import cfgfrom oslo_config import typesPortType = types.Integer(1, 65535)common_opts = [    cfg.Opt(        'bind_port',        type=PortType(),        default=8080,        help='Port number to listen on.'    )]\n\n相比于前面的方法，这种定义配置选项的方式能够更好地支持选项值得合法性检查，同时也能支持自定义选项类型。\n使用配置文件和命令行选项指定配置选项为了正确使用oslo.config，应用程序一般需要在启动的时候初始化。\n123from olso_config import cfgconf(sys.argv[1:], project='xyz')\n\n初始化之后，才能正常解析配置文件和命令行选项。最终用户可以用默认的命令行选项“–config-file”或者“–config-dir”来指定配置文件名或者位置。如果没有明确指定，默认按照下面的顺序来寻找配置文件。\n12~/.xyz/xyz.conf ~/xyz.conf /etc/xyz/xyz.conf /etc/xyz.conf\n\n配置文件一般采用类似.ini文件的格式，其中每一个Section对应oslo.config中定义的一个配置选项组，Section[DEFAULT]对应了默认组“DEFAULT”。\n123456[DEFULT]host = 127.0.0.1collector_workers = 3[service_credentials]insecure = True\n\n用命令行指定配置选项值时，如果是定义在某个选项组中的选项，命令行选项名中需要包括该组名作为前缀。\n\n1--service_credentials-os-tenant-id abc123\n\n使用其他模块中已经注册过的配置选项对于已经注册过的配置选项，开发者可以直接访问。\n12345from oslo_config import cfgimport servicehost &#x3D; cfg.CONF.hosttenant_id &#x3D; cfg.CONF.service_credentials.os-tenant-id\n还可以使用import_opt来申明在别的模块中定义的配置选项。\n1234from oslo_config import cfgcfg.CONF.import_opt('host', 'service')host = cfg.CONF.host","dateCreated":"2019-05-09T16:49:58+08:00","dateModified":"2019-05-21T11:14:03+08:00","datePublished":"2019-05-09T16:49:58+08:00","description":"oslo.config用于解析命令行和配置文件中的配置项。","headline":"OpenStack通用库（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"OpenStack, Oslo, Config","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.config用于解析命令行和配置文件中的配置项。">
-<meta name="keywords" content="OpenStack,Oslo,Config">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用库（二）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="oslo.config用于解析命令行和配置文件中的配置项。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-05-21T03:14:03.858Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-05-09T08:49:58.000Z">
+<meta property="article:modified_time" content="2019-05-21T03:14:03.858Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Oslo">
+<meta property="article:tag" content="Config">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenStack通用库（二）">
-<meta name="twitter:description" content="oslo.config用于解析命令行和配置文件中的配置项。">
     
     
         
@@ -41,12 +43,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +60,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +71,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +86,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +97,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +120,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -318,7 +322,6 @@
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#定义和注册配置选项"><span class="toc-text">定义和注册配置选项</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#新的定义配置选项的方式"><span class="toc-text">新的定义配置选项的方式</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#使用配置文件和命令行选项指定配置选项"><span class="toc-text">使用配置文件和命令行选项指定配置选项</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#使用其他模块中已经注册过的配置选项"><span class="toc-text">使用其他模块中已经注册过的配置选项</span></a></li></ol>
 
 <h3 id="定义和注册配置选项"><a href="#定义和注册配置选项" class="headerlink" title="定义和注册配置选项"></a>定义和注册配置选项</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">service.py</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">opts = [</span><br><span class="line">    cfg.StrOpt(</span><br><span class="line">        <span class="string">'host'</span>,</span><br><span class="line">        default=<span class="string">'127.0.0.1'</span>,</span><br><span class="line">        help=<span class="string">'host of node'</span></span><br><span class="line">    ),</span><br><span class="line">    cfg.IntOpt(</span><br><span class="line">        <span class="string">'collector_workers'</span>,</span><br><span class="line">        default=<span class="number">2</span>,</span><br><span class="line">        help=<span class="string">'Number of workers for collector service.'</span></span><br><span class="line">    ),</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"><span class="comment"># 注册配置选项</span></span><br><span class="line">cfg.CONF.register_opts(opts)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 将配置选项注册为命令行选项</span></span><br><span class="line">cli_opts = [</span><br><span class="line">    cfg.StrOpt(</span><br><span class="line">        <span class="string">'os-tenant-id'</span>,</span><br><span class="line">        deprecated_group=<span class="string">'DEFAULT'</span>,</span><br><span class="line">        default=os.environ.get(<span class="string">'OS_TENANT_ID'</span>, <span class="string">''</span>),</span><br><span class="line">        help=<span class="string">'Tenant ID to use for Openstack service access.'</span></span><br><span class="line">    ),</span><br><span class="line">    cfg.BoolOpt(</span><br><span class="line">        <span class="string">'insecure'</span>,</span><br><span class="line">        default=<span class="literal">False</span>,</span><br><span class="line">        help=<span class="string">'xxx'</span></span><br><span class="line">    ),</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line">cfg.CONF.register_cli_opts(cli_opts, group=<span class="string">'service_credentials'</span>)</span><br></pre></td></tr></table></figure>
-
 <p>配置选项支持的类型如下。</p>
 <table>
 <thead>
@@ -390,8 +393,7 @@
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--service_credentials-os-tenant-id abc123</span><br></pre></td></tr></table></figure>
 
 <h3 id="使用其他模块中已经注册过的配置选项"><a href="#使用其他模块中已经注册过的配置选项" class="headerlink" title="使用其他模块中已经注册过的配置选项"></a>使用其他模块中已经注册过的配置选项</h3><p>对于已经注册过的配置选项，开发者可以直接访问。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">from oslo_config import cfg</span><br><span class="line">import service</span><br><span class="line"></span><br><span class="line">host = cfg.CONF.host</span><br><span class="line">tenant_id = cfg.CONF.service_credentials.os-tenant-id</span><br></pre></td></tr></table></figure>
-
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">from oslo_config import cfg</span><br><span class="line">import service</span><br><span class="line"></span><br><span class="line">host &#x3D; cfg.CONF.host</span><br><span class="line">tenant_id &#x3D; cfg.CONF.service_credentials.os-tenant-id</span><br></pre></td></tr></table></figure>
 <p>还可以使用import_opt来申明在别的模块中定义的配置选项。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">cfg.CONF.import_opt(<span class="string">'host'</span>, <span class="string">'service'</span>)</span><br><span class="line">host = cfg.CONF.host</span><br></pre></td></tr></table></figure>
             
@@ -404,7 +406,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Config/">Config</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Config/" rel="tag">Config</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/" rel="tag">Oslo</a>
 
             </div>
         
@@ -417,7 +419,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/09/OpenStack通用库（三）/"
+                    href="/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="OpenStack通用库（三）"
                     aria-label="PREVIOUS: OpenStack通用库（三）"
                 >
@@ -431,7 +433,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/07/OpenStack通用库（一）/"
+                    href="/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="OpenStack通用库（一）"
                     aria-label="NEXT: OpenStack通用库（一）"
                 >
@@ -458,7 +460,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -471,7 +473,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/&amp;title=OpenStack通用库（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=OpenStack通用库（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -484,7 +486,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -515,26 +517,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="OpenStack通用库（二）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -556,7 +568,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/09/OpenStack通用库（三）/"
+                    href="/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="OpenStack通用库（三）"
                     aria-label="PREVIOUS: OpenStack通用库（三）"
                 >
@@ -570,7 +582,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/07/OpenStack通用库（一）/"
+                    href="/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="OpenStack通用库（一）"
                     aria-label="NEXT: OpenStack通用库（一）"
                 >
@@ -597,7 +609,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -610,7 +622,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/&amp;title=OpenStack通用库（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=OpenStack通用库（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -623,7 +635,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -657,7 +669,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -670,7 +682,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/&amp;title=OpenStack通用库（二）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=OpenStack通用库（二）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -683,7 +695,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack通用库（二）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -738,7 +750,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -747,5 +761,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

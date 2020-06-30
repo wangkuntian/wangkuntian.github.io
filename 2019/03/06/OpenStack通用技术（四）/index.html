@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用技术（四） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,20 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。\n\n\n\n\nEventletEventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。\n123456789import eventletdef output(a):    print agt = eventlet.spawn(output, 'Hello world')gt.wait()\n\neventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。\n协程目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。\n与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。\n使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。\n协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。\n","dateCreated":"2019-03-06T15:51:59+08:00","dateModified":"2019-05-17T11:34:03+08:00","datePublished":"2019-03-06T15:51:59+08:00","description":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。","headline":"OpenStack通用技术（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/","keywords":"OpenStack, Eventlet","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。\n\n\n\n\nEventletEventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。\n123456789import eventletdef output(a):    print agt = eventlet.spawn(output, 'Hello world')gt.wait()\n\neventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。\n协程目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。\n与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。\n使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。\n协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。\n","dateCreated":"2019-03-06T15:51:59+08:00","dateModified":"2019-05-17T11:34:03+08:00","datePublished":"2019-03-06T15:51:59+08:00","description":"Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。","headline":"OpenStack通用技术（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"OpenStack, Eventlet","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。">
-<meta name="keywords" content="OpenStack,Eventlet">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用技术（四）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-05-17T03:34:03.811Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-03-06T07:51:59.000Z">
+<meta property="article:modified_time" content="2019-05-17T03:34:03.811Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Eventlet">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenStack通用技术（四）">
-<meta name="twitter:description" content="Eventlet是一个Python的网络库，它可以通过协程的方式来实现并发。">
     
     
         
@@ -41,12 +42,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +59,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +70,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +85,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +96,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +119,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -336,7 +339,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Eventlet/">Eventlet</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Eventlet/" rel="tag">Eventlet</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
 
             </div>
         
@@ -349,7 +352,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/04/02/Python内置函数/"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
                     data-tooltip="Python内置函数"
                     aria-label="PREVIOUS: Python内置函数"
                 >
@@ -363,7 +366,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/03/05/OpenStack通用技术（三）/"
+                    href="/2019/03/05/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="OpenStack通用技术（三）"
                     aria-label="NEXT: OpenStack通用技术（三）"
                 >
@@ -390,7 +393,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -403,7 +406,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/&amp;title=OpenStack通用技术（四）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=OpenStack通用技术（四）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -416,7 +419,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -447,26 +450,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="OpenStack通用技术（四）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -488,7 +501,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/04/02/Python内置函数/"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
                     data-tooltip="Python内置函数"
                     aria-label="PREVIOUS: Python内置函数"
                 >
@@ -502,7 +515,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/03/05/OpenStack通用技术（三）/"
+                    href="/2019/03/05/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="OpenStack通用技术（三）"
                     aria-label="NEXT: OpenStack通用技术（三）"
                 >
@@ -529,7 +542,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -542,7 +555,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/&amp;title=OpenStack通用技术（四）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=OpenStack通用技术（四）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -555,7 +568,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -589,7 +602,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -602,7 +615,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/&amp;title=OpenStack通用技术（四）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=OpenStack通用技术（四）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -615,7 +628,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack通用技术（四）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/06/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E5%9B%9B%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -670,7 +683,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -679,5 +694,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

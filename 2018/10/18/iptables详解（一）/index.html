@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>iptables详解（一） - Wang kuntian&#39;s Blog</title>
@@ -19,24 +19,24 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n相关概念防火墙从逻辑上讲。 防火墙可以分为主机防火墙和网络防火墙。\n\n主机防火墙：主要针对单个主机进行防护。\n\n网络防火墙：往往处于网络入口边缘，针对网络入口进行防护，服务于防火墙背后的本地局域网。\n\n\n网络防火墙和主机防火墙并不冲突，可以理解为，网络防火墙主外（集体），主机防火墙主内（个人）。\n\n\n从物理上讲，防火墙可以分为硬件防火墙和软件防火墙。\n\n硬件防火墙：在硬件级别实现部分防火墙功能，另一部分功能基于软件实现，性能高，成本高。\n软件防火墙：应用软件处理逻辑运行于通用硬件平台之上的防火墙，性能低，成本低。\n\nnetfilter/iptablesiptables不是真正的防火墙，我们可以把它理解为一个客户端代理，用户通过iptables，将用户的安全设定执行到对应的“安全框架”中，这个“安全框架”才是真正的防火墙，这个框架的名字叫netfilter。\nnetfilter才是防火墙真正的安全框架（framework），netfilter位于内核空间。iptables其实是一个命令行工具，位于用户空间，我们用这个工具操作真正的框架。\nnetfilter/iptables（下文中简称iptables）组成Linux平台下的包过滤防火墙，与大多数的Linux软件一样，这个包过滤防火墙是免费的，它可以代替昂贵的商业防火墙解决方案，完成包过滤、封包重定向和网络地址转换（NAT）等功能。\nnetfilter是Linux操作系统核心层内部的一个数据包处理模块。它具有以下功能：\n\n网络地址转换（Network Address Translate）。\n数据包内容修改。\n数据包过滤的防火墙功能。\n\niptables基础规则iptables是按照规则办事的。规则（rule）就是网络管理员预定义的条件，规则一般定义为“如果数据包头符合这样的条件，就这样处理这个数据包”。规则存储在内核空间的信息包过滤表中，这些规则分别指定了源地址、目的地址、传输协议（如TCP、UDP、ICMP）和服务类型（如HTTP、FTP和SMTP）等。当数据包与规则匹配时，iptables就会根据规则所定义的方法来处理这些数据包，如放行（accept）、拒绝（reject）和丢弃（drop）等。配置防火墙的主要工作就是添加、修改和删除这些规则。\n当客户端访问服务器的web服务时，客户端发送报文到网卡，而tcp/ip协议栈是属于内核的一部分，所以，客户端的信息会通过内核的TCP协议传输到用户空间中的web服务中，而此时，客户端报文的目标终点为web服务所监听的套接字（IP:Port）上，当web服务需要响应客户端请求时，web服务发出的响应报文的目标终点则为客户端。这个时候，web服务所监听的IP与端口发而变成了原点，netfilter才是真正的防火墙，它是内核的一部分，所以，如果我们想要防火墙起作用，则需要在内核中设置关卡，所有进出的报文都必须通过这些关卡，经过检查后，符合放行条件的才能放行，符合阻拦条件的则需要被阻拦，于是就出现了input关卡和output关卡，而这些关卡在iptables中称为“链”。\n\n报文的流向：到达本机某进程的报文：prerouting -&gt; input。由本机转发的报文：prerouting -&gt; forward -&gt; postrouting。由本机的某进程发出的报文（通常为响应报文）：output -&gt; postrouting。\n\n\n匹配条件匹配条件分为基本匹配条件与扩展匹配条件。\n\n基本匹配条件：源地址Source IP，目标地址 Destination IP。\n扩展匹配条件：源端口 Source Port，目标端口 Destination Port。\n\n处理动作\naccept：允许数据包通过。\ndrop：直接丢弃数据包，不给任何回应消息。\nreject：拒绝数据包通过，必要时会给数据发送端一个响应的信息，客户端刚请求就会收到拒绝的信息。\nsnat：源地址转换，解决内网用户用同一个公网地址上网的问题。\nmasquerade：是snat的一种特殊形式，适用于动态的、临时会变的ip上。\ndnat：目标地址转换。\nredirect：在本机做端口映射。\nlog：在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是除了记录以外不对数据包做任何操作，仍然让下一条规则去匹配。\n\n链多个规则形成链。\n\n表把具有相同功能的规则的集合叫做“表”，所以，不同功能的规则，我们可以放置在不同的表中进行管理。iptables为我们定义了4种表。\n\nfilter表： 负责过滤功能，防火墙；内核模块：iptables_filter。\nnat表：network address translation，网络地址转换功能；内核模块：iptable_nat。\nmangle表：拆解报文，做出修改，并重新封装；iptable_mangle。\nraw表：关闭nat表启用的连接追踪机制；iptable_raw。\n\n链和表的关系每个链中的规则都存在哪些表。prerouting的规则可以存在于：raw表、mangle表、nat表。input的规则可以存在于：mangle表、filter表。forward的规则可以存在于：mangle表、filter表。output的规则可以存在于：raw表、mangle表、nat表、filter表。postrouting的规则可以存在于：mangle表、nat表。\n\n\n链中规则的执行优先级：raw表 &gt; mangle表 &gt; nat表 &gt; filter表\n\n\n\n数据经过防火墙的流程","dateCreated":"2018-10-18T14:24:44+08:00","dateModified":"2019-02-14T16:04:06+08:00","datePublished":"2018-10-18T14:24:44+08:00","description":"iptables基础","headline":"iptables详解（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/18/iptables详解（一）/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n相关概念防火墙从逻辑上讲。 防火墙可以分为主机防火墙和网络防火墙。\n\n主机防火墙：主要针对单个主机进行防护。\n\n网络防火墙：往往处于网络入口边缘，针对网络入口进行防护，服务于防火墙背后的本地局域网。\n\n\n网络防火墙和主机防火墙并不冲突，可以理解为，网络防火墙主外（集体），主机防火墙主内（个人）。\n\n\n从物理上讲，防火墙可以分为硬件防火墙和软件防火墙。\n\n硬件防火墙：在硬件级别实现部分防火墙功能，另一部分功能基于软件实现，性能高，成本高。\n软件防火墙：应用软件处理逻辑运行于通用硬件平台之上的防火墙，性能低，成本低。\n\nnetfilter/iptablesiptables不是真正的防火墙，我们可以把它理解为一个客户端代理，用户通过iptables，将用户的安全设定执行到对应的“安全框架”中，这个“安全框架”才是真正的防火墙，这个框架的名字叫netfilter。\nnetfilter才是防火墙真正的安全框架（framework），netfilter位于内核空间。iptables其实是一个命令行工具，位于用户空间，我们用这个工具操作真正的框架。\nnetfilter/iptables（下文中简称iptables）组成Linux平台下的包过滤防火墙，与大多数的Linux软件一样，这个包过滤防火墙是免费的，它可以代替昂贵的商业防火墙解决方案，完成包过滤、封包重定向和网络地址转换（NAT）等功能。\nnetfilter是Linux操作系统核心层内部的一个数据包处理模块。它具有以下功能：\n\n网络地址转换（Network Address Translate）。\n数据包内容修改。\n数据包过滤的防火墙功能。\n\niptables基础规则iptables是按照规则办事的。规则（rule）就是网络管理员预定义的条件，规则一般定义为“如果数据包头符合这样的条件，就这样处理这个数据包”。规则存储在内核空间的信息包过滤表中，这些规则分别指定了源地址、目的地址、传输协议（如TCP、UDP、ICMP）和服务类型（如HTTP、FTP和SMTP）等。当数据包与规则匹配时，iptables就会根据规则所定义的方法来处理这些数据包，如放行（accept）、拒绝（reject）和丢弃（drop）等。配置防火墙的主要工作就是添加、修改和删除这些规则。\n当客户端访问服务器的web服务时，客户端发送报文到网卡，而tcp/ip协议栈是属于内核的一部分，所以，客户端的信息会通过内核的TCP协议传输到用户空间中的web服务中，而此时，客户端报文的目标终点为web服务所监听的套接字（IP:Port）上，当web服务需要响应客户端请求时，web服务发出的响应报文的目标终点则为客户端。这个时候，web服务所监听的IP与端口发而变成了原点，netfilter才是真正的防火墙，它是内核的一部分，所以，如果我们想要防火墙起作用，则需要在内核中设置关卡，所有进出的报文都必须通过这些关卡，经过检查后，符合放行条件的才能放行，符合阻拦条件的则需要被阻拦，于是就出现了input关卡和output关卡，而这些关卡在iptables中称为“链”。\n\n报文的流向：到达本机某进程的报文：prerouting -&gt; input。由本机转发的报文：prerouting -&gt; forward -&gt; postrouting。由本机的某进程发出的报文（通常为响应报文）：output -&gt; postrouting。\n\n\n匹配条件匹配条件分为基本匹配条件与扩展匹配条件。\n\n基本匹配条件：源地址Source IP，目标地址 Destination IP。\n扩展匹配条件：源端口 Source Port，目标端口 Destination Port。\n\n处理动作\naccept：允许数据包通过。\ndrop：直接丢弃数据包，不给任何回应消息。\nreject：拒绝数据包通过，必要时会给数据发送端一个响应的信息，客户端刚请求就会收到拒绝的信息。\nsnat：源地址转换，解决内网用户用同一个公网地址上网的问题。\nmasquerade：是snat的一种特殊形式，适用于动态的、临时会变的ip上。\ndnat：目标地址转换。\nredirect：在本机做端口映射。\nlog：在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是除了记录以外不对数据包做任何操作，仍然让下一条规则去匹配。\n\n链多个规则形成链。\n\n表把具有相同功能的规则的集合叫做“表”，所以，不同功能的规则，我们可以放置在不同的表中进行管理。iptables为我们定义了4种表。\n\nfilter表： 负责过滤功能，防火墙；内核模块：iptables_filter。\nnat表：network address translation，网络地址转换功能；内核模块：iptable_nat。\nmangle表：拆解报文，做出修改，并重新封装；iptable_mangle。\nraw表：关闭nat表启用的连接追踪机制；iptable_raw。\n\n链和表的关系每个链中的规则都存在哪些表。prerouting的规则可以存在于：raw表、mangle表、nat表。input的规则可以存在于：mangle表、filter表。forward的规则可以存在于：mangle表、filter表。output的规则可以存在于：raw表、mangle表、nat表、filter表。postrouting的规则可以存在于：mangle表、nat表。\n\n\n链中规则的执行优先级：raw表 &gt; mangle表 &gt; nat表 &gt; filter表\n\n\n\n数据经过防火墙的流程","dateCreated":"2018-10-18T14:24:44+08:00","dateModified":"2019-02-14T16:04:06+08:00","datePublished":"2018-10-18T14:24:44+08:00","description":"iptables基础","headline":"iptables详解（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="iptables基础">
-<meta name="keywords" content="iptables">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="iptables详解（一）">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="iptables基础">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/rules.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/links.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/tables.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/iptables.png">
-<meta property="og:updated_time" content="2019-02-14T08:04:06.852Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/rules.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/links.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/tables.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/iptables.png">
+<meta property="article:published_time" content="2018-10-18T06:24:44.000Z">
+<meta property="article:modified_time" content="2019-02-14T08:04:06.852Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="iptables">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="iptables详解（一）">
-<meta name="twitter:description" content="iptables基础">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/rules.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/rules.png">
     
     
         
@@ -46,12 +46,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/18/iptables详解（一）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -61,7 +63,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -72,7 +74,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -87,7 +89,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -98,7 +100,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -121,7 +123,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -319,7 +321,7 @@
         <div class="main-content-wrap">
             <!-- excerpt -->
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#相关概念"><span class="toc-text">相关概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#防火墙"><span class="toc-text">防火墙</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#netfilter-iptables"><span class="toc-text">netfilter/iptables</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables基础"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#规则"><span class="toc-text">规则</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#匹配条件"><span class="toc-text">匹配条件</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#处理动作"><span class="toc-text">处理动作</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#链"><span class="toc-text">链</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#表"><span class="toc-text">表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#链和表的关系"><span class="toc-text">链和表的关系</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据经过防火墙的流程"><span class="toc-text">数据经过防火墙的流程</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#相关概念"><span class="toc-text">相关概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#防火墙"><span class="toc-text">防火墙</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#netfilter-iptables"><span class="toc-text">netfilter&#x2F;iptables</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables基础"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#规则"><span class="toc-text">规则</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#匹配条件"><span class="toc-text">匹配条件</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#处理动作"><span class="toc-text">处理动作</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#链"><span class="toc-text">链</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#表"><span class="toc-text">表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#链和表的关系"><span class="toc-text">链和表的关系</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据经过防火墙的流程"><span class="toc-text">数据经过防火墙的流程</span></a></li></ol></li></ol>
 
 <h3 id="相关概念"><a href="#相关概念" class="headerlink" title="相关概念"></a>相关概念</h3><h4 id="防火墙"><a href="#防火墙" class="headerlink" title="防火墙"></a>防火墙</h4><p>从逻辑上讲。 防火墙可以分为主机防火墙和网络防火墙。</p>
 <ul>
@@ -347,7 +349,7 @@
 </ol>
 <h3 id="iptables基础"><a href="#iptables基础" class="headerlink" title="iptables基础"></a>iptables基础</h3><h4 id="规则"><a href="#规则" class="headerlink" title="规则"></a>规则</h4><p>iptables是按照规则办事的。规则（rule）就是网络管理员预定义的条件，规则一般定义为“如果数据包头符合这样的条件，就这样处理这个数据包”。规则存储在内核空间的信息包过滤表中，这些规则分别指定了源地址、目的地址、传输协议（如TCP、UDP、ICMP）和服务类型（如HTTP、FTP和SMTP）等。<br>当数据包与规则匹配时，iptables就会根据规则所定义的方法来处理这些数据包，如放行（accept）、拒绝（reject）和丢弃（drop）等。配置防火墙的主要工作就是添加、修改和删除这些规则。</p>
 <p>当客户端访问服务器的web服务时，客户端发送报文到网卡，而tcp/ip协议栈是属于内核的一部分，所以，客户端的信息会通过内核的TCP协议传输到用户空间中的web服务中，而此时，客户端报文的目标终点为web服务所监听的套接字（IP:Port）上，当web服务需要响应客户端请求时，web服务发出的响应报文的目标终点则为客户端。这个时候，web服务所监听的IP与端口发而变成了原点，netfilter才是真正的防火墙，它是内核的一部分，所以，如果我们想要防火墙起作用，则需要在内核中设置关卡，所有进出的报文都必须通过这些关卡，经过检查后，符合放行条件的才能放行，符合阻拦条件的则需要被阻拦，于是就出现了input关卡和output关卡，而<span class="highlight-text danger">这些关卡在iptables中称为“链”。</span></p>
-<p><img src="/2018/10/18/iptables详解（一）/images/rules.png" alt="iptables-rules"></p>
+<p><img src="images/rules.png" alt="iptables-rules"></p>
 <div class="alert info no-icon"><p>报文的流向：<br>到达本机某进程的报文：prerouting -&gt; input。<br>由本机转发的报文：prerouting -&gt; forward -&gt; postrouting。<br>由本机的某进程发出的报文（通常为响应报文）：output -&gt; postrouting。</p>
 </div>
 
@@ -367,7 +369,7 @@
 <li><strong>log</strong>：在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是除了记录以外不对数据包做任何操作，仍然让下一条规则去匹配。</li>
 </ul>
 <h4 id="链"><a href="#链" class="headerlink" title="链"></a>链</h4><p>多个规则形成链。</p>
-<p><img src="/2018/10/18/iptables详解（一）/images/links.png" alt="iptables-links"></p>
+<p><img src="images/links.png" alt="iptables-links"></p>
 <h4 id="表"><a href="#表" class="headerlink" title="表"></a>表</h4><p>把具有相同功能的规则的集合叫做“表”，所以，不同功能的规则，我们可以放置在不同的表中进行管理。<br>iptables为我们定义了4种表。</p>
 <ul>
 <li><strong>filter</strong>表： 负责过滤功能，防火墙；内核模块：iptables_filter。</li>
@@ -381,8 +383,8 @@
 <div class="alert info no-icon"><p>链中规则的执行优先级：<br>raw表 &gt; mangle表 &gt; nat表 &gt; filter表</p>
 </div>
 
-<p><img src="/2018/10/18/iptables详解（一）/images/tables.png" alt="iptables-tables"></p>
-<h4 id="数据经过防火墙的流程"><a href="#数据经过防火墙的流程" class="headerlink" title="数据经过防火墙的流程"></a>数据经过防火墙的流程</h4><p><img src="/2018/10/18/iptables详解（一）/images/iptables.png" alt="iptables"></p>
+<p><img src="images/tables.png" alt="iptables-tables"></p>
+<h4 id="数据经过防火墙的流程"><a href="#数据经过防火墙的流程" class="headerlink" title="数据经过防火墙的流程"></a>数据经过防火墙的流程</h4><p><img src="images/iptables.png" alt="iptables"></p>
             
 
 
@@ -393,7 +395,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/iptables/">iptables</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/iptables/" rel="tag">iptables</a>
 
             </div>
         
@@ -406,7 +408,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/19/iptables详解（二）/"
+                    href="/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="iptables详解（二）"
                     aria-label="PREVIOUS: iptables详解（二）"
                 >
@@ -420,7 +422,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/16/吾爱故乡/"
+                    href="/2018/10/16/%E5%90%BE%E7%88%B1%E6%95%85%E4%B9%A1/"
                     data-tooltip="吾爱故乡"
                     aria-label="NEXT: 吾爱故乡"
                 >
@@ -447,7 +449,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -460,7 +462,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/&amp;title=iptables详解（一）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=iptables详解（一）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -473,7 +475,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -504,26 +506,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="iptables详解（一）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -545,7 +557,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/19/iptables详解（二）/"
+                    href="/2018/10/19/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="iptables详解（二）"
                     aria-label="PREVIOUS: iptables详解（二）"
                 >
@@ -559,7 +571,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/10/16/吾爱故乡/"
+                    href="/2018/10/16/%E5%90%BE%E7%88%B1%E6%95%85%E4%B9%A1/"
                     data-tooltip="吾爱故乡"
                     aria-label="NEXT: 吾爱故乡"
                 >
@@ -586,7 +598,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -599,7 +611,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/&amp;title=iptables详解（一）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=iptables详解（一）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -612,7 +624,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -646,7 +658,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -659,7 +671,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/&amp;title=iptables详解（一）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=iptables详解（一）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -672,7 +684,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables详解（一）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3%EF%BC%88%E4%B8%80%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -727,7 +739,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -736,5 +750,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

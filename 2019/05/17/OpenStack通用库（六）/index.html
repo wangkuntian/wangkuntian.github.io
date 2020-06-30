@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（六） - Wang kuntian&#39;s Blog</title>
@@ -19,21 +19,22 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。\n\n\n\n\n示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142from taskflow import enginesfrom taskflow.patterns import linear_flow as lffrom taskflow import taskclass CallJim(task.Task):    def execute(self, jim_number, *args, **kwargs):        print 'Calling Jim %s.' % jim_number    def revert(self, jim_number, *args, **kwargs):        print 'Calling %s and apologizing.' % jim_numberclass CallJoe(task.Task):    def execute(self, joe_number, *args, **kwargs):        print 'Calling Joe %s.' % joe_number    def revert(self, joe_number, *args, **kwargs):        print 'Calling %s and apologizing.' % joe_numberclass CallHY(task.Task):    def execute(self, hy_number, *args, **kwargs):        raise IOError('HY not at home right now.')flow = lf.Flow('simple-linear').add(    CallJim(),    CallJoe(),    CallHY())try:    engines.run(        flow=flow,        engine_conf=&#123;'engine': 'serial'&#125;,        store=dict(jim_number=444,                   joe_number=555,                   hy_number=666)    )except Exception as e:    print 'Flow failed: %s' % e\n\ntask这个示例首先定义了三个task：CallJim、CallJoe和CallHY。在TaskFlow库中，task是拥有执行（execute）和回滚（revert）功能的最小单位（TaskFlow中最小的单位是atom，其他所有类包括Task都是Atom类的子类）。在Task类中，允许开发者定义自己的execute函数和revert函数，分别用来执行task和回退task到之前一次的执行结果。\n然后新新建一个线性流flow，并在其中顺序加入上述3个task对象。TaskFlow中的流flow用来关联各个task，并且规范这些task之间的执行和回滚顺序。\nTaskFlow中所支持的流类型。\n\n\n\n流类型\n说明\n\n\n\nlinear_flow.Flow\n线性流，流中的task/flow按加入顺序执行，按加入顺序的倒序回滚。\n\n\nunordered_flow.Flow\n无顺序流，流中的task/flow的执行和回滚可以按任意顺序。\n\n\ngraph_flow.Flow\n图流，流中的task/flow按照显式指定的依赖关系，或者通过其间provides和requires属性之间的隐含依赖关系，来执行或回滚。\n\n\n这个示例中，由于采用的是线性流，所以这个流中task的执行顺序为：CallJim -&gt; CallJoe -&gt; CallHY，回滚顺序是其倒序。\nretry流中不仅可以加入任务，还可以嵌套加入其他的流。此外，流还可以通过retry来控制当错误发生时，该如何重试。\nTaskFlow支持的retry类型。\n\n\n\nRetry类型\n说明\n\n\n\nAlwaysRevert\n错误发生时，回滚子流。\n\n\nAlwaysRevertAll\n错误发生时，回滚所有子流。\n\n\nTimes\n错误发生时，重试子流。\n\n\nForEach\n每次错误发生时，为子流中的atom提供一个新的值，然后重试，直到成功或者此retry中定义的值用光为止。\n\n\nParameterizedForEach\n类似ForEach，但是是从后台存储中获取重试的值\n\n\n示例。\n12345678910111213141516171819202122232425class EchoTask(task.Task):    def execute(self, name, *args, **kwargs):        print 'my name is %s' % name    def revert(self, name, *args, **kwargs):        print 'sorry, my name is %s' % nameflow = lf.Flow('f1').add(    EchoTask('t1'),    lf.Flow(        'f2',        retry=retry.ForEach(            values=['a', 'b', 'c'],            name='r1',            provides='value'        )    ).add(        EchoTask('t2'),        EchoTask('t3', requires='value')    ),    EchoTask('t4'))\n\n上面的示例，构造了一个线性流f1，它按顺序执行任务t1、子线性流f2、和任务t4。子流f2按序执行任务t2和t3。\n子流f2定义了ForEach类型的retry“r1”。当任务t2或者t3失败时，子流t2首先会回滚。然后“r1”会指导子流f2使用值“a”来重新运行。如果再次失败，子流f2回滚后会再次使用“b”运行；仍然失败后回滚使用值“c”运行。如果值“c”也运行失败，由于“r1”中能够提供的值已经被完全用完，子流f2回滚后不会重新运行。\nengineTaskFlow库中的engine用来载入一个flow，然后驱动flow中的task/flow运行。可以通过engine_conf来指明不同的engine类型。\n\n\n\nengine类型\n说明\n\n\n\n‘serial’\n所有的task都在调用engine.run的那个线程中运行。\n\n\n‘parallel’\ntask可能会被调度到不同的线程中并发运行。\n\n\n‘worker-based’\ntask会被调度到不同的worker中运行。一个worker是一个单独的专门用来运行某些特定task的进程，这个worker进程可以在远程机器上，利用AMQP来通信。\n\n\ntask和flow的输入/输出示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354from taskflow.patterns import graph_flow as gffrom taskflow.patterns import linear_flow as lffrom taskflow import taskfrom taskflow import enginesclass Adder(task.Task):    def execute(self, x, y, *args, **kwargs):        return x + yflow = gf.Flow('root').add(    lf.Flow('nested_linear').add(        # 从后台存储中读取名为y3和y4的参数值，并以参数x，y传递给execute方法        # x2 = y3 + y4        Adder('add2', provides='x2', rebind=['y3', 'y4']),        # x1 = y1 + y2        Adder('add1', provides='x1', rebind=['y1', 'y2']),    ),    # x5 = x1 + x3    Adder('add5', provides='x5', rebind=['x1', 'x3']),    # x3 = x1 + x2    Adder('add3', provides='x3', rebind=['x1', 'x2']),    # x4 = x2 + y5    Adder('add4', provides='x4', rebind=['x2', 'y5']),    # x6 = x5 + x4    Adder('add6', provides='x6', rebind=['x5', 'x4']),    # x7 = x6 + x6    Adder('add7', provides='x7', rebind=['x6', 'x6']))store = &#123;    'y1': 1,    'y2': 3,    'y3': 5,    'y4': 7,    'y5': 9&#125;result = engines.run(    flow=flow,    store=store,    engine_conf='serial')print 'single thread engine result %s' % resultresult = engines.run(    flow=flow,    store=store,    engine_conf='parallel')print 'multi thread engine result %s' % result\n\n上面的示例中，定义了一个Task对象Adder，作用是完成一个加法。接下去生成一个图类型的流root，其中的task都通过provides和rebind来指明它们的输出和输入。\n在engine运行时，通过store参数为流root提供所需要的输入参数，engine会把store的值保存在后台存储中：在执行各个task的过程中，各个task的输入都是从后台存储中获取，输出都保存在后台存储中。这个程序的输出结果如下：\n12Single thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.Multi thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.\n\nTaskFlow中的Task和Retry都是Atom的子类。对于任何一种Atom对象，都可以通过requires属性来了解它所要求的输入参数，和通过provides属性来了解它能够提供的输出结果的名字。requires和provides的类型都是包含参数名称的集合（set）。\nrequiresTask对象的requires可以由execute方法获得。比如示例中的Adder对象，由于execute方法的参数是execute(self, x, y)，所以它的requires为：\n123Adder().requiresOrderedSet(['x', 'y'])\n\n注意，execute方法的可选参数和args和*kwargs并不会出现在requires中。\n\n\n1234567class MyTask(task.Task):    def execute(self, spam, eggs=(), *args, **kwargs):        return spam + eggsMyTask().requiresOrderedSet(['spam'])\n\n1234567class UniTask(task.Task):    def execute(self, *args, **kwargs):        passUniTask().requiresOrderedSet([])\n\n此外，也可以在创建Task时明确指定它的输入参数要求，这些参数在调用execute()方法时可以通过kwargs获得：\n12345678class Dog(task.Task):    def execute(self, food, *args, **kwargs):        passdog = Dog(requires=('water', 'grass'))dog.requiresOrderedSet(['food', 'water', 'grass'])\n\nrebind在有些情况下，传递给某个task的输入参数名称和其所需要的参数名不同，这个时候可以通过rebind来处理。\n123456789101112131415161718192021from taskflow import taskclass SpawnVMTask(task.Task):    def execute(self, vm_name, vm_image_id, *args, **kwargs):        pass# engine执行下面这个task时，会从后台存储中获取到名为'name'的参数值# 然后把它当做vm_name参数传递给task的execute()方法s = SpawnVMTask(rebind=&#123;'vm_name': 'name'&#125;)s.requiresOrderedSet(['name', 'vm_image_id'])# engine执行下面这个task时，会从后台存储中获取到名为'name', 'image_id'# 和'admin_key_name'的参数值，把name和image_id分别当做vm_name# 和vm_image_id参数，把admin_key_name当做args参数中的某一项传递# 给task的execute()方法s = SpawnVMTask(rebind=('name', 'image_id', 'admin_key_name'))s.requiresOrderedSet(['name', 'image_id', 'admin_key_name'])\n\nprovidestask的输出结果一般是指其execute()方法的返回值。但是由于Python返回值是没有名字的，所有需要通过Task对象的provides属性指明返回值以什么名称存入后台存储中。根据execute()返回值类型的不同，provides可以有不同的方式指定。\n\n如果execute()方法返回的是一个单一的值。\n12345678910111213141516171819from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass TheAnswerReturningTask(task.Task):    def execute(self, *args, **kwargs):        return 24t = TheAnswerReturningTask(provides='the_answer')flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'the_answer': 24&#125;\n\n如果execute()方法返回元组tuple。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return 'Bits', 'Pieces't = BitsAndPiecesTask(provides=('bits', 'pieces'))flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'bits': 'Bits', 'pieces': 'Pieces'&#125;\n\n如果execute()方法返回字典。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return &#123;'Bits': 123, 'Pieces': 321&#125;t = BitsAndPiecesTask(provides=&#123;'Bits', 'Pieces'&#125;)flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'Bits': 123, 'Pieces': 321&#125;\n\n\n\n","dateCreated":"2019-05-17T16:31:13+08:00","dateModified":"2019-05-20T17:56:07+08:00","datePublished":"2019-05-17T16:31:13+08:00","description":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。","headline":"OpenStack通用库（六）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/","keywords":"OpenStack, TaskFlow","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。\n\n\n\n\n示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142from taskflow import enginesfrom taskflow.patterns import linear_flow as lffrom taskflow import taskclass CallJim(task.Task):    def execute(self, jim_number, *args, **kwargs):        print 'Calling Jim %s.' % jim_number    def revert(self, jim_number, *args, **kwargs):        print 'Calling %s and apologizing.' % jim_numberclass CallJoe(task.Task):    def execute(self, joe_number, *args, **kwargs):        print 'Calling Joe %s.' % joe_number    def revert(self, joe_number, *args, **kwargs):        print 'Calling %s and apologizing.' % joe_numberclass CallHY(task.Task):    def execute(self, hy_number, *args, **kwargs):        raise IOError('HY not at home right now.')flow = lf.Flow('simple-linear').add(    CallJim(),    CallJoe(),    CallHY())try:    engines.run(        flow=flow,        engine_conf=&#123;'engine': 'serial'&#125;,        store=dict(jim_number=444,                   joe_number=555,                   hy_number=666)    )except Exception as e:    print 'Flow failed: %s' % e\n\ntask这个示例首先定义了三个task：CallJim、CallJoe和CallHY。在TaskFlow库中，task是拥有执行（execute）和回滚（revert）功能的最小单位（TaskFlow中最小的单位是atom，其他所有类包括Task都是Atom类的子类）。在Task类中，允许开发者定义自己的execute函数和revert函数，分别用来执行task和回退task到之前一次的执行结果。\n然后新新建一个线性流flow，并在其中顺序加入上述3个task对象。TaskFlow中的流flow用来关联各个task，并且规范这些task之间的执行和回滚顺序。\nTaskFlow中所支持的流类型。\n\n\n\n流类型\n说明\n\n\n\nlinear_flow.Flow\n线性流，流中的task/flow按加入顺序执行，按加入顺序的倒序回滚。\n\n\nunordered_flow.Flow\n无顺序流，流中的task/flow的执行和回滚可以按任意顺序。\n\n\ngraph_flow.Flow\n图流，流中的task/flow按照显式指定的依赖关系，或者通过其间provides和requires属性之间的隐含依赖关系，来执行或回滚。\n\n\n这个示例中，由于采用的是线性流，所以这个流中task的执行顺序为：CallJim -&gt; CallJoe -&gt; CallHY，回滚顺序是其倒序。\nretry流中不仅可以加入任务，还可以嵌套加入其他的流。此外，流还可以通过retry来控制当错误发生时，该如何重试。\nTaskFlow支持的retry类型。\n\n\n\nRetry类型\n说明\n\n\n\nAlwaysRevert\n错误发生时，回滚子流。\n\n\nAlwaysRevertAll\n错误发生时，回滚所有子流。\n\n\nTimes\n错误发生时，重试子流。\n\n\nForEach\n每次错误发生时，为子流中的atom提供一个新的值，然后重试，直到成功或者此retry中定义的值用光为止。\n\n\nParameterizedForEach\n类似ForEach，但是是从后台存储中获取重试的值\n\n\n示例。\n12345678910111213141516171819202122232425class EchoTask(task.Task):    def execute(self, name, *args, **kwargs):        print 'my name is %s' % name    def revert(self, name, *args, **kwargs):        print 'sorry, my name is %s' % nameflow = lf.Flow('f1').add(    EchoTask('t1'),    lf.Flow(        'f2',        retry=retry.ForEach(            values=['a', 'b', 'c'],            name='r1',            provides='value'        )    ).add(        EchoTask('t2'),        EchoTask('t3', requires='value')    ),    EchoTask('t4'))\n上面的示例，构造了一个线性流f1，它按顺序执行任务t1、子线性流f2、和任务t4。子流f2按序执行任务t2和t3。\n子流f2定义了ForEach类型的retry“r1”。当任务t2或者t3失败时，子流t2首先会回滚。然后“r1”会指导子流f2使用值“a”来重新运行。如果再次失败，子流f2回滚后会再次使用“b”运行；仍然失败后回滚使用值“c”运行。如果值“c”也运行失败，由于“r1”中能够提供的值已经被完全用完，子流f2回滚后不会重新运行。\nengineTaskFlow库中的engine用来载入一个flow，然后驱动flow中的task/flow运行。可以通过engine_conf来指明不同的engine类型。\n\n\n\nengine类型\n说明\n\n\n\n‘serial’\n所有的task都在调用engine.run的那个线程中运行。\n\n\n‘parallel’\ntask可能会被调度到不同的线程中并发运行。\n\n\n‘worker-based’\ntask会被调度到不同的worker中运行。一个worker是一个单独的专门用来运行某些特定task的进程，这个worker进程可以在远程机器上，利用AMQP来通信。\n\n\ntask和flow的输入/输出示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354from taskflow.patterns import graph_flow as gffrom taskflow.patterns import linear_flow as lffrom taskflow import taskfrom taskflow import enginesclass Adder(task.Task):    def execute(self, x, y, *args, **kwargs):        return x + yflow = gf.Flow('root').add(    lf.Flow('nested_linear').add(        # 从后台存储中读取名为y3和y4的参数值，并以参数x，y传递给execute方法        # x2 = y3 + y4        Adder('add2', provides='x2', rebind=['y3', 'y4']),        # x1 = y1 + y2        Adder('add1', provides='x1', rebind=['y1', 'y2']),    ),    # x5 = x1 + x3    Adder('add5', provides='x5', rebind=['x1', 'x3']),    # x3 = x1 + x2    Adder('add3', provides='x3', rebind=['x1', 'x2']),    # x4 = x2 + y5    Adder('add4', provides='x4', rebind=['x2', 'y5']),    # x6 = x5 + x4    Adder('add6', provides='x6', rebind=['x5', 'x4']),    # x7 = x6 + x6    Adder('add7', provides='x7', rebind=['x6', 'x6']))store = &#123;    'y1': 1,    'y2': 3,    'y3': 5,    'y4': 7,    'y5': 9&#125;result = engines.run(    flow=flow,    store=store,    engine_conf='serial')print 'single thread engine result %s' % resultresult = engines.run(    flow=flow,    store=store,    engine_conf='parallel')print 'multi thread engine result %s' % result\n\n上面的示例中，定义了一个Task对象Adder，作用是完成一个加法。接下去生成一个图类型的流root，其中的task都通过provides和rebind来指明它们的输出和输入。\n在engine运行时，通过store参数为流root提供所需要的输入参数，engine会把store的值保存在后台存储中：在执行各个task的过程中，各个task的输入都是从后台存储中获取，输出都保存在后台存储中。这个程序的输出结果如下：\n12Single thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.Multi thread engine result &#123;'x1': 4, 'y5': 9, 'y4': 7, 'y1': 1, 'x2': 12, 'x3': 16, 'y3': 5, 'y2': 3, 'x6': 41, 'x7': 82, 'x4': 21, 'x5': 20&#125;.\n\nTaskFlow中的Task和Retry都是Atom的子类。对于任何一种Atom对象，都可以通过requires属性来了解它所要求的输入参数，和通过provides属性来了解它能够提供的输出结果的名字。requires和provides的类型都是包含参数名称的集合（set）。\nrequiresTask对象的requires可以由execute方法获得。比如示例中的Adder对象，由于execute方法的参数是execute(self, x, y)，所以它的requires为：\n123Adder().requiresOrderedSet(['x', 'y'])\n注意，execute方法的可选参数和args和*kwargs并不会出现在requires中。\n\n\n1234567class MyTask(task.Task):    def execute(self, spam, eggs=(), *args, **kwargs):        return spam + eggsMyTask().requiresOrderedSet(['spam'])\n\n1234567class UniTask(task.Task):    def execute(self, *args, **kwargs):        passUniTask().requiresOrderedSet([])\n\n此外，也可以在创建Task时明确指定它的输入参数要求，这些参数在调用execute()方法时可以通过kwargs获得：\n12345678class Dog(task.Task):    def execute(self, food, *args, **kwargs):        passdog = Dog(requires=('water', 'grass'))dog.requiresOrderedSet(['food', 'water', 'grass'])\n\nrebind在有些情况下，传递给某个task的输入参数名称和其所需要的参数名不同，这个时候可以通过rebind来处理。\n123456789101112131415161718192021from taskflow import taskclass SpawnVMTask(task.Task):    def execute(self, vm_name, vm_image_id, *args, **kwargs):        pass# engine执行下面这个task时，会从后台存储中获取到名为'name'的参数值# 然后把它当做vm_name参数传递给task的execute()方法s = SpawnVMTask(rebind=&#123;'vm_name': 'name'&#125;)s.requiresOrderedSet(['name', 'vm_image_id'])# engine执行下面这个task时，会从后台存储中获取到名为'name', 'image_id'# 和'admin_key_name'的参数值，把name和image_id分别当做vm_name# 和vm_image_id参数，把admin_key_name当做args参数中的某一项传递# 给task的execute()方法s = SpawnVMTask(rebind=('name', 'image_id', 'admin_key_name'))s.requiresOrderedSet(['name', 'image_id', 'admin_key_name'])\nprovidestask的输出结果一般是指其execute()方法的返回值。但是由于Python返回值是没有名字的，所有需要通过Task对象的provides属性指明返回值以什么名称存入后台存储中。根据execute()返回值类型的不同，provides可以有不同的方式指定。\n\n如果execute()方法返回的是一个单一的值。\n12345678910111213141516171819from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass TheAnswerReturningTask(task.Task):    def execute(self, *args, **kwargs):        return 24t = TheAnswerReturningTask(provides='the_answer')flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'the_answer': 24&#125;\n\n如果execute()方法返回元组tuple。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return 'Bits', 'Pieces't = BitsAndPiecesTask(provides=('bits', 'pieces'))flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'bits': 'Bits', 'pieces': 'Pieces'&#125;\n\n如果execute()方法返回字典。\n123456789101112131415161718from taskflow import taskfrom taskflow import enginesfrom taskflow.patterns import linear_flow as lfclass BitsAndPiecesTask(task.Task):    def execute(self, *args, **kwargs):        return &#123;'Bits': 123, 'Pieces': 321&#125;t = BitsAndPiecesTask(provides=&#123;'Bits', 'Pieces'&#125;)flow = lf.Flow('linear').add(t)result = engines.run(    flow=flow,    engine_conf='serial')result&#123;'Bits': 123, 'Pieces': 321&#125;\n\n\n\n\n","dateCreated":"2019-05-17T16:31:13+08:00","dateModified":"2019-05-20T17:56:07+08:00","datePublished":"2019-05-17T16:31:13+08:00","description":"通过TaskFlow库，可以更容易地控制任务（Task）的执行。","headline":"OpenStack通用库（六）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/","keywords":"OpenStack, TaskFlow","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="通过TaskFlow库，可以更容易地控制任务（Task）的执行。">
-<meta name="keywords" content="OpenStack,TaskFlow">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用库（六）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="通过TaskFlow库，可以更容易地控制任务（Task）的执行。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/images/result.png">
-<meta property="og:updated_time" content="2019-05-20T09:56:07.821Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/images/result.png">
+<meta property="article:published_time" content="2019-05-17T08:31:13.000Z">
+<meta property="article:modified_time" content="2019-05-20T09:56:07.821Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="TaskFlow">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenStack通用库（六）">
-<meta name="twitter:description" content="通过TaskFlow库，可以更容易地控制任务（Task）的执行。">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/images/result.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/images/result.png">
     
     
         
@@ -43,12 +44,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -58,7 +61,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -69,7 +72,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -84,7 +87,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -95,7 +98,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -118,7 +121,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -317,7 +320,7 @@
             <p>通过<a href="https://github.com/openstack/taskflow" target="_blank" rel="noopener">TaskFlow</a>库，可以更容易地控制任务（Task）的执行。</p>
 <a id="more"></a>
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#task"><span class="toc-text">task</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#retry"><span class="toc-text">retry</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#engine"><span class="toc-text">engine</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#task和flow的输入-输出"><span class="toc-text">task和flow的输入/输出</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#requires"><span class="toc-text">requires</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#rebind"><span class="toc-text">rebind</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#provides"><span class="toc-text">provides</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#task"><span class="toc-text">task</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#retry"><span class="toc-text">retry</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#engine"><span class="toc-text">engine</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#task和flow的输入-输出"><span class="toc-text">task和flow的输入&#x2F;输出</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#requires"><span class="toc-text">requires</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#rebind"><span class="toc-text">rebind</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#provides"><span class="toc-text">provides</span></a></li></ol></li></ol>
 
 <p>示例。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> taskflow <span class="keyword">import</span> engines</span><br><span class="line"><span class="keyword">from</span> taskflow.patterns <span class="keyword">import</span> linear_flow <span class="keyword">as</span> lf</span><br><span class="line"><span class="keyword">from</span> taskflow <span class="keyword">import</span> task</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CallJim</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, jim_number, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'Calling Jim %s.'</span> % jim_number</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">revert</span><span class="params">(self, jim_number, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'Calling %s and apologizing.'</span> % jim_number</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CallJoe</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, joe_number, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'Calling Joe %s.'</span> % joe_number</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">revert</span><span class="params">(self, joe_number, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'Calling %s and apologizing.'</span> % joe_number</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CallHY</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, hy_number, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">raise</span> IOError(<span class="string">'HY not at home right now.'</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">flow = lf.Flow(<span class="string">'simple-linear'</span>).add(</span><br><span class="line">    CallJim(),</span><br><span class="line">    CallJoe(),</span><br><span class="line">    CallHY()</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span>:</span><br><span class="line">    engines.run(</span><br><span class="line">        flow=flow,</span><br><span class="line">        engine_conf=&#123;<span class="string">'engine'</span>: <span class="string">'serial'</span>&#125;,</span><br><span class="line">        store=dict(jim_number=<span class="number">444</span>,</span><br><span class="line">                   joe_number=<span class="number">555</span>,</span><br><span class="line">                   hy_number=<span class="number">666</span>)</span><br><span class="line">    )</span><br><span class="line"><span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">    <span class="keyword">print</span> <span class="string">'Flow failed: %s'</span> % e</span><br></pre></td></tr></table></figure>
@@ -345,7 +348,7 @@
 <td align="left">图流，流中的task/flow按照显式指定的依赖关系，或者通过其间provides和requires属性之间的隐含依赖关系，来执行或回滚。</td>
 </tr>
 </tbody></table>
-<p>这个示例中，由于采用的是线性流，所以这个流中task的执行顺序为：CallJim -&gt; CallJoe -&gt; CallHY，回滚顺序是其倒序。<br><img src="/2019/05/17/OpenStack通用库（六）/images/result.png" alt="result"></p>
+<p>这个示例中，由于采用的是线性流，所以这个流中task的执行顺序为：CallJim -&gt; CallJoe -&gt; CallHY，回滚顺序是其倒序。<br><img src="images/result.png" alt="result"></p>
 <h3 id="retry"><a href="#retry" class="headerlink" title="retry"></a>retry</h3><p>流中不仅可以加入任务，还可以嵌套加入其他的流。此外，流还可以通过retry来控制当错误发生时，该如何重试。</p>
 <p>TaskFlow支持的retry类型。</p>
 <table>
@@ -378,7 +381,6 @@
 </tbody></table>
 <p>示例。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EchoTask</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, name, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'my name is %s'</span> % name</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">revert</span><span class="params">(self, name, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">print</span> <span class="string">'sorry, my name is %s'</span> % name</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">flow = lf.Flow(<span class="string">'f1'</span>).add(</span><br><span class="line">    EchoTask(<span class="string">'t1'</span>),</span><br><span class="line">    lf.Flow(</span><br><span class="line">        <span class="string">'f2'</span>,</span><br><span class="line">        retry=retry.ForEach(</span><br><span class="line">            values=[<span class="string">'a'</span>, <span class="string">'b'</span>, <span class="string">'c'</span>],</span><br><span class="line">            name=<span class="string">'r1'</span>,</span><br><span class="line">            provides=<span class="string">'value'</span></span><br><span class="line">        )</span><br><span class="line">    ).add(</span><br><span class="line">        EchoTask(<span class="string">'t2'</span>),</span><br><span class="line">        EchoTask(<span class="string">'t3'</span>, requires=<span class="string">'value'</span>)</span><br><span class="line">    ),</span><br><span class="line">    EchoTask(<span class="string">'t4'</span>)</span><br><span class="line"></span><br><span class="line">)</span><br></pre></td></tr></table></figure>
-
 <p>上面的示例，构造了一个线性流f1，它按顺序执行任务t1、子线性流f2、和任务t4。子流f2按序执行任务t2和t3。</p>
 <p>子流f2定义了ForEach类型的retry“r1”。当任务t2或者t3失败时，子流t2首先会回滚。然后“r1”会指导子流f2使用值“a”来重新运行。如果再次失败，子流f2回滚后会再次使用“b”运行；仍然失败后回滚使用值“c”运行。如果值“c”也运行失败，由于“r1”中能够提供的值已经被完全用完，子流f2回滚后不会重新运行。</p>
 <h3 id="engine"><a href="#engine" class="headerlink" title="engine"></a>engine</h3><p>TaskFlow库中的engine用来载入一个flow，然后驱动flow中的task/flow运行。可以通过engine_conf来指明不同的engine类型。</p>
@@ -412,7 +414,6 @@
 <p>TaskFlow中的Task和Retry都是Atom的子类。对于任何一种Atom对象，都可以通过requires属性来了解它所要求的输入参数，和通过provides属性来了解它能够提供的输出结果的名字。requires和provides的类型都是包含参数名称的集合（set）。</p>
 <h4 id="requires"><a href="#requires" class="headerlink" title="requires"></a>requires</h4><p>Task对象的requires可以由execute方法获得。比如示例中的Adder对象，由于execute方法的参数是execute(self, x, y)，所以它的requires为：</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Adder().requires</span><br><span class="line"></span><br><span class="line">OrderedSet([<span class="string">'x'</span>, <span class="string">'y'</span>])</span><br></pre></td></tr></table></figure>
-
 <div class="alert danger no-icon"><p>注意，execute方法的可选参数和<em>args和*</em>kwargs并不会出现在requires中。</p>
 </div>
 
@@ -425,7 +426,6 @@
 
 <h4 id="rebind"><a href="#rebind" class="headerlink" title="rebind"></a>rebind</h4><p>在有些情况下，传递给某个task的输入参数名称和其所需要的参数名不同，这个时候可以通过rebind来处理。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> taskflow <span class="keyword">import</span> task</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SpawnVMTask</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, vm_name, vm_image_id, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># engine执行下面这个task时，会从后台存储中获取到名为'name'的参数值</span></span><br><span class="line"><span class="comment"># 然后把它当做vm_name参数传递给task的execute()方法</span></span><br><span class="line">s = SpawnVMTask(rebind=&#123;<span class="string">'vm_name'</span>: <span class="string">'name'</span>&#125;)</span><br><span class="line">s.requires</span><br><span class="line">OrderedSet([<span class="string">'name'</span>, <span class="string">'vm_image_id'</span>])</span><br><span class="line"></span><br><span class="line"><span class="comment"># engine执行下面这个task时，会从后台存储中获取到名为'name', 'image_id'</span></span><br><span class="line"><span class="comment"># 和'admin_key_name'的参数值，把name和image_id分别当做vm_name</span></span><br><span class="line"><span class="comment"># 和vm_image_id参数，把admin_key_name当做args参数中的某一项传递</span></span><br><span class="line"><span class="comment"># 给task的execute()方法</span></span><br><span class="line">s = SpawnVMTask(rebind=(<span class="string">'name'</span>, <span class="string">'image_id'</span>, <span class="string">'admin_key_name'</span>))</span><br><span class="line">s.requires</span><br><span class="line">OrderedSet([<span class="string">'name'</span>, <span class="string">'image_id'</span>, <span class="string">'admin_key_name'</span>])</span><br></pre></td></tr></table></figure>
-
 <h4 id="provides"><a href="#provides" class="headerlink" title="provides"></a>provides</h4><p>task的输出结果一般是指其execute()方法的返回值。但是由于Python返回值是没有名字的，所有需要通过Task对象的provides属性指明返回值以什么名称存入后台存储中。根据execute()返回值类型的不同，provides可以有不同的方式指定。</p>
 <ul>
 <li><p>如果execute()方法返回的是一个单一的值。</p>
@@ -436,6 +436,7 @@
 </li>
 <li><p>如果execute()方法返回字典。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> taskflow <span class="keyword">import</span> task</span><br><span class="line"><span class="keyword">from</span> taskflow <span class="keyword">import</span> engines</span><br><span class="line"><span class="keyword">from</span> taskflow.patterns <span class="keyword">import</span> linear_flow <span class="keyword">as</span> lf</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">BitsAndPiecesTask</span><span class="params">(task.Task)</span>:</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">execute</span><span class="params">(self, *args, **kwargs)</span>:</span></span><br><span class="line">        <span class="keyword">return</span> &#123;<span class="string">'Bits'</span>: <span class="number">123</span>, <span class="string">'Pieces'</span>: <span class="number">321</span>&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">t = BitsAndPiecesTask(provides=&#123;<span class="string">'Bits'</span>, <span class="string">'Pieces'</span>&#125;)</span><br><span class="line">flow = lf.Flow(<span class="string">'linear'</span>).add(t)</span><br><span class="line">result = engines.run(</span><br><span class="line">    flow=flow,</span><br><span class="line">    engine_conf=<span class="string">'serial'</span></span><br><span class="line">)</span><br><span class="line">result</span><br><span class="line">&#123;<span class="string">'Bits'</span>: <span class="number">123</span>, <span class="string">'Pieces'</span>: <span class="number">321</span>&#125;</span><br></pre></td></tr></table></figure>
+
 
 </li>
 </ul>
@@ -450,7 +451,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/TaskFlow/">TaskFlow</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/TaskFlow/" rel="tag">TaskFlow</a>
 
             </div>
         
@@ -463,7 +464,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/20/OpenStack通用库（七）/"
+                    href="/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     data-tooltip="OpenStack通用库（七）"
                     aria-label="PREVIOUS: OpenStack通用库（七）"
                 >
@@ -477,7 +478,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/17/OpenStack通用库（五）/"
+                    href="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%94%EF%BC%89/"
                     data-tooltip="OpenStack通用库（五）"
                     aria-label="NEXT: OpenStack通用库（五）"
                 >
@@ -504,7 +505,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -517,7 +518,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/&amp;title=OpenStack通用库（六）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=OpenStack通用库（六）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -530,7 +531,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -561,26 +562,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="OpenStack通用库（六）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -602,7 +613,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/20/OpenStack通用库（七）/"
+                    href="/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     data-tooltip="OpenStack通用库（七）"
                     aria-label="PREVIOUS: OpenStack通用库（七）"
                 >
@@ -616,7 +627,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/17/OpenStack通用库（五）/"
+                    href="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%94%EF%BC%89/"
                     data-tooltip="OpenStack通用库（五）"
                     aria-label="NEXT: OpenStack通用库（五）"
                 >
@@ -643,7 +654,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -656,7 +667,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/&amp;title=OpenStack通用库（六）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=OpenStack通用库（六）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -669,7 +680,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -703,7 +714,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -716,7 +727,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/&amp;title=OpenStack通用库（六）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=OpenStack通用库（六）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -729,7 +740,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack通用库（六）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -784,7 +795,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -793,5 +806,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

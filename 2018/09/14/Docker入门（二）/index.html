@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Docker入门（二） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,19 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。\n根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2019-02-14T16:02:50+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker入门（二）/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。\n根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装教程 ","dateCreated":"2018-09-14T15:35:27+08:00","dateModified":"2019-02-14T16:02:50+08:00","datePublished":"2018-09-14T15:35:27+08:00","description":"Docker的核心概念和安装","headline":"Docker入门（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Docker的核心概念和安装">
-<meta name="keywords" content="Docker">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Docker入门（二）">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/09/14/Docker入门（二）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Docker的核心概念和安装">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-02-14T08:02:50.890Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-09-14T07:35:27.000Z">
+<meta property="article:modified_time" content="2019-02-14T08:02:50.890Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Docker">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Docker入门（二）">
-<meta name="twitter:description" content="Docker的核心概念和安装">
     
     
         
@@ -41,12 +41,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/Docker入门（二）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/14/Docker入门（二）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +58,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +69,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +84,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +95,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +118,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -335,7 +337,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/" rel="tag">Docker</a>
 
             </div>
         
@@ -348,7 +350,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/14/Docker入门（三）/"
+                    href="/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="Docker入门（三）"
                     aria-label="PREVIOUS: Docker入门（三）"
                 >
@@ -362,7 +364,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/14/Docker入门（一）/"
+                    href="/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="Docker入门（一）"
                     aria-label="NEXT: Docker入门（一）"
                 >
@@ -389,7 +391,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -402,7 +404,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/&amp;title=Docker入门（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Docker入门（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -415,7 +417,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -446,26 +448,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="Docker入门（二）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -487,7 +499,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/14/Docker入门（三）/"
+                    href="/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="Docker入门（三）"
                     aria-label="PREVIOUS: Docker入门（三）"
                 >
@@ -501,7 +513,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/14/Docker入门（一）/"
+                    href="/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="Docker入门（一）"
                     aria-label="NEXT: Docker入门（一）"
                 >
@@ -528,7 +540,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -541,7 +553,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/&amp;title=Docker入门（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Docker入门（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -554,7 +566,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -588,7 +600,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -601,7 +613,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/&amp;title=Docker入门（二）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Docker入门（二）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -614,7 +626,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker入门（二）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -669,7 +681,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -678,5 +692,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

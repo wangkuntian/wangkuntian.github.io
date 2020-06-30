@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Trove的概念和架构（二） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,19 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove服务Trove APITrove API实现了一个WSGI（web服务器网关接口），并与同Trove交互的所有用户端交互。当Trove API接收到一个请求时，它使用配置的身份验证机制（默认为Keystone服务）验证请求者，验证其身份过后，验证凭据将被附加在该请求上。这些将成为请求者的上下文并在整个进程中被使用。一些简单的请求完全由Trove API进行处理，对于其他请求则可能需要其他的服务的参与。\nTrove API在Trove控制节点运行。\n\n\nTrove Task Managertask manager执行Trove的大部分复杂操作。它作为一个RPC服务器监听特定topic的消息队列。请求者发送消息到task manager，task manager在请求者的上下文中调用相应的程序去执行这些请求。Task manager 处理的一些操作：实例的创建、删除；与其他服务如Nova、Cinder、Swift等的交互；一些更复杂的Trove操作如复制和集群；对实例的整个生命周期的管理。配置文件trove-taskmanager.conf的taskmanager_manager条目中定义了Trove Task Manager的入口。\n12root@controller-1: grep taskmanager_manager /etc/trove/trove-taskmanager.conftaskmanager_manager=trove.taskmanager.manager.Manager\n\nTrove task manager在Trove控制节点运行。\n\n\nTrove ConductorTrove conductor主要用来接收和处理来自guest agent的各种类型的状态更新，在某些情况下是更新Trove基础设施数据库或提供信息给其他服务。Trove conductor作为一个RPC服务器监听特定topic的消息队列。Guest agent发送消息给conductor，conductor通过调用相应的程序执行这些请求。Conductor处理guest agent心跳和备份状态等信息。配置文件trove-conductor.conf中的conductor_manager条目定义了Trove Conductor的入口。\nTrove conductor在Trove控制节点上运行。\n\n\nTrove Guest AgentTrove旨在提供一个一个与数据库无关的功能集合和一个可以实现和扩展的框架。Trove建立的框架依赖于一个guest agent，并提供特定的数据库功能，这些都是通过代码在guest实例上实现的，当有请求时通过task manager调用。Trove guest agent的主要目的是作为一个RPC服务器使其他Trove服务可以在Trove guest实例上执行操作。它监听特定topic的消息队列，并在本地执行代码来完成数据库的任务。Trove task manager将消息发送到guest agent，guest agent通过调用相应的程序执行这些请求。Guest agent在guest实例上处理所有的请求如prepare()（guest的初始设置过程中调用）、restart()等控制操作。它也处理创建和管理用户、数据库，以及启动备份等操作。Trove Guest Agent的入口是由在Task Manager创建实例时的过程中设置的datastore_manager配置参数定义的。每一种数据库都有与之对应的不同的Guest Agent。trove.guestagent.dbaas中。\n1234567891011121314151617181920212223242526defaults = &#123;    'mysql':        'trove.guestagent.datastore.mysql.manager.Manager',    'percona':        'trove.guestagent.datastore.experimental.percona.manager.Manager',    'pxc':        'trove.guestagent.datastore.experimental.pxc.manager.Manager',    'redis':        'trove.guestagent.datastore.experimental.redis.manager.Manager',    'cassandra':        'trove.guestagent.datastore.experimental.cassandra.manager.Manager',    'couchbase':        'trove.guestagent.datastore.experimental.couchbase.manager.Manager',    'mongodb':        'trove.guestagent.datastore.experimental.mongodb.manager.Manager',    'postgresql':        'trove.guestagent.datastore.experimental.postgresql.manager.Manager',    'couchdb':        'trove.guestagent.datastore.experimental.couchdb.manager.Manager',    'vertica':        'trove.guestagent.datastore.experimental.vertica.manager.Manager',    'db2':        'trove.guestagent.datastore.experimental.db2.manager.Manager',    'mariadb':        'trove.guestagent.datastore.experimental.mariadb.manager.Manager'&#125;\n\nTrove guest agent在Trove guest节点上运行。\n","dateCreated":"2018-09-11T15:32:39+08:00","dateModified":"2019-02-28T18:18:50+08:00","datePublished":"2018-09-11T15:32:39+08:00","description":"Trove服务","headline":"Trove的概念和架构（二）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove服务Trove APITrove API实现了一个WSGI（web服务器网关接口），并与同Trove交互的所有用户端交互。当Trove API接收到一个请求时，它使用配置的身份验证机制（默认为Keystone服务）验证请求者，验证其身份过后，验证凭据将被附加在该请求上。这些将成为请求者的上下文并在整个进程中被使用。一些简单的请求完全由Trove API进行处理，对于其他请求则可能需要其他的服务的参与。\nTrove API在Trove控制节点运行。\n\n\nTrove Task Managertask manager执行Trove的大部分复杂操作。它作为一个RPC服务器监听特定topic的消息队列。请求者发送消息到task manager，task manager在请求者的上下文中调用相应的程序去执行这些请求。Task manager 处理的一些操作：实例的创建、删除；与其他服务如Nova、Cinder、Swift等的交互；一些更复杂的Trove操作如复制和集群；对实例的整个生命周期的管理。配置文件trove-taskmanager.conf的taskmanager_manager条目中定义了Trove Task Manager的入口。\n12root@controller-1: grep taskmanager_manager /etc/trove/trove-taskmanager.conftaskmanager_manager=trove.taskmanager.manager.Manager\nTrove task manager在Trove控制节点运行。\n\n\nTrove ConductorTrove conductor主要用来接收和处理来自guest agent的各种类型的状态更新，在某些情况下是更新Trove基础设施数据库或提供信息给其他服务。Trove conductor作为一个RPC服务器监听特定topic的消息队列。Guest agent发送消息给conductor，conductor通过调用相应的程序执行这些请求。Conductor处理guest agent心跳和备份状态等信息。配置文件trove-conductor.conf中的conductor_manager条目定义了Trove Conductor的入口。\nTrove conductor在Trove控制节点上运行。\n\n\nTrove Guest AgentTrove旨在提供一个一个与数据库无关的功能集合和一个可以实现和扩展的框架。Trove建立的框架依赖于一个guest agent，并提供特定的数据库功能，这些都是通过代码在guest实例上实现的，当有请求时通过task manager调用。Trove guest agent的主要目的是作为一个RPC服务器使其他Trove服务可以在Trove guest实例上执行操作。它监听特定topic的消息队列，并在本地执行代码来完成数据库的任务。Trove task manager将消息发送到guest agent，guest agent通过调用相应的程序执行这些请求。Guest agent在guest实例上处理所有的请求如prepare()（guest的初始设置过程中调用）、restart()等控制操作。它也处理创建和管理用户、数据库，以及启动备份等操作。Trove Guest Agent的入口是由在Task Manager创建实例时的过程中设置的datastore_manager配置参数定义的。每一种数据库都有与之对应的不同的Guest Agent。trove.guestagent.dbaas中。\n1234567891011121314151617181920212223242526defaults = &#123;    'mysql':        'trove.guestagent.datastore.mysql.manager.Manager',    'percona':        'trove.guestagent.datastore.experimental.percona.manager.Manager',    'pxc':        'trove.guestagent.datastore.experimental.pxc.manager.Manager',    'redis':        'trove.guestagent.datastore.experimental.redis.manager.Manager',    'cassandra':        'trove.guestagent.datastore.experimental.cassandra.manager.Manager',    'couchbase':        'trove.guestagent.datastore.experimental.couchbase.manager.Manager',    'mongodb':        'trove.guestagent.datastore.experimental.mongodb.manager.Manager',    'postgresql':        'trove.guestagent.datastore.experimental.postgresql.manager.Manager',    'couchdb':        'trove.guestagent.datastore.experimental.couchdb.manager.Manager',    'vertica':        'trove.guestagent.datastore.experimental.vertica.manager.Manager',    'db2':        'trove.guestagent.datastore.experimental.db2.manager.Manager',    'mariadb':        'trove.guestagent.datastore.experimental.mariadb.manager.Manager'&#125;\nTrove guest agent在Trove guest节点上运行。\n","dateCreated":"2018-09-11T15:32:39+08:00","dateModified":"2019-02-28T18:18:50+08:00","datePublished":"2018-09-11T15:32:39+08:00","description":"Trove服务","headline":"Trove的概念和架构（二）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
     <meta name="description" content="Trove服务">
-<meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的概念和架构（二）">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Trove服务">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-02-28T10:18:50.606Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-09-11T07:32:39.000Z">
+<meta property="article:modified_time" content="2019-02-28T10:18:50.606Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Trove">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Trove的概念和架构（二）">
-<meta name="twitter:description" content="Trove服务">
     
     
         
@@ -40,16 +40,18 @@
         <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -59,7 +61,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -70,7 +72,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -85,7 +87,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -96,7 +98,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -119,7 +121,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -325,7 +327,6 @@
 
 <h4 id="Trove-Task-Manager"><a href="#Trove-Task-Manager" class="headerlink" title="Trove Task Manager"></a>Trove Task Manager</h4><p>task manager执行Trove的大部分复杂操作。<br>它作为一个RPC服务器监听特定topic的消息队列。请求者发送消息到task manager，task manager在请求者的上下文中调用相应的程序去执行这些请求。Task manager 处理的一些操作：实例的创建、删除；与其他服务如Nova、Cinder、Swift等的交互；一些更复杂的Trove操作如复制和集群；对实例的整个生命周期的管理。<br>配置文件trove-taskmanager.conf的taskmanager_manager条目中定义了Trove Task Manager的入口。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1: grep taskmanager_manager /etc/trove/trove-taskmanager.conf</span><br><span class="line">taskmanager_manager=trove.taskmanager.manager.Manager</span><br></pre></td></tr></table></figure>
-
 <div class="alert info"><p>Trove task manager在Trove控制节点运行。</p>
 </div>
 
@@ -335,7 +336,6 @@
 
 <h4 id="Trove-Guest-Agent"><a href="#Trove-Guest-Agent" class="headerlink" title="Trove Guest Agent"></a>Trove Guest Agent</h4><p>Trove旨在提供一个一个与数据库无关的功能集合和一个可以实现和扩展的框架。<br>Trove建立的框架依赖于一个guest agent，并提供特定的数据库功能，这些都是通过代码在guest实例上实现的，当有请求时通过task manager调用。Trove guest agent的主要目的是作为一个RPC服务器使其他Trove服务可以在Trove guest实例上执行操作。它监听特定topic的消息队列，并在本地执行代码来完成数据库的任务。Trove task manager将消息发送到guest agent，guest agent通过调用相应的程序执行这些请求。Guest agent在guest实例上处理所有的请求如prepare()（guest的初始设置过程中调用）、restart()等控制操作。它也处理创建和管理用户、数据库，以及启动备份等操作。<br>Trove Guest Agent的入口是由在Task Manager创建实例时的过程中设置的datastore_manager配置参数定义的。<br>每一种数据库都有与之对应的不同的Guest Agent。trove.guestagent.dbaas中。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">defaults = &#123;</span><br><span class="line">    <span class="string">'mysql'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.mysql.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'percona'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.percona.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'pxc'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.pxc.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'redis'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.redis.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'cassandra'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.cassandra.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'couchbase'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.couchbase.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'mongodb'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.mongodb.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'postgresql'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.postgresql.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'couchdb'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.couchdb.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'vertica'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.vertica.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'db2'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.db2.manager.Manager'</span>,</span><br><span class="line">    <span class="string">'mariadb'</span>:</span><br><span class="line">        <span class="string">'trove.guestagent.datastore.experimental.mariadb.manager.Manager'</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
 <div class="alert info"><p>Trove guest agent在Trove guest节点上运行。</p>
 </div>
             
@@ -348,7 +348,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/" rel="tag">Trove</a>
 
             </div>
         
@@ -361,7 +361,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（三）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（三）"
                     aria-label="PREVIOUS: Trove的概念和架构（三）"
                 >
@@ -375,7 +375,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（一）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（一）"
                     aria-label="NEXT: Trove的概念和架构（一）"
                 >
@@ -402,7 +402,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -415,7 +415,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/&amp;title=Trove的概念和架构（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Trove的概念和架构（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -428,7 +428,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -459,26 +459,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="Trove的概念和架构（二）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -500,7 +510,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（三）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（三）"
                     aria-label="PREVIOUS: Trove的概念和架构（三）"
                 >
@@ -514,7 +524,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（一）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（一）"
                     aria-label="NEXT: Trove的概念和架构（一）"
                 >
@@ -541,7 +551,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -554,7 +564,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/&amp;title=Trove的概念和架构（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Trove的概念和架构（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -567,7 +577,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -601,7 +611,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -614,7 +624,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/&amp;title=Trove的概念和架构（二）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Trove的概念和架构（二）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -627,7 +637,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（二）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -682,7 +692,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -691,5 +703,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

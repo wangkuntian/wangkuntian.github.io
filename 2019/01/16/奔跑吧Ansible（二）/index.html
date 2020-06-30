@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>奔跑吧Ansible（二） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,19 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Ansible基础元素\n\n\n\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。\n1ansible &lt;host-pattern&gt; [options]\n\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。\n1ansible-playbook playbook.yml\n\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Ansible基础元素\n\n\n\nAnsible目录结构介绍\n配置文件目录 /etc/ansible\n执行文件目录 /usr/bin/\nLib库依赖目录 /usr/lib/pythonX.X/site-packages/ansible/\nHelp文档目录 /usr/share/doc/ansible-X.X.X/\nMan文档目录 /usr/share/man/man1/\n\nAnsible配置文件Ansible的配置文件是ansible.cfg，默认放在/etc/ansible/。ansible.cfg配置文件可以存在于多个地方，Ansible读取配置文件的顺序依次是当前命令执行目录 -&gt; 用户目录下的ansible.cfg -&gt; /etc/ansible.cfg，先找到哪个就使用哪个的配置。其ansible.cfg配置的所有内容均可以在命令行通过参数的形式传递或定义在Playbooks中。\nAnsible命令用法详解Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。\nAd-HocAd-Hoc的命令使用格式如下。\n1ansible &lt;host-pattern&gt; [options]\n是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。&lt;&gt;表示该选项是必须项，不可忽略。\n\n\n[options]是Ansible的参数选项，[]表示该选项中的参数任选其一\n-m NAME, –module-name=NAME 指定执行使用的模块\n-u USERNAME, –user=USERNAME 指定远程主机以USERNAME运行命令。\n-s, –sudo 相当于Linux系统下的sudo命令。新版本废弃。\n-b, –become 相当于Linux系统下的sudo命令。\n-U SUDO_USERNAME, –sudo-user=SUDO_USERNAME 使用sudo，相当于Linux下的sudo命令。\n\n\nAnsible-playbookAnsible-playbook的命令使用格式如下。\n1ansible-playbook playbook.yml\n","dateCreated":"2019-01-16T16:16:03+08:00","dateModified":"2019-01-16T18:34:52+08:00","datePublished":"2019-01-16T16:16:03+08:00","description":"Ansible基础元素","headline":"奔跑吧Ansible（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Ansible","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Ansible基础元素">
-<meta name="keywords" content="Ansible">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="奔跑吧Ansible（二）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Ansible基础元素">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-01-16T10:34:52.998Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-01-16T08:16:03.000Z">
+<meta property="article:modified_time" content="2019-01-16T10:34:52.998Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Ansible">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="奔跑吧Ansible（二）">
-<meta name="twitter:description" content="Ansible基础元素">
     
     
         
@@ -41,12 +41,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +58,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +69,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +84,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +95,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +118,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -327,8 +329,7 @@
 <h3 id="Ansible命令用法详解"><a href="#Ansible命令用法详解" class="headerlink" title="Ansible命令用法详解"></a>Ansible命令用法详解</h3><p>Ansible命令执行方式有Ad-Hoc、Ansible-playbook两种方式。Ad-Hoc主要用于临时命令的执行，Ansible-playbook可以理解为Ad-Hoc的集合，通过一定的规则编排在一起。</p>
 <h4 id="Ad-Hoc"><a href="#Ad-Hoc" class="headerlink" title="Ad-Hoc"></a>Ad-Hoc</h4><p>Ad-Hoc的命令使用格式如下。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible &lt;host-pattern&gt; [options]</span><br></pre></td></tr></table></figure>
-
-<div class="alert danger no-icon"><p><host-pattern>是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。<br>&lt;&gt;表示该选项是必须项，不可忽略。</host-pattern></p>
+<div class="alert danger no-icon"><p><host-pattern>是Inventory中定义的主机或主机组，可以为ip、hostname、Inventory中的group组名、具有“.”或“*”或“:”等特殊字符的匹配型字符串。<br>&lt;&gt;表示该选项是必须项，不可忽略。</p>
 </div>
 
 <div class="alert info no-icon"><p>[options]是Ansible的参数选项，[]表示该选项中的参数任选其一</p>
@@ -341,7 +342,6 @@
 
 <h4 id="Ansible-playbook"><a href="#Ansible-playbook" class="headerlink" title="Ansible-playbook"></a>Ansible-playbook</h4><p>Ansible-playbook的命令使用格式如下。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook playbook.yml</span><br></pre></td></tr></table></figure>
-
 <div class="alert info no-icon"></div>
             
 
@@ -353,7 +353,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Ansible/">Ansible</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Ansible/" rel="tag">Ansible</a>
 
             </div>
         
@@ -366,7 +366,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/01/21/这，就是Ceilometer！/"
+                    href="/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
                     data-tooltip="这，就是Ceilometer！"
                     aria-label="PREVIOUS: 这，就是Ceilometer！"
                 >
@@ -380,7 +380,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/01/16/奔跑吧Ansible（一）/"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="奔跑吧Ansible（一）"
                     aria-label="NEXT: 奔跑吧Ansible（一）"
                 >
@@ -407,7 +407,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -420,7 +420,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/&amp;title=奔跑吧Ansible（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=奔跑吧Ansible（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -433,7 +433,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -464,26 +464,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="奔跑吧Ansible（二）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -505,7 +515,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/01/21/这，就是Ceilometer！/"
+                    href="/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
                     data-tooltip="这，就是Ceilometer！"
                     aria-label="PREVIOUS: 这，就是Ceilometer！"
                 >
@@ -519,7 +529,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/01/16/奔跑吧Ansible（一）/"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%B8%80%EF%BC%89/"
                     data-tooltip="奔跑吧Ansible（一）"
                     aria-label="NEXT: 奔跑吧Ansible（一）"
                 >
@@ -546,7 +556,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -559,7 +569,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/&amp;title=奔跑吧Ansible（二）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=奔跑吧Ansible（二）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -572,7 +582,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -606,7 +616,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -619,7 +629,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/&amp;title=奔跑吧Ansible（二）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=奔跑吧Ansible（二）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -632,7 +642,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/奔跑吧Ansible（二）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -687,7 +697,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -696,5 +708,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Neutron流量控制 - Wang kuntian&#39;s Blog</title>
@@ -19,22 +19,24 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"DVR模式下的\bFloating IP的流量控制\n\n\n\nLinux流量控制Linux中的流量控制器TC（\bTraffic Control）用于Linux内核的流量控制，它利用队列规定建立处理数据包的队列，并定义队列中的数据包被发送的方式，从而实现对流量的控制.TC模块实现流量控制功能\n首先看一下计算节点的网络设备分布。\n\n流量控制在qrouter的网络命名空间下进行。\n可以看到名为in-qos-ifb的网卡\n","dateCreated":"2018-12-14T14:29:15+08:00","dateModified":"2019-03-13T14:32:43+08:00","datePublished":"2018-12-14T14:29:15+08:00","description":"DVR模式下的\bFloating IP的流量控制","headline":"Neutron流量控制","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/12/14/Neutron流量控制/","keywords":"Neutron, Floating IP, 流量控制","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"DVR模式下的\bFloating IP的流量控制\n\n\n\nLinux流量控制Linux中的流量控制器TC（\bTraffic Control）用于Linux内核的流量控制，它利用队列规定建立处理数据包的队列，并定义队列中的数据包被发送的方式，从而实现对流量的控制.TC模块实现流量控制功能\n首先看一下计算节点的网络设备分布。\n\n流量控制在qrouter的网络命名空间下进行。\n可以看到名为in-qos-ifb的网卡\n","dateCreated":"2018-12-14T14:29:15+08:00","dateModified":"2019-03-13T14:32:43+08:00","datePublished":"2018-12-14T14:29:15+08:00","description":"DVR模式下的\bFloating IP的流量控制","headline":"Neutron流量控制","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/","keywords":"Neutron, Floating IP, 流量控制","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="DVR模式下的Floating IP的流量控制">
-<meta name="keywords" content="Neutron,Floating IP,流量控制">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Neutron流量控制">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="DVR模式下的Floating IP的流量控制">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/compute.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/ip-nets-exec.png">
-<meta property="og:updated_time" content="2019-03-13T06:32:43.453Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/images/compute.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/images/ip-nets-exec.png">
+<meta property="article:published_time" content="2018-12-14T06:29:15.000Z">
+<meta property="article:modified_time" content="2019-03-13T06:32:43.453Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta property="article:tag" content="Floating IP">
+<meta property="article:tag" content="流量控制">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Neutron流量控制">
-<meta name="twitter:description" content="DVR模式下的Floating IP的流量控制">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/compute.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/images/compute.png">
     
     
         
@@ -44,12 +46,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/12/14/Neutron流量控制/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -59,7 +63,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -70,7 +74,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -85,7 +89,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -96,7 +100,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -119,7 +123,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -321,8 +325,8 @@
 
 <h3 id="Linux流量控制"><a href="#Linux流量控制" class="headerlink" title="Linux流量控制"></a>Linux流量控制</h3><p>Linux中的流量控制器TC（Traffic Control）用于Linux内核的流量控制，它利用队列规定建立处理数据包的队列，并定义队列中的数据包被发送的方式，从而实现对流量的控制.TC模块实现流量控制功能</p>
 <p>首先看一下计算节点的网络设备分布。</p>
-<p><img src="/2018/12/14/Neutron流量控制/images/compute.png" alt="compute"></p>
-<p>流量控制在qrouter的网络命名空间下进行。<br><img src="/2018/12/14/Neutron流量控制/images/ip-nets-exec.png" alt="ip-nets-exec"></p>
+<p><img src="images/compute.png" alt="compute"></p>
+<p>流量控制在qrouter的网络命名空间下进行。<br><img src="images/ip-nets-exec.png" alt="ip-nets-exec"></p>
 <p>可以看到名为in-qos-ifb的网卡</p>
 
             
@@ -335,7 +339,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Floating-IP/">Floating IP</a> <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/">Neutron</a> <a class="tag tag--primary tag--small t-link" href="/tags/流量控制/">流量控制</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Floating-IP/" rel="tag">Floating IP</a> <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/" rel="tag">Neutron</a> <a class="tag tag--primary tag--small t-link" href="/tags/%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/" rel="tag">流量控制</a>
 
             </div>
         
@@ -362,7 +366,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/12/11/Ubuntu-Server那点事/"
+                    href="/2018/12/11/Ubuntu-Server%E9%82%A3%E7%82%B9%E4%BA%8B/"
                     data-tooltip="Ubuntu Server那点儿事"
                     aria-label="NEXT: Ubuntu Server那点儿事"
                 >
@@ -389,7 +393,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -402,7 +406,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/&amp;title=Neutron流量控制"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -415,7 +419,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -446,26 +450,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
+    class="leancloud_visitors"
+    data-flag-title="Neutron流量控制"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -501,7 +515,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/12/11/Ubuntu-Server那点事/"
+                    href="/2018/12/11/Ubuntu-Server%E9%82%A3%E7%82%B9%E4%BA%8B/"
                     data-tooltip="Ubuntu Server那点儿事"
                     aria-label="NEXT: Ubuntu Server那点儿事"
                 >
@@ -528,7 +542,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -541,7 +555,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/&amp;title=Neutron流量控制"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -554,7 +568,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -588,7 +602,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -601,7 +615,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/&amp;title=Neutron流量控制"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/&amp;title=Neutron流量控制"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -614,7 +628,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron流量控制/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/14/Neutron%E6%B5%81%E9%87%8F%E6%8E%A7%E5%88%B6/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -669,7 +683,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -678,5 +694,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

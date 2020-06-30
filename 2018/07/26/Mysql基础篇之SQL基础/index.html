@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Mysql基础篇之SQL基础 - Wang kuntian&#39;s Blog</title>
@@ -19,30 +19,31 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。\n\n结构化查询语言是高级的非过程化编程语言，允许用户在高层数据结构上工作。它不要求用户指定对数据的存放方法，也不需要用户了解具体的数据存放方式，所以具有完全不同底层结构的不同数据库系统, 可以使用相同的结构化查询语言作为数据输入与管理的接口。结构化查询语言语句可以嵌套，这使它具有极大的灵活性和强大的功能。SQL语句主要分为三个类别：DDL语句、DML语句和DCL语句。\n\n\nDDL语句DDL（Data Definition Languages）语句：数据定义语言，是对数据库内部的对象进行创建、删除、修改等操作的语言。它和DML语句的最大区别是DML只是对表内部数据操作，而不涉及表的定义、结构的修改，更不会涉及其他对象。常用的语句关键字包括create、drop、alter等。\n\n连接到mysql数据库1mysql -uroot -p&lt;password&gt;\n\n\b查看数据\b库1mysql&gt; show databases;\n\n创建数据库1mysql&gt; create database &lt;database_name&gt;;\n\n选择数据库1mysql&gt; use &lt;databaseName&gt;\n\n删除数据库1mysql&gt; drop database &lt;database_name&gt;;\n\n创建表1234567mysql&gt; create table &lt;table_name&gt;(        &lt;column_name_1&gt; &lt;column_type_1&gt; &lt;constraints&gt;,        &lt;column_name_2&gt; &lt;column_type_2&gt; &lt;constraints&gt;,        &lt;column_name_3&gt; &lt;column_type_3&gt; &lt;constraints&gt;,        ......        &lt;column_name_n&gt; &lt;column_type_n&gt; &lt;constraints&gt;        );\n\n查看表定义1mysql&gt; desc &lt;table_name&gt;;\n\n查看创建表的SQL语句1mysql&gt; show create table &lt;table_name&gt;;\n\n删除表1mysql&gt; drop table &lt;table_name&gt;;\n\n修改表\n修改表类型\n1mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt;;\n\n增加表字段\n1mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n删除表字段\n1mysql&gt; alter table &lt;table_name&gt; drop column &lt;column_name&gt;;\n\n字段改名\n1mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n修改字段排序\n12345mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;\n\n更改表名\n1mysql&gt; alter table &lt;table_name&gt; rename &lt;new_table_name&gt;;\n\n\n\n\n\nDML语句DML（Data Manipulation Language）语句：数据操纵语句。用于对数据表中记录的操作，主要包括表记录的插入（insert）、更新（update）、删除（delete）和查询（select）。\n\n插入记录12345mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values        (record_1_value_1,record_1_value_2,...,record_1_value_n),        (record_2_value_1,record_2_value_2,...,record_2_value_n),        ......        (record_n_value_1,record_n_value_2,...,record_n_value_n);\n\n更新记录1mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;\n\n删除记录1mysql&gt; delete from &lt;table_name&gt; &lt;where condition&gt;;\n\n查询记录1mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt;;\n\n\n去重(distinct)\n1mysql&gt; select &lt;field&gt; distinct from &lt;table_name&gt; &lt;where condition&gt;;\n\n条件查询(&gt;,&lt;,&gt;=,&lt;=,!=,=,or,and,between…and…)\n\n排序(order by)\n1234mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt; order by field_1 &lt;desc|asc&gt;,                                                             field_2 &lt;desc|asc&gt;,                                                             ......                                                             field_n &lt;desc|asc&gt;;\n\ndesc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。\n\n\n限制(limit)\n1mysql&gt; select * from &lt;table_name&gt; limit &lt;n,m&gt;;\n\n第(n+1)条开始，选择m条记录。n\b\b偏移量默认\b为0时，可以不写。\n\n\n\b聚合\n12345mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;       from &lt;table_name&gt;       where &lt;where condition&gt;       group by field_1,field_2,...,field_n       having &lt;where condition&gt;\n\n聚合函数(fun_name)\n\n\bsum()求和\navg()平均数\ncount()计数\nmax()最大值\nmin()最小值\n\n\n\ngroup by 表示进行分类聚合的字段。having 表示对分类后的结果再进行条件过滤。\nhaving 和 where 的区别在于，having 是对聚合后的结果进行条件过滤，而 where 是在 聚合前就对记录进行过滤。\n\n如果逻辑允许，尽可能用 where 先进行过滤，减小结果集，提高聚合效率，最后再根据逻辑看是否用 having 再进行过滤。\n\n\n表连接\n\n外连接\n\n左连接(left join)包含所有左表中的记录甚至是右表中没有和它匹配的记录。\n\n右连接(right join)包含所有右表中的记录甚至是左表中没有和它匹配的记录。\n\n\n\n内连接(inner join)最常用\n\n\n\n子查询(in,not in,=,!=,exists,not exists)\n子查询记录数唯一，还可以用=代替in。\n\n\n记录联合(union,union all)\n123456mysql&gt; select * from t1       union | union       all select * from t2       ......       union | union       all select * from tn;\n\nunion 和 union all 的主要区别是:union all 是把结果直接合并在一起，而 union 是将 union all \b\b后的结果进行一次 distinct ，去除重复记录后的结果。\n\n\n\n\n\n\nDCL语句DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。\n\n创建用户1mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by '&lt;password&gt;';\n\n  \n\n查看所有用户(root 用户下)12mysql&gt; use mysql;mysql&gt; select user from mysql.user;\n\n  \n\n修改用户密码1mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by '&lt;new_password&gt;';\n\n  \n\n删除用户1mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n用户授权1mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n  \n\n查看授权(root \b用户下)1mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n  \n\n撤销授权1mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n\n\nMysql帮助\n按照层次看帮助1mysql&gt; ? content;\n\n  \n1mysql&gt; ? data types;\n\n  \n1mysql&gt; ? double;\n\n  \n\n快速查阅帮助1mysql&gt; ? show;\n\n  \n1mysql&gt; ? create table;\n\n  \n\n\n","dateCreated":"2018-07-26T14:00:00+08:00","dateModified":"2019-02-28T18:13:50+08:00","datePublished":"2018-07-26T14:00:00+08:00","description":"结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。","headline":"Mysql基础篇之SQL基础","image":["covers/LOL/Vayne/Project-Vayne-1.jpg","covers/LOL/Vayne/Project-Vayne-1.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/","keywords":"Mysql, SQL","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-1.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。\n\n结构化查询语言是高级的非过程化编程语言，允许用户在高层数据结构上工作。它不要求用户指定对数据的存放方法，也不需要用户了解具体的数据存放方式，所以具有完全不同底层结构的不同数据库系统, 可以使用相同的结构化查询语言作为数据输入与管理的接口。结构化查询语言语句可以嵌套，这使它具有极大的灵活性和强大的功能。SQL语句主要分为三个类别：DDL语句、DML语句和DCL语句。\n\n\nDDL语句DDL（Data Definition Languages）语句：数据定义语言，是对数据库内部的对象进行创建、删除、修改等操作的语言。它和DML语句的最大区别是DML只是对表内部数据操作，而不涉及表的定义、结构的修改，更不会涉及其他对象。常用的语句关键字包括create、drop、alter等。\n\n连接到mysql数据库1mysql -uroot -p&lt;password&gt;\n\n\b查看数据\b库1mysql&gt; show databases;\n\n创建数据库1mysql&gt; create database &lt;database_name&gt;;\n\n选择数据库1mysql&gt; use &lt;databaseName&gt;\n\n删除数据库1mysql&gt; drop database &lt;database_name&gt;;\n\n创建表1234567mysql&gt; create table &lt;table_name&gt;(        &lt;column_name_1&gt; &lt;column_type_1&gt; &lt;constraints&gt;,        &lt;column_name_2&gt; &lt;column_type_2&gt; &lt;constraints&gt;,        &lt;column_name_3&gt; &lt;column_type_3&gt; &lt;constraints&gt;,        ......        &lt;column_name_n&gt; &lt;column_type_n&gt; &lt;constraints&gt;        );\n\n查看表定义1mysql&gt; desc &lt;table_name&gt;;\n\n查看创建表的SQL语句1mysql&gt; show create table &lt;table_name&gt;;\n\n删除表1mysql&gt; drop table &lt;table_name&gt;;\n\n修改表\n修改表类型\n1mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt;;\n\n增加表字段\n1mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n删除表字段\n1mysql&gt; alter table &lt;table_name&gt; drop column &lt;column_name&gt;;\n\n字段改名\n1mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt;;\n\n修改字段排序\n12345mysql&gt; alter table &lt;table_name&gt; modify &lt;column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; add column &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;mysql&gt; alter table &lt;table_name&gt; change &lt;column_name&gt; &lt;new_column_name&gt; &lt;new_column_type&gt; first | after &lt;another_column_name&gt;;\n\n更改表名\n1mysql&gt; alter table &lt;table_name&gt; rename &lt;new_table_name&gt;;\n\n\n\n\n\nDML语句DML（Data Manipulation Language）语句：数据操纵语句。用于对数据表中记录的操作，主要包括表记录的插入（insert）、更新（update）、删除（delete）和查询（select）。\n\n插入记录12345mysql&gt; insert into &lt;table_name&gt; (column_name_1,column_name_2,...,column_name_n) values        (record_1_value_1,record_1_value_2,...,record_1_value_n),        (record_2_value_1,record_2_value_2,...,record_2_value_n),        ......        (record_n_value_1,record_n_value_2,...,record_n_value_n);\n\n更新记录1mysql&gt; update &lt;table_name&gt; set field_1 = value_1,field_2 = value_2,...,field_n = value_n &lt;where condition&gt;;\n\n删除记录1mysql&gt; delete from &lt;table_name&gt; &lt;where condition&gt;;\n\n查询记录1mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt;;\n\n\n去重(distinct)\n1mysql&gt; select &lt;field&gt; distinct from &lt;table_name&gt; &lt;where condition&gt;;\n\n条件查询(&gt;,&lt;,&gt;=,&lt;=,!=,=,or,and,between…and…)\n\n排序(order by)\n1234mysql&gt; select * from &lt;table_name&gt; &lt;where condition&gt; order by field_1 &lt;desc|asc&gt;,                                                             field_2 &lt;desc|asc&gt;,                                                             ......                                                             field_n &lt;desc|asc&gt;;\ndesc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。\n\n\n限制(limit)\n1mysql&gt; select * from &lt;table_name&gt; limit &lt;n,m&gt;;\n第(n+1)条开始，选择m条记录。n\b\b偏移量默认\b为0时，可以不写。\n\n\n\b聚合\n12345mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;       from &lt;table_name&gt;       where &lt;where condition&gt;       group by field_1,field_2,...,field_n       having &lt;where condition&gt;\n聚合函数(fun_name)\n\n\bsum()求和\navg()平均数\ncount()计数\nmax()最大值\nmin()最小值\n\n\n\ngroup by 表示进行分类聚合的字段。having 表示对分类后的结果再进行条件过滤。\nhaving 和 where 的区别在于，having 是对聚合后的结果进行条件过滤，而 where 是在 聚合前就对记录进行过滤。\n\n如果逻辑允许，尽可能用 where 先进行过滤，减小结果集，提高聚合效率，最后再根据逻辑看是否用 having 再进行过滤。\n\n\n表连接\n\n外连接\n\n左连接(left join)包含所有左表中的记录甚至是右表中没有和它匹配的记录。\n\n右连接(right join)包含所有右表中的记录甚至是左表中没有和它匹配的记录。\n\n\n\n内连接(inner join)最常用\n\n\n\n子查询(in,not in,=,!=,exists,not exists)\n子查询记录数唯一，还可以用=代替in。\n\n\n记录联合(union,union all)\n123456mysql&gt; select * from t1       union | union       all select * from t2       ......       union | union       all select * from tn;\nunion 和 union all 的主要区别是:union all 是把结果直接合并在一起，而 union 是将 union all \b\b后的结果进行一次 distinct ，去除重复记录后的结果。\n\n\n\n\n\n\nDCL语句DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。\n\n创建用户1mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by '&lt;password&gt;';\n  \n\n查看所有用户(root 用户下)12mysql&gt; use mysql;mysql&gt; select user from mysql.user;\n  \n\n修改用户密码1mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by '&lt;new_password&gt;';\n  \n\n删除用户1mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n用户授权1mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n查看授权(root \b用户下)1mysql&gt; show grants for &lt;user_name&gt;@&lt;localhost | ip&gt;;\n  \n\n撤销授权1mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;\n\n\n\nMysql帮助\n按照层次看帮助1mysql&gt; ? content;\n  \n1mysql&gt; ? data types;\n  \n1mysql&gt; ? double;\n  \n\n快速查阅帮助1mysql&gt; ? show;\n  \n1mysql&gt; ? create table;\n  \n\n\n","dateCreated":"2018-07-26T14:00:00+08:00","dateModified":"2019-02-28T18:13:50+08:00","datePublished":"2018-07-26T14:00:00+08:00","description":"结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。","headline":"Mysql基础篇之SQL基础","image":["covers/LOL/Vayne/Project-Vayne-1.jpg","covers/LOL/Vayne/Project-Vayne-1.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/","keywords":"Mysql, SQL","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-1.jpg"}</script>
     <meta name="description" content="结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。">
-<meta name="keywords" content="Mysql,SQL">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Mysql基础篇之SQL基础">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-user.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-select-user.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-alter-user.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-grant.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show-grants.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-content.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-data-tpye.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-double.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-table.png">
-<meta property="og:updated_time" content="2019-02-28T10:13:50.437Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-create-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-select-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-alter-user.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-grant.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-show-grants.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-content.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-data-tpye.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-double.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-create-table.png">
+<meta property="article:published_time" content="2018-07-26T06:00:00.000Z">
+<meta property="article:modified_time" content="2019-02-28T10:13:50.437Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Mysql">
+<meta property="article:tag" content="SQL">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Mysql基础篇之SQL基础">
-<meta name="twitter:description" content="结构化查询语言(Structured Query Language)简称SQL，是一种特殊目的的编程语言，是一种数据库查询和程序设计语言，用于存取数据以及查询、更新和管理关系数据库系统；同时也是数据库脚本文件的扩展名。">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-user.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/images/mysql-create-user.png">
     
     
         
@@ -51,16 +52,18 @@
         <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -70,7 +73,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -81,7 +84,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -96,7 +99,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -107,7 +110,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -130,7 +133,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -394,19 +397,16 @@
 </li>
 <li><p>排序(order by)</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from &lt;table_name&gt; &lt;<span class="built_in">where</span> condition&gt; order by field_1 &lt;desc|asc&gt;,</span><br><span class="line">                                                             field_2 &lt;desc|asc&gt;,</span><br><span class="line">                                                             ......</span><br><span class="line">                                                             field_n &lt;desc|asc&gt;;</span><br></pre></td></tr></table></figure>
-
 <div class="alert info no-icon"><p>desc和asc是排序关键字，desc表示字段按照降序排列，asc表示升序排列。默认是asc。</p>
 </div>
 </li>
 <li><p>限制(limit)</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from &lt;table_name&gt; <span class="built_in">limit</span> &lt;n,m&gt;;</span><br></pre></td></tr></table></figure>
-
 <div class="alert info no-icon"><p>第(n+1)条开始，选择m条记录。<br>n偏移量默认为0时，可以不写。</p>
 </div>
 </li>
 <li><p>聚合</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select &lt;field_1,field_2,...,field_n&gt; &lt;fun_name&gt;</span><br><span class="line">       from &lt;table_name&gt;</span><br><span class="line">       <span class="built_in">where</span> &lt;<span class="built_in">where</span> condition&gt;</span><br><span class="line">       group by field_1,field_2,...,field_n</span><br><span class="line">       having &lt;<span class="built_in">where</span> condition&gt;</span><br></pre></td></tr></table></figure>
-
 <div class="alert info no-icon"><p>聚合函数(fun_name)</p>
 <ul>
 <li>sum()求和</li>
@@ -443,7 +443,6 @@
 </li>
 <li><p>记录联合(union,union all)</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; select * from t1</span><br><span class="line">       union | union</span><br><span class="line">       all select * from t2</span><br><span class="line">       ......</span><br><span class="line">       union | union</span><br><span class="line">       all select * from tn;</span><br></pre></td></tr></table></figure>
-
 <div class="alert info no-icon"><p>union 和 union all 的主要区别是:<br>union all 是把结果直接合并在一起，而 union 是将 union all 后的结果进行一次 distinct ，去除重复记录后的结果。</p>
 </div>
 
@@ -454,26 +453,21 @@
 <h3 id="DCL语句"><a href="#DCL语句" class="headerlink" title="DCL语句"></a>DCL语句</h3><p>DCL（Data Control Language）语句：数据控制语句。用于控制不同数据段直接的许可和访问级别的语句，这些语句定义了数据库、表、字段、用户的访问权限和安全级别。主要的语句的关键字包括grant、revoke等。</p>
 <ul>
 <li><h4 id="创建用户"><a href="#创建用户" class="headerlink" title="创建用户"></a>创建用户</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; create user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by <span class="string">'&lt;password&gt;'</span>;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-user.png" alt="mysql_create_user"></p>
+<p>  <img src="images/mysql-create-user.png" alt="mysql_create_user"></p>
 </li>
 <li><h4 id="查看所有用户-root-用户下"><a href="#查看所有用户-root-用户下" class="headerlink" title="查看所有用户(root 用户下)"></a>查看所有用户(root 用户下)</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; use mysql;</span><br><span class="line">mysql&gt; select user from mysql.user;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-select-user.png" alt="mysql_select_user"></p>
+<p>  <img src="images/mysql-select-user.png" alt="mysql_select_user"></p>
 </li>
 <li><h4 id="修改用户密码"><a href="#修改用户密码" class="headerlink" title="修改用户密码"></a>修改用户密码</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; alter user &lt;user_name&gt;@&lt;localhost | ip&gt; identified by <span class="string">'&lt;new_password&gt;'</span>;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-alter-user.png" alt="mysql_alter_user"></p>
+<p>  <img src="images/mysql-alter-user.png" alt="mysql_alter_user"></p>
 </li>
 <li><h4 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; drop user &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 </li>
 <li><h4 id="用户授权"><a href="#用户授权" class="headerlink" title="用户授权"></a>用户授权</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; grant &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; to &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-grant.png" alt="mysql_grant"></p>
+<p>  <img src="images/mysql-grant.png" alt="mysql_grant"></p>
 </li>
 <li><h4 id="查看授权-root-用户下"><a href="#查看授权-root-用户下" class="headerlink" title="查看授权(root 用户下)"></a>查看授权(root 用户下)</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show grants <span class="keyword">for</span> &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show-grants.png" alt="mysql_show_grants"></p>
+<p>  <img src="images/mysql-show-grants.png" alt="mysql_show_grants"></p>
 </li>
 <li><h4 id="撤销授权"><a href="#撤销授权" class="headerlink" title="撤销授权"></a>撤销授权</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; revoke &lt;insert,delete,alter,select | all&gt; on &lt;database&gt;.&lt;*|table_name&gt; from &lt;user_name&gt;@&lt;localhost | ip&gt;;</span><br></pre></td></tr></table></figure>
 
@@ -481,21 +475,16 @@
 </ul>
 <h3 id="Mysql帮助"><a href="#Mysql帮助" class="headerlink" title="Mysql帮助"></a>Mysql帮助</h3><ul>
 <li><h4 id="按照层次看帮助"><a href="#按照层次看帮助" class="headerlink" title="按照层次看帮助"></a>按照层次看帮助</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? content;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-content.png" alt="mysql_content"></p>
+<p>  <img src="images/mysql-content.png" alt="mysql_content"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? data types;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
+<p>  <img src="images/mysql-data-tpye.png" alt="mysql_data_tpye"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? double;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-double.png" alt="mysql_double"></p>
+<p>  <img src="images/mysql-double.png" alt="mysql_double"></p>
 </li>
 <li><h4 id="快速查阅帮助"><a href="#快速查阅帮助" class="headerlink" title="快速查阅帮助"></a>快速查阅帮助</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? show;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-show.png" alt="mysql_show"></p>
+<p>  <img src="images/mysql-show.png" alt="mysql_show"></p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; ? create table;</span><br></pre></td></tr></table></figure>
-
-<p>  <img src="/2018/07/26/Mysql基础篇之SQL基础/images/mysql-create-table.png" alt="mysql_create_table"></p>
+<p>  <img src="images/mysql-create-table.png" alt="mysql_create_table"></p>
 </li>
 </ul>
 
@@ -509,7 +498,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/SQL/">SQL</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Mysql/" rel="tag">Mysql</a> <a class="tag tag--primary tag--small t-link" href="/tags/SQL/" rel="tag">SQL</a>
 
             </div>
         
@@ -522,7 +511,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/04/Trove的基本操作/"
+                    href="/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/"
                     data-tooltip="Trove的基本操作"
                     aria-label="PREVIOUS: Trove的基本操作"
                 >
@@ -536,7 +525,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/07/18/Mysql开发篇之字符集/"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
                     data-tooltip="Mysql开发篇之字符集"
                     aria-label="NEXT: Mysql开发篇之字符集"
                 >
@@ -563,7 +552,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -576,7 +565,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/&amp;title=Mysql基础篇之SQL基础"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/&amp;title=Mysql基础篇之SQL基础"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -589,7 +578,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -620,26 +609,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
+    class="leancloud_visitors"
+    data-flag-title="Mysql基础篇之SQL基础"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -661,7 +660,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/04/Trove的基本操作/"
+                    href="/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/"
                     data-tooltip="Trove的基本操作"
                     aria-label="PREVIOUS: Trove的基本操作"
                 >
@@ -675,7 +674,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/07/18/Mysql开发篇之字符集/"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
                     data-tooltip="Mysql开发篇之字符集"
                     aria-label="NEXT: Mysql开发篇之字符集"
                 >
@@ -702,7 +701,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -715,7 +714,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/&amp;title=Mysql基础篇之SQL基础"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/&amp;title=Mysql基础篇之SQL基础"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -728,7 +727,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -762,7 +761,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -775,7 +774,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/&amp;title=Mysql基础篇之SQL基础"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/&amp;title=Mysql基础篇之SQL基础"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -788,7 +787,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql基础篇之SQL基础/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -843,7 +842,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -852,5 +853,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Trove的概念和架构（三） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,19 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove StrategyTrove的目标是提供一个与数据库无关的功能集合和一个可以实现并扩展的框架。策略是Trove内部的设计结构，允许开发人员通过将Trove总体框架的部分抽离出来，进行新的实现来扩展Trove。\n从广义上来说，所有的数据库都提供了某种机制来备份它们的存储数据。Mysql、Postgresql及其他关系数据库都支持备份，MongoDB、Cassandra、Couchbase及许多其他NoSQL数据库也支持备份。然而，它们实际上有各自的生成备份的方法，并且在某些情况下，一个数据库可以有多种生成备份的方法。\n\n![trove-strategy](images/trove-strategy.png)\n\n用户端通过Trove API发送一个请求给Trove。该Trove API服务发送消息到task manager，task manager接下来发送消息到guest agent。\n\n在某些情况下仅存一个对于给定的动作的实现，但在其他情况下可能有多种选择的实现方式。策略机制允许开发者扩展Trove并添加新的实现。\n目前有用于备份、复制、存储和集群的策略。策略被定义为配置选项。\n\n\n例如，目前Mysql的备份策略有三种实现：MySQLDump、InnoBackupEx和InnoBackupExIncremental。\n1234567891011121314151617181920cfg.StrOpt('backup_strategy',            default='InnoBackupEx',            help='Default strategy to perform backups.',            deprecated_name='backup_strategy',            deprecated_group='DEFAULT')cfg.StrOpt('backup_namespace',            default='trove.guestagent.strategies.backup.mysql_impl',            help='Namespace to load backup strategies from.',            deprecated_name='backup_namespace',            deprecated_group='DEFAULT')cfg.DictOpt('backup_incremental_strategy',            default=&#123;'InnoBackupEx': 'InnoBackupExIncremental'&#125;,            help ='Incremental Backup Runner based on the default '                  'strategy. For strategies that do not implement an '                  'incremental backup, the runner will use the default '                  'full backup.',            deprecated_name='backup_incremental_strategy',            deprecated_group='DEFAULT')\n\n上面的配置选项（trove/common/cfg.py）定义备份策略并为Mysql数据库使用InnoBackupEx提供命名空间，InnoBackupEx位于trove.guestagent.strategies.backup.mysql_impl中。\n123class InnoBackupEx(base.BackupRunner):    \"\"\"Implementation of Backup Strategy for InnoBackupEx.\"\"\"    __strategy_name__ = 'innobackupex'\n\n配置选项backup_strategy定义了类的名称，backup_namespace定义了类实现的对象。如果没有实现备份策略，则它将被初始化为None。\n12345cfg.StrOpt('backup_strategy', default=None,            help='Default strategy to perform backups.')cfg.StrOpt('backup_namespace', default=None,            help='Namespace to load backup strategies from.')","dateCreated":"2018-09-11T17:05:14+08:00","dateModified":"2019-02-28T18:18:47+08:00","datePublished":"2018-09-11T17:05:14+08:00","description":"Trove Strategy","headline":"Trove的概念和架构（三）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nTrove StrategyTrove的目标是提供一个与数据库无关的功能集合和一个可以实现并扩展的框架。策略是Trove内部的设计结构，允许开发人员通过将Trove总体框架的部分抽离出来，进行新的实现来扩展Trove。\n从广义上来说，所有的数据库都提供了某种机制来备份它们的存储数据。Mysql、Postgresql及其他关系数据库都支持备份，MongoDB、Cassandra、Couchbase及许多其他NoSQL数据库也支持备份。然而，它们实际上有各自的生成备份的方法，并且在某些情况下，一个数据库可以有多种生成备份的方法。\n\n![trove-strategy](images/trove-strategy.png)\n\n用户端通过Trove API发送一个请求给Trove。该Trove API服务发送消息到task manager，task manager接下来发送消息到guest agent。\n\n在某些情况下仅存一个对于给定的动作的实现，但在其他情况下可能有多种选择的实现方式。策略机制允许开发者扩展Trove并添加新的实现。\n目前有用于备份、复制、存储和集群的策略。策略被定义为配置选项。\n\n\n例如，目前Mysql的备份策略有三种实现：MySQLDump、InnoBackupEx和InnoBackupExIncremental。\n1234567891011121314151617181920cfg.StrOpt('backup_strategy',            default='InnoBackupEx',            help='Default strategy to perform backups.',            deprecated_name='backup_strategy',            deprecated_group='DEFAULT')cfg.StrOpt('backup_namespace',            default='trove.guestagent.strategies.backup.mysql_impl',            help='Namespace to load backup strategies from.',            deprecated_name='backup_namespace',            deprecated_group='DEFAULT')cfg.DictOpt('backup_incremental_strategy',            default=&#123;'InnoBackupEx': 'InnoBackupExIncremental'&#125;,            help ='Incremental Backup Runner based on the default '                  'strategy. For strategies that do not implement an '                  'incremental backup, the runner will use the default '                  'full backup.',            deprecated_name='backup_incremental_strategy',            deprecated_group='DEFAULT')\n\n上面的配置选项（trove/common/cfg.py）定义备份策略并为Mysql数据库使用InnoBackupEx提供命名空间，InnoBackupEx位于trove.guestagent.strategies.backup.mysql_impl中。\n123class InnoBackupEx(base.BackupRunner):    \"\"\"Implementation of Backup Strategy for InnoBackupEx.\"\"\"    __strategy_name__ = 'innobackupex'\n\n配置选项backup_strategy定义了类的名称，backup_namespace定义了类实现的对象。如果没有实现备份策略，则它将被初始化为None。\n12345cfg.StrOpt('backup_strategy', default=None,            help='Default strategy to perform backups.')cfg.StrOpt('backup_namespace', default=None,            help='Namespace to load backup strategies from.')","dateCreated":"2018-09-11T17:05:14+08:00","dateModified":"2019-02-28T18:18:47+08:00","datePublished":"2018-09-11T17:05:14+08:00","description":"Trove Strategy","headline":"Trove的概念和架构（三）","image":["covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg","covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"}</script>
     <meta name="description" content="Trove Strategy">
-<meta name="keywords" content="Trove">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的概念和架构（三）">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Trove Strategy">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-02-28T10:18:47.308Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-09-11T09:05:14.000Z">
+<meta property="article:modified_time" content="2019-02-28T10:18:47.308Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Trove">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Trove的概念和架构（三）">
-<meta name="twitter:description" content="Trove Strategy">
     
     
         
@@ -40,16 +40,18 @@
         <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/covers/LOL/Ezreal/Ace-of-Spades-Ezreal.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -59,7 +61,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -70,7 +72,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -85,7 +87,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -96,7 +98,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -119,7 +121,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -321,7 +323,7 @@
 
 <h3 id="Trove-Strategy"><a href="#Trove-Strategy" class="headerlink" title="Trove Strategy"></a>Trove Strategy</h3><p>Trove的目标是提供一个与数据库无关的功能集合和一个可以实现并扩展的框架。<br>策略是Trove内部的设计结构，允许开发人员通过将Trove总体框架的部分抽离出来，进行新的实现来扩展Trove。</p>
 <p>从广义上来说，所有的数据库都提供了某种机制来备份它们的存储数据。Mysql、Postgresql及其他关系数据库都支持备份，MongoDB、Cassandra、Couchbase及许多其他NoSQL数据库也支持备份。然而，它们实际上有各自的生成备份的方法，并且在某些情况下，一个数据库可以有多种生成备份的方法。</p>
-<div align="center">
+<div align=center>
 ![trove-strategy](images/trove-strategy.png)
 </div>
 用户端通过Trove API发送一个请求给Trove。该Trove API服务发送消息到task manager，task manager接下来发送消息到guest agent。
@@ -348,7 +350,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/">Trove</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/" rel="tag">Trove</a>
 
             </div>
         
@@ -361,7 +363,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/12/Trove的概念和架构（四）/"
+                    href="/2018/09/12/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（四）"
                     aria-label="PREVIOUS: Trove的概念和架构（四）"
                 >
@@ -375,7 +377,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（二）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（二）"
                     aria-label="NEXT: Trove的概念和架构（二）"
                 >
@@ -402,7 +404,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -415,7 +417,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/&amp;title=Trove的概念和架构（三）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=Trove的概念和架构（三）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -428,7 +430,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -459,26 +461,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="Trove的概念和架构（三）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -500,7 +512,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/12/Trove的概念和架构（四）/"
+                    href="/2018/09/12/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E5%9B%9B%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（四）"
                     aria-label="PREVIOUS: Trove的概念和架构（四）"
                 >
@@ -514,7 +526,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/09/11/Trove的概念和架构（二）/"
+                    href="/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%BA%8C%EF%BC%89/"
                     data-tooltip="Trove的概念和架构（二）"
                     aria-label="NEXT: Trove的概念和架构（二）"
                 >
@@ -541,7 +553,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -554,7 +566,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/&amp;title=Trove的概念和架构（三）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=Trove的概念和架构（三）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -567,7 +579,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -601,7 +613,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -614,7 +626,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/&amp;title=Trove的概念和架构（三）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/&amp;title=Trove的概念和架构（三）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -627,7 +639,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove的概念和架构（三）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/11/Trove%E7%9A%84%E6%A6%82%E5%BF%B5%E5%92%8C%E6%9E%B6%E6%9E%84%EF%BC%88%E4%B8%89%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -682,7 +694,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -691,5 +705,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

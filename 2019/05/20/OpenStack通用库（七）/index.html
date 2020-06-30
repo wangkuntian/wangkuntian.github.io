@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>OpenStack通用库（七） - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,21 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.policy用于控制用户的权限，能够执行什么样的操作。\n\nOpenStack的每个项目都有一个/etc//policy.yaml文件，通过这个配置文件来实现对用户的权限管理。\n将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。\npolicy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。\n各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。\nNova API示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445def authorize(context, action, target, do_raise=True, exc=None):    \"\"\"Verifies that the action is valid on the target in this context.       :param context: nova context       :param action: string representing the action to be checked           this should be colon separated for clarity.           i.e. ``compute:create_instance``,           ``compute:attach_volume``,           ``volume:attach_volume``       :param target: dictionary representing the object of the action           for object creation this should be a dictionary representing the           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``       :param do_raise: if True (the default), raises PolicyNotAuthorized;           if False, returns False       :param exc: Class of the exception to raise if the check fails.                   Any remaining arguments passed to :meth:`authorize` (both                   positional and keyword arguments) will be passed to                   the exception class. If not specified,                   :class:`PolicyNotAuthorized` will be used.       :raises nova.exception.PolicyNotAuthorized: if verification fails           and do_raise is True. Or if 'exc' is specified it will raise an           exception of that type.       :return: returns a non-False value (not necessarily \"True\") if           authorized, and the exact value False if not authorized and           do_raise is False.    \"\"\"    init()    credentials = context.to_policy_values()    if not exc:        exc = exception.PolicyNotAuthorized    try:        result = _ENFORCER.authorize(action, target, credentials,                                     do_raise=do_raise, exc=exc, action=action)    except policy.PolicyNotRegistered:        with excutils.save_and_reraise_exception():            LOG.exception(_LE('Policy not registered'))    except Exception:        with excutils.save_and_reraise_exception():            LOG.debug('Policy check for %(action)s failed with credentials '                      '%(credentials)s',                      &#123;'action': action, 'credentials': credentials&#125;)    return result\n\n对应/etc/nova/policy.json文件内容如下：\n123456&#123;    \"context_is_admin\":  \"role:admin\",    \"admin_or_owner\":  \"is_admin:True or project_id:%(project_id)s\",    \"default\": \"rule:admin_or_owner\"    ......&#125;\n\n从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。\n","dateCreated":"2019-05-20T17:57:18+08:00","dateModified":"2019-05-21T10:49:38+08:00","datePublished":"2019-05-20T17:57:18+08:00","description":"oslo.policy用于控制用户的权限，能够执行什么样的操作。","headline":"OpenStack通用库（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/","keywords":"OpenStack, Oslo, Policy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.policy用于控制用户的权限，能够执行什么样的操作。\n\nOpenStack的每个项目都有一个/etc//policy.yaml文件，通过这个配置文件来实现对用户的权限管理。\n将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。\npolicy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。\n各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。\nNova API示例。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445def authorize(context, action, target, do_raise=True, exc=None):    \"\"\"Verifies that the action is valid on the target in this context.       :param context: nova context       :param action: string representing the action to be checked           this should be colon separated for clarity.           i.e. ``compute:create_instance``,           ``compute:attach_volume``,           ``volume:attach_volume``       :param target: dictionary representing the object of the action           for object creation this should be a dictionary representing the           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``       :param do_raise: if True (the default), raises PolicyNotAuthorized;           if False, returns False       :param exc: Class of the exception to raise if the check fails.                   Any remaining arguments passed to :meth:`authorize` (both                   positional and keyword arguments) will be passed to                   the exception class. If not specified,                   :class:`PolicyNotAuthorized` will be used.       :raises nova.exception.PolicyNotAuthorized: if verification fails           and do_raise is True. Or if 'exc' is specified it will raise an           exception of that type.       :return: returns a non-False value (not necessarily \"True\") if           authorized, and the exact value False if not authorized and           do_raise is False.    \"\"\"    init()    credentials = context.to_policy_values()    if not exc:        exc = exception.PolicyNotAuthorized    try:        result = _ENFORCER.authorize(action, target, credentials,                                     do_raise=do_raise, exc=exc, action=action)    except policy.PolicyNotRegistered:        with excutils.save_and_reraise_exception():            LOG.exception(_LE('Policy not registered'))    except Exception:        with excutils.save_and_reraise_exception():            LOG.debug('Policy check for %(action)s failed with credentials '                      '%(credentials)s',                      &#123;'action': action, 'credentials': credentials&#125;)    return result\n对应/etc/nova/policy.json文件内容如下：\n123456&#123;    \"context_is_admin\":  \"role:admin\",    \"admin_or_owner\":  \"is_admin:True or project_id:%(project_id)s\",    \"default\": \"rule:admin_or_owner\"    ......&#125;\n从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。\n","dateCreated":"2019-05-20T17:57:18+08:00","dateModified":"2019-05-21T10:49:38+08:00","datePublished":"2019-05-20T17:57:18+08:00","description":"oslo.policy用于控制用户的权限，能够执行什么样的操作。","headline":"OpenStack通用库（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/","keywords":"OpenStack, Oslo, Policy","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.policy用于控制用户的权限，能够执行什么样的操作。">
-<meta name="keywords" content="OpenStack,Oslo,Policy">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用库（七）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="oslo.policy用于控制用户的权限，能够执行什么样的操作。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-05-21T02:49:38.796Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-05-20T09:57:18.000Z">
+<meta property="article:modified_time" content="2019-05-21T02:49:38.796Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Oslo">
+<meta property="article:tag" content="Policy">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="OpenStack通用库（七）">
-<meta name="twitter:description" content="oslo.policy用于控制用户的权限，能够执行什么样的操作。">
     
     
         
@@ -41,12 +43,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +60,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +71,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +86,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +97,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +120,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -314,16 +318,14 @@
         <div class="main-content-wrap">
             <p><a href="https://github.com/openstack/oslo.policy" target="_blank" rel="noopener">oslo.policy</a>用于控制用户的权限，能够执行什么样的操作。</p>
 <a id="more"></a>
-<p>OpenStack的每个项目都有一个/etc/<project>/policy.yaml文件，通过这个配置文件来实现对用户的权限管理。</project></p>
+<p>OpenStack的每个项目都有一个/etc/<project>/policy.yaml文件，通过这个配置文件来实现对用户的权限管理。</p>
 <p>将policy操作的公共部分提取出来，就形成了oslo.policy库，它会负责policy的验证和rules的管理。</p>
 <p>policy的验证，其实就是对字典key和value的判断，如果匹配成功，则通过policy，否则失败。</p>
 <p>各个工程的API通过policy来检测用户身份群权限的规则，例如有些API只有管理员权限可以执行，有些普通用户可以执行，在代码中的体现就是判断context的project_id和user_id是不是合法类型的。</p>
 <p>Nova API示例。</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">authorize</span><span class="params">(context, action, target, do_raise=True, exc=None)</span>:</span></span><br><span class="line">    <span class="string">"""Verifies that the action is valid on the target in this context.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :param context: nova context</span></span><br><span class="line"><span class="string">       :param action: string representing the action to be checked</span></span><br><span class="line"><span class="string">           this should be colon separated for clarity.</span></span><br><span class="line"><span class="string">           i.e. ``compute:create_instance``,</span></span><br><span class="line"><span class="string">           ``compute:attach_volume``,</span></span><br><span class="line"><span class="string">           ``volume:attach_volume``</span></span><br><span class="line"><span class="string">       :param target: dictionary representing the object of the action</span></span><br><span class="line"><span class="string">           for object creation this should be a dictionary representing the</span></span><br><span class="line"><span class="string">           location of the object e.g. ``&#123;'project_id': context.project_id&#125;``</span></span><br><span class="line"><span class="string">       :param do_raise: if True (the default), raises PolicyNotAuthorized;</span></span><br><span class="line"><span class="string">           if False, returns False</span></span><br><span class="line"><span class="string">       :param exc: Class of the exception to raise if the check fails.</span></span><br><span class="line"><span class="string">                   Any remaining arguments passed to :meth:`authorize` (both</span></span><br><span class="line"><span class="string">                   positional and keyword arguments) will be passed to</span></span><br><span class="line"><span class="string">                   the exception class. If not specified,</span></span><br><span class="line"><span class="string">                   :class:`PolicyNotAuthorized` will be used.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :raises nova.exception.PolicyNotAuthorized: if verification fails</span></span><br><span class="line"><span class="string">           and do_raise is True. Or if 'exc' is specified it will raise an</span></span><br><span class="line"><span class="string">           exception of that type.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">       :return: returns a non-False value (not necessarily "True") if</span></span><br><span class="line"><span class="string">           authorized, and the exact value False if not authorized and</span></span><br><span class="line"><span class="string">           do_raise is False.</span></span><br><span class="line"><span class="string">    """</span></span><br><span class="line">    init()</span><br><span class="line">    credentials = context.to_policy_values()</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> exc:</span><br><span class="line">        exc = exception.PolicyNotAuthorized</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        result = _ENFORCER.authorize(action, target, credentials,</span><br><span class="line">                                     do_raise=do_raise, exc=exc, action=action)</span><br><span class="line">    <span class="keyword">except</span> policy.PolicyNotRegistered:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.exception(_LE(<span class="string">'Policy not registered'</span>))</span><br><span class="line">    <span class="keyword">except</span> Exception:</span><br><span class="line">        <span class="keyword">with</span> excutils.save_and_reraise_exception():</span><br><span class="line">            LOG.debug(<span class="string">'Policy check for %(action)s failed with credentials '</span></span><br><span class="line">                      <span class="string">'%(credentials)s'</span>,</span><br><span class="line">                      &#123;<span class="string">'action'</span>: action, <span class="string">'credentials'</span>: credentials&#125;)</span><br><span class="line">    <span class="keyword">return</span> result</span><br></pre></td></tr></table></figure>
-
 <p>对应/etc/nova/policy.json文件内容如下：</p>
 <figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="attr">"context_is_admin"</span>:  <span class="string">"role:admin"</span>,</span><br><span class="line">    <span class="attr">"admin_or_owner"</span>:  <span class="string">"is_admin:True or project_id:%(project_id)s"</span>,</span><br><span class="line">    <span class="attr">"default"</span>: <span class="string">"rule:admin_or_owner"</span></span><br><span class="line">    ......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
 <p>从上面的例子可以看到，nova policy的rule是“is_admin:True or project_id:%(project_id)s”，需要验证policy验证是不是admin用户或者project_id是不是匹配。</p>
 
             
@@ -336,7 +338,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/Policy/">Policy</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/" rel="tag">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/Policy/" rel="tag">Policy</a>
 
             </div>
         
@@ -349,7 +351,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/21/OpenStack通用库（八）/"
+                    href="/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/"
                     data-tooltip="OpenStack通用库（八）"
                     aria-label="PREVIOUS: OpenStack通用库（八）"
                 >
@@ -363,7 +365,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/17/OpenStack通用库（六）/"
+                    href="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     data-tooltip="OpenStack通用库（六）"
                     aria-label="NEXT: OpenStack通用库（六）"
                 >
@@ -390,7 +392,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -403,7 +405,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/&amp;title=OpenStack通用库（七）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=OpenStack通用库（七）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -416,7 +418,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -447,26 +449,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="OpenStack通用库（七）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -488,7 +500,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/21/OpenStack通用库（八）/"
+                    href="/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/"
                     data-tooltip="OpenStack通用库（八）"
                     aria-label="PREVIOUS: OpenStack通用库（八）"
                 >
@@ -502,7 +514,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/17/OpenStack通用库（六）/"
+                    href="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AD%EF%BC%89/"
                     data-tooltip="OpenStack通用库（六）"
                     aria-label="NEXT: OpenStack通用库（六）"
                 >
@@ -529,7 +541,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -542,7 +554,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/&amp;title=OpenStack通用库（七）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=OpenStack通用库（七）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -555,7 +567,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -589,7 +601,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -602,7 +614,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/&amp;title=OpenStack通用库（七）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=OpenStack通用库（七）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -615,7 +627,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack通用库（七）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/20/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%83%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -670,7 +682,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -679,5 +693,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

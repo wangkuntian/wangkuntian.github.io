@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Hexo Theme Tranquilpeak安装配置 - Wang kuntian&#39;s Blog</title>
@@ -19,19 +19,19 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n安装下载安装下载主题：hexo-theme-tranquilpeak，解压缩之后重命名为tranquilpeak复制到博客themes目录下。\nGit安装采用git的方式获取，这样可以随时pull最新的版本。\n123456789cd &lt;hexo dir&gt;git submodule add https://github.com/LouisBarranqueiro/tranquilpeak-hexo-theme themes/tranquilpeakcd themes/tranquilpeak# install bower and grunt if not installednpm install -g bower grunt-clinpm installbower installgrunt build\n\nHexo设置修改Hexo的_config.yml。\n1theme: tranquilpeak\n\nTranquilpeak设置修改Tranquilpeak的_config.yml。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990# 图片存储路径image_dir: assets/images # 侧边栏sidebar:    menu:        home:            title: global.home            url: /            icon: fa fa-home        categories:            title: global.categories            url: /all-categories            icon: fa fa-bookmark        tags:            title: global.tags            url: /all-tags            icon: fa fa-tags        archives:            title: global.archives            url: /all-archives            icon: fa fa-archive        search:            title: global.search            url: /#search            icon: fa fa-search            class: open-algolia-search        about:            title: global.about            url: /#about            icon: fa fa-question    author_links:        github:            title: global.github            url: https://github.com/wangkuntian            icon: fab fa-github        mail:            title: global.mail            url: mailto:wangkuntian1994@163.com            icon: fa fa-envelope    rss:        rss:            title: global.rss            url: /atom.xml            icon: fa fa-rss# 头header:    right_link:        url: /#about        icon:        class:# 作者author:    email: wangkuntian1994@163.com    location: Beijing    picture: faker.jpg# 分享sharing_options:   weibo:       title: \"Weibo\"       icon: \"fab fa-weibo\"       url: \"http://service.weibo.com/share/share.php?&amp;title=&#123;&#123;post.permalink&#125;&#125;\"   qq:       title: \"QQ\"       icon: \"fab fa-qq\"       url: \"http://connect.qq.com/widget/shareqq/index.html?url=&#123;&#123;post.permalink&#125;&#125;&amp;title=&#123;&#123;post.title&#125;&#125;\"   qzone:       title: \"Qzone\"       icon: \"fa fa-star\"       url: \"http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=&#123;&#123;post.permalink&#125;&#125;\"# 评论系统valine:  enable: true  appId: xxxxxxx  appKey: xxxxxxx  placeholder: ヾﾉ≧∀≦)o来啊，快活啊!   notify: false # mail notifier  verify: false # Verification code  avatar: wavatar  pageSize: 10  lang: zh-cn  visitor: true  highlight: true# 谷歌分析google_analytics_id: xxxxxxx\n\n自定义设置thumbnailImageTranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。\n修改Tranquilpeak目录layout/_partial/index.ejs\n123456var thumbnailImageUrl = null;if (post.thumbnailImage != null) &#123;    // 修改文章图片的路径    // url_for在路径前加上根路径    thumbnailImageUrl = url_for(post.thumbnailImage);&#125;\n\n修改Tranquilpeak目录layout/_partial/post/header-cover.ejs\n123456789101112&lt;%    // Generate cover image url    var coverImageUrl;    if (post.coverImage) &#123;        if (is_remote_url(post.coverImage)) &#123;            coverImageUrl = post.coverImage;        &#125;        else &#123;            coverImageUrl = url_for(post.coverImage);        &#125;%&gt;\n\n增加Valine评论系统Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。\n修改Tranquilpeak目录layout/_partial/post.ejs\n123456// 在文件最后面添加&lt;div class=\"main-content-wrap\"&gt;    &lt;% if (theme.valine.enable) &#123; %&gt;        &lt;%- partial('post/valine') %&gt;      &lt;% &#125; %&gt;&lt;/div&gt;\n\n新建文件layout/_partial/post/valine.ejs\n123456789101112131415161718192021&lt;script src=\"//cdn1.lncld.net/static/js/3.0.4/av-min.js\"&gt;&lt;/script&gt;&lt;script src='//unpkg.com/valine/dist/Valine.min.js'&gt;&lt;/script&gt;&lt;div id=\"vcomments\"&gt;&lt;/div&gt;&lt;script&gt;    new Valine(&#123;        el: '#vcomments',          appId: '&lt;%= theme.valine.appId %&gt;',        appKey: '&lt;%= theme.valine.appKey %&gt;',         placeholder: '&lt;%= theme.valine.placeholder %&gt;' ,        notify: '&lt;%= theme.valine.notify %&gt;',        verity: '&lt;%= theme.valine.verity %&gt;',        path: window.location.pathname,        avatar: '&lt;%= theme.valine.avatar %&gt;',        meta: ['nick','mail','link'],        pageSize: '&lt;%= theme.valine.pageSize %&gt;',        lang: '&lt;%= theme.valine.lang %&gt;',        visitor: '&lt;%= theme.valine.visitor %&gt;',        highlight: '&lt;%= theme.valine.highlight %&gt;'    &#125;);&lt;/script&gt;\n\n设置语言Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。\n在Tranquilpeak目录languages新建zh-en.yml文件。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081# date format displayed everywhere in the blogdate_format: \"MMM DD, YYYY\"global:    home: \"Home\"    categories: \"Categories\"    category: \"Category\"    tags: \"Tags\"    tag: \"Tag\"    archives: \"Archives\"    search: \"Search\"    about: \"About\"    author_picture: \"Author's picture\"    github: \"GitHub\"    stack_overflow: \"Stack Overflow\"    twitter: \"Twitter\"    facebook: \"Facebook\"    google_plus: \"Google +\"    weibo: \"Weibo\"    qq: \"QQ\"    qzone: \"Qzone\"    renren: \"Renren\"    vk: \"VK\"    odnoklassniki: \"Odnoklassniki\"    linkedin: \"LinkedIn\"    mail: \"Mail\"    rss: \"RSS\"    share_on_facebook: \"Share on Facebook\"    share_on_twitter: \"Share on Twitter\"    share_on_google_plus: \"Share on Google+\"    share_on_weibo: \"Share on Weibo\"    share_on_qq: \"Share on QQ\"    share_on_qzone: \"Share on Qzone\"    share_on_renren: \"Share on Renren\"    share_on_vk: \"Share on VK\"    share_on_odnoklassniki: \"Share on Odnoklassniki\"    search_category: \"Search category\"    search_tag: \"Search tag\"    search_date: \"Search date (YYYY/MM/DD)\"    posts_found:        zero: \"no post found\"        one: \"1 post found\"        other: \"&#123;n&#125; posts found\"    categories_found:        zero: \"no category found\"        one: \"1 cartegory found\"        other: \"&#123;n&#125; categories found\"    tags_found:        zero: \"no tag found\"        one: \"1 tag found\"        other: \"&#123;n&#125; tags found\"pagination:    page: \"page %d\"    of: \"of %d\"    newer_posts: \"上一页\"    older_posts: \"下一页\"    previous: \"PREVIOUS\"    next: \"NEXT\"post:    no_title : \"no title\"    categorized_in: \"in\"    tagged_in: \"TAGGED IN\"    toc: \"目录\"    back_to_top: \"Back to top\"    read_more: \"Continue reading\"    go_to_website: \"Go to website\"    comment_and_share: \"Comment and share\"    comment: \"Leave a comment\"    share: \"Share this post\"    gallery: \"Gallery\"    image:        one: \"image\"        other: \"%d images\"author:    # Your biography (Markdown and HTML supported)    bio: \"Hi\"    # Your job    job: \"Software Engineer\"\n\n最后在Hexo的_config.yml设置一下语言。\n1language: zh-en","dateCreated":"2018-07-02T17:20:29+08:00","dateModified":"2019-10-17T10:51:44+08:00","datePublished":"2018-07-02T17:20:29+08:00","description":"Hexo Theme Tranquilpeak安装配置","headline":"Hexo Theme Tranquilpeak安装配置","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/","keywords":"Hexo","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n安装下载安装下载主题：hexo-theme-tranquilpeak，解压缩之后重命名为tranquilpeak复制到博客themes目录下。\nGit安装采用git的方式获取，这样可以随时pull最新的版本。\n123456789cd &lt;hexo dir&gt;git submodule add https://github.com/LouisBarranqueiro/tranquilpeak-hexo-theme themes/tranquilpeakcd themes/tranquilpeak# install bower and grunt if not installednpm install -g bower grunt-clinpm installbower installgrunt build\n\nHexo设置修改Hexo的_config.yml。\n1theme: tranquilpeak\n\nTranquilpeak设置修改Tranquilpeak的_config.yml。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990# 图片存储路径image_dir: assets/images # 侧边栏sidebar:    menu:        home:            title: global.home            url: /            icon: fa fa-home        categories:            title: global.categories            url: /all-categories            icon: fa fa-bookmark        tags:            title: global.tags            url: /all-tags            icon: fa fa-tags        archives:            title: global.archives            url: /all-archives            icon: fa fa-archive        search:            title: global.search            url: /#search            icon: fa fa-search            class: open-algolia-search        about:            title: global.about            url: /#about            icon: fa fa-question    author_links:        github:            title: global.github            url: https://github.com/wangkuntian            icon: fab fa-github        mail:            title: global.mail            url: mailto:wangkuntian1994@163.com            icon: fa fa-envelope    rss:        rss:            title: global.rss            url: /atom.xml            icon: fa fa-rss# 头header:    right_link:        url: /#about        icon:        class:# 作者author:    email: wangkuntian1994@163.com    location: Beijing    picture: faker.jpg# 分享sharing_options:   weibo:       title: \"Weibo\"       icon: \"fab fa-weibo\"       url: \"http://service.weibo.com/share/share.php?&amp;title=&#123;&#123;post.permalink&#125;&#125;\"   qq:       title: \"QQ\"       icon: \"fab fa-qq\"       url: \"http://connect.qq.com/widget/shareqq/index.html?url=&#123;&#123;post.permalink&#125;&#125;&amp;title=&#123;&#123;post.title&#125;&#125;\"   qzone:       title: \"Qzone\"       icon: \"fa fa-star\"       url: \"http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=&#123;&#123;post.permalink&#125;&#125;\"# 评论系统valine:  enable: true  appId: xxxxxxx  appKey: xxxxxxx  placeholder: ヾﾉ≧∀≦)o来啊，快活啊!   notify: false # mail notifier  verify: false # Verification code  avatar: wavatar  pageSize: 10  lang: zh-cn  visitor: true  highlight: true# 谷歌分析google_analytics_id: xxxxxxx\n\n自定义设置thumbnailImageTranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。\n修改Tranquilpeak目录layout/_partial/index.ejs\n123456var thumbnailImageUrl = null;if (post.thumbnailImage != null) &#123;    // 修改文章图片的路径    // url_for在路径前加上根路径    thumbnailImageUrl = url_for(post.thumbnailImage);&#125;\n修改Tranquilpeak目录layout/_partial/post/header-cover.ejs\n123456789101112&lt;%    // Generate cover image url    var coverImageUrl;    if (post.coverImage) &#123;        if (is_remote_url(post.coverImage)) &#123;            coverImageUrl = post.coverImage;        &#125;        else &#123;            coverImageUrl = url_for(post.coverImage);        &#125;%&gt;\n\n\n增加Valine评论系统Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。\n修改Tranquilpeak目录layout/_partial/post.ejs\n123456// 在文件最后面添加&lt;div class=\"main-content-wrap\"&gt;    &lt;% if (theme.valine.enable) &#123; %&gt;        &lt;%- partial('post/valine') %&gt;      &lt;% &#125; %&gt;&lt;/div&gt;\n\n新建文件layout/_partial/post/valine.ejs\n123456789101112131415161718192021&lt;script src=\"//cdn1.lncld.net/static/js/3.0.4/av-min.js\"&gt;&lt;/script&gt;&lt;script src='//unpkg.com/valine/dist/Valine.min.js'&gt;&lt;/script&gt;&lt;div id=\"vcomments\"&gt;&lt;/div&gt;&lt;script&gt;    new Valine(&#123;        el: '#vcomments',          appId: '&lt;%= theme.valine.appId %&gt;',        appKey: '&lt;%= theme.valine.appKey %&gt;',         placeholder: '&lt;%= theme.valine.placeholder %&gt;' ,        notify: '&lt;%= theme.valine.notify %&gt;',        verity: '&lt;%= theme.valine.verity %&gt;',        path: window.location.pathname,        avatar: '&lt;%= theme.valine.avatar %&gt;',        meta: ['nick','mail','link'],        pageSize: '&lt;%= theme.valine.pageSize %&gt;',        lang: '&lt;%= theme.valine.lang %&gt;',        visitor: '&lt;%= theme.valine.visitor %&gt;',        highlight: '&lt;%= theme.valine.highlight %&gt;'    &#125;);&lt;/script&gt;\n\n设置语言Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。\n在Tranquilpeak目录languages新建zh-en.yml文件。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081# date format displayed everywhere in the blogdate_format: \"MMM DD, YYYY\"global:    home: \"Home\"    categories: \"Categories\"    category: \"Category\"    tags: \"Tags\"    tag: \"Tag\"    archives: \"Archives\"    search: \"Search\"    about: \"About\"    author_picture: \"Author's picture\"    github: \"GitHub\"    stack_overflow: \"Stack Overflow\"    twitter: \"Twitter\"    facebook: \"Facebook\"    google_plus: \"Google +\"    weibo: \"Weibo\"    qq: \"QQ\"    qzone: \"Qzone\"    renren: \"Renren\"    vk: \"VK\"    odnoklassniki: \"Odnoklassniki\"    linkedin: \"LinkedIn\"    mail: \"Mail\"    rss: \"RSS\"    share_on_facebook: \"Share on Facebook\"    share_on_twitter: \"Share on Twitter\"    share_on_google_plus: \"Share on Google+\"    share_on_weibo: \"Share on Weibo\"    share_on_qq: \"Share on QQ\"    share_on_qzone: \"Share on Qzone\"    share_on_renren: \"Share on Renren\"    share_on_vk: \"Share on VK\"    share_on_odnoklassniki: \"Share on Odnoklassniki\"    search_category: \"Search category\"    search_tag: \"Search tag\"    search_date: \"Search date (YYYY/MM/DD)\"    posts_found:        zero: \"no post found\"        one: \"1 post found\"        other: \"&#123;n&#125; posts found\"    categories_found:        zero: \"no category found\"        one: \"1 cartegory found\"        other: \"&#123;n&#125; categories found\"    tags_found:        zero: \"no tag found\"        one: \"1 tag found\"        other: \"&#123;n&#125; tags found\"pagination:    page: \"page %d\"    of: \"of %d\"    newer_posts: \"上一页\"    older_posts: \"下一页\"    previous: \"PREVIOUS\"    next: \"NEXT\"post:    no_title : \"no title\"    categorized_in: \"in\"    tagged_in: \"TAGGED IN\"    toc: \"目录\"    back_to_top: \"Back to top\"    read_more: \"Continue reading\"    go_to_website: \"Go to website\"    comment_and_share: \"Comment and share\"    comment: \"Leave a comment\"    share: \"Share this post\"    gallery: \"Gallery\"    image:        one: \"image\"        other: \"%d images\"author:    # Your biography (Markdown and HTML supported)    bio: \"Hi\"    # Your job    job: \"Software Engineer\"\n最后在Hexo的_config.yml设置一下语言。\n1language: zh-en","dateCreated":"2018-07-02T17:20:29+08:00","dateModified":"2019-10-17T10:51:44+08:00","datePublished":"2018-07-02T17:20:29+08:00","description":"Hexo Theme Tranquilpeak安装配置","headline":"Hexo Theme Tranquilpeak安装配置","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/","keywords":"Hexo","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Hexo Theme Tranquilpeak安装配置">
-<meta name="keywords" content="Hexo">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Hexo Theme Tranquilpeak安装配置">
-<meta property="og:url" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Hexo Theme Tranquilpeak安装配置">
-<meta property="og:locale" content="zh-en">
-<meta property="og:updated_time" content="2019-10-17T02:51:44.800Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-07-02T09:20:29.000Z">
+<meta property="article:modified_time" content="2019-10-17T02:51:44.800Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Hexo">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Hexo Theme Tranquilpeak安装配置">
-<meta name="twitter:description" content="Hexo Theme Tranquilpeak安装配置">
     
     
         
@@ -41,12 +41,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -56,7 +58,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -67,7 +69,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -82,7 +84,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -93,7 +95,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -116,7 +118,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -328,9 +330,9 @@
 <h3 id="自定义"><a href="#自定义" class="headerlink" title="自定义"></a>自定义</h3><h4 id="设置thumbnailImage"><a href="#设置thumbnailImage" class="headerlink" title="设置thumbnailImage"></a>设置thumbnailImage</h4><p>Tranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。</p>
 <p>修改Tranquilpeak目录layout/_partial/index.ejs</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> thumbnailImageUrl = <span class="literal">null</span>;</span><br><span class="line"><span class="keyword">if</span> (post.thumbnailImage != <span class="literal">null</span>) &#123;</span><br><span class="line">    <span class="comment">// 修改文章图片的路径</span></span><br><span class="line">    <span class="comment">// url_for在路径前加上根路径</span></span><br><span class="line">    thumbnailImageUrl = url_for(post.thumbnailImage);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
 <p>修改Tranquilpeak目录layout/_partial/post/header-cover.ejs</p>
 <figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;%</span><br><span class="line">    <span class="comment">// Generate cover image url</span></span><br><span class="line">    <span class="keyword">var</span> coverImageUrl;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (post.coverImage) &#123;</span><br><span class="line">        <span class="keyword">if</span> (is_remote_url(post.coverImage)) &#123;</span><br><span class="line">            coverImageUrl = post.coverImage;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            coverImageUrl = url_for(post.coverImage);</span><br><span class="line">        &#125;</span><br><span class="line">%&gt;</span><br></pre></td></tr></table></figure>
+
 
 <h4 id="增加Valine评论系统"><a href="#增加Valine评论系统" class="headerlink" title="增加Valine评论系统"></a>增加Valine评论系统</h4><p>Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。</p>
 <p>修改Tranquilpeak目录layout/_partial/post.ejs</p>
@@ -342,7 +344,6 @@
 <h4 id="设置语言"><a href="#设置语言" class="headerlink" title="设置语言"></a>设置语言</h4><p>Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。</p>
 <p>在Tranquilpeak目录languages新建zh-en.yml文件。</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># date format displayed everywhere in the blog</span></span><br><span class="line"><span class="attr">date_format:</span> <span class="string">"MMM DD, YYYY"</span></span><br><span class="line"></span><br><span class="line"><span class="attr">global:</span></span><br><span class="line">    <span class="attr">home:</span> <span class="string">"Home"</span></span><br><span class="line">    <span class="attr">categories:</span> <span class="string">"Categories"</span></span><br><span class="line">    <span class="attr">category:</span> <span class="string">"Category"</span></span><br><span class="line">    <span class="attr">tags:</span> <span class="string">"Tags"</span></span><br><span class="line">    <span class="attr">tag:</span> <span class="string">"Tag"</span></span><br><span class="line">    <span class="attr">archives:</span> <span class="string">"Archives"</span></span><br><span class="line">    <span class="attr">search:</span> <span class="string">"Search"</span></span><br><span class="line">    <span class="attr">about:</span> <span class="string">"About"</span></span><br><span class="line">    <span class="attr">author_picture:</span> <span class="string">"Author's picture"</span></span><br><span class="line">    <span class="attr">github:</span> <span class="string">"GitHub"</span></span><br><span class="line">    <span class="attr">stack_overflow:</span> <span class="string">"Stack Overflow"</span></span><br><span class="line">    <span class="attr">twitter:</span> <span class="string">"Twitter"</span></span><br><span class="line">    <span class="attr">facebook:</span> <span class="string">"Facebook"</span></span><br><span class="line">    <span class="attr">google_plus:</span> <span class="string">"Google +"</span></span><br><span class="line">    <span class="attr">weibo:</span> <span class="string">"Weibo"</span></span><br><span class="line">    <span class="attr">qq:</span> <span class="string">"QQ"</span></span><br><span class="line">    <span class="attr">qzone:</span> <span class="string">"Qzone"</span></span><br><span class="line">    <span class="attr">renren:</span> <span class="string">"Renren"</span></span><br><span class="line">    <span class="attr">vk:</span> <span class="string">"VK"</span></span><br><span class="line">    <span class="attr">odnoklassniki:</span> <span class="string">"Odnoklassniki"</span></span><br><span class="line">    <span class="attr">linkedin:</span> <span class="string">"LinkedIn"</span></span><br><span class="line">    <span class="attr">mail:</span> <span class="string">"Mail"</span></span><br><span class="line">    <span class="attr">rss:</span> <span class="string">"RSS"</span></span><br><span class="line">    <span class="attr">share_on_facebook:</span> <span class="string">"Share on Facebook"</span></span><br><span class="line">    <span class="attr">share_on_twitter:</span> <span class="string">"Share on Twitter"</span></span><br><span class="line">    <span class="attr">share_on_google_plus:</span> <span class="string">"Share on Google+"</span></span><br><span class="line">    <span class="attr">share_on_weibo:</span> <span class="string">"Share on Weibo"</span></span><br><span class="line">    <span class="attr">share_on_qq:</span> <span class="string">"Share on QQ"</span></span><br><span class="line">    <span class="attr">share_on_qzone:</span> <span class="string">"Share on Qzone"</span></span><br><span class="line">    <span class="attr">share_on_renren:</span> <span class="string">"Share on Renren"</span></span><br><span class="line">    <span class="attr">share_on_vk:</span> <span class="string">"Share on VK"</span></span><br><span class="line">    <span class="attr">share_on_odnoklassniki:</span> <span class="string">"Share on Odnoklassniki"</span></span><br><span class="line">    <span class="attr">search_category:</span> <span class="string">"Search category"</span></span><br><span class="line">    <span class="attr">search_tag:</span> <span class="string">"Search tag"</span></span><br><span class="line">    <span class="attr">search_date:</span> <span class="string">"Search date (YYYY/MM/DD)"</span></span><br><span class="line">    <span class="attr">posts_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">"no post found"</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">"1 post found"</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">"&#123;n&#125; posts found"</span></span><br><span class="line">    <span class="attr">categories_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">"no category found"</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">"1 cartegory found"</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">"&#123;n&#125; categories found"</span></span><br><span class="line">    <span class="attr">tags_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">"no tag found"</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">"1 tag found"</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">"&#123;n&#125; tags found"</span></span><br><span class="line"></span><br><span class="line"><span class="attr">pagination:</span></span><br><span class="line">    <span class="attr">page:</span> <span class="string">"page %d"</span></span><br><span class="line">    <span class="attr">of:</span> <span class="string">"of %d"</span></span><br><span class="line">    <span class="attr">newer_posts:</span> <span class="string">"上一页"</span></span><br><span class="line">    <span class="attr">older_posts:</span> <span class="string">"下一页"</span></span><br><span class="line">    <span class="attr">previous:</span> <span class="string">"PREVIOUS"</span></span><br><span class="line">    <span class="attr">next:</span> <span class="string">"NEXT"</span></span><br><span class="line"></span><br><span class="line"><span class="attr">post:</span></span><br><span class="line">    <span class="attr">no_title :</span> <span class="string">"no title"</span></span><br><span class="line">    <span class="attr">categorized_in:</span> <span class="string">"in"</span></span><br><span class="line">    <span class="attr">tagged_in:</span> <span class="string">"TAGGED IN"</span></span><br><span class="line">    <span class="attr">toc:</span> <span class="string">"目录"</span></span><br><span class="line">    <span class="attr">back_to_top:</span> <span class="string">"Back to top"</span></span><br><span class="line">    <span class="attr">read_more:</span> <span class="string">"Continue reading"</span></span><br><span class="line">    <span class="attr">go_to_website:</span> <span class="string">"Go to website"</span></span><br><span class="line">    <span class="attr">comment_and_share:</span> <span class="string">"Comment and share"</span></span><br><span class="line">    <span class="attr">comment:</span> <span class="string">"Leave a comment"</span></span><br><span class="line">    <span class="attr">share:</span> <span class="string">"Share this post"</span></span><br><span class="line">    <span class="attr">gallery:</span> <span class="string">"Gallery"</span></span><br><span class="line">    <span class="attr">image:</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">"image"</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">"%d images"</span></span><br><span class="line"></span><br><span class="line"><span class="attr">author:</span></span><br><span class="line">    <span class="comment"># Your biography (Markdown and HTML supported)</span></span><br><span class="line">    <span class="attr">bio:</span> <span class="string">"Hi"</span></span><br><span class="line">    <span class="comment"># Your job</span></span><br><span class="line">    <span class="attr">job:</span> <span class="string">"Software Engineer"</span></span><br></pre></td></tr></table></figure>
-
 <p>最后在Hexo的_config.yml设置一下语言。</p>
 <figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">language:</span> <span class="string">zh-en</span></span><br></pre></td></tr></table></figure>
             
@@ -355,7 +356,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Hexo/">Hexo</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Hexo/" rel="tag">Hexo</a>
 
             </div>
         
@@ -368,7 +369,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/07/18/Mysql开发篇之数据库引擎/"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
                     data-tooltip="Mysql开发篇之数据库引擎"
                     aria-label="PREVIOUS: Mysql开发篇之数据库引擎"
                 >
@@ -409,7 +410,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -422,7 +423,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -435,7 +436,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -466,26 +467,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+    class="leancloud_visitors"
+    data-flag-title="Hexo Theme Tranquilpeak安装配置"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -507,7 +518,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2018/07/18/Mysql开发篇之数据库引擎/"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
                     data-tooltip="Mysql开发篇之数据库引擎"
                     aria-label="PREVIOUS: Mysql开发篇之数据库引擎"
                 >
@@ -548,7 +559,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -561,7 +572,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -574,7 +585,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -608,7 +619,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -621,7 +632,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -634,7 +645,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak安装配置/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -689,7 +700,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -698,5 +711,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

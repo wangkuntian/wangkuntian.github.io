@@ -3,7 +3,7 @@
 <html lang="zh-en">
     
 <head>
-    <!-- hexo-inject:begin --><!-- hexo-inject:end --><meta charset="UTF-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="generator" content="Wang kuntian&#39;s Blog">
     <title>Docker入门（七） - Wang kuntian&#39;s Blog</title>
@@ -19,29 +19,30 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。\n\n\n\n\n端口映射实现访问容器从外部访问容器应用在启动容器时，如果不指定对应参数，在容器外部是无法通过网络来访问容器内的网络应用和服务的。\n当容器中运行一些网络应用，要让外部访问这些应用，可以通过-P或者-p参数来指定端口映射。当使用-P标记时，Docker会随机映射一个端口至容器内部的开放的网络端口。\n12docker run -d -P training/webapp python app.pydocker ps -l\n\n\n本地主机的32768被映射到了容器5000端口，访问宿主主机的32768端口即可访问容器内Web应用提供的界面。\n\n\n\n可以通过docker logs命令来查看应用的信息。\n-p则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。支持的格式有ip:hostPort:containerPort | ip::containerPort | hostPort::containerPort。\n映射所有接口地址使用hostPort:containerPort格式将本地的5000端口映射到容器的5000端口。\n1docker run -d -p 5000:5000 training/webapp python app.py\n\n此时默认会绑定本地所有接口上的所有地址。多次使用-p标记可以绑定多个端口。\n1docker run -d -p 5000:5000 -p 3000:80 training/webapp python app.py\n\n映射到指定地址的任意端口使用ip::containerPort绑定localhost的任意端口到容器的5000端口，本地主机会自动分配一个端口。\n1docker run -d -p 127.0.0.1::5000 training/webapp python app.py\n\n还可以使用udp标记来指定udp端口。\n1docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py\n\n查看映射端口配置1docker port CONTAINER [PRIVATE_PORT[/PROTO]]\n\n\n容器互联实现容器间通信容器间的连接（linking）系统是除了端口外另一种可以与容器中应用进行交互的方式。它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。\n自定义容器命名使用–name标记可以为容器自定义命名。\n1docker run -d --name web -P training/webapp python app.py\n\n\n容器的名称是唯一的。如果已经命名了一个叫web的容器，要再次使用web命名新容器，需要先用docker rm删除之前的容器。\n在执行docker run的使用如果添加–rm标记，则容器会在终止后立即删除。–rm和-d参数不能同时使用。\n\n\n容器互联使用–link参数可以让容器之间安全的进行交互。先创建一个新的数据库容器。\n1docker run -d --name db training/postgres\n\n删除之前创建的web容器。\n1docker rm -f web\n\n然后创建一个新的web容器，并将它连接到db容器。\n1docker run -d -P --name web --link db:db training/webapp python app.py\n\n\n–link参数的格式为–link name:alias，其中name是要链接的容器的名称，alias是这个链接的别名。\n\n\nDocker在两个容器之间创建了一个安全隧道，而且不用映射它们的端口到宿主主机上。在启动db容器的时候没有-p和-P标记，从而避免暴露数据库端口到外部网络上。\nDocker通过两种方式为容器公开连接信息。\n\n环境变量。\n更新/etc/hosts文件。\n\n使用env命令查看web容器的环境变量。\n1docker exec web env\n\n\n其中DB_开头的环境变量是供web容器连接db容器使用，前缀采用大写的连接别名。\n\n\n除了环境变量，Docker还添加host信息到父容器的/etc/hosts的文件。\n1docker exec web cat /etc/hosts\n\n\n这里有两个hosts信息，第一个是db容器的ip和主机名，第二个是web容器，web容器用自己的id作为默认主机名。可以在web容器中用ping命令测试与db容器的连通。\n1docker exec web ping db\n\n\n可以连接多个子容器到父容器。\n","dateCreated":"2019-07-08T15:53:32+08:00","dateModified":"2019-07-16T17:26:13+08:00","datePublished":"2019-07-08T15:53:32+08:00","description":"Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。","headline":"Docker入门（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/07/08/Docker入门（七）/","keywords":"Docker, 网络基础配置","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。\n\n\n\n\n端口映射实现访问容器从外部访问容器应用在启动容器时，如果不指定对应参数，在容器外部是无法通过网络来访问容器内的网络应用和服务的。\n当容器中运行一些网络应用，要让外部访问这些应用，可以通过-P或者-p参数来指定端口映射。当使用-P标记时，Docker会随机映射一个端口至容器内部的开放的网络端口。\n12docker run -d -P training/webapp python app.pydocker ps -l\n\n本地主机的32768被映射到了容器5000端口，访问宿主主机的32768端口即可访问容器内Web应用提供的界面。\n\n\n\n可以通过docker logs命令来查看应用的信息。\n-p则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。支持的格式有ip:hostPort:containerPort | ip::containerPort | hostPort::containerPort。\n映射所有接口地址使用hostPort:containerPort格式将本地的5000端口映射到容器的5000端口。\n1docker run -d -p 5000:5000 training/webapp python app.py\n\n此时默认会绑定本地所有接口上的所有地址。多次使用-p标记可以绑定多个端口。\n1docker run -d -p 5000:5000 -p 3000:80 training/webapp python app.py\n\n映射到指定地址的任意端口使用ip::containerPort绑定localhost的任意端口到容器的5000端口，本地主机会自动分配一个端口。\n1docker run -d -p 127.0.0.1::5000 training/webapp python app.py\n还可以使用udp标记来指定udp端口。\n1docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py\n\n查看映射端口配置1docker port CONTAINER [PRIVATE_PORT[/PROTO]]\n\n容器互联实现容器间通信容器间的连接（linking）系统是除了端口外另一种可以与容器中应用进行交互的方式。它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。\n自定义容器命名使用–name标记可以为容器自定义命名。\n1docker run -d --name web -P training/webapp python app.py\n\n容器的名称是唯一的。如果已经命名了一个叫web的容器，要再次使用web命名新容器，需要先用docker rm删除之前的容器。\n在执行docker run的使用如果添加–rm标记，则容器会在终止后立即删除。–rm和-d参数不能同时使用。\n\n\n容器互联使用–link参数可以让容器之间安全的进行交互。先创建一个新的数据库容器。\n1docker run -d --name db training/postgres\n\n删除之前创建的web容器。\n1docker rm -f web\n\n然后创建一个新的web容器，并将它连接到db容器。\n1docker run -d -P --name web --link db:db training/webapp python app.py\n\n–link参数的格式为–link name:alias，其中name是要链接的容器的名称，alias是这个链接的别名。\n\n\nDocker在两个容器之间创建了一个安全隧道，而且不用映射它们的端口到宿主主机上。在启动db容器的时候没有-p和-P标记，从而避免暴露数据库端口到外部网络上。\nDocker通过两种方式为容器公开连接信息。\n\n环境变量。\n更新/etc/hosts文件。\n\n使用env命令查看web容器的环境变量。\n1docker exec web env\n\n其中DB_开头的环境变量是供web容器连接db容器使用，前缀采用大写的连接别名。\n\n\n除了环境变量，Docker还添加host信息到父容器的/etc/hosts的文件。\n1docker exec web cat /etc/hosts\n\n这里有两个hosts信息，第一个是db容器的ip和主机名，第二个是web容器，web容器用自己的id作为默认主机名。可以在web容器中用ping命令测试与db容器的连通。\n1docker exec web ping db\n\n可以连接多个子容器到父容器。\n","dateCreated":"2019-07-08T15:53:32+08:00","dateModified":"2019-07-16T17:26:13+08:00","datePublished":"2019-07-08T15:53:32+08:00","description":"Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。","headline":"Docker入门（七）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/","keywords":"Docker, 网络基础配置","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。">
-<meta name="keywords" content="Docker,网络基础配置">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Docker入门（七）">
-<meta property="og:url" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/index.html">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/index.html">
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。">
-<meta property="og:locale" content="zh-en">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_run.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/curl.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_logs.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_port.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_run_name.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_ps.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_exec_env.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_exec_cat.png">
-<meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_exec_ping.png">
-<meta property="og:updated_time" content="2019-07-16T09:26:13.009Z">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_run.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/curl.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_logs.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_port.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_run_name.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_ps.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_exec_env.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_exec_cat.png">
+<meta property="og:image" content="https://wangkuntian.github.io/images/docker_exec_ping.png">
+<meta property="article:published_time" content="2019-07-08T07:53:32.000Z">
+<meta property="article:modified_time" content="2019-07-16T09:26:13.009Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Docker">
+<meta property="article:tag" content="网络基础配置">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Docker入门（七）">
-<meta name="twitter:description" content="Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。">
-<meta name="twitter:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/docker_run.png">
+<meta name="twitter:image" content="https://wangkuntian.github.io/images/docker_run.png">
     
     
         
@@ -51,12 +52,14 @@
     
     
     
-        <meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/PROJECT-Vayne.jpg"/>
-        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/07/08/Docker入门（七）/images/PROJECT-Vayne.jpg"/>
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
     
     
     <!--STYLES-->
-    <link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+    
+<link rel="stylesheet" href="/assets/css/style-9ot7aw0j51piikno64xayne5bx0dy6cinhpedfivtcl4vrbs7lvwo6ocdph2.min.css">
+
     <!--STYLES END-->
     
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
@@ -66,7 +69,7 @@
         gtag('js', new Date());
 
         gtag('config', 'UA-136102260-1');
-    </script><!-- hexo-inject:begin --><!-- hexo-inject:end -->
+    </script>
 
 
     
@@ -77,7 +80,7 @@
 </head>
 
     <body>
-        <!-- hexo-inject:begin --><!-- hexo-inject:end --><div id="blog">
+        <div id="blog">
             <!-- Define author's picture -->
 
 
@@ -92,7 +95,7 @@
     <div class="header-title">
         <a
             class="header-title-link"
-            href="/ "
+            href="/"
             aria-label=""
         >
             Wang kuntian&#39;s Blog
@@ -103,7 +106,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -126,7 +129,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -330,13 +333,12 @@
 <h3 id="端口映射实现访问容器"><a href="#端口映射实现访问容器" class="headerlink" title="端口映射实现访问容器"></a>端口映射实现访问容器</h3><h4 id="从外部访问容器应用"><a href="#从外部访问容器应用" class="headerlink" title="从外部访问容器应用"></a>从外部访问容器应用</h4><p>在启动容器时，如果不指定对应参数，在容器外部是无法通过网络来访问容器内的网络应用和服务的。</p>
 <p>当容器中运行一些网络应用，要让外部访问这些应用，可以通过-P或者-p参数来指定端口映射。当使用-P标记时，Docker会随机映射一个端口至容器内部的开放的网络端口。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -P training/webapp python app.py</span><br><span class="line">docker ps -l</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_run.png" alt="docker-run"></p>
+<p><img src="/images/docker_run.png" alt="docker-run"></p>
 <div class="alert info no-icon"><p>本地主机的32768被映射到了容器5000端口，访问宿主主机的32768端口即可访问容器内Web应用提供的界面。</p>
 </div>
 
-<p><img src="/2019/07/08/Docker入门（七）/images/curl.png" alt="curl"></p>
-<p>可以通过docker logs命令来查看应用的信息。<br><img src="/2019/07/08/Docker入门（七）/images/docker_logs.png" alt="docker-logs"></p>
+<p><img src="/images/curl.png" alt="curl"></p>
+<p>可以通过docker logs命令来查看应用的信息。<br><img src="/images/docker_logs.png" alt="docker-logs"></p>
 <p>-p则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。支持的格式有ip:hostPort:containerPort | ip::containerPort | hostPort::containerPort。</p>
 <h4 id="映射所有接口地址"><a href="#映射所有接口地址" class="headerlink" title="映射所有接口地址"></a>映射所有接口地址</h4><p>使用hostPort:containerPort格式将本地的5000端口映射到容器的5000端口。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 5000:5000 training/webapp python app.py</span><br></pre></td></tr></table></figure>
@@ -346,18 +348,15 @@
 
 <h4 id="映射到指定地址的任意端口"><a href="#映射到指定地址的任意端口" class="headerlink" title="映射到指定地址的任意端口"></a>映射到指定地址的任意端口</h4><p>使用ip::containerPort绑定localhost的任意端口到容器的5000端口，本地主机会自动分配一个端口。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 127.0.0.1::5000 training/webapp python app.py</span><br></pre></td></tr></table></figure>
-
 <p>还可以使用udp标记来指定udp端口。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py</span><br></pre></td></tr></table></figure>
 
 <h4 id="查看映射端口配置"><a href="#查看映射端口配置" class="headerlink" title="查看映射端口配置"></a>查看映射端口配置</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker port CONTAINER [PRIVATE_PORT[/PROTO]]</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_port.png" alt="docker-port"></p>
+<p><img src="/images/docker_port.png" alt="docker-port"></p>
 <h3 id="容器互联实现容器间通信"><a href="#容器互联实现容器间通信" class="headerlink" title="容器互联实现容器间通信"></a>容器互联实现容器间通信</h3><p>容器间的连接（linking）系统是除了端口外另一种可以与容器中应用进行交互的方式。它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。</p>
 <h4 id="自定义容器命名"><a href="#自定义容器命名" class="headerlink" title="自定义容器命名"></a>自定义容器命名</h4><p>使用–name标记可以为容器自定义命名。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name web -P training/webapp python app.py</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_run_name.png" alt="docker-run"></p>
+<p><img src="/images/docker_run_name.png" alt="docker-run"></p>
 <div class="alert danger no-icon"><p>容器的名称是唯一的。<br>如果已经命名了一个叫web的容器，要再次使用web命名新容器，需要先用docker rm删除之前的容器。</p>
 <p>在执行docker run的使用如果添加–rm标记，则容器会在终止后立即删除。<br>–rm和-d参数不能同时使用。</p>
 </div>
@@ -370,8 +369,7 @@
 
 <p>然后创建一个新的web容器，并将它连接到db容器。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -P --name web --link db:db training/webapp python app.py</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_ps.png" alt="docker-ps"></p>
+<p><img src="/images/docker_ps.png" alt="docker-ps"></p>
 <div class="alert info no-icon"><p>–link参数的格式为–link name:alias，其中name是要链接的容器的名称，alias是这个链接的别名。</p>
 </div>
 
@@ -383,19 +381,16 @@
 </ul>
 <p>使用env命令查看web容器的环境变量。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web env</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_exec_env.png" alt="docker-exec"></p>
+<p><img src="/images/docker_exec_env.png" alt="docker-exec"></p>
 <div class="alert info no-icon"><p>其中DB_开头的环境变量是供web容器连接db容器使用，前缀采用大写的连接别名。</p>
 </div>
 
 <p>除了环境变量，Docker还添加host信息到父容器的/etc/hosts的文件。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web cat /etc/hosts</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_exec_cat.png" alt="docker-exec"></p>
+<p><img src="/images/docker_exec_cat.png" alt="docker-exec"></p>
 <p>这里有两个hosts信息，第一个是db容器的ip和主机名，第二个是web容器，web容器用自己的id作为默认主机名。可以在web容器中用ping命令测试与db容器的连通。</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web ping db</span><br></pre></td></tr></table></figure>
-
-<p><img src="/2019/07/08/Docker入门（七）/images/docker_exec_ping.png" alt="docker-exec"></p>
+<p><img src="/images/docker_exec_ping.png" alt="docker-exec"></p>
 <div class="alert info no-icon"><p>可以连接多个子容器到父容器。</p>
 </div>
             
@@ -408,7 +403,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/网络基础配置/">网络基础配置</a>
+    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/" rel="tag">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/%E7%BD%91%E7%BB%9C%E5%9F%BA%E7%A1%80%E9%85%8D%E7%BD%AE/" rel="tag">网络基础配置</a>
 
             </div>
         
@@ -421,7 +416,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/07/08/Docker入门（八）/"
+                    href="/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AB%EF%BC%89/"
                     data-tooltip="Docker入门（八）"
                     aria-label="PREVIOUS: Docker入门（八）"
                 >
@@ -435,7 +430,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/23/Parallels-Desktop-Host-only联网/"
+                    href="/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
                     data-tooltip="Parallels Desktop Host-only联网"
                     aria-label="NEXT: Parallels Desktop Host-only联网"
                 >
@@ -462,7 +457,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -475,7 +470,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/&amp;title=Docker入门（七）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=Docker入门（七）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -488,7 +483,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -519,26 +514,36 @@
 <div class="main-content-wrap">
     
         <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src='//unpkg.com/valine/dist/Valine.min.js'></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
 <div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="Docker入门（七）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
 <script>
-    new Valine({
-        el: '#vcomments',
-        appId: 'TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz',
-        appKey: '56G0KI3088RN76r5dTyRcsao', 
-        placeholder: 'ヾﾉ≧∀≦)o来啊，快活啊!' ,
-        notify: 'false',
-        verity: '',
-        path: window.location.pathname,
-        avatar: 'wavatar',
-        meta: ['nick','mail','link'],
-        pageSize: '10',
-        lang: 'zh-cn',
-        visitor: 'true',
-        highlight: 'true'
-
-    });
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
 </script>
+
     
 </div>
 
@@ -560,7 +565,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/07/08/Docker入门（八）/"
+                    href="/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AB%EF%BC%89/"
                     data-tooltip="Docker入门（八）"
                     aria-label="PREVIOUS: Docker入门（八）"
                 >
@@ -574,7 +579,7 @@
                     
                 <a
                     class="post-action-btn btn btn--default tooltip--top"
-                    href="/2019/05/23/Parallels-Desktop-Host-only联网/"
+                    href="/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
                     data-tooltip="Parallels Desktop Host-only联网"
                     aria-label="NEXT: Parallels Desktop Host-only联网"
                 >
@@ -601,7 +606,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Weibo"
                     aria-label="Share on Weibo"
                 >
@@ -614,7 +619,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/&amp;title=Docker入门（七）"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=Docker入门（七）"
                     title="Share on QQ"
                     aria-label="Share on QQ"
                 >
@@ -627,7 +632,7 @@
             <li class="post-action hide-xs">
                 <a
                     class="post-action-btn btn btn--default"
-                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                     title="Share on Qzone"
                     aria-label="Share on Qzone"
                 >
@@ -661,7 +666,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                         aria-label="Share on Weibo"
                     >
                         <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
@@ -674,7 +679,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/&amp;title=Docker入门（七）"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=Docker入门（七）"
                         aria-label="Share on QQ"
                     >
                         <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
@@ -687,7 +692,7 @@
                     <a
                         class="share-option-btn"
                         target="new"
-                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker入门（七）/"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E4%B8%83%EF%BC%89/"
                         aria-label="Share on Qzone"
                     >
                         <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
@@ -742,7 +747,9 @@
         
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
+
 <script src="/assets/js/script-ahbblfb5raydfesinahwlh9t97hus6djbus0dzod7dtwbo79ifq2jizwcr7r.min.js"></script>
+
 <!--SCRIPTS END-->
 
 
@@ -751,5 +758,5 @@
 
 
 
-    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script><!-- hexo-inject:begin --><!-- hexo-inject:end --></body>
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
 </html>

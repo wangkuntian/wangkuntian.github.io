@@ -29,7 +29,7 @@
 <meta property="og:locale" content="zh_EN">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/10/11/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/neutron.png">
 <meta property="article:published_time" content="2018-10-11T08:19:54.000Z">
-<meta property="article:modified_time" content="2019-08-02T03:12:58.442Z">
+<meta property="article:modified_time" content="2019-08-02T03:12:58.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Neutron">
 <meta name="twitter:card" content="summary">
@@ -49,7 +49,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -68,7 +68,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -97,7 +101,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -120,7 +124,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -319,7 +323,7 @@
             <p><strong>Neutron</strong>对每一层网络服务的支持</p>
 <a id="more"></a>
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron二层网络服务"><span class="toc-text">Neutron二层网络服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron三层网络服务"><span class="toc-text">Neutron三层网络服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron高级网络服务"><span class="toc-text">Neutron高级网络服务</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#负载均衡即服务"><span class="toc-text">负载均衡即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VPN即服务"><span class="toc-text">VPN即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#防火墙即服务"><span class="toc-text">防火墙即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#网络计量服务"><span class="toc-text">网络计量服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DNS即服务"><span class="toc-text">DNS即服务</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1"><span class="toc-text">Neutron二层网络服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E4%B8%89%E5%B1%82%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1"><span class="toc-text">Neutron三层网络服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E9%AB%98%E7%BA%A7%E7%BD%91%E7%BB%9C%E6%9C%8D%E5%8A%A1"><span class="toc-text">Neutron高级网络服务</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%8D%B3%E6%9C%8D%E5%8A%A1"><span class="toc-text">负载均衡即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VPN%E5%8D%B3%E6%9C%8D%E5%8A%A1"><span class="toc-text">VPN即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%98%B2%E7%81%AB%E5%A2%99%E5%8D%B3%E6%9C%8D%E5%8A%A1"><span class="toc-text">防火墙即服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%AE%A1%E9%87%8F%E6%9C%8D%E5%8A%A1"><span class="toc-text">网络计量服务</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DNS%E5%8D%B3%E6%9C%8D%E5%8A%A1"><span class="toc-text">DNS即服务</span></a></li></ol></li></ol>
 
 <h3 id="Neutron二层网络服务"><a href="#Neutron二层网络服务" class="headerlink" title="Neutron二层网络服务"></a>Neutron二层网络服务</h3><p>在Neutron中支持二层网络的实现包括Linux Bridge、Open Vswitch，以及针对不同网络设备或者SDN产品的实现。但是，对于不同的实现，Neutron中只有一个插件，叫做ML2，其架构如下图所示。</p>
 <p><img src="images/neutron.png" alt="neutron"></p>
@@ -361,7 +365,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
 
             </div>
         
@@ -706,7 +710,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

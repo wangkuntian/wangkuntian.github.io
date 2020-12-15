@@ -34,7 +34,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AD%EF%BC%89/images/db1-ls.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AD%EF%BC%89/images/docker-backup.png">
 <meta property="article:published_time" content="2018-09-20T06:44:39.000Z">
-<meta property="article:modified_time" content="2019-07-08T07:20:38.726Z">
+<meta property="article:modified_time" content="2019-07-08T07:20:38.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Docker">
 <meta property="article:tag" content="数据管理">
@@ -55,7 +55,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -74,7 +74,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -103,7 +107,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -126,7 +130,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -325,7 +329,7 @@
             <p>用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。</p>
 <a id="more"></a>
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#数据卷"><span class="toc-text">数据卷</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#在容器内创建一个数据卷"><span class="toc-text">在容器内创建一个数据卷</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#挂载一个主机目录作为数据卷"><span class="toc-text">挂载一个主机目录作为数据卷</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#挂载一个本地主机文件作为数据卷"><span class="toc-text">挂载一个本地主机文件作为数据卷</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#数据卷容器"><span class="toc-text">数据卷容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#利用数据卷容器迁移数据"><span class="toc-text">利用数据卷容器迁移数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#备份"><span class="toc-text">备份</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#恢复"><span class="toc-text">恢复</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">数据卷</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9C%A8%E5%AE%B9%E5%99%A8%E5%86%85%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">在容器内创建一个数据卷</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%82%E8%BD%BD%E4%B8%80%E4%B8%AA%E4%B8%BB%E6%9C%BA%E7%9B%AE%E5%BD%95%E4%BD%9C%E4%B8%BA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">挂载一个主机目录作为数据卷</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%82%E8%BD%BD%E4%B8%80%E4%B8%AA%E6%9C%AC%E5%9C%B0%E4%B8%BB%E6%9C%BA%E6%96%87%E4%BB%B6%E4%BD%9C%E4%B8%BA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">挂载一个本地主机文件作为数据卷</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%8D%B7%E5%AE%B9%E5%99%A8"><span class="toc-text">数据卷容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%95%B0%E6%8D%AE%E5%8D%B7%E5%AE%B9%E5%99%A8%E8%BF%81%E7%A7%BB%E6%95%B0%E6%8D%AE"><span class="toc-text">利用数据卷容器迁移数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%87%E4%BB%BD"><span class="toc-text">备份</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%81%A2%E5%A4%8D"><span class="toc-text">恢复</span></a></li></ol></li></ol>
 
 <p>容器的数据管理主要有两种方式：</p>
 <ul>
@@ -393,7 +397,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/" rel="tag">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/" rel="tag">数据管理</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Docker/" rel="tag">Docker</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/" rel="tag">数据管理</a>
 
             </div>
         
@@ -738,7 +742,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n虚拟专用网络（VPN）的功能是在公共网络上建立专用网络，进行加密通讯。在企业网络中有广泛应用。VPN网关通过对数据包的加密和数据包目的地址的转换实现远程访问。\n\n\nVPN工作原理假设某企业总部A网络中搭建的系统服务器地址为10.0.1.10，位于总部的计算机可以直接通过内网地址进行访问，但位于外地的分公司B无法访问该内网地址，这时，VPN就起到了很重要的作用，分公司B可以通过搭建的虚拟专用网络接入到总部的局域网来访问这台服务器。\n\nVPN网关一般采用双网卡结构，内网卡接入公司总部A的内部局域网络，外网卡使用公网IP接入Internet。假设分公司B的终端192.168.0.2需要访问总公司A的服务器10.0.1.10，其发出的数据包的目的地址就是10.0.1.10。\n\n\n\n\n分公司B局域网的VPN网关在接受到终端192.168.0.2发出的数据包① 时，对其目的地址10.0.1.10进行检查，发现目标地址属于总公司A的网络地址，于是将数据包①根据采用的VPN技术进行封装，同时VPN网关会构造一个新的VPN数据包②，并将封装后的原数据包①作为VPN数据包②的负载，VPN数据包的目的地址为公司总部A网络的VPN网关的公共IP地址。\n\n\n\n\n分公司B局域网的VPN网关将VPN数据包发送到Internet外网中，由于VPN数据包的目的地址是总部A网络的VPN网关的外部地址，所以该数据包将被Internet的路由正确地发送到总部A网络的VPN网关。\n\n\n\n\n总部A网络的VPN网关对接收的数据包②进行检查，如果发现该数据包是从分公司B网络的VPN网关发出的，即可判定该数据包为VPN数据包，并对该数据包进行解包。解包的过程主要是将VPN数据包的包头剥离，将负载通过VPN技术反向处理还原成原始的数据包①。\n\n\n\n\n\n总部A网络的VPN网关将还原后的原始数据包发送至目标服务器10.0.1.10。在服务器10.0.1.10看来，它收到的数据包就跟从终端192.168.0.2直接发送过来的一样。 \n\n\n\n\n从服务器10.0.1.10返回终端192.168.0.2的数据包处理过程与上述过程原理是一样的。这样就完成了整个通过VPN的访问。\n\n\n\nVPN分类按VPN的协议分类VPN的隧道协议主要有三种：PPTP、L2TP和IPSec，其中PPTP和L2TP协议工作在OSI模型的第二层，又称为第二层隧道协议；IPSec是第三层隧道协议。\n按VPN的应用分类\nAccess VPN（远程接入VPN）：客户端到网关，使用公网IP作为骨干网络在设备之间传输VPN数据流量。\n\nIntranet VPN（内联网VPN）：网关到网关，通过公司的网络架构连接来自同公司的资源。\n\nExtranet VPN（外联网VPN）：与合作伙伴企业网构成Extranet，将一个公司与另一个公司的资源进行连接。\n\n\n按所用的设备类型分类\n路由器式VPN：路由器式VPN部署比较容易，只要在路由器上添加VPN服务即可。\n\n交换机式VPN：主要应用于连接用户比较少的VPN网络。\n\n防火墙式VPN：防火墙式VPN是最常见的一种VPN的实现方式，很多厂家都提供这种配置类型。  \n\n\n按照实现原理分类\n重叠VPN：此VPN需要用户自己建立节点之间的VPN链路，主要包括：GRE、L2TP、IPSec等众多技术。\n\n对等VPN：由网络运营商在主干网上完成VPN通道的建立，主要包括MPLS、VPN技术。\n\n\nVPN的实现方式\nVPN服务器：在大型局域网中，可以通过网络中心搭建VPN服务器的方法实现VPN。\n\n软件VPN：可以通过使用专用的软件实现VPN。\n\n硬件VPN：可可以通过使用专用的硬件实现VPN。\n\n集成VPN：某些硬件设备，如路由器、防火墙等，都含有VPN功能。   \n\n\n常用VPN技术\nMPLS VPN是一种基于MPLS技术的IP VPN，是在网络路由和交换设备上应用MPLS（Multi-Protocol Label Switching，多协议标记交换）技术，简化核心路由器的路由选择方式，利用结合传统路由技术的标记交换实现的IP虚拟专用网络（IP VPN）。MPLS优势在于将二层交换和三层路由技术结合起来，在解决VPN、服务分类和流量工程这些IP网络的重大问题时具有很优异的表现。因此，MPLS VPN在解决企业互连、提供各种新业务方面也越来越被运营商看好，成为在IP网络运营商提供增值业务的重要手段。MPLS VPN又可分为二层MPLS VPN（即MPLS L2 VPN）和三层MPLS VPN（即MPLS L3 VPN）。\n\nSSL VPN是以HTTPS（Secure HTTP，安全的HTTP，即支持SSL的HTTP协议）为基础的VPN技术，工作在传输层和应用层之间。SSL VPN充分利用了SSL协议提供的基于证书的身份认证、数据加密和消息完整性验证机制，可以为应用层之间的通信建立安全连接。SSL VPN广泛应用于基于Web的远程安全接入，为用户远程访问公司内部网络提供了安全保证。\n\nIPSec VPN是基于IPSec协议的VPN技术，由IPSec协议提供隧道安全保障。IPSec是一种由IETF设计的端到端的确保基于IP通讯的数据安全性的机制。它为Internet上传输的数据提供了高质量的、可互操作的、基于密码学的安全保证。\n\n","dateCreated":"2019-08-01T15:52:11+08:00","dateModified":"2019-08-02T10:40:09+08:00","datePublished":"2019-08-01T15:52:11+08:00","description":"VPN工作原理","headline":"VPN工作原理","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/08/01/VPN%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/08/01/VPN%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/","keywords":"VPN","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n虚拟专用网络（VPN）的功能是在公共网络上建立专用网络，进行加密通讯。在企业网络中有广泛应用。VPN网关通过对数据包的加密和数据包目的地址的转换实现远程访问。\n\n\nVPN工作原理假设某企业总部A网络中搭建的系统服务器地址为10.0.1.10，位于总部的计算机可以直接通过内网地址进行访问，但位于外地的分公司B无法访问该内网地址，这时，VPN就起到了很重要的作用，分公司B可以通过搭建的虚拟专用网络接入到总部的局域网来访问这台服务器。\n\nVPN网关一般采用双网卡结构，内网卡接入公司总部A的内部局域网络，外网卡使用公网IP接入Internet。假设分公司B的终端192.168.0.2需要访问总公司A的服务器10.0.1.10，其发出的数据包的目的地址就是10.0.1.10。\n\n\n\n\n分公司B局域网的VPN网关在接受到终端192.168.0.2发出的数据包① 时，对其目的地址10.0.1.10进行检查，发现目标地址属于总公司A的网络地址，于是将数据包①根据采用的VPN技术进行封装，同时VPN网关会构造一个新的VPN数据包②，并将封装后的原数据包①作为VPN数据包②的负载，VPN数据包的目的地址为公司总部A网络的VPN网关的公共IP地址。\n\n\n\n\n分公司B局域网的VPN网关将VPN数据包发送到Internet外网中，由于VPN数据包的目的地址是总部A网络的VPN网关的外部地址，所以该数据包将被Internet的路由正确地发送到总部A网络的VPN网关。\n\n\n\n\n总部A网络的VPN网关对接收的数据包②进行检查，如果发现该数据包是从分公司B网络的VPN网关发出的，即可判定该数据包为VPN数据包，并对该数据包进行解包。解包的过程主要是将VPN数据包的包头剥离，将负载通过VPN技术反向处理还原成原始的数据包①。\n\n\n\n\n\n总部A网络的VPN网关将还原后的原始数据包发送至目标服务器10.0.1.10。在服务器10.0.1.10看来，它收到的数据包就跟从终端192.168.0.2直接发送过来的一样。 \n\n\n\n\n从服务器10.0.1.10返回终端192.168.0.2的数据包处理过程与上述过程原理是一样的。这样就完成了整个通过VPN的访问。\n\n\n\nVPN分类按VPN的协议分类VPN的隧道协议主要有三种：PPTP、L2TP和IPSec，其中PPTP和L2TP协议工作在OSI模型的第二层，又称为第二层隧道协议；IPSec是第三层隧道协议。\n按VPN的应用分类\nAccess VPN（远程接入VPN）：客户端到网关，使用公网IP作为骨干网络在设备之间传输VPN数据流量。\n\nIntranet VPN（内联网VPN）：网关到网关，通过公司的网络架构连接来自同公司的资源。\n\nExtranet VPN（外联网VPN）：与合作伙伴企业网构成Extranet，将一个公司与另一个公司的资源进行连接。\n\n\n按所用的设备类型分类\n路由器式VPN：路由器式VPN部署比较容易，只要在路由器上添加VPN服务即可。\n\n交换机式VPN：主要应用于连接用户比较少的VPN网络。\n\n防火墙式VPN：防火墙式VPN是最常见的一种VPN的实现方式，很多厂家都提供这种配置类型。  \n\n\n按照实现原理分类\n重叠VPN：此VPN需要用户自己建立节点之间的VPN链路，主要包括：GRE、L2TP、IPSec等众多技术。\n\n对等VPN：由网络运营商在主干网上完成VPN通道的建立，主要包括MPLS、VPN技术。\n\n\nVPN的实现方式\nVPN服务器：在大型局域网中，可以通过网络中心搭建VPN服务器的方法实现VPN。\n\n软件VPN：可以通过使用专用的软件实现VPN。\n\n硬件VPN：可可以通过使用专用的硬件实现VPN。\n\n集成VPN：某些硬件设备，如路由器、防火墙等，都含有VPN功能。   \n\n\n常用VPN技术\nMPLS VPN是一种基于MPLS技术的IP VPN，是在网络路由和交换设备上应用MPLS（Multi-Protocol Label Switching，多协议标记交换）技术，简化核心路由器的路由选择方式，利用结合传统路由技术的标记交换实现的IP虚拟专用网络（IP VPN）。MPLS优势在于将二层交换和三层路由技术结合起来，在解决VPN、服务分类和流量工程这些IP网络的重大问题时具有很优异的表现。因此，MPLS VPN在解决企业互连、提供各种新业务方面也越来越被运营商看好，成为在IP网络运营商提供增值业务的重要手段。MPLS VPN又可分为二层MPLS VPN（即MPLS L2 VPN）和三层MPLS VPN（即MPLS L3 VPN）。\n\nSSL VPN是以HTTPS（Secure HTTP，安全的HTTP，即支持SSL的HTTP协议）为基础的VPN技术，工作在传输层和应用层之间。SSL VPN充分利用了SSL协议提供的基于证书的身份认证、数据加密和消息完整性验证机制，可以为应用层之间的通信建立安全连接。SSL VPN广泛应用于基于Web的远程安全接入，为用户远程访问公司内部网络提供了安全保证。\n\nIPSec VPN是基于IPSec协议的VPN技术，由IPSec协议提供隧道安全保障。IPSec是一种由IETF设计的端到端的确保基于IP通讯的数据安全性的机制。它为Internet上传输的数据提供了高质量的、可互操作的、基于密码学的安全保证。\n\n","dateCreated":"2019-08-01T15:52:11+08:00","dateModified":"2019-08-02T10:40:10+08:00","datePublished":"2019-08-01T15:52:11+08:00","description":"VPN工作原理","headline":"VPN工作原理","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/08/01/VPN%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/08/01/VPN%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86/","keywords":"VPN","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="VPN工作原理">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="VPN工作原理">
@@ -28,7 +28,7 @@
 <meta property="og:description" content="VPN工作原理">
 <meta property="og:locale" content="zh_EN">
 <meta property="article:published_time" content="2019-08-01T07:52:11.000Z">
-<meta property="article:modified_time" content="2019-08-02T02:40:09.059Z">
+<meta property="article:modified_time" content="2019-08-02T02:40:10.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="VPN">
 <meta name="twitter:card" content="summary">
@@ -47,7 +47,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -66,7 +66,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -95,7 +99,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -118,7 +122,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -317,7 +321,7 @@
             <!-- excerpt -->
 
 <p>虚拟专用网络（VPN）的功能是在公共网络上建立专用网络，进行加密通讯。在企业网络中有广泛应用。VPN网关通过对数据包的加密和数据包目的地址的转换实现远程访问。</p>
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN工作原理"><span class="toc-text">VPN工作原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN分类"><span class="toc-text">VPN分类</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#按VPN的协议分类"><span class="toc-text">按VPN的协议分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#按VPN的应用分类"><span class="toc-text">按VPN的应用分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#按所用的设备类型分类"><span class="toc-text">按所用的设备类型分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#按照实现原理分类"><span class="toc-text">按照实现原理分类</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN的实现方式"><span class="toc-text">VPN的实现方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#常用VPN技术"><span class="toc-text">常用VPN技术</span></a></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="toc-text">VPN工作原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN%E5%88%86%E7%B1%BB"><span class="toc-text">VPN分类</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%89VPN%E7%9A%84%E5%8D%8F%E8%AE%AE%E5%88%86%E7%B1%BB"><span class="toc-text">按VPN的协议分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%89VPN%E7%9A%84%E5%BA%94%E7%94%A8%E5%88%86%E7%B1%BB"><span class="toc-text">按VPN的应用分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%89%E6%89%80%E7%94%A8%E7%9A%84%E8%AE%BE%E5%A4%87%E7%B1%BB%E5%9E%8B%E5%88%86%E7%B1%BB"><span class="toc-text">按所用的设备类型分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8C%89%E7%85%A7%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86%E5%88%86%E7%B1%BB"><span class="toc-text">按照实现原理分类</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VPN%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="toc-text">VPN的实现方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8VPN%E6%8A%80%E6%9C%AF"><span class="toc-text">常用VPN技术</span></a></li></ol>
 
 <h3 id="VPN工作原理"><a href="#VPN工作原理" class="headerlink" title="VPN工作原理"></a>VPN工作原理</h3><p>假设某企业总部A网络中搭建的系统服务器地址为10.0.1.10，位于总部的计算机可以直接通过内网地址进行访问，但位于外地的分公司B无法访问该内网地址，这时，VPN就起到了很重要的作用，分公司B可以通过搭建的虚拟专用网络接入到总部的局域网来访问这台服务器。</p>
 <div class="alert info no-icon"><ol>
@@ -402,7 +406,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/VPN/" rel="tag">VPN</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/VPN/" rel="tag">VPN</a>
 
             </div>
         
@@ -747,7 +751,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

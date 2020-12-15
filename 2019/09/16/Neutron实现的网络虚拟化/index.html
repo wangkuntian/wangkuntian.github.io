@@ -44,7 +44,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/l2-agent.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/other-agent.png">
 <meta property="article:published_time" content="2019-09-16T06:33:06.000Z">
-<meta property="article:modified_time" content="2019-10-17T02:53:08.158Z">
+<meta property="article:modified_time" content="2019-10-17T02:53:08.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Neutron">
 <meta name="twitter:card" content="summary">
@@ -64,7 +64,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -83,7 +83,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -112,7 +116,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -135,7 +139,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -332,7 +336,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <!-- excerpt -->
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#为什么要网络虚拟化"><span class="toc-text">为什么要网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#现有的物理网络不能满足云计算的需求"><span class="toc-text">现有的物理网络不能满足云计算的需求</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#云计算的SDN要求"><span class="toc-text">云计算的SDN要求</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron网络虚拟化"><span class="toc-text">Neutron网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#网络（L2-Network）"><span class="toc-text">网络（L2 Network）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network"><span class="toc-text">Provider Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Tenant-Network"><span class="toc-text">Tenant Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network和Tenant-Network的区别"><span class="toc-text">Provider Network和Tenant Network的区别</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#子网（Subnet）"><span class="toc-text">子网（Subnet）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#端口（Port）"><span class="toc-text">端口（Port）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟交换机（Virtual-Switch）"><span class="toc-text">虚拟交换机（Virtual Switch）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟路由器（Virtual-Router）"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#各组件的关系"><span class="toc-text">各组件的关系</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron中的网络连通性"><span class="toc-text">Neutron中的网络连通性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟二层网络的实现"><span class="toc-text">虚拟二层网络的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#使用VLAN实现虚拟二层网络"><span class="toc-text">使用VLAN实现虚拟二层网络</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#基于GRE-VxLAN实现的二层网络（L2）"><span class="toc-text">基于GRE&#x2F;VxLAN实现的二层网络（L2）</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#虚拟路由器（Virtual-Router）-1"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DHCP服务"><span class="toc-text">DHCP服务</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron租户网络的隔离性（Isolation-of-Tenant-Network）"><span class="toc-text">Neutron租户网络的隔离性（Isolation of Tenant Network）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron租户网络的安全性（Security）"><span class="toc-text">Neutron租户网络的安全性（Security）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron租户网络的高可用性（HA）和扩展性（Scalability）"><span class="toc-text">Neutron租户网络的高可用性（HA）和扩展性（Scalability）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron扩展服务（Extension-Service）"><span class="toc-text">Neutron扩展服务（Extension Service）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron-REST-API"><span class="toc-text">Neutron REST API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron的实现框架"><span class="toc-text">Neutron的实现框架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#服务分类"><span class="toc-text">服务分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ML2"><span class="toc-text">ML2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Agent代理"><span class="toc-text">Agent代理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron之内以及与其他组件间通信"><span class="toc-text">Neutron之内以及与其他组件间通信</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="toc-text">为什么要网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E7%9A%84%E7%89%A9%E7%90%86%E7%BD%91%E7%BB%9C%E4%B8%8D%E8%83%BD%E6%BB%A1%E8%B6%B3%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E9%9C%80%E6%B1%82"><span class="toc-text">现有的物理网络不能满足云计算的需求</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84SDN%E8%A6%81%E6%B1%82"><span class="toc-text">云计算的SDN要求</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="toc-text">Neutron网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%EF%BC%88L2-Network%EF%BC%89"><span class="toc-text">网络（L2 Network）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network"><span class="toc-text">Provider Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Tenant-Network"><span class="toc-text">Tenant Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network%E5%92%8CTenant-Network%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-text">Provider Network和Tenant Network的区别</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AD%90%E7%BD%91%EF%BC%88Subnet%EF%BC%89"><span class="toc-text">子网（Subnet）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3%EF%BC%88Port%EF%BC%89"><span class="toc-text">端口（Port）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E4%BA%A4%E6%8D%A2%E6%9C%BA%EF%BC%88Virtual-Switch%EF%BC%89"><span class="toc-text">虚拟交换机（Virtual Switch）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E8%B7%AF%E7%94%B1%E5%99%A8%EF%BC%88Virtual-Router%EF%BC%89"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%84%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-text">各组件的关系</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E7%BD%91%E7%BB%9C%E8%BF%9E%E9%80%9A%E6%80%A7"><span class="toc-text">Neutron中的网络连通性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">虚拟二层网络的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8VLAN%E5%AE%9E%E7%8E%B0%E8%99%9A%E6%8B%9F%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C"><span class="toc-text">使用VLAN实现虚拟二层网络</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EGRE-VxLAN%E5%AE%9E%E7%8E%B0%E7%9A%84%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%EF%BC%88L2%EF%BC%89"><span class="toc-text">基于GRE&#x2F;VxLAN实现的二层网络（L2）</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E8%B7%AF%E7%94%B1%E5%99%A8%EF%BC%88Virtual-Router%EF%BC%89-1"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DHCP%E6%9C%8D%E5%8A%A1"><span class="toc-text">DHCP服务</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E9%9A%94%E7%A6%BB%E6%80%A7%EF%BC%88Isolation-of-Tenant-Network%EF%BC%89"><span class="toc-text">Neutron租户网络的隔离性（Isolation of Tenant Network）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%89%E5%85%A8%E6%80%A7%EF%BC%88Security%EF%BC%89"><span class="toc-text">Neutron租户网络的安全性（Security）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E9%AB%98%E5%8F%AF%E7%94%A8%E6%80%A7%EF%BC%88HA%EF%BC%89%E5%92%8C%E6%89%A9%E5%B1%95%E6%80%A7%EF%BC%88Scalability%EF%BC%89"><span class="toc-text">Neutron租户网络的高可用性（HA）和扩展性（Scalability）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E6%89%A9%E5%B1%95%E6%9C%8D%E5%8A%A1%EF%BC%88Extension-Service%EF%BC%89"><span class="toc-text">Neutron扩展服务（Extension Service）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron-REST-API"><span class="toc-text">Neutron REST API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%A1%86%E6%9E%B6"><span class="toc-text">Neutron的实现框架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%88%86%E7%B1%BB"><span class="toc-text">服务分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ML2"><span class="toc-text">ML2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Agent%E4%BB%A3%E7%90%86"><span class="toc-text">Agent代理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron%E4%B9%8B%E5%86%85%E4%BB%A5%E5%8F%8A%E4%B8%8E%E5%85%B6%E4%BB%96%E7%BB%84%E4%BB%B6%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="toc-text">Neutron之内以及与其他组件间通信</span></a></li></ol></li></ol>
 
 <h3 id="为什么要网络虚拟化"><a href="#为什么要网络虚拟化" class="headerlink" title="为什么要网络虚拟化"></a>为什么要网络虚拟化</h3><ul>
 <li>数据中心的现有网络不能满足云计算的物理需求。</li>
@@ -373,17 +377,17 @@
 </ol>
 <h4 id="云计算的SDN要求"><a href="#云计算的SDN要求" class="headerlink" title="云计算的SDN要求"></a>云计算的SDN要求</h4><p>数据中心（Data Center）中的网络是固定的、需要手工配置的、单一的、没有多租户隔离的网络。<br><br></p>
 <div class="figure " style="width:;"><a class="fancybox" href="images/OpenStack_Red_Hat_RDO.jpg" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/OpenStack_Red_Hat_RDO.jpg" alt=""></a></div>
-<div class="alert info no-icon"><p><a href="https://www.cisco.com/c/en/us/td/docs/solutions/Enterprise/Data_Center/OpenStack/Grizzly/OpenStack_Red_Hat_RDO.html" target="_blank" rel="noopener">来源</a><br>TOR：Top On Rack交换机。图中的一个服务器拥有三块网卡，分别连接到数据网络和管理网络的交换机。</p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="https://www.cisco.com/c/en/us/td/docs/solutions/Enterprise/Data_Center/OpenStack/Grizzly/OpenStack_Red_Hat_RDO.html">来源</a><br>TOR：Top On Rack交换机。图中的一个服务器拥有三块网卡，分别连接到数据网络和管理网络的交换机。</p>
 </div>
 
 <p>而云架构往往都是多租户架构，这意味着多个客户会共享单一的物理网络。因此，除了提供基本的网络连接能力之外，云还需要提供网络在租户之间的隔离能力；同时云是自服务的，这意味着租户可以通过云提供的API来使用虚拟出来的网络组建来设计、构建和部署各种他们需要的网络。<br><br></p>
 <div class="figure " style="width:;"><a class="fancybox" href="images/What_is_Network_Virtualization.png" title="What is Network Virtualization" data-caption="What is Network Virtualization" data-fancybox="default"><img class="fig-img" src="images/What_is_Network_Virtualization.png" alt="What is Network Virtualization"></a><span class="caption">What is Network Virtualization</span></div>
-<div class="alert info no-icon"><p><a href="http://bradhedlund.com/2013/05/28/what-is-network-virtualization/" target="_blank" rel="noopener">来源</a></p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="http://bradhedlund.com/2013/05/28/what-is-network-virtualization/">来源</a></p>
 </div>
 
 <br>
 <div class="figure " style="width:;"><a class="fancybox" href="images/midonet.png" title="MidoNet Logical and Physical View" data-caption="MidoNet Logical and Physical View" data-fancybox="default"><img class="fig-img" src="images/midonet.png" alt="MidoNet Logical and Physical View"></a><span class="caption">MidoNet Logical and Physical View</span></div>
-<div class="alert info no-icon"><p><a href="http://bradhedlund.com/2012/10/06/mind-blowing-l2-l4-network-virtualization-by-midokura-midonet/" target="_blank" rel="noopener">来源</a><br>MidoNet提供的物理网络和逻辑网络的映射。</p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="http://bradhedlund.com/2012/10/06/mind-blowing-l2-l4-network-virtualization-by-midokura-midonet/">来源</a><br>MidoNet提供的物理网络和逻辑网络的映射。</p>
 </div>
 
 <p>OpenStack云也不例外。OpenStack通过Neutron项目在物理网络环境之上提供满足多租户要求的虚拟网络和服务。Neutron提供的网络虚拟能力包括：</p>
@@ -598,7 +602,7 @@
 </ol>
 <h3 id="Neutron扩展服务（Extension-Service）"><a href="#Neutron扩展服务（Extension-Service）" class="headerlink" title="Neutron扩展服务（Extension Service）"></a>Neutron扩展服务（Extension Service）</h3><p>在实际的网络中，除了网络的核心功能外，还有一些普遍应用的网络服务，比如VPN、Load Balancing和Firewall等。Neutron针对这些普遍的服务，也提供了参考实现。</p>
 <h3 id="Neutron-REST-API"><a href="#Neutron-REST-API" class="headerlink" title="Neutron REST API"></a>Neutron REST API</h3><p>Neutron的neutron-server模块提供REST API来操作各种网络组建，包括network、subnet、port、router等。</p>
-<div class="alert info no-icon"><p><a href="https://docs.openstack.org/api-ref/network/v2/index.html" target="_blank" rel="noopener">文档</a></p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="https://docs.openstack.org/api-ref/network/v2/index.html">文档</a></p>
 </div>
 
 <h3 id="Neutron的实现框架"><a href="#Neutron的实现框架" class="headerlink" title="Neutron的实现框架"></a>Neutron的实现框架</h3><p>Neutron中包含大量内容，那Neutron如何实现这么多概念的呢？</p>
@@ -726,7 +730,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
 
             </div>
         
@@ -1071,7 +1075,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。\noslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。\n\n\n构造rootwrap shell脚本使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。\n以nova为例。\n12345678910# setup.cfgconsole_scripts =    nova-api = nova.cmd.api:main    nova-compute = nova.cmd.compute:main    nova-conductor = nova.cmd.conductor:main    nova-console = nova.cmd.console:main    nova-manage = nova.cmd.manage:main    nova-policy = nova.cmd.policy:main    nova-rootwrap = oslo_rootwrap.cmd:main\n可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。\n调用rootwrap shell脚本","dateCreated":"2019-05-21T10:50:18+08:00","dateModified":"2019-05-21T11:14:31+08:00","datePublished":"2019-05-21T10:50:18+08:00","description":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。","headline":"OpenStack通用库（八）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/","keywords":"OpenStack, Oslo, Rootwrap","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。\noslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。\n\n\n构造rootwrap shell脚本使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。\n以nova为例。\n12345678910# setup.cfgconsole_scripts =    nova-api = nova.cmd.api:main    nova-compute = nova.cmd.compute:main    nova-conductor = nova.cmd.conductor:main    nova-console = nova.cmd.console:main    nova-manage = nova.cmd.manage:main    nova-policy = nova.cmd.policy:main    nova-rootwrap = oslo_rootwrap.cmd:main\n可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。\n调用rootwrap shell脚本","dateCreated":"2019-05-21T10:50:18+08:00","dateModified":"2019-05-21T11:14:32+08:00","datePublished":"2019-05-21T10:50:18+08:00","description":"oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。","headline":"OpenStack通用库（八）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/21/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E5%85%AB%EF%BC%89/","keywords":"OpenStack, Oslo, Rootwrap","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用库（八）">
@@ -28,7 +28,7 @@
 <meta property="og:description" content="oslo.rootwarp可以让其他OpenStack服务以root身份执行shell命令。">
 <meta property="og:locale" content="zh_EN">
 <meta property="article:published_time" content="2019-05-21T02:50:18.000Z">
-<meta property="article:modified_time" content="2019-05-21T03:14:31.958Z">
+<meta property="article:modified_time" content="2019-05-21T03:14:32.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="OpenStack">
 <meta property="article:tag" content="Oslo">
@@ -49,7 +49,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -68,7 +68,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -97,7 +101,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -120,7 +124,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -316,13 +320,13 @@
     
     <div class="post-content markdown">
         <div class="main-content-wrap">
-            <p><a href="https://github.com/openstack/oslo.rootwrap" target="_blank" rel="noopener">oslo.rootwarp</a>可以让其他OpenStack服务以root身份执行shell命令。<a id="more"></a>一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。</p>
+            <p><a target="_blank" rel="noopener" href="https://github.com/openstack/oslo.rootwrap">oslo.rootwarp</a>可以让其他OpenStack服务以root身份执行shell命令。<a id="more"></a>一般来说，OpenStack的服务都是以非特权用户的身份运行的，但是当它们需要以root身份运行某些shell命令时，就需要利用到oslo.rootwrap的功能。</p>
 <p>oslo.rootwarp首先从配置文件所定义的Filter文件目录中读取所有Filter定义，然后检查要运行的shell命令是否和Filter中的定义相匹配，匹配则运行，不匹配就不运行。</p>
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#构造rootwrap-shell脚本"><span class="toc-text">构造rootwrap shell脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#调用rootwrap-shell脚本"><span class="toc-text">调用rootwrap shell脚本</span></a></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E9%80%A0rootwrap-shell%E8%84%9A%E6%9C%AC"><span class="toc-text">构造rootwrap shell脚本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B0%83%E7%94%A8rootwrap-shell%E8%84%9A%E6%9C%AC"><span class="toc-text">调用rootwrap shell脚本</span></a></li></ol>
 
 <h3 id="构造rootwrap-shell脚本"><a href="#构造rootwrap-shell脚本" class="headerlink" title="构造rootwrap shell脚本"></a>构造rootwrap shell脚本</h3><p>使用rootwrap需要在一个单独的Python进程中以root身份调用Python函数oslo.rootwrap.cmd.main()。可以通过Setuptools中的console script来构造这样一个脚本。</p>
 <p>以nova为例。</p>
-<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line"><span class="attr">console_scripts</span> =</span><br><span class="line">    nova-api = nova.cmd.api:main</span><br><span class="line">    nova-compute = nova.cmd.compute:main</span><br><span class="line">    nova-conductor = nova.cmd.conductor:main</span><br><span class="line">    nova-console = nova.cmd.console:main</span><br><span class="line">    nova-manage = nova.cmd.manage:main</span><br><span class="line">    nova-policy = nova.cmd.policy:main</span><br><span class="line">    nova-rootwrap = oslo_rootwrap.cmd:main</span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line">console_scripts =</span><br><span class="line">    <span class="attr">nova-api</span> = nova.cmd.api:main</span><br><span class="line">    <span class="attr">nova-compute</span> = nova.cmd.compute:main</span><br><span class="line">    <span class="attr">nova-conductor</span> = nova.cmd.conductor:main</span><br><span class="line">    <span class="attr">nova-console</span> = nova.cmd.console:main</span><br><span class="line">    <span class="attr">nova-manage</span> = nova.cmd.manage:main</span><br><span class="line">    <span class="attr">nova-policy</span> = nova.cmd.policy:main</span><br><span class="line">    <span class="attr">nova-rootwrap</span> = oslo_rootwrap.cmd:main</span><br></pre></td></tr></table></figure>
 <p>可以看到构造一个名为nova-rootwrap的shell脚本时，会调用oslo.rootwrap.cmd.main()函数。运行“python setup.py install”之后，nova-rootwrap脚本就会被生成。</p>
 <h3 id="调用rootwrap-shell脚本"><a href="#调用rootwrap-shell脚本" class="headerlink" title="调用rootwrap shell脚本"></a>调用rootwrap shell脚本</h3>
             
@@ -335,7 +339,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-link" href="/tags/Oslo/" rel="tag">Oslo</a> <a class="tag tag--primary tag--small t-link" href="/tags/Rootwrap/" rel="tag">Rootwrap</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Oslo/" rel="tag">Oslo</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Rootwrap/" rel="tag">Rootwrap</a>
 
             </div>
         
@@ -680,7 +684,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

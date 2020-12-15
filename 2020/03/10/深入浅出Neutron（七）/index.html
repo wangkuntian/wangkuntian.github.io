@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/iptables_l.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/iptables_vnl.png">
 <meta property="article:published_time" content="2020-03-10T10:18:21.000Z">
-<meta property="article:modified_time" content="2020-06-16T08:32:48.570Z">
+<meta property="article:modified_time" content="2020-06-16T08:32:48.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Neutron">
 <meta name="twitter:card" content="summary">
@@ -50,7 +50,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -69,7 +69,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -98,7 +102,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -121,7 +125,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -328,7 +332,7 @@
 <p>关于租户网络隔离，云计算中的一个重要概念是多租户的概念，即多个租户共享或者独占云中的资源。对云中的网络资源也不例外，每个租户需要有自己的网络、网段、路由和IP，这些网络构建于云的物理网络基础设施之上，在每个租户之间相互隔离。为了实现这种网络的隔离，一般采用VLAN或者基于overlay的虚拟网络进行隔离。</p>
 <p>关于网络管理的安全控制，需要结合OpenStack的权限管理机制（Keystone）来看，保证用户对于网络管理的访问与使用是可控的。</p>
 <p>Neutron是如何控制用户对网络中资源的访问，主要是OpneStack中两个很重要的功能，一个是安全组（Security Group）的功能，一个是防火墙即服务（FWaaS）的功能。</p>
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#iptables基础"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#表"><span class="toc-text">表</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Filter表"><span class="toc-text">Filter表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT表"><span class="toc-text">NAT表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mangle表"><span class="toc-text">Mangle表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Raw表"><span class="toc-text">Raw表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#自定义链"><span class="toc-text">自定义链</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#iptables命令"><span class="toc-text">iptables命令</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron中的安全组"><span class="toc-text">Neutron中的安全组</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Neutron中的自定义链"><span class="toc-text">Neutron中的自定义链</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#虚拟机的链和规则"><span class="toc-text">虚拟机的链和规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#配置使用Neutron中的Security-Group"><span class="toc-text">配置使用Neutron中的Security Group</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Allowed-Address-Pairs扩展"><span class="toc-text">Allowed Address Pairs扩展</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron中的防火墙"><span class="toc-text">Neutron中的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-1"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#有状态的防火墙和基于OVS流规则的防火墙"><span class="toc-text">有状态的防火墙和基于OVS流规则的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#有状态的防火墙"><span class="toc-text">有状态的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO-2"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#有状态的防火墙在iptables中的实现"><span class="toc-text">有状态的防火墙在iptables中的实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#从数据流向看iptables对TCP、UDP及ICMP报文的支持"><span class="toc-text">从数据流向看iptables对TCP、UDP及ICMP报文的支持</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#iptables%E5%9F%BA%E7%A1%80"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A8"><span class="toc-text">表</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Filter%E8%A1%A8"><span class="toc-text">Filter表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT%E8%A1%A8"><span class="toc-text">NAT表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mangle%E8%A1%A8"><span class="toc-text">Mangle表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Raw%E8%A1%A8"><span class="toc-text">Raw表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E9%93%BE"><span class="toc-text">自定义链</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#iptables%E5%91%BD%E4%BB%A4"><span class="toc-text">iptables命令</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E5%AE%89%E5%85%A8%E7%BB%84"><span class="toc-text">Neutron中的安全组</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E8%87%AA%E5%AE%9A%E4%B9%89%E9%93%BE"><span class="toc-text">Neutron中的自定义链</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E6%9C%BA%E7%9A%84%E9%93%BE%E5%92%8C%E8%A7%84%E5%88%99"><span class="toc-text">虚拟机的链和规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E4%BD%BF%E7%94%A8Neutron%E4%B8%AD%E7%9A%84Security-Group"><span class="toc-text">配置使用Neutron中的Security Group</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Allowed-Address-Pairs%E6%89%A9%E5%B1%95"><span class="toc-text">Allowed Address Pairs扩展</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">Neutron中的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-1"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99%E5%92%8C%E5%9F%BA%E4%BA%8EOVS%E6%B5%81%E8%A7%84%E5%88%99%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">有状态的防火墙和基于OVS流规则的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">有状态的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO-2"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99%E5%9C%A8iptables%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">有状态的防火墙在iptables中的实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8E%E6%95%B0%E6%8D%AE%E6%B5%81%E5%90%91%E7%9C%8Biptables%E5%AF%B9TCP%E3%80%81UDP%E5%8F%8AICMP%E6%8A%A5%E6%96%87%E7%9A%84%E6%94%AF%E6%8C%81"><span class="toc-text">从数据流向看iptables对TCP、UDP及ICMP报文的支持</span></a></li></ol></li></ol>
 
 <h1 id="iptables基础"><a href="#iptables基础" class="headerlink" title="iptables基础"></a>iptables基础</h1><p>在Linux系统中，对于防火墙的实现一般分为包过滤防火墙、TCP-Wrapper即程序管控、代理服务器等几种方式。其中，iptables作为一种基于包过滤方式的防火墙工具，在实际中应用非常广泛，是非常重要的安全工具。</p>
 <p>iptables防火墙应该称为netfilter/iptables防火墙。</p>
@@ -531,7 +535,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
 
             </div>
         
@@ -876,7 +880,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

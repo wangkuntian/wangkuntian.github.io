@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"消息总线\n\n\n\n\n前言OpenStack遵循这样的设计原则：项目之间通过RESTful API进行通信；项目内部，不同服务进程之间通过消息总线进行通信。\noslo.messaging库通过以下两种方式来完成项目各个服务进程之间的通信。\n\n远程过程调用（Remote Procedure Call，RPC）通过远程过程调用，一个服务进程可以调用其他远程服务进程的方法，并且有两种方法：call和cast。通过call的方式调用，远程方法会被同步执行，调用者会被阻塞直到结果返回；通过cast的方式调用，远程方法会被异步执行，结果不会立即返回，调用者也不会被阻塞，但是调用者需要用其他方式查询这次远程调用的结果。\n\n事件通知（Event Notification）某个服务进程可以把事件通知发送到消息总线上，该消息总线上所有对此类事件感兴趣的服务进程，都可以获得此事件通知并进行进一步的处理，处理的结果并不会发送给事件发送者。这种通信方式，不但可以在同一个项目内部的各个服务进程之间发送通知，还可以实现跨项目之间的通知发送。Ceilometer就通过这种方式大量获取其他OpenStack项目的事件通知，从而进行计量和监控。\n\n\n通过不同的配置项，远程过程调用进而事件通知可以使用不同的消息总线后端（backend），比如RPC使用RabbitMQ，事件通知使用Kafka，以满足不同环境下的特定应用需求，极大地增加灵活性。\n\n\nAMQPOpenstack所支持的消息队列类型中，大部分都是基于AMQP（Advanced Message Queuing Protocol，高级消息队列协议）。\nAMQP是一个异步消息传递所使用的开放的应用层协议规范，主要包括消息的导向、队列、路由、可靠性和安全性。oslo.messaging中支持的AMQP主要包括两版本，AMQP 0.9.1和AMQP 1.0，这两个版本有很大的差别。\nAMQP架构。\n对与一个实现了AMQP的中间件服务（Server/Broker）来说，当不同的消息由生产者（Producer）发送到Server时，它会根据不同的条件把消息传递给不同的消费者（Consumer）。如果消费者无法接收消息或者接收消息不够快时，它会把消息缓存在内存或者磁盘上。\nAMQP模型中，上述操作分别由Exchange（消息交换）和Queue（消息队列）来实现。此处的虚拟主机（Virtual Host）指的是Exchange和Queue的集合。\n\n\n生产者将消息发送给Exchange，由Exchange来决定消息的路由，即决定将消息发送到那个Queue，然后消费者从Queue中取出消息，进行处理。\nExchange本身不会保存消息，它接收由生产者发送来的消息，然后根据不同的条件将消息转发到不同的Queue。这里的条件又被成为绑定（Binding）。\n接收到消息时，Exchange会查看消息的属性、消息头和消息体，从中提取相关的信息，然后用此信息再根据绑定表把消息转发给不同的Queue或者其他Exchange。\n绝大情况下，这个用来查询绑定表的信息是一个单一的键值，称为routing key。每一个发送的消息都有一个routing key。同样，每一个Queue也有一个binding key，Exchange在进行消息路由时，会查询每一个Queue。如果某个Queue的binding key与某个消息的routing key匹配，这个消息会被转发到那个Queue。\nExchange消息交换类型。\n\n\n\n类型\n说明\n\n\n\nDirect\nbinding key和routing key必须完全一致，不支持通配符。\n\n\nTopic\n同Direct类型，但支持通配符。‘*’，匹配一个单字。‘#’，匹配零个或者多个单字。单字之间是由’.’来分割的。\n\n\nFanout\n忽略binding key和routing key，消息会被传递到所有绑定的队列上。\n\n\nDirect是需要满足单一条件的路由，在Exchange判断要消息发送给哪个Queue时，判断的依据只能是一个条件。\n\n\nFanout是指广播式的路由，将消息发送给所有的Queue。\n\n\nTopic是需要满足多个条件的路由，转发消息需要依据多个条件。\n\n\n基于AMQP实现RPC基于AMQP实现远程调用RPC的过程。\n\n\n* 客户端发送一个请求消息给Exchange，指定routing key为“op_queue”，同时指明一个消息队列名用来获取响应，图中为“res_queue”。\n* Exchange把消息转发到消息队列op_queue。\n* 消息队列op_queue把消息推送给服务器，服务端执行此RPC调用的对应的任务。执行结束后，服务端把响应结果发送给消息队列，指明routing key为“res_queue”s。\n* Exchange把此消息转发到消息队列res_queue。\n* 客户端从消息队列res_queue获取响应。\n\n常见消息总线实现RabbitMQRabbitMQ是一个实现了AMQP的消息中间件服务。它包括Server/Broker，支持多种协议的网关（HTTP、STOMP、MQTT等），支持多种语言（Erlang、Java、.NET \bFramework等）的客户端开发库，支持用户自定义插件开发的框架以及多种插件。\nRabbitMQ的Server/Broker使用Erlang语言编写，使用Mozilla Public License（MPL）许可证发行。\noslo.messaging底层实现了两种不同的driver来支持RabbitMQ，分别是kombu和pika。它们的主要区别在于使用了不同的Python library。\nAMQP 1.0支持实现了AMQP 1.0协议的消息总线应用，相比AMQP 0.9协议，AMQP 1.0更加灵活和复杂。\n除了常见的AMQP broker模式，AMQP 1.0还实现了一种消息路由模式，位于调用者和服务器之间的不再是单节点的broker，而是有一群互相连接的消息路由组成的路由网，路由不具备队列（queue），没有储存信息的能力，它们的作用就是单纯地传递消息，路由节点之间通过TCP链接进行通信，调用者通过TCP链接连接到路由网中的某个路由，从而接入路由网。\n当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。\nØMQ（ZeroMQ）ZeroMQ是一个开源的高性能异步消息库，和实现了AMQP的RabbitMQ和Qpid不同，ZeroMQ系统可以在没有Server/Broker的情况下工作，消息的发送者需要负责消息路由以找到正确的消息目的地，消息接收者需要负责消息的入队/出对等操作。\n由于没有了集中式的Broker，ZeroMQ可以实现一般AMQP Broker所达不到的很低的延迟和较大的带宽，特别适合消息数量特别巨大的应用场景。\nZeroMQ使用自己的通信协议ZMTP（ZeroMQ Message Transfer Protocol）来进行通信。ZeroMQ的库使用C++编写，使用LGPL许可证发行。\nKafkaKafka是一个分布式的系统，有着较好的扩展能力，可以为发布和订阅提高吞吐量，被广泛应用于收集日志等海量消息应用场景中。\n","dateCreated":"2019-03-01T13:55:40+08:00","dateModified":"2019-05-07T20:42:41+08:00","datePublished":"2019-03-01T13:55:40+08:00","description":"消息总线","headline":"OpenStack通用技术（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"OpenStack, AMQP","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"消息总线\n\n\n\n\n前言OpenStack遵循这样的设计原则：项目之间通过RESTful API进行通信；项目内部，不同服务进程之间通过消息总线进行通信。\noslo.messaging库通过以下两种方式来完成项目各个服务进程之间的通信。\n\n远程过程调用（Remote Procedure Call，RPC）通过远程过程调用，一个服务进程可以调用其他远程服务进程的方法，并且有两种方法：call和cast。通过call的方式调用，远程方法会被同步执行，调用者会被阻塞直到结果返回；通过cast的方式调用，远程方法会被异步执行，结果不会立即返回，调用者也不会被阻塞，但是调用者需要用其他方式查询这次远程调用的结果。\n\n事件通知（Event Notification）某个服务进程可以把事件通知发送到消息总线上，该消息总线上所有对此类事件感兴趣的服务进程，都可以获得此事件通知并进行进一步的处理，处理的结果并不会发送给事件发送者。这种通信方式，不但可以在同一个项目内部的各个服务进程之间发送通知，还可以实现跨项目之间的通知发送。Ceilometer就通过这种方式大量获取其他OpenStack项目的事件通知，从而进行计量和监控。\n\n\n通过不同的配置项，远程过程调用进而事件通知可以使用不同的消息总线后端（backend），比如RPC使用RabbitMQ，事件通知使用Kafka，以满足不同环境下的特定应用需求，极大地增加灵活性。\n\n\nAMQPOpenstack所支持的消息队列类型中，大部分都是基于AMQP（Advanced Message Queuing Protocol，高级消息队列协议）。\nAMQP是一个异步消息传递所使用的开放的应用层协议规范，主要包括消息的导向、队列、路由、可靠性和安全性。oslo.messaging中支持的AMQP主要包括两版本，AMQP 0.9.1和AMQP 1.0，这两个版本有很大的差别。\nAMQP架构。\n对与一个实现了AMQP的中间件服务（Server/Broker）来说，当不同的消息由生产者（Producer）发送到Server时，它会根据不同的条件把消息传递给不同的消费者（Consumer）。如果消费者无法接收消息或者接收消息不够快时，它会把消息缓存在内存或者磁盘上。\nAMQP模型中，上述操作分别由Exchange（消息交换）和Queue（消息队列）来实现。此处的虚拟主机（Virtual Host）指的是Exchange和Queue的集合。\n\n\n生产者将消息发送给Exchange，由Exchange来决定消息的路由，即决定将消息发送到那个Queue，然后消费者从Queue中取出消息，进行处理。\nExchange本身不会保存消息，它接收由生产者发送来的消息，然后根据不同的条件将消息转发到不同的Queue。这里的条件又被成为绑定（Binding）。\n接收到消息时，Exchange会查看消息的属性、消息头和消息体，从中提取相关的信息，然后用此信息再根据绑定表把消息转发给不同的Queue或者其他Exchange。\n绝大情况下，这个用来查询绑定表的信息是一个单一的键值，称为routing key。每一个发送的消息都有一个routing key。同样，每一个Queue也有一个binding key，Exchange在进行消息路由时，会查询每一个Queue。如果某个Queue的binding key与某个消息的routing key匹配，这个消息会被转发到那个Queue。\nExchange消息交换类型。\n\n\n\n类型\n说明\n\n\n\nDirect\nbinding key和routing key必须完全一致，不支持通配符。\n\n\nTopic\n同Direct类型，但支持通配符。‘*’，匹配一个单字。‘#’，匹配零个或者多个单字。单字之间是由’.’来分割的。\n\n\nFanout\n忽略binding key和routing key，消息会被传递到所有绑定的队列上。\n\n\nDirect是需要满足单一条件的路由，在Exchange判断要消息发送给哪个Queue时，判断的依据只能是一个条件。\n\n\nFanout是指广播式的路由，将消息发送给所有的Queue。\n\n\nTopic是需要满足多个条件的路由，转发消息需要依据多个条件。\n\n\n基于AMQP实现RPC基于AMQP实现远程调用RPC的过程。\n\n\n* 客户端发送一个请求消息给Exchange，指定routing key为“op_queue”，同时指明一个消息队列名用来获取响应，图中为“res_queue”。\n* Exchange把消息转发到消息队列op_queue。\n* 消息队列op_queue把消息推送给服务器，服务端执行此RPC调用的对应的任务。执行结束后，服务端把响应结果发送给消息队列，指明routing key为“res_queue”s。\n* Exchange把此消息转发到消息队列res_queue。\n* 客户端从消息队列res_queue获取响应。\n\n常见消息总线实现RabbitMQRabbitMQ是一个实现了AMQP的消息中间件服务。它包括Server/Broker，支持多种协议的网关（HTTP、STOMP、MQTT等），支持多种语言（Erlang、Java、.NET \bFramework等）的客户端开发库，支持用户自定义插件开发的框架以及多种插件。\nRabbitMQ的Server/Broker使用Erlang语言编写，使用Mozilla Public License（MPL）许可证发行。\noslo.messaging底层实现了两种不同的driver来支持RabbitMQ，分别是kombu和pika。它们的主要区别在于使用了不同的Python library。\nAMQP 1.0支持实现了AMQP 1.0协议的消息总线应用，相比AMQP 0.9协议，AMQP 1.0更加灵活和复杂。\n除了常见的AMQP broker模式，AMQP 1.0还实现了一种消息路由模式，位于调用者和服务器之间的不再是单节点的broker，而是有一群互相连接的消息路由组成的路由网，路由不具备队列（queue），没有储存信息的能力，它们的作用就是单纯地传递消息，路由节点之间通过TCP链接进行通信，调用者通过TCP链接连接到路由网中的某个路由，从而接入路由网。\n当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。\nØMQ（ZeroMQ）ZeroMQ是一个开源的高性能异步消息库，和实现了AMQP的RabbitMQ和Qpid不同，ZeroMQ系统可以在没有Server/Broker的情况下工作，消息的发送者需要负责消息路由以找到正确的消息目的地，消息接收者需要负责消息的入队/出对等操作。\n由于没有了集中式的Broker，ZeroMQ可以实现一般AMQP Broker所达不到的很低的延迟和较大的带宽，特别适合消息数量特别巨大的应用场景。\nZeroMQ使用自己的通信协议ZMTP（ZeroMQ Message Transfer Protocol）来进行通信。ZeroMQ的库使用C++编写，使用LGPL许可证发行。\nKafkaKafka是一个分布式的系统，有着较好的扩展能力，可以为发布和订阅提高吞吐量，被广泛应用于收集日志等海量消息应用场景中。\n","dateCreated":"2019-03-01T13:55:40+08:00","dateModified":"2019-05-07T20:42:42+08:00","datePublished":"2019-03-01T13:55:40+08:00","description":"消息总线","headline":"OpenStack通用技术（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"OpenStack, AMQP","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="消息总线">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="OpenStack通用技术（一）">
@@ -31,7 +31,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/images/amqp-rpc.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF%EF%BC%88%E4%B8%80%EF%BC%89/images/amqp-1.png">
 <meta property="article:published_time" content="2019-03-01T05:55:40.000Z">
-<meta property="article:modified_time" content="2019-05-07T12:42:41.482Z">
+<meta property="article:modified_time" content="2019-05-07T12:42:42.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="OpenStack">
 <meta property="article:tag" content="AMQP">
@@ -52,7 +52,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -71,7 +71,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -100,7 +104,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -123,7 +127,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -322,7 +326,7 @@
             <p>消息总线</p>
 <a id="more"></a>
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#前言"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AMQP"><span class="toc-text">AMQP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#基于AMQP实现RPC"><span class="toc-text">基于AMQP实现RPC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#常见消息总线实现"><span class="toc-text">常见消息总线实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RabbitMQ"><span class="toc-text">RabbitMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#AMQP-1-0"><span class="toc-text">AMQP 1.0</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#OMQ（ZeroMQ）"><span class="toc-text">ØMQ（ZeroMQ）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Kafka"><span class="toc-text">Kafka</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AMQP"><span class="toc-text">AMQP</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EAMQP%E5%AE%9E%E7%8E%B0RPC"><span class="toc-text">基于AMQP实现RPC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E6%B6%88%E6%81%AF%E6%80%BB%E7%BA%BF%E5%AE%9E%E7%8E%B0"><span class="toc-text">常见消息总线实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RabbitMQ"><span class="toc-text">RabbitMQ</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#AMQP-1-0"><span class="toc-text">AMQP 1.0</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#OMQ%EF%BC%88ZeroMQ%EF%BC%89"><span class="toc-text">ØMQ（ZeroMQ）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Kafka"><span class="toc-text">Kafka</span></a></li></ol></li></ol>
 
 <h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>OpenStack遵循这样的设计原则：项目之间通过RESTful API进行通信；项目内部，不同服务进程之间通过消息总线进行通信。</p>
 <p>oslo.messaging库通过以下两种方式来完成项目各个服务进程之间的通信。</p>
@@ -406,7 +410,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/AMQP/" rel="tag">AMQP</a> <a class="tag tag--primary tag--small t-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/AMQP/" rel="tag">AMQP</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
 
             </div>
         
@@ -751,7 +755,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。\n1trove list\n\n查看json格式时，可以使用–json命令行选项。\n\n\n当实例数量过多时，可以使用–limit命令行选项。\n1trove list --limit &lt;数字&gt;\n启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。\n\n实例名称（name）\n实例的类型id（flavor_id）\n持久化卷的大小（size）\n数据库类型（datastore）\n数据库版本（datastore_version）\n\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;数字(G)&gt; --datastore &lt;datastore_id或datastore_name&gt; --datastore_version &lt;datastore_version_id 或datastore_version_name&gt;\n\n重启实例实例一旦被创建，就可以用trove restart命令重启实例。这个命令只会重启运行在由Trove管理的Nova实例中的数据库服务，不会重启Nova实例。\n1trove restart &lt;实例id&gt;\n\n删除实例可以使用trove delete命令永久删除一个实例。delete命令是不可逆的，一旦删除了实例，将永远无法访问其上的数据库服务，实例中的所有数据也将消失。\n1trove delete &lt;实例id&gt;\n\n创建用户和数据库启用数据库的root用户像Mysql之类的数据库服务都有一个超级用户（root），在默认情况下，Trove的数据库实例是禁止这个用户的。可以利用root用户连接到Mysql数据库服务。\n1mysql -uroot -p&lt;password&gt; -h&lt;ip&gt; -s\n\n在一个运行中的实例上启用root用户\n1trove root-enable &lt;实例id&gt;\n  可以使用root-show 查看root用户的状态。\n 1trove root-show &lt;实例id&gt;\n \n\n启用默认root用户除了在已经存在的数据库实例上启用root用户，也可以在默认情况下启用root用户（在实例创建时）。需要将trove.conf配置文件的[mysql]配置中的root_on_create设为true。\n12[mysql]root_on_create = True\n 需要重启Trove服务生效。\n\n\n\n\n数据库操作\n列出数据库\n1trove database-list &lt;实例id&gt;\n \n\n禁止某些数据库的显示经常会有一些内置的数据库不需要通过database-list命令显示出来。可以通过设置trove.conf中的ignore_dbs参数禁止这些数据库的显示。\nignore_dbs的默认值是lost+found、mysql和information_schema。\n\n\n在运行的实例上创建数据库\n1trove database-create &lt;实例id&gt; &lt;name&gt;\n\n创建实例时创建数据库trove create命令允许在创建实例的同时创建多个数据库。可以指定任意数量的数据库并与用户关联。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n\n\n用户操作\n在创建实例时创建用户\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n列出用户\n1trove user-list &lt;实例id&gt;\n \n\n在运行的实例上创建用户\n1trove user-create &lt;实例id&gt; &lt;username&gt; --databases &lt;database _name&gt;\n\n删除用户删除实例的所有用户\n1trove user-delete &lt;实例id&gt;\n 删除实例的指定用户\n 1trove user-delete &lt;实例id&gt; &lt;username&gt;\n\n管理用户的访问权限 1）列出用户的访问权限 user-show-access 命令显示了允许用户访问的数据库。\n 1trove user-show-access &lt;实例id&gt; &lt;username&gt;\n \n 2) 在user-list中禁止某些用户 一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示\n 123[DEFAULT]ignore_users = os_admin,root...\n Mysql使用[DEFAULT]配置段\n\n\n 3) 给予用户访问权限\n 1trove user-grant-access &lt;实例id&gt; &lt;username&gt;\n\n 4) 撤销用户访问权限\n 1trove user-revoke-access &lt;实例id&gt; &lt;username&gt;\n\n\n\n其他查看实例详细信息1trove show &lt;实例id或name&gt;\n\n查看flavor1trove flavor-list\n\n查看flavor详细1trove flavor-show &lt;实例id&gt;\n\n查看datastore1trove datastore-list\n\n查看datastore详细1trove datastore-show &lt;datastore_id&gt;\n\n查看datastore版本1trove datastore-version-list &lt;datastore_id&gt;\n\n帮助1trove help &lt;命令&gt;\n","dateCreated":"2018-09-04T11:26:07+08:00","dateModified":"2019-02-28T18:18:38+08:00","datePublished":"2018-09-04T11:26:07+08:00","description":"Trove的基本操作","headline":"Trove的基本操作","image":["covers/LOL/Ezreal/Arcade-Ezreal.jpg","covers/LOL/Ezreal/Arcade-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Arcade-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。\n1trove list\n\n查看json格式时，可以使用–json命令行选项。\n\n\n当实例数量过多时，可以使用–limit命令行选项。\n1trove list --limit &lt;数字&gt;\n启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。\n\n实例名称（name）\n实例的类型id（flavor_id）\n持久化卷的大小（size）\n数据库类型（datastore）\n数据库版本（datastore_version）\n\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;数字(G)&gt; --datastore &lt;datastore_id或datastore_name&gt; --datastore_version &lt;datastore_version_id 或datastore_version_name&gt;\n\n重启实例实例一旦被创建，就可以用trove restart命令重启实例。这个命令只会重启运行在由Trove管理的Nova实例中的数据库服务，不会重启Nova实例。\n1trove restart &lt;实例id&gt;\n\n删除实例可以使用trove delete命令永久删除一个实例。delete命令是不可逆的，一旦删除了实例，将永远无法访问其上的数据库服务，实例中的所有数据也将消失。\n1trove delete &lt;实例id&gt;\n\n创建用户和数据库启用数据库的root用户像Mysql之类的数据库服务都有一个超级用户（root），在默认情况下，Trove的数据库实例是禁止这个用户的。可以利用root用户连接到Mysql数据库服务。\n1mysql -uroot -p&lt;password&gt; -h&lt;ip&gt; -s\n\n在一个运行中的实例上启用root用户\n1trove root-enable &lt;实例id&gt;\n  可以使用root-show 查看root用户的状态。\n 1trove root-show &lt;实例id&gt;\n \n\n启用默认root用户除了在已经存在的数据库实例上启用root用户，也可以在默认情况下启用root用户（在实例创建时）。需要将trove.conf配置文件的[mysql]配置中的root_on_create设为true。\n12[mysql]root_on_create = True\n 需要重启Trove服务生效。\n\n\n\n\n数据库操作\n列出数据库\n1trove database-list &lt;实例id&gt;\n \n\n禁止某些数据库的显示经常会有一些内置的数据库不需要通过database-list命令显示出来。可以通过设置trove.conf中的ignore_dbs参数禁止这些数据库的显示。\nignore_dbs的默认值是lost+found、mysql和information_schema。\n\n\n在运行的实例上创建数据库\n1trove database-create &lt;实例id&gt; &lt;name&gt;\n\n创建实例时创建数据库trove create命令允许在创建实例的同时创建多个数据库。可以指定任意数量的数据库并与用户关联。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n\n\n用户操作\n在创建实例时创建用户\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n列出用户\n1trove user-list &lt;实例id&gt;\n \n\n在运行的实例上创建用户\n1trove user-create &lt;实例id&gt; &lt;username&gt; --databases &lt;database _name&gt;\n\n删除用户删除实例的所有用户\n1trove user-delete &lt;实例id&gt;\n 删除实例的指定用户\n 1trove user-delete &lt;实例id&gt; &lt;username&gt;\n\n管理用户的访问权限 1）列出用户的访问权限 user-show-access 命令显示了允许用户访问的数据库。\n 1trove user-show-access &lt;实例id&gt; &lt;username&gt;\n \n\n在user-list中禁止某些用户一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示\n123[DEFAULT]ignore_users = os_admin,root...\nMysql使用[DEFAULT]配置段\n\n\n给予用户访问权限\n1trove user-grant-access &lt;实例id&gt; &lt;username&gt;\n\n撤销用户访问权限\n1trove user-revoke-access &lt;实例id&gt; &lt;username&gt;\n\n\n\n\n\n其他查看实例详细信息1trove show &lt;实例id或name&gt;\n\n查看flavor1trove flavor-list\n\n查看flavor详细1trove flavor-show &lt;实例id&gt;\n\n查看datastore1trove datastore-list\n\n查看datastore详细1trove datastore-show &lt;datastore_id&gt;\n\n查看datastore版本1trove datastore-version-list &lt;datastore_id&gt;\n\n帮助1trove help &lt;命令&gt;\n","dateCreated":"2018-09-04T11:26:07+08:00","dateModified":"2019-02-28T18:18:38+08:00","datePublished":"2018-09-04T11:26:07+08:00","description":"Trove的基本操作","headline":"Trove的基本操作","image":["covers/LOL/Ezreal/Arcade-Ezreal.jpg","covers/LOL/Ezreal/Arcade-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Arcade-Ezreal.jpg"}</script>
     <meta name="description" content="Trove的基本操作">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的基本操作">
@@ -42,7 +42,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/images/trove-datastore-version-list.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%93%8D%E4%BD%9C/images/trove-help.png">
 <meta property="article:published_time" content="2018-09-04T03:26:07.000Z">
-<meta property="article:modified_time" content="2019-02-28T10:18:38.667Z">
+<meta property="article:modified_time" content="2019-02-28T10:18:38.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Trove">
 <meta name="twitter:card" content="summary">
@@ -65,7 +65,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -84,7 +84,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -113,7 +117,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -136,7 +140,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -336,7 +340,7 @@
         <div class="main-content-wrap">
             <!-- excerpt -->
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#展示实例列表"><span class="toc-text">展示实例列表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#启动实例"><span class="toc-text">启动实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#重启实例"><span class="toc-text">重启实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除实例"><span class="toc-text">删除实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#创建用户和数据库"><span class="toc-text">创建用户和数据库</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#启用数据库的root用户"><span class="toc-text">启用数据库的root用户</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#数据库操作"><span class="toc-text">数据库操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#用户操作"><span class="toc-text">用户操作</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#其他"><span class="toc-text">其他</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#查看实例详细信息"><span class="toc-text">查看实例详细信息</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看flavor"><span class="toc-text">查看flavor</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看flavor详细"><span class="toc-text">查看flavor详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore"><span class="toc-text">查看datastore</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore详细"><span class="toc-text">查看datastore详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#查看datastore版本"><span class="toc-text">查看datastore版本</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#帮助"><span class="toc-text">帮助</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B1%95%E7%A4%BA%E5%AE%9E%E4%BE%8B%E5%88%97%E8%A1%A8"><span class="toc-text">展示实例列表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E5%AE%9E%E4%BE%8B"><span class="toc-text">启动实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%87%8D%E5%90%AF%E5%AE%9E%E4%BE%8B"><span class="toc-text">重启实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E5%AE%9E%E4%BE%8B"><span class="toc-text">删除实例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%94%A8%E6%88%B7%E5%92%8C%E6%95%B0%E6%8D%AE%E5%BA%93"><span class="toc-text">创建用户和数据库</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E7%94%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84root%E7%94%A8%E6%88%B7"><span class="toc-text">启用数据库的root用户</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93%E6%93%8D%E4%BD%9C"><span class="toc-text">数据库操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%94%A8%E6%88%B7%E6%93%8D%E4%BD%9C"><span class="toc-text">用户操作</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E5%AE%9E%E4%BE%8B%E8%AF%A6%E7%BB%86%E4%BF%A1%E6%81%AF"><span class="toc-text">查看实例详细信息</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8Bflavor"><span class="toc-text">查看flavor</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8Bflavor%E8%AF%A6%E7%BB%86"><span class="toc-text">查看flavor详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8Bdatastore"><span class="toc-text">查看datastore</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8Bdatastore%E8%AF%A6%E7%BB%86"><span class="toc-text">查看datastore详细</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8Bdatastore%E7%89%88%E6%9C%AC"><span class="toc-text">查看datastore版本</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%AE%E5%8A%A9"><span class="toc-text">帮助</span></a></li></ol></li></ol>
 
 <h3 id="展示实例列表"><a href="#展示实例列表" class="headerlink" title="展示实例列表"></a>展示实例列表</h3><p>Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove list</span><br></pre></td></tr></table></figure>
@@ -414,17 +418,20 @@
 <li><p><strong>管理用户的访问权限</strong><br> 1）列出用户的访问权限<br> user-show-access 命令显示了允许用户访问的数据库。</p>
  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove user-show-access &lt;实例id&gt; &lt;username&gt;</span><br></pre></td></tr></table></figure>
 <p> <img src="images/trove-show-user-access.png" alt="trove_show_user_access"></p>
-<p> 2) 在user-list中禁止某些用户<br> 一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示</p>
- <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[DEFAULT]</span><br><span class="line">ignore_users = os_admin,root</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
- <div class="alert info"><p>Mysql使用[DEFAULT]配置段</p>
+<ol start="2">
+<li><p>在user-list中禁止某些用户<br>一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[DEFAULT]</span><br><span class="line">ignore_users = os_admin,root</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<div class="alert info"><p>Mysql使用[DEFAULT]配置段</p>
 </div>
+</li>
+<li><p>给予用户访问权限</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove user-grant-access &lt;实例id&gt; &lt;username&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>撤销用户访问权限</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove user-revoke-access &lt;实例id&gt; &lt;username&gt;</span><br></pre></td></tr></table></figure>
 
-<p> 3) 给予用户访问权限</p>
- <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove user-grant-access &lt;实例id&gt; &lt;username&gt;</span><br></pre></td></tr></table></figure>
-
-<p> 4) 撤销用户访问权限</p>
- <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove user-revoke-access &lt;实例id&gt; &lt;username&gt;</span><br></pre></td></tr></table></figure>
-
+</li>
+</ol>
 </li>
 </ol>
 <h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><h4 id="查看实例详细信息"><a href="#查看实例详细信息" class="headerlink" title="查看实例详细信息"></a>查看实例详细信息</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove show &lt;实例id或name&gt;</span><br></pre></td></tr></table></figure>
@@ -451,7 +458,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Trove/" rel="tag">Trove</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Trove/" rel="tag">Trove</a>
 
             </div>
         
@@ -796,7 +803,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。\n\n\n\n\n创建容器新建容器可以使用docker create命令新建一个容器。\n1sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。\n1sudo docker start [OPTIONS] CONTAINER [CONTAINER...]\n\n新建并启动容器启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。\n1sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]\n当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：\n\n检查本地是否存在指定的镜像，不存在就从公有仓库下载。\n利用镜像创建并启动一个容器。\n分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。\n从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。\n从地址池配置一个IP地址给容器。\n执行用户指定的应用程序。\n执行完毕后容器就被终止。\n\n下面的命令将启动一个bash终端，允许用户进行交互。\n1sudo docker run -t -i ubuntu /bin/bash\n\n可选参数-t docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。-i 容器的标准输入保持打开。\n\n用户可以使用Ctrl+d或者exit命令退出容器。对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。\n\n\n守护态运行更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。\n1sudo docker run -d ubuntu /bin/sh -c \"while ture; do echo hello world; sleep 1; done\"\nps：要获取容器的输出信息可以通过docker logs命令\n\n1sudo docker logs [OPTIONS] CONTAINER\n\n终止容器1sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-t，–time=10 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。\n\n\ndocker kill命令会直接发送SIGKILL信号强行终止容器。\n\n\ndocker start命令可以重新启动已经终止的容器。docker restart命令将会让一个运行的容器终止，然后重新启动。\n\n\n进入容器在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。\nattach命令docker attach是docker自带的命令。\n1sudo docker attach [OPTIONS] CONTAINER\n\n但是使用attach命令有时并不方便。当多个窗口同时attach到同一容器是，所有窗口都会同步显示。当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。\n\n\nexec命令docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。\n1sudo docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\nnsenter工具这里不做讨论。\n删除容器1sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-f，–force=false 强行终止并删除一个运行中的容器。-l，–link=false 删除容器的连接，但保留容器。-v，–volumes=false 删除容器挂载的数据卷。\n\n\n删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。\n\n\n导入和导出容器导出容器导出容器是指导出一个已经创建的容器到一个文件中。\n1sudo docker export [OPTIONS] CONTAINER\n\n导入容器导出的文件又可以使用docker import命令导入，成为镜像。\n1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\ndocker load和docker import比较。docker load导入镜像存储文件到本地镜像库。docker import导入容器快照到本地镜像库。区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。\n\n","dateCreated":"2018-09-18T17:23:08+08:00","dateModified":"2019-02-14T16:03:45+08:00","datePublished":"2018-09-18T17:23:08+08:00","description":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。","headline":"Docker入门（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"Docker, 容器","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。\n\n\n\n\n创建容器新建容器可以使用docker create命令新建一个容器。\n1sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。\n1sudo docker start [OPTIONS] CONTAINER [CONTAINER...]\n\n新建并启动容器启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。\n1sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]\n当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：\n\n检查本地是否存在指定的镜像，不存在就从公有仓库下载。\n利用镜像创建并启动一个容器。\n分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。\n从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。\n从地址池配置一个IP地址给容器。\n执行用户指定的应用程序。\n执行完毕后容器就被终止。\n\n下面的命令将启动一个bash终端，允许用户进行交互。\n1sudo docker run -t -i ubuntu /bin/bash\n\n可选参数-t docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。-i 容器的标准输入保持打开。\n\n用户可以使用Ctrl+d或者exit命令退出容器。对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。\n\n\n守护态运行更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。\n1sudo docker run -d ubuntu /bin/sh -c &quot;while ture; do echo hello world; sleep 1; done&quot;\nps：要获取容器的输出信息可以通过docker logs命令\n\n1sudo docker logs [OPTIONS] CONTAINER\n\n终止容器1sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-t，–time=10 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。\n\n\ndocker kill命令会直接发送SIGKILL信号强行终止容器。\n\n\ndocker start命令可以重新启动已经终止的容器。docker restart命令将会让一个运行的容器终止，然后重新启动。\n\n\n进入容器在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。\nattach命令docker attach是docker自带的命令。\n1sudo docker attach [OPTIONS] CONTAINER\n\n但是使用attach命令有时并不方便。当多个窗口同时attach到同一容器是，所有窗口都会同步显示。当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。\n\n\nexec命令docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。\n1sudo docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\nnsenter工具这里不做讨论。\n删除容器1sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-f，–force=false 强行终止并删除一个运行中的容器。-l，–link=false 删除容器的连接，但保留容器。-v，–volumes=false 删除容器挂载的数据卷。\n\n\n删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。\n\n\n导入和导出容器导出容器导出容器是指导出一个已经创建的容器到一个文件中。\n1sudo docker export [OPTIONS] CONTAINER\n\n导入容器导出的文件又可以使用docker import命令导入，成为镜像。\n1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\ndocker load和docker import比较。docker load导入镜像存储文件到本地镜像库。docker import导入容器快照到本地镜像库。区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。\n\n","dateCreated":"2018-09-18T17:23:08+08:00","dateModified":"2019-02-14T16:03:46+08:00","datePublished":"2018-09-18T17:23:08+08:00","description":"容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。","headline":"Docker入门（四）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"Docker, 容器","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
     <meta name="description" content="容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Docker入门（四）">
@@ -37,7 +37,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/images/docker-export.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/18/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%9B%9B%EF%BC%89/images/docker-import.png">
 <meta property="article:published_time" content="2018-09-18T09:23:08.000Z">
-<meta property="article:modified_time" content="2019-02-14T08:03:45.640Z">
+<meta property="article:modified_time" content="2019-02-14T08:03:46.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Docker">
 <meta property="article:tag" content="容器">
@@ -58,7 +58,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-byyforwphut9cr8mpku2lenmwpdiqw9mbtjsvokg89bmetlqjjdmhndnohsw.min.css">
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
 
     <!--STYLES END-->
     
@@ -77,7 +77,11 @@
     
         
     
-</head>
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
 
     <body>
         <div id="blog">
@@ -106,7 +110,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="پیوند را باز کنید: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -129,7 +133,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="درباره نویسنده بیشتر بخوانید"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -328,7 +332,7 @@
             <p>容器是Docker的另一核心概念。<br>容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。</p>
 <a id="more"></a>
 
-<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#创建容器"><span class="toc-text">创建容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#新建容器"><span class="toc-text">新建容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#新建并启动容器"><span class="toc-text">新建并启动容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#守护态运行"><span class="toc-text">守护态运行</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#终止容器"><span class="toc-text">终止容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#进入容器"><span class="toc-text">进入容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#attach命令"><span class="toc-text">attach命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#exec命令"><span class="toc-text">exec命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#nsenter工具"><span class="toc-text">nsenter工具</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#删除容器"><span class="toc-text">删除容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#导入和导出容器"><span class="toc-text">导入和导出容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#导出容器"><span class="toc-text">导出容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#导入容器"><span class="toc-text">导入容器</span></a></li></ol></li></ol>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">创建容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">新建容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E5%B9%B6%E5%90%AF%E5%8A%A8%E5%AE%B9%E5%99%A8"><span class="toc-text">新建并启动容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%88%E6%8A%A4%E6%80%81%E8%BF%90%E8%A1%8C"><span class="toc-text">守护态运行</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%88%E6%AD%A2%E5%AE%B9%E5%99%A8"><span class="toc-text">终止容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9B%E5%85%A5%E5%AE%B9%E5%99%A8"><span class="toc-text">进入容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#attach%E5%91%BD%E4%BB%A4"><span class="toc-text">attach命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#exec%E5%91%BD%E4%BB%A4"><span class="toc-text">exec命令</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#nsenter%E5%B7%A5%E5%85%B7"><span class="toc-text">nsenter工具</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E5%AE%B9%E5%99%A8"><span class="toc-text">删除容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%BC%E5%85%A5%E5%92%8C%E5%AF%BC%E5%87%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">导入和导出容器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AF%BC%E5%87%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">导出容器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AF%BC%E5%85%A5%E5%AE%B9%E5%99%A8"><span class="toc-text">导入容器</span></a></li></ol></li></ol>
 
 <h3 id="创建容器"><a href="#创建容器" class="headerlink" title="创建容器"></a>创建容器</h3><h4 id="新建容器"><a href="#新建容器" class="headerlink" title="新建容器"></a>新建容器</h4><p>可以使用docker create命令新建一个容器。</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure>
@@ -357,7 +361,7 @@
 </div>
 
 <h4 id="守护态运行"><a href="#守护态运行" class="headerlink" title="守护态运行"></a>守护态运行</h4><p>更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d ubuntu /bin/sh -c <span class="string">"while ture; do echo hello world; sleep 1; done"</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d ubuntu /bin/sh -c <span class="string">&quot;while ture; do echo hello world; sleep 1; done&quot;</span></span><br></pre></td></tr></table></figure>
 <div class="alert info no-icon"><p>ps：要获取容器的输出信息可以通过docker logs命令</p>
 </div>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker logs [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
@@ -409,7 +413,7 @@
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
                 
-    <a class="tag tag--primary tag--small t-link" href="/tags/Docker/" rel="tag">Docker</a> <a class="tag tag--primary tag--small t-link" href="/tags/%E5%AE%B9%E5%99%A8/" rel="tag">容器</a>
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Docker/" rel="tag">Docker</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E5%AE%B9%E5%99%A8/" rel="tag">容器</a>
 
             </div>
         
@@ -754,7 +758,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-0jhkmzicfalubtvxjcbyg58bvgvfhe2jxqxogogbfp3hewfo6xsiwpz6kbiu.min.js"></script>
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
 
 <!--SCRIPTS END-->
 

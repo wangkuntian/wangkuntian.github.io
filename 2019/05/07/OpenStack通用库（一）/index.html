@@ -1,0 +1,732 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack通用库（一） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Oslo,Cliff">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Cliff（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。\n\n\n开发者利用Cliff框架可以构建诸如svn、git那样的支持多层命令的命令行程序。主程序只负责基本的命令行参数的解析，然后调用各个子命令去执行不同的操作。利用Python动态代码载入的特性，Cliff框架中的每个子命令可以和主程序分开来实现、打包和分发。\n整个Cliff框架主要包括以下4种不同类型的对象。\n\ncliff.app.App：主程序对象，用来启动程序，并且负责一些对所有子命令都通用的操作，比如设置日志选项和输入/输出等。\n\ncliff.commandmanager.CommandManager：主要用来载入每一个子命令插件。默认是通过Setuptools的entry points来载入的。\n\ncliff.command.Command：用户可以实现Command的子类来实现不同的子命令，这些子命令被注册在Setuptools的entry points中，被CommandManager载入，每个子命令可以有自己的参数解析（一般使用argparse），同时要实现take_action()方法完成具体的命令。\n\ncliff.interactive.InteractiveApp：实现交互式命令行，一般使用框架提供的默认实现。\n\n\nDemo\n1234567891011121314151617181920212223242526272829303132333435363738# main.pyimport sysimport loggingfrom cliff.app import Appfrom cliff.commandmanager import CommandManagerclass MyApp(App):    log = logging.getLogger(__name__)    def __init__(self):        super(MyApp, self).__init__(            description=&#x27;Cliff Demo App&#x27;,            version=&#x27;1.0&#x27;,            command_manager=CommandManager(&#x27;cliff.cliffdemo&#x27;)        )    def initialize_app(self, argv):        self.LOG.debug(&#x27;initialize_app&#x27;)    def prepare_to_run_command(self, cmd):        self.LOG.debug(&#x27;prepare_to_run_command %s&#x27; % cmd.__class__.__name__)    def clean_up(self, cmd, result, err):        self.LOG.debug(&#x27;clean_up %s&#x27; % cmd.__class__.__name__)        if err:            self.LOG.debug(&#x27;got an error: %s&#x27; % err)def main(argv=sys.argv[1:]):    my_app = MyApp()    return my_app.run(argv)if __name__ == &#x27;__main__&#x27;:    sys.exit(main(sys.argv[1:]))\n上面是主程序代码，新建一个MyApp实例对象，并且调用其run方法运行。MyApp是cliff.app.App的子类，它的初始化函数的原型定义如下。\n12345678class cliff.app.App(description,                     version,                     command_manager,                    stdin=None,                     stdout=None,                     stderr=None,                    interactive_app_factory=&lt;class cliff.interactive.InteractiveApp&gt;,                    deferred_help=False):\n其中，stdin/stdout/stderr可以用来自定义用户自己的标准输入/输出/错误，command_manager必须指向一个cliff.commandmanager.CommandManager的对象实例，来载入各个子命令插件。\n\n\ncliff.commandmanager.CommandManager类的初始化函数原型定义如下。\n12class cliff.commandmanager.CommandManager(namespace,                                          convert_underscores=True)\n其中，namespace用来指定Setuptool entry points的命名空间，CommandManager只会从这个命名空间中载入插件，convert_underscores参数指明是否需要把entry points中的下划线转为空格。\n\n\n\ncliff.App类的方法initialize_app()，会在主程序解析完用户的命令行参数后被调用，而且只会被调用一次。\nprepare_to_run_command()方法可以被用来做一些针对某个具体子命令的初始化工作，它将在该子命令执行之前被调用。\nclean_up()方法会在具体某个子命令完成后被调用，用来进行一些清理工作。\n\n\n具体某个子命令的实现通过继承cliff.command.Command来完成。\n123456789101112131415# simple.pyimport loggingfrom cliff.command import Commandclass Simple(Command):    log = logging.getLogger(__name__)    def take_action(self, parsed_args):        self.log.info(&#x27;sending greeting&#x27;)        self.log.debug(&#x27;debugging&#x27;)        self.app.stdout.write(&#x27;Hello world \\n&#x27;)\n\n子命令的实际工作由take_action()来完成。这例子里，simple子命令向标准输出打印一个字符串，它的实现代码由cliff.commandmanager.CommandManager通过Setuptools entry points来载入。\n1234567891011121314151617181920# setup.pyfrom setuptools import setup, find_packagessetup(    name=&#x27;cliffdemo&#x27;,    version=&#x27;1.0&#x27;,    install_requires=[&#x27;cliff&#x27;],    namespace_packages=[],    packages=find_packages(),    entry_points=&#123;        &#x27;console_scripts&#x27;: [            &#x27;cliffdemo = cliffdemo.main:main&#x27;        ],        &#x27;cliff.cliffdemo&#x27;: [            &#x27;simple = cliffdemo.simple:Simple&#x27;        ]    &#125;)\n在Setuptools entry points的命名空间cliff.demo中，定义了命令simple所对应的插件实现是Simple类。Cliff主程序解析用户的输入后，会通过这里所定义的对应关系调用不同的实现类。\nsimple命令执行结果如下。\n","dateCreated":"2019-05-07T20:41:33+08:00","dateModified":"2019-05-09T16:47:46+08:00","datePublished":"2019-05-07T20:41:33+08:00","description":"Cliff（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。","headline":"OpenStack通用库（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"OpenStack, Oslo, Cliff","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Cliff（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack通用库（一）">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Cliff（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/images/result.png">
+<meta property="article:published_time" content="2019-05-07T12:41:33.000Z">
+<meta property="article:modified_time" content="2019-05-09T08:47:46.000Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Oslo">
+<meta property="article:tag" content="Cliff">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/images/result.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack通用库（一）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-05-07T20:41:33+08:00">
+	
+		    May 07, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p><a target="_blank" rel="noopener" href="https://github.com/openstack/cliff">Cliff</a>（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。</p>
+<a id="more"></a>
+
+<p>开发者利用Cliff框架可以构建诸如svn、git那样的支持多层命令的命令行程序。主程序只负责基本的命令行参数的解析，然后调用各个子命令去执行不同的操作。利用Python动态代码载入的特性，Cliff框架中的每个子命令可以和主程序分开来实现、打包和分发。</p>
+<p>整个Cliff框架主要包括以下4种不同类型的对象。</p>
+<ul>
+<li><p>cliff.app.App：主程序对象，用来启动程序，并且负责一些对所有子命令都通用的操作，比如设置日志选项和输入/输出等。</p>
+</li>
+<li><p>cliff.commandmanager.CommandManager：主要用来载入每一个子命令插件。默认是通过Setuptools的entry points来载入的。</p>
+</li>
+<li><p>cliff.command.Command：用户可以实现Command的子类来实现不同的子命令，这些子命令被注册在Setuptools的entry points中，被CommandManager载入，每个子命令可以有自己的参数解析（一般使用argparse），同时要实现take_action()方法完成具体的命令。</p>
+</li>
+<li><p>cliff.interactive.InteractiveApp：实现交互式命令行，一般使用框架提供的默认实现。</p>
+</li>
+</ul>
+<p>Demo</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># main.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"><span class="keyword">import</span> logging</span><br><span class="line"><span class="keyword">from</span> cliff.app <span class="keyword">import</span> App</span><br><span class="line"><span class="keyword">from</span> cliff.commandmanager <span class="keyword">import</span> CommandManager</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyApp</span>(<span class="params">App</span>):</span></span><br><span class="line">    log = logging.getLogger(__name__)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span>(<span class="params">self</span>):</span></span><br><span class="line">        <span class="built_in">super</span>(MyApp, self).__init__(</span><br><span class="line">            description=<span class="string">&#x27;Cliff Demo App&#x27;</span>,</span><br><span class="line">            version=<span class="string">&#x27;1.0&#x27;</span>,</span><br><span class="line">            command_manager=CommandManager(<span class="string">&#x27;cliff.cliffdemo&#x27;</span>)</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize_app</span>(<span class="params">self, argv</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;initialize_app&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">prepare_to_run_command</span>(<span class="params">self, cmd</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;prepare_to_run_command %s&#x27;</span> % cmd.__class__.__name__)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">clean_up</span>(<span class="params">self, cmd, result, err</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;clean_up %s&#x27;</span> % cmd.__class__.__name__)</span><br><span class="line">        <span class="keyword">if</span> err:</span><br><span class="line">            self.LOG.debug(<span class="string">&#x27;got an error: %s&#x27;</span> % err)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span>(<span class="params">argv=sys.argv[<span class="number">1</span>:]</span>):</span></span><br><span class="line">    my_app = MyApp()</span><br><span class="line">    <span class="keyword">return</span> my_app.run(argv)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:</span><br><span class="line">    sys.exit(main(sys.argv[<span class="number">1</span>:]))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>上面是主程序代码，新建一个MyApp实例对象，并且调用其run方法运行。MyApp是cliff.app.App的子类，它的初始化函数的原型定义如下。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">app</span>.<span class="title">App</span>(<span class="params">description, </span></span></span><br><span class="line"><span class="class"><span class="params">                    version, </span></span></span><br><span class="line"><span class="class"><span class="params">                    command_manager,</span></span></span><br><span class="line"><span class="class"><span class="params">                    stdin=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="class"><span class="params">                    stdout=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="class"><span class="params">                    stderr=<span class="literal">None</span>,</span></span></span><br><span class="line"><span class="class"><span class="params">                    interactive_app_factory=&lt;<span class="keyword">class</span> cliff.interactive.InteractiveApp&gt;,</span></span></span><br><span class="line"><span class="class"><span class="params">                    deferred_help=<span class="literal">False</span></span>):</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>其中，stdin/stdout/stderr可以用来自定义用户自己的标准输入/输出/错误，command_manager必须指向一个cliff.commandmanager.CommandManager的对象实例，来载入各个子命令插件。</p>
+</div>
+
+<p>cliff.commandmanager.CommandManager类的初始化函数原型定义如下。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">commandmanager</span>.<span class="title">CommandManager</span>(<span class="params">namespace,</span></span></span><br><span class="line"><span class="class"><span class="params">                                          convert_underscores=<span class="literal">True</span></span>)</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>其中，namespace用来指定Setuptool entry points的命名空间，CommandManager只会从这个命名空间中载入插件，convert_underscores参数指明是否需要把entry points中的下划线转为空格。</p>
+</div>
+
+
+<div class="alert info no-icon"><p>cliff.App类的方法initialize_app()，会在主程序解析完用户的命令行参数后被调用，而且只会被调用一次。</p>
+<p>prepare_to_run_command()方法可以被用来做一些针对某个具体子命令的初始化工作，它将在该子命令执行之前被调用。</p>
+<p>clean_up()方法会在具体某个子命令完成后被调用，用来进行一些清理工作。</p>
+</div>
+
+<p>具体某个子命令的实现通过继承cliff.command.Command来完成。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># simple.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> logging</span><br><span class="line"><span class="keyword">from</span> cliff.command <span class="keyword">import</span> Command</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Simple</span>(<span class="params">Command</span>):</span></span><br><span class="line"></span><br><span class="line">    log = logging.getLogger(__name__)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">take_action</span>(<span class="params">self, parsed_args</span>):</span></span><br><span class="line">        self.log.info(<span class="string">&#x27;sending greeting&#x27;</span>)</span><br><span class="line">        self.log.debug(<span class="string">&#x27;debugging&#x27;</span>)</span><br><span class="line">        self.app.stdout.write(<span class="string">&#x27;Hello world \n&#x27;</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>子命令的实际工作由take_action()来完成。这例子里，simple子命令向标准输出打印一个字符串，它的实现代码由cliff.commandmanager.CommandManager通过Setuptools entry points来载入。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> setuptools <span class="keyword">import</span> setup, find_packages</span><br><span class="line"></span><br><span class="line">setup(</span><br><span class="line">    name=<span class="string">&#x27;cliffdemo&#x27;</span>,</span><br><span class="line">    version=<span class="string">&#x27;1.0&#x27;</span>,</span><br><span class="line">    install_requires=[<span class="string">&#x27;cliff&#x27;</span>],</span><br><span class="line">    namespace_packages=[],</span><br><span class="line">    packages=find_packages(),</span><br><span class="line"></span><br><span class="line">    entry_points=&#123;</span><br><span class="line">        <span class="string">&#x27;console_scripts&#x27;</span>: [</span><br><span class="line">            <span class="string">&#x27;cliffdemo = cliffdemo.main:main&#x27;</span></span><br><span class="line">        ],</span><br><span class="line">        <span class="string">&#x27;cliff.cliffdemo&#x27;</span>: [</span><br><span class="line">            <span class="string">&#x27;simple = cliffdemo.simple:Simple&#x27;</span></span><br><span class="line">        ]</span><br><span class="line">    &#125;</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
+<p>在Setuptools entry points的命名空间cliff.demo中，定义了命令simple所对应的插件实现是Simple类。Cliff主程序解析用户的输入后，会通过这里所定义的对应关系调用不同的实现类。</p>
+<p>simple命令执行结果如下。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/result.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/result.png" alt=""></a></div>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Cliff/" rel="tag">Cliff</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Oslo/" rel="tag">Oslo</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="OpenStack通用库（二）"
+                    aria-label="PREVIOUS: OpenStack通用库（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
+                    data-tooltip="Python内置函数"
+                    aria-label="NEXT: Python内置函数"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=OpenStack通用库（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+<div class="main-content-wrap">
+    
+        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+<div id="vcomments"></div>
+<!-- <div>
+  <span
+    id="/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+    class="leancloud_visitors"
+    data-flag-title="OpenStack通用库（一）"
+  >
+    <em class="post-meta-item-text">阅读量 </em>
+    <i class="leancloud-visitors-count">loading</i>
+  </span>
+</div> -->
+<script>
+  new Valine({
+    el: "#vcomments",
+    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
+    appKey: "56G0KI3088RN76r5dTyRcsao",
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    notify: "false",
+    verity: "",
+    path: window.location.pathname,
+    avatar: "wavatar",
+    meta: ["nick", "mail", "link"],
+    pageSize: "10",
+    lang: "zh-cn",
+    visitor: "true",
+    highlight: "true",
+  });
+</script>
+
+    
+</div>
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2021 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/05/09/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="OpenStack通用库（二）"
+                    aria-label="PREVIOUS: OpenStack通用库（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
+                    data-tooltip="Python内置函数"
+                    aria-label="NEXT: Python内置函数"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=OpenStack通用库（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=OpenStack通用库（一）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Love Python Love LOL</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.66},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

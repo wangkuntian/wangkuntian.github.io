@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n","dateCreated":"2021-08-19T18:00:31+08:00","dateModified":"2021-08-20T17:41:49+08:00","datePublished":"2021-08-19T18:00:31+08:00","description":"硬件辅助虚拟化","headline":"向往的系统虚拟化（四)","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"虚拟化","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述硬件辅助虚拟化技术，就是在CPU、芯片组及I/O设备等硬件中加入专门针对虚拟化的支持，使得系统软件可以更加容易、高效地实现虚拟化功能。\n之所以需要在硬件中加入虚拟化的支持，原因是多方面的。首先，由于原有的硬件体系结构在虚拟化方面存在缺陷，例如虚拟化漏洞，导致单纯的软件虚拟化方法存在种种问题，如降优先级（deprivilege）的方法存在特权级压缩（Ring Compression）问题。BT技术存在难以处理自修改代码及自参考代码的问题。PV技术存在需要修改源码的问题。其次，由于硬件架构的限制，某些虚拟化功能尽管可以用软件方法来实现，但是实现起来非常复杂，一个典型的例子就是内存虚拟化的“影子页表”。最后，某些通过软件方法实现的虚拟化功能性能不佳，例如I/O设备的虚拟化。这些问题，都只有通过在CPU体系架构上增加相应的硬件支持，才能彻底解决。\nIntel VT是Intel平台上硬件虚拟化技术的总称，包含了对CPU、内存和I/O设备等方面的虚拟化支持。下图列举了Intel VT涵盖的内容。\nIntel虚拟技术\n\n上层是通用功能，如资源管理、系统调度等。下层是平台相关的部分，即使用Intel VT实现的处理器虚拟化、内存虚拟化和I/O虚拟化。\n在CPU虚拟化方面，Intel VT提供了VT-x（Intel Virtualization technology for x86）技术；在内存虚拟化方面，Intel VT提供了EPT（Extended Page Table）技术；在I/O设备虚拟化方面，Intel VT提供了VT-d（Intel Virtualization Technology for Direct I/O）等技术。\n此外，AMD平台也提供了类似的技术，即AMD Virtualization（AMD-V），其原理和使用方式与Intel VT类似。\nCPU虚拟化的硬件支持概述Intel VT中的VT-x技术扩展了传统的IA32处理器架构，为IA32架构的处理器虚拟化提供了硬件支持。\nVT-x的基本思想可以概括为下图所示。\nVT-x Architecture\n\n首先，VT-x引入了两种操作模式，统称为VMX操作模式。\n\n根操作模式（VMX Root Operation）：VMM运行所处的模式，以下简称根模式。\n非根操作模式（VMX Non-Root Operation）：客户机运行所处的模式，以下简称非根模式。\n\n这两种操作模式与IA32特权级0至特权级3是正交的，即每种操作模式下都有相应的特权级03。故在VT-x使用的情况下，描述程序运行在某个特权级，例如特权级0，还必须指出当前是处在根模式还是非根模式。\n引入两种操作模式的理由很明显。指令的虚拟化是通过“陷入再模拟”的方式实现的，而IA32架构有19条敏感指令不能通过这种方式处理，导致了虚拟化漏洞。最直观的解决办法，是使得这些敏感指令能够触发异常。可惜这种方法会改变这些指令的语义，导致与原有软件不兼容，这是不可接受的。引入新的模式可以很好地解决问题。非根模式下所有敏感指令（包括19条不能被虚拟化的敏感指令）的行为都被重新定义，使得它们能不经过虚拟化就直接运行或通过“陷入再模拟”的方式来处理；在根模式下，所有指令的行为和传统IA32一样，没有改变，因此原有的软件都能正常运行。\nVT-x中，非根模式下敏感指令引起的“陷入”被称为VM-Exit。VM-Exit发生时，CPU自动从非根模式切换为根模式。相应地，VT-x也定义了VM-Entry，该操作由VMM发起，通常是调度某个客户机运行，此时CPU从根模式切换成为非根模式。\n其次，为了更好地支持CPU虚拟化，VT-x引入了VMCS（Virtual-Machine Control Structure，虚拟机控制结构）。VMCS保存虚拟CPU需要的相关状态，例如CPU在根模式和非根模式下的特权寄存器的值。VMCS主要供CPU使用，CPU在发生VM-Exit和VM-Entry时都会自动查询和更新VMCS。VMM可以通过指令来配置VMCS，进而影响CPU的行为。\n最后，VT-x还引入了一组新的指令，包括VMLAUCH/VMRESUME用于发起VM-Entry，VMREAD/VMWRITE用于配置VMCS等。\nVMCSVMCS的概念和虚拟寄存器的概念类似，可以看作是虚拟寄存器概念上在硬件上的应用。虚拟寄存器的操作和更改完全由软件执行，但VMCS却主要由CPU操作。VMCS是保存在内存中的数据结构，包含了虚拟CPU的相关寄存器的内容和虚拟CPU相关的控制信息，每个VMCS对应一个虚拟CPU。\nVMCS在使用时需要与物理CPU绑定。在任意给定时刻，VMCS与物理CPU是一对一的绑定关系，即一个物理CPU只能绑定一个VMCS，一个VMCS也只能与一个物理CPU绑定。VMCS在不同的时刻可以绑定到不同的物理CPU，例如在某个VMCS先和物理CPU1绑定，并在某一个时刻解除绑定关系，并重新绑定到物理CPU2。这种绑定关系的变化被称为VMCS的迁移（Migration）。\nVT-x提供了两条指令用于VMCS的绑定与解除绑定。\n\nVMPTRLD&lt;VMCS地址&gt;：将指定的VMCS与执行该指令的物理CPU绑定。\nVMCLEAR：将执行该指令的物理CPU与它的VMCS解除绑定。该指令会将物理CPU缓存中的VMCS结构同步到内存中去，从而保证VMCS和新的物理CPU绑定时，内存中的值是最新的。\n\nVMCS的一次迁移过程如下：\n\n在CPU1上执行VMCLEAR，解除绑定。\n在CPU2上执行VMPTRLD，进行新的绑定。\n\nVT-x定义了VMCS的具体格式和内容。规定它是一个最大不超过4KB的内存块，并要求是4KB对齐。描述了VMCS的格式，各域描述如下。\n\n偏移0处是VMCS版本标识，表示VMCS数据格式的版本号。\n偏移4处是VMX中止指示，VM-Exit执行不成功时产生VMX中止，CPU会在此处存入VMX中止的原因，以方便调试。\n偏移8处是VMCS数据域，该域的格式是CPU相关的，不同型号的CPU可能使用不同格式，具体使用哪种格式由VMCS版本标识确定。\n\nVMCS块格式如下表所示。\n\n\n\n字节偏移\n描述\n\n\n\n0\nVMCS revision identifier\n\n\n4\nVMX-abort indicator\n\n\n8\nVMCS data(implementation-specific format)\n\n\nVMCS主要的信息存放在“VMCS数据域”，VT-x提供了两条指令用于访问VMCS。\n\nVMREAD&lt;索引&gt;：读VMCS中“索引”指定的域。\nVMWRITE&lt;索引&gt; &lt;数据&gt;：写VMCS中“索引”指定的域。\n\nVT-x为VMCS数据域的每个字段也定义了相应的“索引”，故通过上述两条指令也可以直接访问VMCS数据域中的各个域。\n具体而言，VMCS数据域包括下列6大类信息。\n\n客户机状态域：保存客户机运行时，即非根模式时的CPU状态。当VM-Exit发生时，CPU把当前状态存入客户机状态域；当VM-Entry发生时，CPU从客户机状态域恢复状态。\n宿主机状态域：保存VMM运行时，即根模式时的CPU状态。当VM-Exit发生时，CPU从该域恢复CPU状态。\nVM-Entry控制域：控制VM-Entry的过程。\nVM-Execution控制域：控制处理器在VMX非根模式下的行为。\nVM-Exit控制域：控制VM-Exit的过程。\nVM-Exit信息域：提供VM-Exit原因和其他信息。VM-Exit信息域是只读的。\n\n客户机状态域","dateCreated":"2021-08-19T18:00:31+08:00","dateModified":"2021-09-08T17:34:38+08:00","datePublished":"2021-08-19T18:00:31+08:00","description":"硬件辅助虚拟化","headline":"向往的系统虚拟化（四)","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"虚拟化","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
     <meta name="description" content="硬件辅助虚拟化">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="向往的系统虚拟化（四)">
@@ -27,11 +27,14 @@
 <meta property="og:site_name" content="Wang kuntian&#39;s Blog">
 <meta property="og:description" content="硬件辅助虚拟化">
 <meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/images/intel_vt.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/images/vtx.png">
 <meta property="article:published_time" content="2021-08-19T10:00:31.000Z">
-<meta property="article:modified_time" content="2021-08-20T09:41:49.914Z">
+<meta property="article:modified_time" content="2021-09-08T09:34:38.780Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="虚拟化">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2021/08/19/%E5%90%91%E5%BE%80%E7%9A%84%E7%B3%BB%E7%BB%9F%E8%99%9A%E6%8B%9F%E5%8C%96%EF%BC%88%E5%9B%9B%EF%BC%89/images/intel_vt.png">
     
     
         
@@ -50,7 +53,7 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-ylyzvqvxe7d2pdijcmlj2swixla04ovf1c0z9js94sfpz1vzdwmbyypp3w8w.min.css">
+<link rel="stylesheet" href="/assets/css/style-djeibaxiwobeczczeug6ansp3ntbnxmyy8o3g3qchionj5corndjz9ixqtgl.min.css">
 
     <!--STYLES END-->
     
@@ -102,7 +105,7 @@
             <a
                 class="header-right-picture "
                 href="#about"
-                aria-label="Open the link: /#about"
+                aria-label="Öffne den Link: /#about"
             >
         
         
@@ -125,7 +128,7 @@
             <div class="sidebar-profile">
                 <a
                     href="/#about"
-                    aria-label="Read more about the author"
+                    aria-label="Lesen Sie mehr über den Autor"
                 >
                     <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
                 </a>
@@ -324,7 +327,85 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <!-- excerpt -->
-<h1 id="table-of-contents">目录</h1>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#CPU%E8%99%9A%E6%8B%9F%E5%8C%96%E7%9A%84%E7%A1%AC%E4%BB%B6%E6%94%AF%E6%8C%81"><span class="toc-text">CPU虚拟化的硬件支持</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0-1"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#VMCS"><span class="toc-text">VMCS</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%A2%E6%88%B7%E6%9C%BA%E7%8A%B6%E6%80%81%E5%9F%9F"><span class="toc-text">客户机状态域</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>硬件辅助虚拟化技术，就是在CPU、芯片组及I/O设备等硬件中加入专门针对虚拟化的支持，使得系统软件可以更加容易、高效地实现虚拟化功能。</p>
+<p>之所以需要在硬件中加入虚拟化的支持，原因是多方面的。首先，由于原有的硬件体系结构在虚拟化方面存在缺陷，例如虚拟化漏洞，导致单纯的软件虚拟化方法存在种种问题，如降优先级（deprivilege）的方法存在特权级压缩（Ring Compression）问题。BT技术存在难以处理自修改代码及自参考代码的问题。PV技术存在需要修改源码的问题。其次，由于硬件架构的限制，某些虚拟化功能尽管可以用软件方法来实现，但是实现起来非常复杂，一个典型的例子就是内存虚拟化的“影子页表”。最后，某些通过软件方法实现的虚拟化功能性能不佳，例如I/O设备的虚拟化。这些问题，都只有通过在CPU体系架构上增加相应的硬件支持，才能彻底解决。</p>
+<p>Intel VT是Intel平台上硬件虚拟化技术的总称，包含了对CPU、内存和I/O设备等方面的虚拟化支持。下图列举了Intel VT涵盖的内容。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/intel_vt.png" title="Intel虚拟技术" data-caption="Intel虚拟技术" data-fancybox="default"><img class="fig-img" src="images/intel_vt.png" alt="Intel虚拟技术"></a><span class="caption">Intel虚拟技术</span></div>
+
+<p>上层是通用功能，如资源管理、系统调度等。下层是平台相关的部分，即使用Intel VT实现的处理器虚拟化、内存虚拟化和I/O虚拟化。</p>
+<p>在CPU虚拟化方面，Intel VT提供了VT-x（Intel Virtualization technology for x86）技术；在内存虚拟化方面，Intel VT提供了EPT（Extended Page Table）技术；在I/O设备虚拟化方面，Intel VT提供了VT-d（Intel Virtualization Technology for Direct I/O）等技术。</p>
+<p>此外，AMD平台也提供了类似的技术，即AMD Virtualization（AMD-V），其原理和使用方式与Intel VT类似。</p>
+<h1 id="CPU虚拟化的硬件支持"><a href="#CPU虚拟化的硬件支持" class="headerlink" title="CPU虚拟化的硬件支持"></a>CPU虚拟化的硬件支持</h1><h2 id="概述-1"><a href="#概述-1" class="headerlink" title="概述"></a>概述</h2><p>Intel VT中的VT-x技术扩展了传统的IA32处理器架构，为IA32架构的处理器虚拟化提供了硬件支持。</p>
+<p>VT-x的基本思想可以概括为下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/vtx.png" title="VT-x Architecture" data-caption="VT-x Architecture" data-fancybox="default"><img class="fig-img" src="images/vtx.png" alt="VT-x Architecture"></a><span class="caption">VT-x Architecture</span></div>
+
+<p>首先，VT-x引入了两种操作模式，统称为VMX操作模式。</p>
+<ul>
+<li>根操作模式（VMX Root Operation）：VMM运行所处的模式，以下简称根模式。</li>
+<li>非根操作模式（VMX Non-Root Operation）：客户机运行所处的模式，以下简称非根模式。</li>
+</ul>
+<p>这两种操作模式与IA32特权级0至特权级3是正交的，即每种操作模式下都有相应的特权级03。故在VT-x使用的情况下，描述程序运行在某个特权级，例如特权级0，还必须指出当前是处在根模式还是非根模式。</p>
+<p>引入两种操作模式的理由很明显。指令的虚拟化是通过“陷入再模拟”的方式实现的，而IA32架构有19条敏感指令不能通过这种方式处理，导致了虚拟化漏洞。最直观的解决办法，是使得这些敏感指令能够触发异常。可惜这种方法会改变这些指令的语义，导致与原有软件不兼容，这是不可接受的。引入新的模式可以很好地解决问题。非根模式下所有敏感指令（包括19条不能被虚拟化的敏感指令）的行为都被重新定义，使得它们能不经过虚拟化就直接运行或通过“陷入再模拟”的方式来处理；在根模式下，所有指令的行为和传统IA32一样，没有改变，因此原有的软件都能正常运行。</p>
+<p>VT-x中，非根模式下敏感指令引起的“陷入”被称为VM-Exit。VM-Exit发生时，CPU自动从非根模式切换为根模式。相应地，VT-x也定义了VM-Entry，该操作由VMM发起，通常是调度某个客户机运行，此时CPU从根模式切换成为非根模式。</p>
+<p>其次，为了更好地支持CPU虚拟化，VT-x引入了VMCS（Virtual-Machine Control Structure，虚拟机控制结构）。VMCS保存虚拟CPU需要的相关状态，例如CPU在根模式和非根模式下的特权寄存器的值。VMCS主要供CPU使用，CPU在发生VM-Exit和VM-Entry时都会自动查询和更新VMCS。VMM可以通过指令来配置VMCS，进而影响CPU的行为。</p>
+<p>最后，VT-x还引入了一组新的指令，包括VMLAUCH/VMRESUME用于发起VM-Entry，VMREAD/VMWRITE用于配置VMCS等。</p>
+<h2 id="VMCS"><a href="#VMCS" class="headerlink" title="VMCS"></a>VMCS</h2><p>VMCS的概念和虚拟寄存器的概念类似，可以看作是虚拟寄存器概念上在硬件上的应用。虚拟寄存器的操作和更改完全由软件执行，但VMCS却主要由CPU操作。VMCS是保存在内存中的数据结构，包含了虚拟CPU的相关寄存器的内容和虚拟CPU相关的控制信息，每个VMCS对应一个虚拟CPU。</p>
+<p>VMCS在使用时需要与物理CPU绑定。在任意给定时刻，VMCS与物理CPU是一对一的绑定关系，即一个物理CPU只能绑定一个VMCS，一个VMCS也只能与一个物理CPU绑定。VMCS在不同的时刻可以绑定到不同的物理CPU，例如在某个VMCS先和物理CPU1绑定，并在某一个时刻解除绑定关系，并重新绑定到物理CPU2。这种绑定关系的变化被称为VMCS的迁移（Migration）。</p>
+<p>VT-x提供了两条指令用于VMCS的绑定与解除绑定。</p>
+<ul>
+<li>VMPTRLD&lt;VMCS地址&gt;：将指定的VMCS与执行该指令的物理CPU绑定。</li>
+<li>VMCLEAR：将执行该指令的物理CPU与它的VMCS解除绑定。该指令会将物理CPU缓存中的VMCS结构同步到内存中去，从而保证VMCS和新的物理CPU绑定时，内存中的值是最新的。</li>
+</ul>
+<p>VMCS的一次迁移过程如下：</p>
+<ol>
+<li>在CPU1上执行VMCLEAR，解除绑定。</li>
+<li>在CPU2上执行VMPTRLD，进行新的绑定。</li>
+</ol>
+<p>VT-x定义了VMCS的具体格式和内容。规定它是一个最大不超过4KB的内存块，并要求是4KB对齐。描述了VMCS的格式，各域描述如下。</p>
+<ol>
+<li>偏移0处是VMCS版本标识，表示VMCS数据格式的版本号。</li>
+<li>偏移4处是VMX中止指示，VM-Exit执行不成功时产生VMX中止，CPU会在此处存入VMX中止的原因，以方便调试。</li>
+<li>偏移8处是VMCS数据域，该域的格式是CPU相关的，不同型号的CPU可能使用不同格式，具体使用哪种格式由VMCS版本标识确定。</li>
+</ol>
+<p>VMCS块格式如下表所示。</p>
+<table>
+<thead>
+<tr>
+<th align="center">字节偏移</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0</td>
+<td align="center">VMCS revision identifier</td>
+</tr>
+<tr>
+<td align="center">4</td>
+<td align="center">VMX-abort indicator</td>
+</tr>
+<tr>
+<td align="center">8</td>
+<td align="center">VMCS data(implementation-specific format)</td>
+</tr>
+</tbody></table>
+<p>VMCS主要的信息存放在“VMCS数据域”，VT-x提供了两条指令用于访问VMCS。</p>
+<ul>
+<li>VMREAD&lt;索引&gt;：读VMCS中“索引”指定的域。</li>
+<li>VMWRITE&lt;索引&gt; &lt;数据&gt;：写VMCS中“索引”指定的域。</li>
+</ul>
+<p>VT-x为VMCS数据域的每个字段也定义了相应的“索引”，故通过上述两条指令也可以直接访问VMCS数据域中的各个域。</p>
+<p>具体而言，VMCS数据域包括下列6大类信息。</p>
+<ol>
+<li>客户机状态域：保存客户机运行时，即非根模式时的CPU状态。当VM-Exit发生时，CPU把当前状态存入客户机状态域；当VM-Entry发生时，CPU从客户机状态域恢复状态。</li>
+<li>宿主机状态域：保存VMM运行时，即根模式时的CPU状态。当VM-Exit发生时，CPU从该域恢复CPU状态。</li>
+<li>VM-Entry控制域：控制VM-Entry的过程。</li>
+<li>VM-Execution控制域：控制处理器在VMX非根模式下的行为。</li>
+<li>VM-Exit控制域：控制VM-Exit的过程。</li>
+<li>VM-Exit信息域：提供VM-Exit原因和其他信息。VM-Exit信息域是只读的。</li>
+</ol>
+<h3 id="客户机状态域"><a href="#客户机状态域" class="headerlink" title="客户机状态域"></a>客户机状态域</h3>
             
 
 
@@ -674,7 +755,7 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-czbflbor1aswa5jk6qst8othbxkfayd3502dzoleqclh5qedggrus4tsyebs.min.js"></script>
+<script src="/assets/js/script-3kkv5ejgjkmpdyg2kfmjdqkiccwp7wjkrjhjyxntaquueoasg3fpemwjiylj.min.js"></script>
 
 <!--SCRIPTS END-->
 

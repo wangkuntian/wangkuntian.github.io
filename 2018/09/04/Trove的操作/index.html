@@ -19,7 +19,7 @@
             <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
         
     
-    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n基本操作展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。\n1trove list\n\n\n查看json格式时，可以使用–json命令行选项。\n\n\n当实例数量过多时，可以使用–limit命令行选项。\n1trove list --limit &lt;数字&gt;\n启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。\n\n实例名称（name）\n实例的类型id（flavor_id）\n持久化卷的大小（size）\n数据库类型（datastore）\n数据库版本（datastore_version）\n\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;数字(G)&gt; --datastore &lt;datastore_id或datastore_name&gt; --datastore_version &lt;datastore_version_id 或datastore_version_name&gt;\n\n\n重启实例实例一旦被创建，就可以用trove restart命令重启实例。这个命令只会重启运行在由Trove管理的Nova实例中的数据库服务，不会重启Nova实例。\n1trove restart &lt;实例id&gt;\n\n删除实例可以使用trove delete命令永久删除一个实例。delete命令是不可逆的，一旦删除了实例，将永远无法访问其上的数据库服务，实例中的所有数据也将消失。\n1trove delete &lt;实例id&gt;\n\n创建用户和数据库启用数据库的root用户像Mysql之类的数据库服务都有一个超级用户（root），在默认情况下，Trove的数据库实例是禁止这个用户的。可以利用root用户连接到Mysql数据库服务。\n1mysql -uroot -p&lt;password&gt; -h&lt;ip&gt; -s\n\n\n在一个运行中的实例上启用root用户\n1trove root-enable &lt;实例id&gt;\n\n\n 可以使用root-show 查看root用户的状态。\n 1trove root-show &lt;实例id&gt;\n \n\n启用默认root用户除了在已经存在的数据库实例上启用root用户，也可以在默认情况下启用root用户（在实例创建时）。需要将trove.conf配置文件的[mysql]配置中的root_on_create设为true。\n12[mysql]root_on_create = True\n\n 需要重启Trove服务生效。\n\n\n\n\n数据库操作\n列出数据库\n1trove database-list &lt;实例id&gt;\n\n\n禁止某些数据库的显示经常会有一些内置的数据库不需要通过database-list命令显示出来。可以通过设置trove.conf中的ignore_dbs参数禁止这些数据库的显示。\nignore_dbs的默认值是lost+found、mysql和information_schema。\n\n\n在运行的实例上创建数据库\n1trove database-create &lt;实例id&gt; &lt;name&gt;\n\n创建实例时创建数据库trove create命令允许在创建实例的同时创建多个数据库。可以指定任意数量的数据库并与用户关联。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n\n\n用户操作\n在创建实例时创建用户\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n列出用户\n1trove user-list &lt;实例id&gt;\n\n\n在运行的实例上创建用户\n1trove user-create &lt;实例id&gt; &lt;username&gt; --databases &lt;database _name&gt;\n\n删除用户删除实例的所有用户\n1trove user-delete &lt;实例id&gt;\n 删除实例的指定用户\n 1trove user-delete &lt;实例id&gt; &lt;username&gt;\n\n管理用户的访问权限\n\n列出用户的访问权限user-show-access 命令显示了允许用户访问的数据库。\n1trove user-show-access &lt;实例id&gt; &lt;username&gt;\n\n\n在user-list中禁止某些用户一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示\n123[DEFAULT]ignore_users = os_admin,root...\nMysql使用[DEFAULT]配置段\n\n\n给予用户访问权限\n1trove user-grant-access &lt;实例id&gt; &lt;username&gt;\n\n撤销用户访问权限\n1trove user-revoke-access &lt;实例id&gt; &lt;username&gt;\n\n\n\n\n\n其他查看实例详细信息1trove show &lt;实例id或name&gt;\n\n\n查看flavor1trove flavor-list\n\n\n查看flavor详细1trove flavor-show &lt;实例id&gt;\n\n\n查看datastore1trove datastore-list\n\n查看datastore详细1trove datastore-show &lt;datastore_id&gt;\n\n\n查看datastore版本1trove datastore-version-list &lt;datastore_id&gt;\n\n\n帮助1trove help &lt;命令&gt;\n\n\n高级操作自定义flavor在启动一个Trove实例时，必须要指定一个flavor。flavor是虚拟机的模板，提供了基本的硬件配置信息，例如内存、磁盘空间、虚拟CPU的数量等等。\n查看可用flavor1trove flavor-list\n\n\n\b查看nova的flavor1nova flavor-list\n\n创建flavor1nova flavor-create &lt;name&gt; &lt;id&gt; &lt;ram&gt; &lt;disk&gt; &lt;vcpus&gt;\n\n备份\n\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n\n新建增量备份Trove还支持基于现有备份创建增量备份。\n1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description &quot;&lt;description&gt;&quot;\n\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n\n查看备份1trove backup-list\n\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n\n主从创建从节点查看主节点信息。\n1trove show &lt;实例id&gt;\n创建副本。\n1trove create \b&lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --replica_of &lt;实例id&gt; --replica_count &lt;count&gt;\n\n\nreplica_count允许同时创建多个副本。默认值是1。\n\n故障切换在复制环境中，有一个主节点和一个或多个副本。可能用户会从目前可用的副本中选出新的主节点。这个过程称为故障切换。\n有序故障切换使用promote-to-replica-source命令替换当前的主节点。\n1trove promote-to-replica-source &lt;副本实例id/name&gt;\n打破主节点和副本之间的复制的另一种方法是将副本从主节点上分离出来，这是一种不可逆的操作，通常用于在一个时间点生成一个数据集的备份，并可以随后用于生成该时间点的新实例。\n1trove detach-replica &lt;副本实例id/name&gt;\n\n主节点失败的故障切换使用eject-replica-source命令来处理主节点失败的情况。当对一个失败的主节点执行该命令时，会将该主节点抛弃并选举出新的主节点。该命令有些保护措施。当针对一个不是主节点的实例执行时，该命令会出错。此外针对一个运行正常的主节点执行时，命令也会失败。\n1trove eject-replica-source &lt;失败主节点实例id/name&gt;","dateCreated":"2018-09-04T11:26:07+08:00","dateModified":"2020-12-28T11:08:11+08:00","datePublished":"2018-09-04T11:26:07+08:00","description":"Trove的操作","headline":"Trove的操作","image":["covers/LOL/Ezreal/Arcade-Ezreal.jpg","covers/LOL/Ezreal/Arcade-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Arcade-Ezreal.jpg"}</script>
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n基本操作展示实例列表Trove中最常用的命令就是获取实例列表并打印它们的状态。列出实例的最简单的命令是trove list。\n1trove list\n\n\n查看json格式时，可以使用–json命令行选项。\n\n\n当实例数量过多时，可以使用–limit命令行选项。\n1trove list --limit &lt;数字&gt;\n启动实例启动实例的最基本方法是使用trove create命令并传入以下参数。\n\n实例名称（name）\n实例的类型id（flavor_id）\n持久化卷的大小（size）\n数据库类型（datastore）\n数据库版本（datastore_version）\n\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;数字(G)&gt; --datastore &lt;datastore_id或datastore_name&gt; --datastore_version &lt;datastore_version_id 或datastore_version_name&gt;\n\n\n重启实例实例一旦被创建，就可以用trove restart命令重启实例。这个命令只会重启运行在由Trove管理的Nova实例中的数据库服务，不会重启Nova实例。\n1trove restart &lt;实例id&gt;\n\n删除实例可以使用trove delete命令永久删除一个实例。delete命令是不可逆的，一旦删除了实例，将永远无法访问其上的数据库服务，实例中的所有数据也将消失。\n1trove delete &lt;实例id&gt;\n\n创建用户和数据库启用数据库的root用户像Mysql之类的数据库服务都有一个超级用户（root），在默认情况下，Trove的数据库实例是禁止这个用户的。可以利用root用户连接到Mysql数据库服务。\n1mysql -uroot -p&lt;password&gt; -h&lt;ip&gt; -s\n\n\n在一个运行中的实例上启用root用户\n1trove root-enable &lt;实例id&gt;\n\n\n 可以使用root-show 查看root用户的状态。\n 1trove root-show &lt;实例id&gt;\n \n\n启用默认root用户除了在已经存在的数据库实例上启用root用户，也可以在默认情况下启用root用户（在实例创建时）。需要将trove.conf配置文件的[mysql]配置中的root_on_create设为true。\n12[mysql]root_on_create = True\n\n 需要重启Trove服务生效。\n\n\n\n\n数据库操作\n列出数据库\n1trove database-list &lt;实例id&gt;\n\n\n禁止某些数据库的显示经常会有一些内置的数据库不需要通过database-list命令显示出来。可以通过设置trove.conf中的ignore_dbs参数禁止这些数据库的显示。\nignore_dbs的默认值是lost+found、mysql和information_schema。\n\n\n在运行的实例上创建数据库\n1trove database-create &lt;实例id&gt; &lt;name&gt;\n\n创建实例时创建数据库trove create命令允许在创建实例的同时创建多个数据库。可以指定任意数量的数据库并与用户关联。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n\n\n用户操作\n在创建实例时创建用户\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;size&gt; --datastore &lt;datastore&gt; --databases &lt;database1 database2 ...&gt; --users &lt;user1:password1 user2:password2 ...&gt;\n\n列出用户\n1trove user-list &lt;实例id&gt;\n\n\n在运行的实例上创建用户\n1trove user-create &lt;实例id&gt; &lt;username&gt; --databases &lt;database _name&gt;\n\n删除用户删除实例的所有用户\n1trove user-delete &lt;实例id&gt;\n 删除实例的指定用户\n 1trove user-delete &lt;实例id&gt; &lt;username&gt;\n\n管理用户的访问权限\n\n列出用户的访问权限user-show-access 命令显示了允许用户访问的数据库。\n1trove user-show-access &lt;实例id&gt; &lt;username&gt;\n\n\n在user-list中禁止某些用户一些数据库中有些内置用户不能向用户展示，可以在trove.conf配置文件中使用ignore_users参数禁止用户在user-list命令中显示\n123[DEFAULT]ignore_users = os_admin,root...\nMysql使用[DEFAULT]配置段\n\n\n给予用户访问权限\n1trove user-grant-access &lt;实例id&gt; &lt;username&gt;\n\n撤销用户访问权限\n1trove user-revoke-access &lt;实例id&gt; &lt;username&gt;\n\n\n\n\n\n其他查看实例详细信息1trove show &lt;实例id或name&gt;\n\n\n查看flavor1trove flavor-list\n\n\n查看flavor详细1trove flavor-show &lt;实例id&gt;\n\n\n查看datastore1trove datastore-list\n\n查看datastore详细1trove datastore-show &lt;datastore_id&gt;\n\n\n查看datastore版本1trove datastore-version-list &lt;datastore_id&gt;\n\n\n帮助1trove help &lt;命令&gt;\n\n\n高级操作自定义flavor在启动一个Trove实例时，必须要指定一个flavor。flavor是虚拟机的模板，提供了基本的硬件配置信息，例如内存、磁盘空间、虚拟CPU的数量等等。\n查看可用flavor1trove flavor-list\n\n\n\b查看nova的flavor1nova flavor-list\n\n创建flavor1nova flavor-create &lt;name&gt; &lt;id&gt; &lt;ram&gt; &lt;disk&gt; &lt;vcpus&gt;\n\n备份\n\n新建备份1trove backup-create &lt;实例id&gt; &lt;name&gt;\n\n\n新建增量备份Trove还支持基于现有备份创建增量备份。\n1trove backup-create &lt;实例id&gt; &lt;name&gt; --parent &lt;已有备份id&gt; --description &quot;&lt;description&gt;&quot;\n\n恢复备份恢复备份的操作通过启动基于备份的新实例来完成。在Trove中，不能加载备份到现有实例中。\n1trove create &lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --backup &lt;backup_id&gt;\n\n删除备份1trove backup-delete &lt;备份的id/name&gt;\n\n查看备份1trove backup-list\n\n\n找到指定实例的所有备份1trove backup-list-instance &lt;实例id&gt;\n\n主从创建从节点查看主节点信息。\n1trove show &lt;实例id&gt;\n创建副本。\n1trove create \b&lt;name&gt; &lt;flavor_id&gt; --size &lt;num&gt; --replica_of &lt;实例id&gt; --replica_count &lt;count&gt;\n\n\nreplica_count允许同时创建多个副本。默认值是1。\n\n故障切换在复制环境中，有一个主节点和一个或多个副本。可能用户会从目前可用的副本中选出新的主节点。这个过程称为故障切换。\n有序故障切换使用promote-to-replica-source命令替换当前的主节点。\n1trove promote-to-replica-source &lt;副本实例id/name&gt;\n打破主节点和副本之间的复制的另一种方法是将副本从主节点上分离出来，这是一种不可逆的操作，通常用于在一个时间点生成一个数据集的备份，并可以随后用于生成该时间点的新实例。\n1trove detach-replica &lt;副本实例id/name&gt;\n\n主节点失败的故障切换使用eject-replica-source命令来处理主节点失败的情况。当对一个失败的主节点执行该命令时，会将该主节点抛弃并选举出新的主节点。该命令有些保护措施。当针对一个不是主节点的实例执行时，该命令会出错。此外针对一个运行正常的主节点执行时，命令也会失败。\n1trove eject-replica-source &lt;失败主节点实例id/name&gt;","dateCreated":"2018-09-04T11:26:07+08:00","dateModified":"2020-12-28T11:08:10+08:00","datePublished":"2018-09-04T11:26:07+08:00","description":"Trove的操作","headline":"Trove的操作","image":["covers/LOL/Ezreal/Arcade-Ezreal.jpg","covers/LOL/Ezreal/Arcade-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/","keywords":"Trove","thumbnailUrl":"covers/LOL/Ezreal/Arcade-Ezreal.jpg"}</script>
     <meta name="description" content="Trove的操作">
 <meta property="og:type" content="blog">
 <meta property="og:title" content="Trove的操作">
@@ -47,7 +47,7 @@
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/images/trove-backup-list.png">
 <meta property="og:image" content="https://wangkuntian.github.io/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/images/trove-create-replica.png">
 <meta property="article:published_time" content="2018-09-04T03:26:07.000Z">
-<meta property="article:modified_time" content="2020-12-28T03:08:11.000Z">
+<meta property="article:modified_time" content="2020-12-28T03:08:10.000Z">
 <meta property="article:author" content="Wang kuntian">
 <meta property="article:tag" content="Trove">
 <meta name="twitter:card" content="summary">
@@ -70,7 +70,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -151,7 +160,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -306,7 +315,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/covers/LOL/Ezreal/Arcade-Ezreal.jpg');"
+             style="background-image:url('/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/covers/LOL/Ezreal/Arcade-Ezreal.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -474,7 +483,7 @@
 <p><img src="images/nova-flavor-list.png" alt="nova-flavor-list"></p>
 <h3 id="创建flavor"><a href="#创建flavor" class="headerlink" title="创建flavor"></a>创建flavor</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova flavor-create &lt;name&gt; &lt;id&gt; &lt;ram&gt; &lt;disk&gt; &lt;vcpus&gt;</span><br></pre></td></tr></table></figure>
 
-<h2 id="备份"><a href="#备份" class="headerlink" title="备份"></a>备份</h2><a id="more"></a>
+<h2 id="备份"><a href="#备份" class="headerlink" title="备份"></a>备份</h2><span id="more"></span>
 
 <h3 id="新建备份"><a href="#新建备份" class="headerlink" title="新建备份"></a>新建备份</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove backup-create &lt;实例id&gt; &lt;name&gt;</span><br></pre></td></tr></table></figure>
 <div class="figure " style="width:;"><a class="fancybox" href="images/trove-backup-create.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/trove-backup-create.png" alt=""></a></div>
@@ -514,6 +523,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2018/09/04/Trove的操作/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -626,41 +639,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2018/09/04/Trove%E7%9A%84%E6%93%8D%E4%BD%9C/"
-    class="leancloud_visitors"
-    data-flag-title="Trove的操作"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -837,7 +847,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -863,7 +873,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

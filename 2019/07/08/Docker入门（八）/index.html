@@ -48,7 +48,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -129,7 +138,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -284,7 +293,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AB%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -320,7 +329,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p>Dockerfile是一个文本格式的配置文件，用户可以用Dockerfile快速创建自定义的镜像。</p>
-<a id="more"></a>
+<span id="more"></span>
 
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E4%BB%8B%E7%BB%8D"><span class="toc-text">环境介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%87%E4%BB%A4%E4%BB%8B%E7%BB%8D"><span class="toc-text">指令介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#FROM"><span class="toc-text">FROM</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MAINTAINER"><span class="toc-text">MAINTAINER</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#LABEL"><span class="toc-text">LABEL</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ADD"><span class="toc-text">ADD</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#COPY"><span class="toc-text">COPY</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#EXPOSE"><span class="toc-text">EXPOSE</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ENV"><span class="toc-text">ENV</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%9C%A8Dockerfile%E4%B8%AD%E4%BD%BF%E7%94%A8%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"><span class="toc-text">在Dockerfile中使用环境变量</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#RUN"><span class="toc-text">RUN</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#CMD"><span class="toc-text">CMD</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ENTRYPOINT"><span class="toc-text">ENTRYPOINT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VOLUME"><span class="toc-text">VOLUME</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#USER"><span class="toc-text">USER</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#WORKDIR"><span class="toc-text">WORKDIR</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ARG"><span class="toc-text">ARG</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ONBUILD"><span class="toc-text">ONBUILD</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#STOPSIGNAL"><span class="toc-text">STOPSIGNAL</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#HEALTHCHECK"><span class="toc-text">HEALTHCHECK</span></a></li></ol></li></ol>
 
@@ -341,7 +350,7 @@
 </div>
 
 <h4 id="LABEL"><a href="#LABEL" class="headerlink" title="LABEL"></a>LABEL</h4><p>为镜像指定标签。</p>
-<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="bash"> &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;</span></span><br><span class="line"></span><br><span class="line">一个Dockerfile可以有多个<span class="keyword">LABEL</span><span class="bash">。</span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> com.example.label-with-value=<span class="string">&quot;foo&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> version=<span class="string">&quot;1.0&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> description=<span class="string">&quot;This text illustrates that label-values \</span></span></span><br><span class="line"><span class="bash">can span multiple lines.<span class="string">&quot;</span></span></span><br><span class="line"></span><br><span class="line">但不建议这么写，最好写成一行，可以使用\换行。</span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> multi.label1=<span class="string">&quot;value1&quot;</span> \</span></span><br><span class="line"><span class="bash">multi.label2=<span class="string">&quot;value2&quot;</span> \</span></span><br><span class="line"><span class="bash">other=<span class="string">&quot;value3&quot;</span></span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="bash"> &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;</span></span><br><span class="line"></span><br><span class="line">一个Dockerfile可以有多个<span class="keyword">LABEL</span><span class="bash">。</span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> com.example.label-with-value=<span class="string">&quot;foo&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> version=<span class="string">&quot;1.0&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> description=<span class="string">&quot;This text illustrates that label-values \</span></span></span><br><span class="line"><span class="string"><span class="bash">can span multiple lines.&quot;</span></span></span><br><span class="line"></span><br><span class="line">但不建议这么写，最好写成一行，可以使用\换行。</span><br><span class="line"><span class="keyword">LABEL</span><span class="bash"> multi.label1=<span class="string">&quot;value1&quot;</span> \</span></span><br><span class="line"><span class="bash">multi.label2=<span class="string">&quot;value2&quot;</span> \</span></span><br><span class="line"><span class="bash">other=<span class="string">&quot;value3&quot;</span></span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <div class="alert info no-icon"><p>LABEL会继承基础镜像的LABEL，遇到相同key的，则值被覆盖。</p>
 </div>
 
@@ -488,6 +497,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2019/07/08/Docker入门（八）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -600,41 +613,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2019/07/08/Docker%E5%85%A5%E9%97%A8%EF%BC%88%E5%85%AB%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="Docker入门（八）"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -811,7 +821,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -837,7 +847,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

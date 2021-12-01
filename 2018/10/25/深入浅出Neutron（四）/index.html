@@ -47,7 +47,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -128,7 +137,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -283,7 +292,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -319,7 +328,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p>爱上Neutron的理由</p>
-<a id="more"></a>
+<span id="more"></span>
 
 <h3 id="北向API，框架结构与微内核"><a href="#北向API，框架结构与微内核" class="headerlink" title="北向API，框架结构与微内核"></a>北向API，框架结构与微内核</h3><p>随着OpenStack市场占有率的提高，OpenStack已经成为事实上的IaaS标准，提供和Neutron兼容的北向API至关重要。北向方面，Neutron提供了核心API，抽象了一个网络核心数据模型（网络、子网、端口、路由），也提供了扩展API去为其他非核心数据结构提供统一的对外API。这些标准的北向API接口，不仅可以使其他数据中心网络与OpenStack网络互联互通，而且提供了标准的虚拟网络开放系统，可以用于多种集成场景中。</p>
 <p>OpenStack的另外一个优点是它提供了一个非常好的框架结构，插件与代理之间通过消息通信解耦，如AMQP，从而让OpenStack中的每一个进程都可以运行在任何节点上以支持大规模部署。Neutron也不例外，它的这种框架结构让你可以将精力集中在业务部分。作为精通OpenStack的专业人员可以从Neutron众多的插件和驱动中挑选合适自己部署架构的功能。如果它与你的部署架构不符，或者缺少相应的插件或驱动，则可以在Neutron框架结构下扩展插件或者驱动即可，从而节省大量定制开发的成本。</p>
@@ -358,6 +367,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2018/10/25/深入浅出Neutron（四）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -470,41 +483,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="深入浅出Neutron（四）爱上Neutron"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -681,7 +691,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -707,7 +717,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

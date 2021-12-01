@@ -53,7 +53,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -134,7 +143,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -289,7 +298,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -325,7 +334,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p>由于云环境的网络要求和复杂度不同，要求Neutron能够灵活支持多种租户网络拓扑结构，如Vlan网络，大二层网络或者混合网络等。</p>
-<a id="more"></a>
+<span id="more"></span>
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E4%B8%80%E5%B9%B3%E9%9D%A2%E7%BD%91%E7%BB%9C"><span class="toc-text">单一平面网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E5%B9%B3%E9%9D%A2%E7%BD%91%E7%BB%9C"><span class="toc-text">多平面网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B7%B7%E5%90%88%E5%B9%B3%E9%9D%A2%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C"><span class="toc-text">混合平面私有网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E8%BF%87%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C%E5%AE%9E%E7%8E%B0%E8%BF%90%E8%90%A5%E5%95%86%E8%B7%AF%E7%94%B1%E5%8A%9F%E8%83%BD"><span class="toc-text">通过私有网络实现运营商路由功能</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E8%BF%87%E7%A7%81%E6%9C%89%E7%BD%91%E7%BB%9C%E5%AE%9E%E7%8E%B0%E6%AF%8F%E4%B8%AA%E7%A7%9F%E6%88%B7%E5%88%9B%E5%BB%BA%E8%87%AA%E5%B7%B1%E4%B8%93%E5%B1%9E%E7%9A%84%E7%BD%91%E7%BB%9C%E5%8C%BA%E6%AE%B5"><span class="toc-text">通过私有网络实现每个租户创建自己专属的网络区段</span></a></li></ol>
 
 
@@ -362,6 +371,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2018/10/25/深入浅出Neutron（三）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -474,41 +487,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="深入浅出Neutron（三）Neutron支持的部署拓扑"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -685,7 +695,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -711,7 +721,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

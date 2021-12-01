@@ -55,7 +55,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -136,7 +145,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -291,7 +300,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -327,7 +336,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p>分布式路由</p>
-<a id="more"></a>
+<span id="more"></span>
 <h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"><span class="toc-text">典型场景</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%9C%E8%A5%BF%E5%90%91"><span class="toc-text">东西向</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%90%8C%E4%B8%80%E6%9C%BA%E5%99%A8"><span class="toc-text">同一机器</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%B8%8D%E5%90%8C%E6%9C%BA%E5%99%A8"><span class="toc-text">不同机器</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%97%E5%8C%97%E5%90%91"><span class="toc-text">南北向</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%97%A0floating-IP"><span class="toc-text">无floating IP</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%9C%89floating-IP"><span class="toc-text">有floating IP</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%8A%82%E7%82%B9"><span class="toc-text">网络节点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%9C%E8%A5%BF%E6%B5%81%E9%87%8F"><span class="toc-text">东西流量</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%97%E5%8C%97%E6%B5%81%E9%87%8F"><span class="toc-text">南北流量</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E8%A7%84%E5%88%99"><span class="toc-text">流表规则</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E5%AF%B9%E7%BD%91%E5%85%B3%E7%9A%84arp-request%E4%B8%8D%E8%83%BD%E5%87%BA%E5%88%B0%E5%A4%96%E9%83%A8%E7%BD%91%E7%BB%9C"><span class="toc-text">所有对网关的arp request不能出到外部网络</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E5%8F%91%E5%BE%80%E7%BD%91%E5%85%B3%E7%9A%84%E5%8C%85%E4%B9%9F%E4%B8%8D%E8%83%BD%E5%87%BA%E5%88%B0%E5%A4%96%E9%83%A8%E7%BD%91%E7%BB%9C"><span class="toc-text">所有发往网关的包也不能出到外部网络</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E4%BB%8E%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3%E8%B7%AF%E7%94%B1%E5%87%BA%E5%8E%BB%E7%9A%84%E5%8C%85%EF%BC%8C%E9%9C%80%E8%A6%81%E4%BF%AE%E6%94%B9%E6%BA%90mac%E4%B8%BA%E7%89%B9%E6%AE%8Amac"><span class="toc-text">所有从路由器接口路由出去的包，需要修改源mac为特殊mac</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%94%B6%E5%88%B0%E5%A4%96%E9%83%A8%E7%89%B9%E6%AE%8A%E6%BA%90mac%E7%9A%84%E5%8C%85%E8%A6%81%E4%BF%AE%E6%94%B9%E4%B8%BA%E6%AD%A3%E7%A1%AE%E7%9A%84%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3mac"><span class="toc-text">收到外部特殊源mac的包要修改为正确的路由器接口mac</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-text">注意事项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE"><span class="toc-text">配置</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron-Server"><span class="toc-text">Neutron Server</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#L3-Agent"><span class="toc-text">L3 Agent</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#L2-Agent"><span class="toc-text">L2 Agent</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-text">实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3"><span class="toc-text">添加路由器接口</span></a></li></ol></li></ol></li></ol>
 
 <p>OpenStack用户会发现，按照Neutron原先的设计，所有网络服务都在网络节点上进行，这意味着大量的流量和处理，给网络节点带来了很大的压力。这些处理的核心是路由器服务。任何需要跨子网的访问都需要路由器进行路由。</p>
@@ -450,6 +459,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2018/11/12/Understand-Neutron（二）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -562,41 +575,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="Understand Neutron（二）"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -773,7 +783,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -799,7 +809,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

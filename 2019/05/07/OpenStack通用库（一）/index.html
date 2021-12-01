@@ -51,7 +51,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -132,7 +141,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -287,7 +296,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -323,7 +332,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p><a target="_blank" rel="noopener" href="https://github.com/openstack/cliff">Cliff</a>（Command Line Interface Formulation Framework）可以用来帮助构建命令行程序。</p>
-<a id="more"></a>
+<span id="more"></span>
 
 <p>开发者利用Cliff框架可以构建诸如svn、git那样的支持多层命令的命令行程序。主程序只负责基本的命令行参数的解析，然后调用各个子命令去执行不同的操作。利用Python动态代码载入的特性，Cliff框架中的每个子命令可以和主程序分开来实现、打包和分发。</p>
 <p>整个Cliff框架主要包括以下4种不同类型的对象。</p>
@@ -340,12 +349,12 @@
 <p>Demo</p>
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># main.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"><span class="keyword">import</span> logging</span><br><span class="line"><span class="keyword">from</span> cliff.app <span class="keyword">import</span> App</span><br><span class="line"><span class="keyword">from</span> cliff.commandmanager <span class="keyword">import</span> CommandManager</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MyApp</span>(<span class="params">App</span>):</span></span><br><span class="line">    log = logging.getLogger(__name__)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span>(<span class="params">self</span>):</span></span><br><span class="line">        <span class="built_in">super</span>(MyApp, self).__init__(</span><br><span class="line">            description=<span class="string">&#x27;Cliff Demo App&#x27;</span>,</span><br><span class="line">            version=<span class="string">&#x27;1.0&#x27;</span>,</span><br><span class="line">            command_manager=CommandManager(<span class="string">&#x27;cliff.cliffdemo&#x27;</span>)</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">initialize_app</span>(<span class="params">self, argv</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;initialize_app&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">prepare_to_run_command</span>(<span class="params">self, cmd</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;prepare_to_run_command %s&#x27;</span> % cmd.__class__.__name__)</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">clean_up</span>(<span class="params">self, cmd, result, err</span>):</span></span><br><span class="line">        self.LOG.debug(<span class="string">&#x27;clean_up %s&#x27;</span> % cmd.__class__.__name__)</span><br><span class="line">        <span class="keyword">if</span> err:</span><br><span class="line">            self.LOG.debug(<span class="string">&#x27;got an error: %s&#x27;</span> % err)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">main</span>(<span class="params">argv=sys.argv[<span class="number">1</span>:]</span>):</span></span><br><span class="line">    my_app = MyApp()</span><br><span class="line">    <span class="keyword">return</span> my_app.run(argv)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:</span><br><span class="line">    sys.exit(main(sys.argv[<span class="number">1</span>:]))</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <p>上面是主程序代码，新建一个MyApp实例对象，并且调用其run方法运行。MyApp是cliff.app.App的子类，它的初始化函数的原型定义如下。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">app</span>.<span class="title">App</span>(<span class="params">description, </span></span></span><br><span class="line"><span class="class"><span class="params">                    version, </span></span></span><br><span class="line"><span class="class"><span class="params">                    command_manager,</span></span></span><br><span class="line"><span class="class"><span class="params">                    stdin=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="class"><span class="params">                    stdout=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="class"><span class="params">                    stderr=<span class="literal">None</span>,</span></span></span><br><span class="line"><span class="class"><span class="params">                    interactive_app_factory=&lt;<span class="keyword">class</span> cliff.interactive.InteractiveApp&gt;,</span></span></span><br><span class="line"><span class="class"><span class="params">                    deferred_help=<span class="literal">False</span></span>):</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">app</span>.<span class="title">App</span>(<span class="params">description, </span></span></span><br><span class="line"><span class="params"><span class="class">                    version, </span></span></span><br><span class="line"><span class="params"><span class="class">                    command_manager,</span></span></span><br><span class="line"><span class="params"><span class="class">                    stdin=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="params"><span class="class">                    stdout=<span class="literal">None</span>, </span></span></span><br><span class="line"><span class="params"><span class="class">                    stderr=<span class="literal">None</span>,</span></span></span><br><span class="line"><span class="params"><span class="class">                    interactive_app_factory=&lt;<span class="keyword">class</span> cliff.interactive.InteractiveApp&gt;,</span></span></span><br><span class="line"><span class="params"><span class="class">                    deferred_help=<span class="literal">False</span></span>):</span></span><br></pre></td></tr></table></figure>
 <div class="alert info no-icon"><p>其中，stdin/stdout/stderr可以用来自定义用户自己的标准输入/输出/错误，command_manager必须指向一个cliff.commandmanager.CommandManager的对象实例，来载入各个子命令插件。</p>
 </div>
 
 <p>cliff.commandmanager.CommandManager类的初始化函数原型定义如下。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">commandmanager</span>.<span class="title">CommandManager</span>(<span class="params">namespace,</span></span></span><br><span class="line"><span class="class"><span class="params">                                          convert_underscores=<span class="literal">True</span></span>)</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">cliff</span>.<span class="title">commandmanager</span>.<span class="title">CommandManager</span>(<span class="params">namespace,</span></span></span><br><span class="line"><span class="params"><span class="class">                                          convert_underscores=<span class="literal">True</span></span>)</span></span><br></pre></td></tr></table></figure>
 <div class="alert info no-icon"><p>其中，namespace用来指定Setuptool entry points的命名空间，CommandManager只会从这个命名空间中载入插件，convert_underscores参数指明是否需要把entry points中的下划线转为空格。</p>
 </div>
 
@@ -369,6 +378,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2019/05/07/OpenStack通用库（一）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -481,41 +494,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2019/05/07/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%B8%80%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="OpenStack通用库（一）"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -692,7 +702,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -718,7 +728,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

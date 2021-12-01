@@ -48,7 +48,16 @@
     
     <!--STYLES-->
     
-<link rel="stylesheet" href="/assets/css/style-jyjkfwhwyekehfz3hgbceiloaivfvizxcdgjbotyfpdsofejnkxhkiw36cf4.min.css">
+<link rel="stylesheet" href="/assets/css/all.css">
+
+    
+<link rel="stylesheet" href="/assets/css/jquery.fancybox.css">
+
+    
+<link rel="stylesheet" href="/assets/css/thumbs.css">
+
+    
+<link rel="stylesheet" href="/assets/css/tranquilpeak.css">
 
     <!--STYLES END-->
     
@@ -129,7 +138,7 @@
                 </a>
                 <h4 class="sidebar-profile-name">Wang kuntian</h4>
                 
-                    <h5 class="sidebar-profile-bio"><p>Love Python Love LOL</p>
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
 </h5>
                 
             </div>
@@ -284,7 +293,7 @@
         <div class="post-header-cover
                     text-center
                     post-header-cover--full"
-             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             style="background-image:url('/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%94%EF%BC%89/images/PROJECT-Vayne.jpg');"
              data-behavior="4">
             
                 <div class="post-header main-content-wrap text-center">
@@ -320,7 +329,7 @@
     <div class="post-content markdown">
         <div class="main-content-wrap">
             <p>利用Python语言的特性，运行时动态载入代码变得更加容易。很多Python应用程序利用这样的特性在运行时发现和载入所谓的“插件”（plugin），使得自己更易于扩展。Python库<a target="_blank" rel="noopener" href="https://github.com/openstack/stevedore">stevedore</a>就是在Setuptools的entry points基础上，构造了一层抽象层，使开发者可以更容易地在运行时发现和载入插件。</p>
-<a id="more"></a>
+<span id="more"></span>
 
 <p>entry points的每一个命名空间里，可以包含多个entry point项。stevedore要求每一项都符合如下格式：</p>
 <figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">name</span> = module:importable</span><br></pre></td></tr></table></figure>
@@ -328,7 +337,7 @@
 <div class="alert info no-icon"><p>左边是插件的名字，右边是它的具体实现，中间用等号分隔开。插件的具体实现用“模块:可导入的对象”的形式来指定。</p>
 </div>
 
-<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">ceilometer.compute.virt =</span><br><span class="line">    <span class="attr">libvirt</span> = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector</span><br><span class="line">    <span class="attr">hyperv</span> = ceilometer.compute.virt.hyperv.inspector:HyperVInspector</span><br><span class="line">    <span class="attr">vsphere</span> = ceilometer.compute.virt.vmware.inspector:VsphereInspector</span><br><span class="line">    <span class="attr">xenapi</span> = ceilometer.compute.virt.xenapi.inspector:XenapiInspector</span><br><span class="line"></span><br><span class="line">ceilometer.hardware.inspectors =</span><br><span class="line">    <span class="attr">snmp</span> = ceilometer.hardware.inspector.snmp:SNMPInspector</span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">ceilometer.compute.virt</span> =</span><br><span class="line">    <span class="attr">libvirt</span> = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector</span><br><span class="line">    <span class="attr">hyperv</span> = ceilometer.compute.virt.hyperv.inspector:HyperVInspector</span><br><span class="line">    <span class="attr">vsphere</span> = ceilometer.compute.virt.vmware.inspector:VsphereInspector</span><br><span class="line">    <span class="attr">xenapi</span> = ceilometer.compute.virt.xenapi.inspector:XenapiInspector</span><br><span class="line"></span><br><span class="line"><span class="attr">ceilometer.hardware.inspectors</span> =</span><br><span class="line">    <span class="attr">snmp</span> = ceilometer.hardware.inspector.snmp:SNMPInspector</span><br></pre></td></tr></table></figure>
 
 <p>示例中显示了两个不同的entry points的命名空间，”ceilometer.compute.virt“和”ceilometer.hardware.inspectors“，分别注册了4个和1个插件。</p>
 <p>根据每个插件在entry point中名字和具体实现的数量之间的对应关系不同，stevedore提供了多种不同的类来帮助开发者发现和载入插件。</p>
@@ -360,7 +369,7 @@
 <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">from</span> ceilometer.compute.virt <span class="keyword">import</span> inspector <span class="keyword">as</span> virt_inspector</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">LibvirtInspector</span>(<span class="params">virt_inspector.Inspector</span>):</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">__init__</span>(<span class="params">self, conf</span>):</span></span><br><span class="line">        <span class="built_in">super</span>(LibvirtInspector, self).__init__(conf)</span><br><span class="line">        <span class="comment"># NOTE(sileht): create a connection on startup</span></span><br><span class="line">        self.connection</span><br><span class="line"></span><br><span class="line"><span class="meta">    @property</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">connection</span>(<span class="params">self</span>):</span></span><br><span class="line">        <span class="keyword">return</span> libvirt_utils.refresh_libvirt_connection(self.conf, self)</span><br><span class="line"></span><br><span class="line"><span class="meta">    @libvirt_utils.raise_nodata_if_unsupported</span></span><br><span class="line"><span class="meta">    @libvirt_utils.retry_on_disconnect</span></span><br><span class="line">    <span class="function"><span class="keyword">def</span> <span class="title">inspect_instance</span>(<span class="params">self, instance, duration=<span class="literal">None</span></span>):</span></span><br><span class="line">        domain = self._get_domain_not_shut_off_or_raise(instance)</span><br><span class="line"></span><br><span class="line">        memory_used = memory_resident = <span class="literal">None</span></span><br><span class="line">        memory_swap_in = memory_swap_out = <span class="literal">None</span></span><br><span class="line">        memory_stats = domain.memoryStats()</span><br><span class="line">        <span class="comment"># Stat provided from libvirt is in KB, converting it to MB.</span></span><br><span class="line">        <span class="keyword">if</span> <span class="string">&#x27;available&#x27;</span> <span class="keyword">in</span> memory_stats <span class="keyword">and</span> <span class="string">&#x27;unused&#x27;</span> <span class="keyword">in</span> memory_stats:</span><br><span class="line">            memory_used = (memory_stats[<span class="string">&#x27;available&#x27;</span>] -</span><br><span class="line">                           memory_stats[<span class="string">&#x27;unused&#x27;</span>]) / units.Ki</span><br><span class="line">        <span class="keyword">if</span> <span class="string">&#x27;rss&#x27;</span> <span class="keyword">in</span> memory_stats:</span><br><span class="line">            memory_resident = memory_stats[<span class="string">&#x27;rss&#x27;</span>] / units.Ki</span><br><span class="line">        <span class="keyword">if</span> <span class="string">&#x27;swap_in&#x27;</span> <span class="keyword">in</span> memory_stats <span class="keyword">and</span> <span class="string">&#x27;swap_out&#x27;</span> <span class="keyword">in</span> memory_stats:</span><br><span class="line">            memory_swap_in = memory_stats[<span class="string">&#x27;swap_in&#x27;</span>] / units.Ki</span><br><span class="line">            memory_swap_out = memory_stats[<span class="string">&#x27;swap_out&#x27;</span>] / units.Ki</span><br><span class="line"></span><br><span class="line">        <span class="comment"># TODO(sileht): stats also have the disk/vnic info</span></span><br><span class="line">        <span class="comment"># we could use that instead of the old method for Queen</span></span><br><span class="line">        stats = self.connection.domainListGetStats([domain], <span class="number">0</span>)[<span class="number">0</span>][<span class="number">1</span>]</span><br><span class="line">        cpu_time = <span class="number">0</span></span><br><span class="line">        current_cpus = stats.get(<span class="string">&#x27;vcpu.current&#x27;</span>)</span><br><span class="line">        <span class="comment"># Iterate over the maximum number of CPUs here, and count the</span></span><br><span class="line">        <span class="comment"># actual number encountered, since the vcpu.x structure can</span></span><br><span class="line">        <span class="comment"># have holes according to</span></span><br><span class="line">        <span class="comment"># https://libvirt.org/git/?p=libvirt.git;a=blob;f=src/libvirt-domain.c</span></span><br><span class="line">        <span class="comment"># virConnectGetAllDomainStats()</span></span><br><span class="line">        <span class="keyword">for</span> vcpu <span class="keyword">in</span> six.moves.<span class="built_in">range</span>(stats.get(<span class="string">&#x27;vcpu.maximum&#x27;</span>, <span class="number">0</span>)):</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                cpu_time += (stats.get(<span class="string">&#x27;vcpu.%s.time&#x27;</span> % vcpu) +</span><br><span class="line">                             stats.get(<span class="string">&#x27;vcpu.%s.wait&#x27;</span> % vcpu))</span><br><span class="line">                current_cpus -= <span class="number">1</span></span><br><span class="line">            <span class="keyword">except</span> TypeError:</span><br><span class="line">                <span class="comment"># pass here, if there are too many holes, the cpu count will</span></span><br><span class="line">                <span class="comment"># not match, so don&#x27;t need special error handling.</span></span><br><span class="line">                <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> current_cpus:</span><br><span class="line">            <span class="comment"># There wasn&#x27;t enough data, so fall back</span></span><br><span class="line">            cpu_time = stats.get(<span class="string">&#x27;cpu.time&#x27;</span>)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> virt_inspector.InstanceStats(</span><br><span class="line">            cpu_number=stats.get(<span class="string">&#x27;vcpu.current&#x27;</span>),</span><br><span class="line">            cpu_time=cpu_time,</span><br><span class="line">            memory_usage=memory_used,</span><br><span class="line">            memory_resident=memory_resident,</span><br><span class="line">            memory_swap_in=memory_swap_in,</span><br><span class="line">            memory_swap_out=memory_swap_out,</span><br><span class="line">            cpu_cycles=stats.get(<span class="string">&quot;perf.cpu_cycles&quot;</span>),</span><br><span class="line">            instructions=stats.get(<span class="string">&quot;perf.instructions&quot;</span>),</span><br><span class="line">            cache_references=stats.get(<span class="string">&quot;perf.cache_references&quot;</span>),</span><br><span class="line">            cache_misses=stats.get(<span class="string">&quot;perf.cache_misses&quot;</span>),</span><br><span class="line">            memory_bandwidth_total=stats.get(<span class="string">&quot;perf.mbmt&quot;</span>),</span><br><span class="line">            memory_bandwidth_local=stats.get(<span class="string">&quot;perf.mbml&quot;</span>),</span><br><span class="line">            cpu_l3_cache_usage=stats.get(<span class="string">&quot;perf.cmt&quot;</span>),</span><br><span class="line">        )</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
 <h3 id="插件的注册"><a href="#插件的注册" class="headerlink" title="插件的注册"></a>插件的注册</h3><p>上述的插件需要在Setuptools的相关文件中注册后，才能被stevedore库所认识。</p>
-<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line">ceilometer.compute.virt =</span><br><span class="line">    <span class="attr">libvirt</span> = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector</span><br><span class="line">    <span class="attr">hyperv</span> = ceilometer.compute.virt.hyperv.inspector:HyperVInspector</span><br><span class="line">    <span class="attr">vsphere</span> = ceilometer.compute.virt.vmware.inspector:VsphereInspector</span><br><span class="line">    <span class="attr">xenapi</span> = ceilometer.compute.virt.xenapi.inspector:XenapiInspector</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line"><span class="attr">ceilometer.compute.virt</span> =</span><br><span class="line">    <span class="attr">libvirt</span> = ceilometer.compute.virt.libvirt.inspector:LibvirtInspector</span><br><span class="line">    <span class="attr">hyperv</span> = ceilometer.compute.virt.hyperv.inspector:HyperVInspector</span><br><span class="line">    <span class="attr">vsphere</span> = ceilometer.compute.virt.vmware.inspector:VsphereInspector</span><br><span class="line">    <span class="attr">xenapi</span> = ceilometer.compute.virt.xenapi.inspector:XenapiInspector</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
 <h3 id="插件的载入"><a href="#插件的载入" class="headerlink" title="插件的载入"></a>插件的载入</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># ceilometer/compute/virt/inspector.py</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_hypervisor_inspector</span>(<span class="params">conf</span>):</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        namespace = <span class="string">&#x27;ceilometer.compute.virt&#x27;</span></span><br><span class="line">        mgr = driver.DriverManager(namespace,</span><br><span class="line">                                   conf.hypervisor_inspector,</span><br><span class="line">                                   invoke_on_load=<span class="literal">True</span>,</span><br><span class="line">                                   invoke_args=(conf, ))</span><br><span class="line">        <span class="keyword">return</span> mgr.driver</span><br><span class="line">    <span class="keyword">except</span> ImportError <span class="keyword">as</span> e:</span><br><span class="line">        LOG.error(<span class="string">&quot;Unable to load the hypervisor inspector: %s&quot;</span> % e)</span><br><span class="line">        <span class="keyword">return</span> Inspector(conf)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 <p>Ceilometer的compute agent通过调用函数get_hypervisor_inspector来载入具体的某一个插件。此处由于插件和具体实现之间是一对一的关系，所以选用了stevedore的DriverManager类。</p>
@@ -420,6 +429,10 @@
         </div>
     </div>
     <div id="post-footer" class="post-footer main-content-wrap">
+        <span >
+            <em>阅读量</em>
+            <span id="2019/05/17/OpenStack通用库（五）/" class="waline-visitor-count">
+        </span>
         
             <div class="post-footer-tags">
                 <span class="text-color-light text-small">TAGGED IN</span><br/>
@@ -532,41 +545,38 @@
         
     </div>
 </article>
+
 <div class="main-content-wrap">
     
-        <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
-<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
 <div id="vcomments"></div>
-<!-- <div>
-  <span
-    id="/2019/05/17/OpenStack%E9%80%9A%E7%94%A8%E5%BA%93%EF%BC%88%E4%BA%94%EF%BC%89/"
-    class="leancloud_visitors"
-    data-flag-title="OpenStack通用库（五）"
-  >
-    <em class="post-meta-item-text">阅读量 </em>
-    <i class="leancloud-visitors-count">loading</i>
-  </span>
-</div> -->
 <script>
-  new Valine({
+  new Waline({
     el: "#vcomments",
-    appId: "TFzdPovYqKFk1B2hiJlkRHsx-gzGzoHsz",
-    appKey: "56G0KI3088RN76r5dTyRcsao",
-    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
-    notify: "false",
-    verity: "",
-    path: window.location.pathname,
-    avatar: "wavatar",
-    meta: ["nick", "mail", "link"],
-    pageSize: "10",
+    serverURL: "https://blog-api-nu-nine.vercel.app/",
     lang: "zh-cn",
     visitor: "true",
-    highlight: "true",
+    emoji: [
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+      "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+    ],
+    placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+    dark: "auto",
+    meta: ["nick", "mail", "link"],
+    requiredMeta: [],
+    wordLimit: "200",
+    pageSize: "10",
+    highlight: "hanabi",
+    copyright: "true",
+    avatar: "wavatar",
   });
 </script>
-
+  
+        
     
 </div>
+
 
 
                 <footer id="footer" class="main-content-wrap">
@@ -743,7 +753,7 @@
         
             <h4 id="about-card-name">Wang kuntian</h4>
         
-            <div id="about-card-bio"><p>Love Python Love LOL</p>
+            <div id="about-card-bio"><p>Hi</p>
 </div>
         
         
@@ -769,7 +779,16 @@
 <div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
         <!--SCRIPTS-->
 
-<script src="/assets/js/script-vg2mplhmsubpalpy0xzpwciscvujrasdklioci3ppldb0v627ebhyhvcwpmp.min.js"></script>
+<script src="/assets/js/jquery.js"></script>
+
+
+<script src="/assets/js/jquery.fancybox.js"></script>
+
+
+<script src="/assets/js/thumbs.js"></script>
+
+
+<script src="/assets/js/tranquilpeak.js"></script>
 
 <!--SCRIPTS END-->
 

@@ -1,0 +1,851 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>走进消息队列 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="消息队列">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述什么是消息队列。可以将消息队列理解为一个使用队列来通信的组件。它的本质就是一个转发器，包含发布消息、存储消息、消费消息的过程。一个简单的消息队列模型如下。\n消息队列\n\n消息队列，简称 MQ（Message Queue），它其实就指消息中间件。现阶段流行的开源消息中间件包括：ActiveMQ、RabbitMQ、RocketMQ 和 Kafka。\n应用场景\n  异步处理：处理如短信下发、状态推送、用户注册、数据同步等功能，提高系统并发的能力。\n  系统解耦：可在模块、服务、接口等不同粒度上实现解耦。\n  重试补偿：在跨机器数据传输的整个过程中，只要任意一个环节出错，都会导致问题的产生，可以通过 MQ 的重试补偿机制去尽可能的处理掉这些异常。\n  流量削峰：对于秒杀场景下的下单处理。服务器收到消息后，首先送入消息队列，然后按照消息队列的处理能力做处理。\n  日志处理：可以定时将日志写入 MQ，并且主动订阅日志服务。\n\n核心概念\nBroker  消息服务器，作为 server 提供消息核心服务。\n\nProducer  消息生产者，发布消息到消息队列。\n\nConsumer  消息消费者，从消息队列接收消息。\n\nQueue  消息队列，一个先进先出的消息存储区域。消息按照顺序发送接收，一旦消息被消费处理，该消息将从队列中删除。\n\n\n\n本地队列。本地队列按照功能可以分为初始化队列、传输队列、目标队列和死信队列。\n初始化队列：用作消息触发功能。\n传输队列：是暂存待传的消息，条件许可的情况下，通过管道将消息传送到其他的队列管理器。\n目标队列：是消息的目的地，可以长期存放消息。\n死信队列：如果消息不能送达目标队列，也不能再路由出去，则被自动放入死信队列保存。\n\n\n别名队列/远程队列。用来指定远端队列管理器的队列。使用了远程队列，程序就不知道目标队列的位置。\n模型队列。模型队列定义了一套本地队列的属性结合，一旦打开模型队列，队列管理器会按照这些属性动态地创建出一个本地队列。\n\n\nTopic  主题，发布订阅模式下的消息统一汇集地，不同生产者向 topic 发送消息，由 MQ 服务器分发到不同的订阅者，实现消息的消费。\n\nMessage  消息体。\n\n\n常用协议AMQPAMQP 即 Advanced Message Queuing Protocol，是面向消息中间件提供的开放的应用层协议。AMQP 的定义特性是消息导向、队列、路由（包括点对点和发布订阅）、可靠性和安全性。\nAMQP 规范了消息传递方和接收方的行为，以使信息在不同的提供商之间实现互操作性，就像 SMTP、HTTP、FTP 等协议可以创建交互系统一样。以前的中间件标准化发生在 API 级别（例如 JMS），JMS 在特定的 API 接口层面和实现行为上进行了统一，而 AMQP 则关注于各种消息如何以字节流的形式进行传递。因此使用了符合协议实现的任意应用程序之间可以保持对讯息的创建、传递，而与实现语言无关。\nAMQP 对于实现有如下规定：\n\n类型系统。类型系统用于定义允许处理实体表达和理解标准和扩展元数据的消息格式，它还用于定义在这些实体之间交换消息的通信原语，即AMQP帧。\n对称的异步消息传递。\n标准的、可扩展的消息格式。\n标准的、可扩展的消息存储池。\n\nSTOMPSTOMP即Simple (or Streaming) Text Orientated Messaging Protocol，简单(流)文本定向消息协议，是一种为MOM(Message Oriented Middleware，面向消息的中间件)设计的简单文本协议。它提供了一个可互操作的连接格式，允许STOMP客户端与任意STOMP消息代理（Broker）进行交互，通常作用于发布－订阅的模型。STOMP协议由于设计简单，易于开发客户端，因此在多种语言和多种平台上得到广泛地应用。\nXMPPXMPP（可扩展消息与存在协议，Extensible Messaging and Presence Protocol）是一种以XML为基础的开放式及时通信协议。多用于及时消息（IM）以及在线现场探测。适用于服务器之间的准及时操作。核心是基于XML流传输，这个协议可能最终允许因特网用户向因特网上的其他任何人发送及时消息，即使操作系统和浏览器不同，但XML编码格式占用带宽大。\nJMSJMS是基于JVM消息代理的规范，是对AMQP、MQTT、STOMP、XMPP等协议更高一层的抽象。JMS是一个Java平台中关于面向消息中间件（MOM）的API，用于在两个应用程序之间，或分布式系统中发送消息，进行异步通信。\n常用MQ常用MQ对比\n\nRabbitMQ基础概念\nMessageMessage消息，是MQ的基础，它由消息头和消息体构成。消息体是生产者传递给消费者的消息，而消息头则由一系列的可选属性组成，这些属性包括routing-key（路由键）、priority（优先级）、delivery-mode（消息是否需要持久化存储）等。\n\nPublisher消息的生产者，也是一个向交换器发布消息的客户端端应用程序。\n\nExchange交换器，用来接收生产者发送的消息并将这些消息路由给服务器中的队列。\n\nRouting Key路由键，提供交换机查看并根据键来决定如何分发消息到队列的一个键，路由键可以说是消息的目的地址。\n\nBinding绑定，用于消息队列和交换机之间的关联。一个绑定就是基于路由键将交换器和消息队列连接起来的路由规则，所以可以将交换器理解成一个由绑定构成的路由表。\n\nQueue消息队列，用来保存消息直到发送给消费者。它是消息的容器，也是消息的终点。一个消息可以投入一个或多个队列。消息一直在队列里面，等待消费者连接到这个队列将其取走。\n\nConnection连接RabbitMQ和应用服务器的TCP连接。\n\nChannel信道，多路复用连接中的一条独立的双向数据流通道。信道是建立在真实的TCP连接内的虚拟连接。AMQP命令都是通过信道发送出去的，不管是发布消息，订阅队列还是接收消息，这些动作都是通过信道完成。因为对于操作系统来说建立和销毁TCP都是非常昂贵的开销，所以引入信道的概念，以复用一条TCP连接。\n\nConsumer消息的消费者，表示一个从消息队列中取得消息的客户端应用程序。\n\nVirtual Host虚拟主机，表示一批交换器、消息队列和相关对象。虚拟主机是共享相同的身份认证和加密环境的独立服务器域。每个vhost本质上就是一个mini版的RabbitMQ服务器，拥有自己的队列、交换器、绑定和权限机制。vhost是AMQP概念的基础，必须在连接时指定。\n\n\n通信过程RabbitMQ通信过程\n\n流程解析：\n\n消息生产者连接到RabbitMQ Broker，创建Connection，开启Channel。\n生产者声明交换机类型、名称、是否持久化等（大部分是在管理页面或者消费者端声明的）。\n生产者发送消息，并指定消息是否持久化等属性和Routing Key。\nExchange收到消息后，根据Routing Key路由到和当前交换器绑定的相匹配的队列里面。\n消费者监听接收到消息之后开始业务处理，然后发送一个ack确认告知消息已经被消费（手动自动都有可能）。\nRabbitMQ Broker收到ack之后将对应的消息从队列中删除掉。\n\n示例（kombu）Hello World\n\nP是Producer也就是消息的生产者，C是Consumer也就是消息的消费者，红色的框框是以“hello”命名的队列queue。生产者将消息传入hello队列，消费者从队列将消息取出。\nsend.py\n12345678910111213141516171819#!/usr/bin/env python# -*- encoding: utf-8 -*-&#x27;&#x27;&#x27;__file__    =  &#x27;send.py&#x27;__author__  =  &#x27;king&#x27;__time__    =  &#x27;2022/03/28 11:23:00&#x27;__version__ =  &#x27;1.0&#x27;&#x27;&#x27;&#x27;import kombuimport datetimewith kombu.Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as conn:    simple_queue = conn.SimpleQueue(&#x27;hello&#x27;)    message = f&#x27;helloworld, sent at &#123;datetime.datetime.today()&#125;&#x27;    simple_queue.put(message)    print(f&#x27;Sent: &#123;message&#125;&#x27;)    simple_queue.close()\nreceive.py\n123456789101112131415161718#!/usr/bin/env python# -*- encoding: utf-8 -*-&#x27;&#x27;&#x27;__file__    =  &#x27;receive.py&#x27;__author__  =  &#x27;king&#x27;__time__    =  &#x27;2022/03/28 14:56:22&#x27;__version__ =  &#x27;1.0&#x27;&#x27;&#x27;&#x27;import kombuwith kombu.Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as conn:    simple_queue = conn.SimpleQueue(&#x27;hello&#x27;)    message = simple_queue.get(block=True, timeout=1)    print(f&#x27;Received: &#123;message.payload&#125;&#x27;)    message.ack()    simple_queue.close()\n\nWork Queues（工作队列）工作队列（又称：任务队列——Task Queues）是为了避免等待一些占用大量资源、时间的操作。当我们把任务（Task）当作消息发送到队列中，一个运行在后台的工作者（worker）进程就会取出任务然后处理。当你运行多个工作者（workers），任务就会在它们之间共享。\n\n\nclient.py\n1234567891011121314from kombu import Queuefrom kombu import Connectionqueue = Queue(&#x27;task_queue&#x27;, routing_key=&#x27;task_queue&#x27;)with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    producer = connection.Producer()    for i in range(1, 11):        producer.publish(            body=f&#x27;&#123;i&#125;th message&#x27;,            routing_key=&#x27;task_queue&#x27;,            queue=queue,            declare=[queue],        )\n\nworker.py\n12345678910111213141516171819202122232425262728293031323334from kombu import Queuefrom kombu.mixins import ConsumerMixinfrom kombu import Connectionqueue = Queue(&#x27;task_queue&#x27;, routing_key=&#x27;task_queue&#x27;)class Worker(ConsumerMixin):    def __init__(self, connection) -&gt; None:        self.connection = connection    def get_consumers(self, Consumer, channel):        return [            Consumer(                queues=[queue],                callbacks=[self.process_task],                accept=[&#x27;text/plain&#x27;, &#x27;json&#x27;],                prefetch_count=1,            )        ]    def process_task(self, body, message):        print(body)        message.ack()with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    try:        worker = Worker(connection=connection)        worker.run()    except KeyboardInterrupt:        print(&#x27;bye bye&#x27;)\n\nPublish/Subscribe（发布/订阅）\n\nemit_log.py\n123456789101112131415from kombu import Connectionfrom kombu import Exchangeexchange = Exchange(&#x27;log&#x27;, type=&#x27;fanout&#x27;)with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    producer = connection.Producer()    for i in range(10):        producer.publish(            body=f&#x27;INFO: &#123;i + 1&#125;th message&#x27;,            routing_key=&#x27;&#x27;,            exchange=exchange,            declare=[exchange],        )\n\nreceive_logs.py\n12345678910111213141516171819202122232425262728293031323334from kombu import Queuefrom kombu import Exchangefrom kombu import Connectionfrom kombu.mixins import ConsumerMixinexchange = Exchange(&#x27;log&#x27;, type=&#x27;fanout&#x27;)queue = Queue(&#x27;log&#x27;, exchange=exchange)class Worker(ConsumerMixin):    def __init__(self, connection) -&gt; None:        self.connection = connection    def get_consumers(self, Consumer, channel):        return [            Consumer(                queues=[queue],                callbacks=[self.process_task],                accept=[&#x27;text/plain&#x27;, &#x27;json&#x27;],                prefetch_count=1,            )        ]    def process_task(self, body, message):        print(body)        message.ack()with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    try:        worker = Worker(connection=connection)        worker.run()    except KeyboardInterrupt:        print(&#x27;bye bye&#x27;)\n\nRouting（路由）\n\nemit_log_direct.py\n12345678910111213141516171819from kombu import Exchangefrom kombu import Connectionlevels = [&#x27;INFO&#x27;, &#x27;ERROR&#x27;, &#x27;WARNING&#x27;]exchange = Exchange(&#x27;direct_logs&#x27;, type=&#x27;direct&#x27;)with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    producer = connection.Producer()    for i in range(1, 20):        level = levels[i % len(levels)]        log = f&#x27;&#123;level&#125;: &#123;i&#125;th message&#x27;        producer.publish(            body=log,            routing_key=level,            exchange=exchange,            declare=[exchange],        )\n\nreceive_logs_direct.py\n1234567891011121314151617181920212223242526272829303132333435363738from kombu import Queuefrom kombu import Exchangefrom kombu import Connectionfrom kombu.mixins import ConsumerMixinlevels = [&#x27;INFO&#x27;, &#x27;ERROR&#x27;, &#x27;WARNING&#x27;]exchange = Exchange(&#x27;direct_logs&#x27;, type=&#x27;direct&#x27;)queues = [    Queue(f&#x27;log.&#123;level&#125;&#x27;, exchange=exchange, routing_key=level)    for level in levels]class Worker(ConsumerMixin):    def __init__(self, connection) -&gt; None:        self.connection = connection    def get_consumers(self, Consumer, channel):        return [            Consumer(                queues=queues,                accept=[&#x27;text/plain&#x27;, &#x27;json&#x27;],                callbacks=[self.process_task],            )        ]    def process_task(self, body, message):        print(body)        message.ack()with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    try:        worker = Worker(connection=connection)        worker.run()    except KeyboardInterrupt:        print(&#x27;bye bye&#x27;)\n\nTopic（主题）发送到主题交换机（topic exchange）的消息不可以携带任意的路由键（routing_key），它的路由键必须是一个由.分隔开的单词列表。这些单词随便是什么都可以，但是最好是跟携带它们的消息有关系的词汇。以下是几个推荐的例子：”stock.usd.nyse”, “nyse.vmw”, “quick.orange.rabbit”。词语的个数可以随意，但是不要超过255字节。\n绑定键也必须拥有同样的格式。主题交换机背后的逻辑跟直连交换机很相似 —— 一个携带着特定路由键的消息会被主题交换机投递给绑定键与之想匹配的队列。但是它的绑定键和路由键有两个特殊应用方式：\n\n* (星号) 用来表示一个单词.\n# (井号) 用来表示任意数量（零个或多个）单词。\n\n\n\nemit_log_topic.py\n12345678910111213141516171819from kombu import Exchangefrom kombu import Connectionlevels = [&#x27;INFO&#x27;, &#x27;ERROR&#x27;, &#x27;WARNING&#x27;]exchange = Exchange(&#x27;topic_logs&#x27;, type=&#x27;topic&#x27;)with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    producer = connection.Producer()    for i in range(1, 20):        level = levels[i % len(levels)]        log = f&#x27;&#123;level&#125;: &#123;i&#125;th message&#x27;        producer.publish(            body=log,            routing_key=f&#x27;log.&#123;level&#125;&#x27;,            exchange=exchange,            declare=[exchange],        )\n\nreceive_logs_topic.py\n1234567891011121314151617181920212223242526272829303132333435363738from kombu import Queuefrom kombu import Exchangefrom kombu import Connectionfrom kombu.mixins import ConsumerMixinlevels = [&#x27;INFO&#x27;, &#x27;ERROR&#x27;, &#x27;WARNING&#x27;]exchange = Exchange(&#x27;topic_logs&#x27;, type=&#x27;topic&#x27;)queues = [    Queue(f&#x27;log.&#123;level&#125;&#x27;, exchange=exchange, routing_key=f&#x27;*.&#123;level&#125;&#x27;)    for level in levels]class Worker(ConsumerMixin):    def __init__(self, connection) -&gt; None:        self.connection = connection    def get_consumers(self, Consumer, channel):        return [            Consumer(                queues=queues,                accept=[&#x27;text/plain&#x27;, &#x27;json&#x27;],                callbacks=[self.process_task],            )        ]    def process_task(self, body, message):        print(body)        message.ack()with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    try:        worker = Worker(connection=connection)        worker.run()    except KeyboardInterrupt:        print(&#x27;bye bye&#x27;)\n\nRPC（远程过程调用）\n\nrpc_client.py\n12345678910111213141516171819202122232425262728293031323334353637383940414243from kombu import uuidfrom kombu import Queuefrom kombu import Consumerfrom kombu import Connectionfrom kombu import producersclass FibonacciRpcClient(object):    def __init__(self):        self.connection = Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;)        self.queue = Queue(&#x27;rpc_queue&#x27;, routing_key=&#x27;rpc_queue&#x27;)    def call(self, n):        self.response = None        self.correlation_id = uuid()        with producers[self.connection].acquire(block=True) as producer:            producer.publish(                body=&#123;&#x27;n&#x27;: n&#125;,                routing_key=&#x27;rpc_queue&#x27;,                queue=self.queue,                declare=[self.queue],                reply_to=self.queue.name,                correlation_id=self.correlation_id,            )        with Consumer(            self.connection,            on_message=self.on_response,            queues=[self.queue],            no_ack=True,        ):            while self.response is None:                self.connection.drain_events()        return self.response    def on_response(self, message):        if message.properties[&#x27;correlation_id&#x27;] == self.correlation_id:            self.response = message.payload.get(&#x27;result&#x27;)client = FibonacciRpcClient()print(&#x27; [x] Requesting fib(30)&#x27;)result = client.call(30)print(f&#x27; [✔️] Got &#123;result!r&#125;&#x27;)\n\nrpc_server.py\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849from kombu import Queuefrom kombu import Connectionfrom kombu.mixins import ConsumerProducerMixindef fib(n):    if n == 0:        return 0    elif n == 1:        return 1    else:        return fib(n - 1) + fib(n - 2)class Worker(ConsumerProducerMixin):    def __init__(self, connection) -&gt; None:        self.connection = connection    def get_consumers(self, Consumer, channel):        return [            Consumer(                queues=[Queue(&#x27;rpc_queue&#x27;)],                accept=&#123;&#x27;text/plain&#x27;, &#x27;application/json&#x27;&#125;,                on_message=self.on_request,                prefetch_count=1,            ),        ]    def on_request(self, message):        n = message.payload.get(&#x27;n&#x27;)        print(f&#x27; [.] fib(&#123;n&#125;)&#x27;)        result = fib(n)        self.producer.publish(            &#123;&#x27;result&#x27;: result&#125;,            exchange=&#x27;&#x27;,            routing_key=message.properties[&#x27;reply_to&#x27;],            correlation_id=message.properties[&#x27;correlation_id&#x27;],            serializer=&#x27;json&#x27;,            retry=True,        )        message.ack()with Connection(&#x27;amqp://guest:guest@localhost:5672//&#x27;) as connection:    try:        worker = Worker(connection=connection)        worker.run()    except KeyboardInterrupt:        print(&#x27;bye bye&#x27;)\n\n示例（oslo_messaging）RPCclient.py\n123456789101112131415161718import oslo_messaging as messagingfrom oslo_config import cfgtransport_url = &#x27;rabbit://guest:guest@127.0.0.1:5672/&#x27;context = &#123;&#125;transport = messaging.get_rpc_transport(conf=cfg.CONF, url=transport_url)target = messaging.Target(topic=&#x27;test&#x27;)client = messaging.RPCClient(transport=transport, target=target)client = client.prepare()result = client.call(context, &#x27;add&#x27;, x=1, y=2)print(f&#x27;result is &#123;result&#125;&#x27;)client.cast(context, &#x27;test&#x27;)result = client.call(context, &#x27;fib&#x27;, n=10)print(f&#x27;fib(10) = &#123;result&#125;&#x27;)\n\nserver.py\n1234567891011121314151617181920212223242526272829303132333435363738394041424344import timeimport oslo_messaging as messagingfrom oslo_config import cfgtransport_url = &#x27;rabbit://guest:guest@127.0.0.1:5672/&#x27;class Endpoint(object):    def _fib(self, n):        if n == 0:            return 0        elif n == 1:            return 1        else:            return self._fib(n - 1) + self._fib(n - 2)    def fib(self, context, n):        print(n)        return self._fib(n)    def test(self, context):        print(&#x27;testing&#x27;)    def add(self, context, x, y):        result = x + y        print(f&#x27;result is &#123;result&#125;&#x27;)        return resulttransport = messaging.get_rpc_transport(conf=cfg.CONF, url=transport_url)target = messaging.Target(topic=&#x27;test&#x27;, server=&#x27;server-1&#x27;)endpoints = [    Endpoint()]server = messaging.get_rpc_server(transport, target, endpoints=endpoints)try:    print(&#x27;Start Server&#x27;)    server.start()    while True:        time.sleep(1)except KeyboardInterrupt:    print(&#x27;Stopping Server&#x27;)    server.stop()    server.wait()\n\nNotificationsend.py\n123456789101112131415161718from oslo_config import cfgimport oslo_messaging as messagingtransport_url = &quot;rabbit://guest:guest@127.0.0.1:5672/&quot;transport = messaging.get_notification_transport(cfg.CONF, transport_url)notifier = messaging.Notifier(    transport,    publisher_id=&quot;local&quot;,    driver=&quot;messaging&quot;,    topics=[&quot;notifications&quot;],)client = notifier.prepare()client.info(&#123;&#125;, event_type=&quot;my_type&quot;, payload=&#123;&quot;content&quot;: &quot;Hello World&quot;&#125;)client.error(&#123;&#125;, event_type=&quot;error_type&quot;, payload=&#123;&quot;content&quot;: &quot;Hello World&quot;&#125;)\n\nreceiver.py\n1234567891011121314151617181920212223242526272829303132from oslo_config import cfgimport oslo_messaging as messagingclass NotificationEndpoint(object):    filter_rule = messaging.NotificationFilter(publisher_id=&quot;^local.*&quot;)    def info(self, context, publish_id, event_type, payload, metadata):        print(&quot;Info&quot;)        print(context, publish_id, event_type, payload, metadata)    def warn(self, context, publish_id, event_type, payload, metadata):        print(&quot;Warn&quot;)        print(context, publish_id, event_type, payload, metadata)    def error(self, context, publish_id, event_type, payload, metadata):        print(&quot;Error&quot;)        print(context, publish_id, event_type, payload, metadata)transport_url = &quot;rabbit://guest:guest@127.0.0.1:5672/&quot;transport = messaging.get_notification_transport(cfg.CONF, transport_url)target = messaging.Target(topic=&quot;notifications&quot;)listener = messaging.get_notification_listener(    transport,    targets=[target],    endpoints=[NotificationEndpoint()],    pool=&#x27;listener&#x27;)listener.start()listener.wait()","dateCreated":"2022-03-23T14:55:18+08:00","dateModified":"2023-09-21T13:59:22+08:00","datePublished":"2022-03-23T14:55:18+08:00","description":"走进消息队列","headline":"走进消息队列","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/","keywords":"消息队列","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="走进消息队列">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="走进消息队列">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="走进消息队列">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/mq.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/mq_diff.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/rabbitmq.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/hello_world.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/work_queues.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/publish_subscribe.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/routing.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/topic.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/rpc.png">
+<meta property="article:published_time" content="2022-03-23T06:55:18.000Z">
+<meta property="article:modified_time" content="2023-09-21T05:59:22.672Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="消息队列">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/images/mq.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            走进消息队列
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-03-23T14:55:18+08:00">
+	
+		    Mar 23, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-text">核心概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8%E5%8D%8F%E8%AE%AE"><span class="toc-text">常用协议</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#AMQP"><span class="toc-text">AMQP</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#STOMP"><span class="toc-text">STOMP</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#XMPP"><span class="toc-text">XMPP</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#JMS"><span class="toc-text">JMS</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B8%B8%E7%94%A8MQ"><span class="toc-text">常用MQ</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RabbitMQ"><span class="toc-text">RabbitMQ</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5"><span class="toc-text">基础概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%9A%E4%BF%A1%E8%BF%87%E7%A8%8B"><span class="toc-text">通信过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%88kombu%EF%BC%89"><span class="toc-text">示例（kombu）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Hello-World"><span class="toc-text">Hello World</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Work-Queues%EF%BC%88%E5%B7%A5%E4%BD%9C%E9%98%9F%E5%88%97%EF%BC%89"><span class="toc-text">Work Queues（工作队列）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Publish-Subscribe%EF%BC%88%E5%8F%91%E5%B8%83-%E8%AE%A2%E9%98%85%EF%BC%89"><span class="toc-text">Publish&#x2F;Subscribe（发布&#x2F;订阅）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Routing%EF%BC%88%E8%B7%AF%E7%94%B1%EF%BC%89"><span class="toc-text">Routing（路由）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Topic%EF%BC%88%E4%B8%BB%E9%A2%98%EF%BC%89"><span class="toc-text">Topic（主题）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#RPC%EF%BC%88%E8%BF%9C%E7%A8%8B%E8%BF%87%E7%A8%8B%E8%B0%83%E7%94%A8%EF%BC%89"><span class="toc-text">RPC（远程过程调用）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B%EF%BC%88oslo-messaging%EF%BC%89"><span class="toc-text">示例（oslo_messaging）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#RPC"><span class="toc-text">RPC</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Notification"><span class="toc-text">Notification</span></a></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>什么是消息队列。可以将消息队列理解为一个使用队列来通信的组件。它的本质就是一个转发器，包含发布消息、存储消息、消费消息的过程。一个简单的消息队列模型如下。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/mq.png" title="消息队列" data-caption="消息队列" data-fancybox="default"><img class="fig-img" src="images/mq.png" alt="消息队列"></a><span class="caption">消息队列</span></div>
+
+<p>消息队列，简称 MQ（Message Queue），它其实就指消息中间件。现阶段流行的开源消息中间件包括：ActiveMQ、RabbitMQ、RocketMQ 和 Kafka。</p>
+<h1 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h1><ul>
+<li>  异步处理：处理如短信下发、状态推送、用户注册、数据同步等功能，提高系统并发的能力。</li>
+<li>  系统解耦：可在模块、服务、接口等不同粒度上实现解耦。</li>
+<li>  重试补偿：在跨机器数据传输的整个过程中，只要任意一个环节出错，都会导致问题的产生，可以通过 MQ 的重试补偿机制去尽可能的处理掉这些异常。</li>
+<li>  流量削峰：对于秒杀场景下的下单处理。服务器收到消息后，首先送入消息队列，然后按照消息队列的处理能力做处理。</li>
+<li>  日志处理：可以定时将日志写入 MQ，并且主动订阅日志服务。</li>
+</ul>
+<h1 id="核心概念"><a href="#核心概念" class="headerlink" title="核心概念"></a>核心概念</h1><ul>
+<li><p>Broker<br>  消息服务器，作为 server 提供消息核心服务。</p>
+</li>
+<li><p>Producer<br>  消息生产者，发布消息到消息队列。</p>
+</li>
+<li><p>Consumer<br>  消息消费者，从消息队列接收消息。</p>
+</li>
+<li><p>Queue<br>  消息队列，一个先进先出的消息存储区域。消息按照顺序发送接收，一旦消息被消费处理，该消息将从队列中删除。</p>
+</li>
+</ul>
+<ol>
+<li>本地队列。本地队列按照功能可以分为初始化队列、传输队列、目标队列和死信队列。<ul>
+<li>初始化队列：用作消息触发功能。</li>
+<li>传输队列：是暂存待传的消息，条件许可的情况下，通过管道将消息传送到其他的队列管理器。</li>
+<li>目标队列：是消息的目的地，可以长期存放消息。</li>
+<li>死信队列：如果消息不能送达目标队列，也不能再路由出去，则被自动放入死信队列保存。</li>
+</ul>
+</li>
+<li>别名队列/远程队列。用来指定远端队列管理器的队列。使用了远程队列，程序就不知道目标队列的位置。</li>
+<li>模型队列。模型队列定义了一套本地队列的属性结合，一旦打开模型队列，队列管理器会按照这些属性动态地创建出一个本地队列。</li>
+</ol>
+<ul>
+<li><p>Topic<br>  主题，发布订阅模式下的消息统一汇集地，不同生产者向 topic 发送消息，由 MQ 服务器分发到不同的订阅者，实现消息的消费。</p>
+</li>
+<li><p>Message<br>  消息体。</p>
+</li>
+</ul>
+<h1 id="常用协议"><a href="#常用协议" class="headerlink" title="常用协议"></a>常用协议</h1><h2 id="AMQP"><a href="#AMQP" class="headerlink" title="AMQP"></a>AMQP</h2><p>AMQP 即 Advanced Message Queuing Protocol，是面向消息中间件提供的开放的应用层协议。AMQP 的定义特性是消息导向、队列、路由（包括点对点和发布订阅）、可靠性和安全性。</p>
+<p>AMQP 规范了消息传递方和接收方的行为，以使信息在不同的提供商之间实现互操作性，就像 SMTP、HTTP、FTP 等协议可以创建交互系统一样。以前的中间件标准化发生在 API 级别（例如 JMS），JMS 在特定的 API 接口层面和实现行为上进行了统一，而 AMQP 则关注于各种消息如何以字节流的形式进行传递。因此使用了符合协议实现的任意应用程序之间可以保持对讯息的创建、传递，而与实现语言无关。</p>
+<p>AMQP 对于实现有如下规定：</p>
+<ol>
+<li>类型系统。类型系统用于定义允许处理实体表达和理解标准和扩展元数据的消息格式，它还用于定义在这些实体之间交换消息的通信原语，即AMQP帧。</li>
+<li>对称的异步消息传递。</li>
+<li>标准的、可扩展的消息格式。</li>
+<li>标准的、可扩展的消息存储池。</li>
+</ol>
+<h2 id="STOMP"><a href="#STOMP" class="headerlink" title="STOMP"></a>STOMP</h2><p>STOMP即Simple (or Streaming) Text Orientated Messaging Protocol，简单(流)文本定向消息协议，是一种为MOM(Message Oriented Middleware，面向消息的中间件)设计的简单文本协议。它提供了一个可互操作的连接格式，允许STOMP客户端与任意STOMP消息代理（Broker）进行交互，通常作用于发布－订阅的模型。STOMP协议由于设计简单，易于开发客户端，因此在多种语言和多种平台上得到广泛地应用。</p>
+<h2 id="XMPP"><a href="#XMPP" class="headerlink" title="XMPP"></a>XMPP</h2><p>XMPP（可扩展消息与存在协议，Extensible Messaging and Presence Protocol）是一种以XML为基础的开放式及时通信协议。多用于及时消息（IM）以及在线现场探测。适用于服务器之间的准及时操作。核心是基于XML流传输，这个协议可能最终允许因特网用户向因特网上的其他任何人发送及时消息，即使操作系统和浏览器不同，但XML编码格式占用带宽大。</p>
+<h2 id="JMS"><a href="#JMS" class="headerlink" title="JMS"></a>JMS</h2><p>JMS是基于JVM消息代理的规范，是对AMQP、MQTT、STOMP、XMPP等协议更高一层的抽象。JMS是一个Java平台中关于面向消息中间件（MOM）的API，用于在两个应用程序之间，或分布式系统中发送消息，进行异步通信。</p>
+<h1 id="常用MQ"><a href="#常用MQ" class="headerlink" title="常用MQ"></a>常用MQ</h1><div class="figure center" style="width:;"><a class="fancybox" href="images/mq_diff.png" title="常用MQ对比" data-caption="常用MQ对比" data-fancybox="default"><img class="fig-img" src="images/mq_diff.png" alt="常用MQ对比"></a><span class="caption">常用MQ对比</span></div>
+
+<h2 id="RabbitMQ"><a href="#RabbitMQ" class="headerlink" title="RabbitMQ"></a>RabbitMQ</h2><h3 id="基础概念"><a href="#基础概念" class="headerlink" title="基础概念"></a>基础概念</h3><ul>
+<li><p>Message<br>Message消息，是MQ的基础，它由消息头和消息体构成。消息体是生产者传递给消费者的消息，而消息头则由一系列的可选属性组成，这些属性包括routing-key（路由键）、priority（优先级）、delivery-mode（消息是否需要持久化存储）等。</p>
+</li>
+<li><p>Publisher<br>消息的生产者，也是一个向交换器发布消息的客户端端应用程序。</p>
+</li>
+<li><p>Exchange<br>交换器，用来接收生产者发送的消息并将这些消息路由给服务器中的队列。</p>
+</li>
+<li><p>Routing Key<br>路由键，提供交换机查看并根据键来决定如何分发消息到队列的一个键，路由键可以说是消息的目的地址。</p>
+</li>
+<li><p>Binding<br>绑定，用于消息队列和交换机之间的关联。一个绑定就是基于路由键将交换器和消息队列连接起来的路由规则，所以可以将交换器理解成一个由绑定构成的路由表。</p>
+</li>
+<li><p>Queue<br>消息队列，用来保存消息直到发送给消费者。它是消息的容器，也是消息的终点。一个消息可以投入一个或多个队列。消息一直在队列里面，等待消费者连接到这个队列将其取走。</p>
+</li>
+<li><p>Connection<br>连接RabbitMQ和应用服务器的TCP连接。</p>
+</li>
+<li><p>Channel<br>信道，多路复用连接中的一条独立的双向数据流通道。信道是建立在真实的TCP连接内的虚拟连接。AMQP命令都是通过信道发送出去的，不管是发布消息，订阅队列还是接收消息，这些动作都是通过信道完成。因为对于操作系统来说建立和销毁TCP都是非常昂贵的开销，所以引入信道的概念，以复用一条TCP连接。</p>
+</li>
+<li><p>Consumer<br>消息的消费者，表示一个从消息队列中取得消息的客户端应用程序。</p>
+</li>
+<li><p>Virtual Host<br>虚拟主机，表示一批交换器、消息队列和相关对象。虚拟主机是共享相同的身份认证和加密环境的独立服务器域。每个vhost本质上就是一个mini版的RabbitMQ服务器，拥有自己的队列、交换器、绑定和权限机制。vhost是AMQP概念的基础，必须在连接时指定。</p>
+</li>
+</ul>
+<h3 id="通信过程"><a href="#通信过程" class="headerlink" title="通信过程"></a>通信过程</h3><div class="figure center" style="width:;"><a class="fancybox" href="images/rabbitmq.png" title="RabbitMQ通信过程" data-caption="RabbitMQ通信过程" data-fancybox="default"><img class="fig-img" src="images/rabbitmq.png" alt="RabbitMQ通信过程"></a><span class="caption">RabbitMQ通信过程</span></div>
+
+<p>流程解析：</p>
+<ol>
+<li>消息生产者连接到RabbitMQ Broker，创建Connection，开启Channel。</li>
+<li>生产者声明交换机类型、名称、是否持久化等（大部分是在管理页面或者消费者端声明的）。</li>
+<li>生产者发送消息，并指定消息是否持久化等属性和Routing Key。</li>
+<li>Exchange收到消息后，根据Routing Key路由到和当前交换器绑定的相匹配的队列里面。</li>
+<li>消费者监听接收到消息之后开始业务处理，然后发送一个ack确认告知消息已经被消费（手动自动都有可能）。</li>
+<li>RabbitMQ Broker收到ack之后将对应的消息从队列中删除掉。</li>
+</ol>
+<h3 id="示例（kombu）"><a href="#示例（kombu）" class="headerlink" title="示例（kombu）"></a>示例（kombu）</h3><h4 id="Hello-World"><a href="#Hello-World" class="headerlink" title="Hello World"></a>Hello World</h4><div class="figure center" style="width:;"><a class="fancybox" href="images/hello_world.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/hello_world.png" alt=""></a></div>
+
+<p>P是Producer也就是消息的生产者，C是Consumer也就是消息的消费者，红色的框框是以“hello”命名的队列queue。生产者将消息传入hello队列，消费者从队列将消息取出。</p>
+<p>send.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="comment"># -*- encoding: utf-8 -*-</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">__file__    =  &#x27;send.py&#x27;</span></span><br><span class="line"><span class="string">__author__  =  &#x27;king&#x27;</span></span><br><span class="line"><span class="string">__time__    =  &#x27;2022/03/28 11:23:00&#x27;</span></span><br><span class="line"><span class="string">__version__ =  &#x27;1.0&#x27;</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> kombu</span><br><span class="line"><span class="keyword">import</span> datetime</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> kombu.Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> conn:</span><br><span class="line">    simple_queue = conn.SimpleQueue(<span class="string">&#x27;hello&#x27;</span>)</span><br><span class="line">    message = <span class="string">f&#x27;helloworld, sent at <span class="subst">&#123;datetime.datetime.today()&#125;</span>&#x27;</span></span><br><span class="line">    simple_queue.put(message)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;Sent: <span class="subst">&#123;message&#125;</span>&#x27;</span>)</span><br><span class="line">    simple_queue.close()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>receive.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python</span></span><br><span class="line"><span class="comment"># -*- encoding: utf-8 -*-</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">__file__    =  &#x27;receive.py&#x27;</span></span><br><span class="line"><span class="string">__author__  =  &#x27;king&#x27;</span></span><br><span class="line"><span class="string">__time__    =  &#x27;2022/03/28 14:56:22&#x27;</span></span><br><span class="line"><span class="string">__version__ =  &#x27;1.0&#x27;</span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> kombu</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> kombu.Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> conn:</span><br><span class="line">    simple_queue = conn.SimpleQueue(<span class="string">&#x27;hello&#x27;</span>)</span><br><span class="line">    message = simple_queue.get(block=<span class="literal">True</span>, timeout=<span class="number">1</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;Received: <span class="subst">&#123;message.payload&#125;</span>&#x27;</span>)</span><br><span class="line">    message.ack()</span><br><span class="line">    simple_queue.close()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="Work-Queues（工作队列）"><a href="#Work-Queues（工作队列）" class="headerlink" title="Work Queues（工作队列）"></a>Work Queues（工作队列）</h4><p>工作队列（又称：任务队列——Task Queues）是为了避免等待一些占用大量资源、时间的操作。当我们把任务（Task）当作消息发送到队列中，一个运行在后台的工作者（worker）进程就会取出任务然后处理。当你运行多个工作者（workers），任务就会在它们之间共享。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/work_queues.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/work_queues.png" alt=""></a></div>
+
+<p>client.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"></span><br><span class="line">queue = Queue(<span class="string">&#x27;task_queue&#x27;</span>, routing_key=<span class="string">&#x27;task_queue&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    producer = connection.Producer()</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">1</span>, <span class="number">11</span>):</span><br><span class="line">        producer.publish(</span><br><span class="line">            body=<span class="string">f&#x27;<span class="subst">&#123;i&#125;</span>th message&#x27;</span>,</span><br><span class="line">            routing_key=<span class="string">&#x27;task_queue&#x27;</span>,</span><br><span class="line">            queue=queue,</span><br><span class="line">            declare=[queue],</span><br><span class="line">        )</span><br></pre></td></tr></table></figure>
+
+<p>worker.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu.mixins <span class="keyword">import</span> ConsumerMixin</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">queue = Queue(<span class="string">&#x27;task_queue&#x27;</span>, routing_key=<span class="string">&#x27;task_queue&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Worker</span>(<span class="title class_ inherited__">ConsumerMixin</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, connection</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        self.connection = connection</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_consumers</span>(<span class="params">self, Consumer, channel</span>):</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            Consumer(</span><br><span class="line">                queues=[queue],</span><br><span class="line">                callbacks=[self.process_task],</span><br><span class="line">                accept=[<span class="string">&#x27;text/plain&#x27;</span>, <span class="string">&#x27;json&#x27;</span>],</span><br><span class="line">                prefetch_count=<span class="number">1</span>,</span><br><span class="line">            )</span><br><span class="line">        ]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">process_task</span>(<span class="params">self, body, message</span>):</span><br><span class="line">        <span class="built_in">print</span>(body)</span><br><span class="line">        message.ack()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        worker = Worker(connection=connection)</span><br><span class="line">        worker.run()</span><br><span class="line">    <span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;bye bye&#x27;</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="Publish-Subscribe（发布-订阅）"><a href="#Publish-Subscribe（发布-订阅）" class="headerlink" title="Publish/Subscribe（发布/订阅）"></a>Publish/Subscribe（发布/订阅）</h4><div class="figure center" style="width:;"><a class="fancybox" href="images/publish_subscribe.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/publish_subscribe.png" alt=""></a></div>
+
+<p>emit_log.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"></span><br><span class="line">exchange = Exchange(<span class="string">&#x27;log&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;fanout&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    producer = connection.Producer()</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">10</span>):</span><br><span class="line">        producer.publish(</span><br><span class="line">            body=<span class="string">f&#x27;INFO: <span class="subst">&#123;i + <span class="number">1</span>&#125;</span>th message&#x27;</span>,</span><br><span class="line">            routing_key=<span class="string">&#x27;&#x27;</span>,</span><br><span class="line">            exchange=exchange,</span><br><span class="line">            declare=[exchange],</span><br><span class="line">        )</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>receive_logs.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu.mixins <span class="keyword">import</span> ConsumerMixin</span><br><span class="line"></span><br><span class="line">exchange = Exchange(<span class="string">&#x27;log&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;fanout&#x27;</span>)</span><br><span class="line">queue = Queue(<span class="string">&#x27;log&#x27;</span>, exchange=exchange)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Worker</span>(<span class="title class_ inherited__">ConsumerMixin</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, connection</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        self.connection = connection</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_consumers</span>(<span class="params">self, Consumer, channel</span>):</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            Consumer(</span><br><span class="line">                queues=[queue],</span><br><span class="line">                callbacks=[self.process_task],</span><br><span class="line">                accept=[<span class="string">&#x27;text/plain&#x27;</span>, <span class="string">&#x27;json&#x27;</span>],</span><br><span class="line">                prefetch_count=<span class="number">1</span>,</span><br><span class="line">            )</span><br><span class="line">        ]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">process_task</span>(<span class="params">self, body, message</span>):</span><br><span class="line">        <span class="built_in">print</span>(body)</span><br><span class="line">        message.ack()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        worker = Worker(connection=connection)</span><br><span class="line">        worker.run()</span><br><span class="line">    <span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;bye bye&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="Routing（路由）"><a href="#Routing（路由）" class="headerlink" title="Routing（路由）"></a>Routing（路由）</h4><div class="figure center" style="width:;"><a class="fancybox" href="images/routing.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/routing.png" alt=""></a></div>
+
+<p>emit_log_direct.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"></span><br><span class="line">levels = [<span class="string">&#x27;INFO&#x27;</span>, <span class="string">&#x27;ERROR&#x27;</span>, <span class="string">&#x27;WARNING&#x27;</span>]</span><br><span class="line">exchange = Exchange(<span class="string">&#x27;direct_logs&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;direct&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    producer = connection.Producer()</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">1</span>, <span class="number">20</span>):</span><br><span class="line">        level = levels[i % <span class="built_in">len</span>(levels)]</span><br><span class="line">        log = <span class="string">f&#x27;<span class="subst">&#123;level&#125;</span>: <span class="subst">&#123;i&#125;</span>th message&#x27;</span></span><br><span class="line">        producer.publish(</span><br><span class="line">            body=log,</span><br><span class="line">            routing_key=level,</span><br><span class="line">            exchange=exchange,</span><br><span class="line">            declare=[exchange],</span><br><span class="line">        )</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>receive_logs_direct.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu.mixins <span class="keyword">import</span> ConsumerMixin</span><br><span class="line"></span><br><span class="line">levels = [<span class="string">&#x27;INFO&#x27;</span>, <span class="string">&#x27;ERROR&#x27;</span>, <span class="string">&#x27;WARNING&#x27;</span>]</span><br><span class="line">exchange = Exchange(<span class="string">&#x27;direct_logs&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;direct&#x27;</span>)</span><br><span class="line">queues = [</span><br><span class="line">    Queue(<span class="string">f&#x27;log.<span class="subst">&#123;level&#125;</span>&#x27;</span>, exchange=exchange, routing_key=level)</span><br><span class="line">    <span class="keyword">for</span> level <span class="keyword">in</span> levels</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Worker</span>(<span class="title class_ inherited__">ConsumerMixin</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, connection</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        self.connection = connection</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_consumers</span>(<span class="params">self, Consumer, channel</span>):</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            Consumer(</span><br><span class="line">                queues=queues,</span><br><span class="line">                accept=[<span class="string">&#x27;text/plain&#x27;</span>, <span class="string">&#x27;json&#x27;</span>],</span><br><span class="line">                callbacks=[self.process_task],</span><br><span class="line">            )</span><br><span class="line">        ]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">process_task</span>(<span class="params">self, body, message</span>):</span><br><span class="line">        <span class="built_in">print</span>(body)</span><br><span class="line">        message.ack()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        worker = Worker(connection=connection)</span><br><span class="line">        worker.run()</span><br><span class="line">    <span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;bye bye&#x27;</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="Topic（主题）"><a href="#Topic（主题）" class="headerlink" title="Topic（主题）"></a>Topic（主题）</h4><p>发送到主题交换机（topic exchange）的消息不可以携带任意的路由键（routing_key），它的路由键必须是一个由.分隔开的单词列表。这些单词随便是什么都可以，但是最好是跟携带它们的消息有关系的词汇。以下是几个推荐的例子：”stock.usd.nyse”, “nyse.vmw”, “quick.orange.rabbit”。词语的个数可以随意，但是不要超过255字节。</p>
+<p>绑定键也必须拥有同样的格式。主题交换机背后的逻辑跟直连交换机很相似 —— 一个携带着特定路由键的消息会被主题交换机投递给绑定键与之想匹配的队列。但是它的绑定键和路由键有两个特殊应用方式：</p>
+<ul>
+<li>* (星号) 用来表示一个单词.</li>
+<li># (井号) 用来表示任意数量（零个或多个）单词。</li>
+</ul>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/topic.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/topic.png" alt=""></a></div>
+
+<p>emit_log_topic.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"></span><br><span class="line">levels = [<span class="string">&#x27;INFO&#x27;</span>, <span class="string">&#x27;ERROR&#x27;</span>, <span class="string">&#x27;WARNING&#x27;</span>]</span><br><span class="line">exchange = Exchange(<span class="string">&#x27;topic_logs&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;topic&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    producer = connection.Producer()</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">1</span>, <span class="number">20</span>):</span><br><span class="line">        level = levels[i % <span class="built_in">len</span>(levels)]</span><br><span class="line">        log = <span class="string">f&#x27;<span class="subst">&#123;level&#125;</span>: <span class="subst">&#123;i&#125;</span>th message&#x27;</span></span><br><span class="line">        producer.publish(</span><br><span class="line">            body=log,</span><br><span class="line">            routing_key=<span class="string">f&#x27;log.<span class="subst">&#123;level&#125;</span>&#x27;</span>,</span><br><span class="line">            exchange=exchange,</span><br><span class="line">            declare=[exchange],</span><br><span class="line">        )</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>receive_logs_topic.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Exchange</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu.mixins <span class="keyword">import</span> ConsumerMixin</span><br><span class="line"></span><br><span class="line">levels = [<span class="string">&#x27;INFO&#x27;</span>, <span class="string">&#x27;ERROR&#x27;</span>, <span class="string">&#x27;WARNING&#x27;</span>]</span><br><span class="line">exchange = Exchange(<span class="string">&#x27;topic_logs&#x27;</span>, <span class="built_in">type</span>=<span class="string">&#x27;topic&#x27;</span>)</span><br><span class="line">queues = [</span><br><span class="line">    Queue(<span class="string">f&#x27;log.<span class="subst">&#123;level&#125;</span>&#x27;</span>, exchange=exchange, routing_key=<span class="string">f&#x27;*.<span class="subst">&#123;level&#125;</span>&#x27;</span>)</span><br><span class="line">    <span class="keyword">for</span> level <span class="keyword">in</span> levels</span><br><span class="line">]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Worker</span>(<span class="title class_ inherited__">ConsumerMixin</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, connection</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        self.connection = connection</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_consumers</span>(<span class="params">self, Consumer, channel</span>):</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            Consumer(</span><br><span class="line">                queues=queues,</span><br><span class="line">                accept=[<span class="string">&#x27;text/plain&#x27;</span>, <span class="string">&#x27;json&#x27;</span>],</span><br><span class="line">                callbacks=[self.process_task],</span><br><span class="line">            )</span><br><span class="line">        ]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">process_task</span>(<span class="params">self, body, message</span>):</span><br><span class="line">        <span class="built_in">print</span>(body)</span><br><span class="line">        message.ack()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        worker = Worker(connection=connection)</span><br><span class="line">        worker.run()</span><br><span class="line">    <span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;bye bye&#x27;</span>)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="RPC（远程过程调用）"><a href="#RPC（远程过程调用）" class="headerlink" title="RPC（远程过程调用）"></a>RPC（远程过程调用）</h4><div class="figure center" style="width:;"><a class="fancybox" href="images/rpc.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/rpc.png" alt=""></a></div>
+
+<p>rpc_client.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> uuid</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Consumer</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> producers</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">FibonacciRpcClient</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        self.connection = Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>)</span><br><span class="line">        self.queue = Queue(<span class="string">&#x27;rpc_queue&#x27;</span>, routing_key=<span class="string">&#x27;rpc_queue&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">call</span>(<span class="params">self, n</span>):</span><br><span class="line">        self.response = <span class="literal">None</span></span><br><span class="line">        self.correlation_id = uuid()</span><br><span class="line">        <span class="keyword">with</span> producers[self.connection].acquire(block=<span class="literal">True</span>) <span class="keyword">as</span> producer:</span><br><span class="line">            producer.publish(</span><br><span class="line">                body=&#123;<span class="string">&#x27;n&#x27;</span>: n&#125;,</span><br><span class="line">                routing_key=<span class="string">&#x27;rpc_queue&#x27;</span>,</span><br><span class="line">                queue=self.queue,</span><br><span class="line">                declare=[self.queue],</span><br><span class="line">                reply_to=self.queue.name,</span><br><span class="line">                correlation_id=self.correlation_id,</span><br><span class="line">            )</span><br><span class="line">        <span class="keyword">with</span> Consumer(</span><br><span class="line">            self.connection,</span><br><span class="line">            on_message=self.on_response,</span><br><span class="line">            queues=[self.queue],</span><br><span class="line">            no_ack=<span class="literal">True</span>,</span><br><span class="line">        ):</span><br><span class="line">            <span class="keyword">while</span> self.response <span class="keyword">is</span> <span class="literal">None</span>:</span><br><span class="line">                self.connection.drain_events()</span><br><span class="line">        <span class="keyword">return</span> self.response</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">on_response</span>(<span class="params">self, message</span>):</span><br><span class="line">        <span class="keyword">if</span> message.properties[<span class="string">&#x27;correlation_id&#x27;</span>] == self.correlation_id:</span><br><span class="line">            self.response = message.payload.get(<span class="string">&#x27;result&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">client = FibonacciRpcClient()</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&#x27; [x] Requesting fib(30)&#x27;</span>)</span><br><span class="line">result = client.call(<span class="number">30</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&#x27; [✔️] Got <span class="subst">&#123;result!r&#125;</span>&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>rpc_server.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Queue</span><br><span class="line"><span class="keyword">from</span> kombu <span class="keyword">import</span> Connection</span><br><span class="line"><span class="keyword">from</span> kombu.mixins <span class="keyword">import</span> ConsumerProducerMixin</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">fib</span>(<span class="params">n</span>):</span><br><span class="line">    <span class="keyword">if</span> n == <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    <span class="keyword">elif</span> n == <span class="number">1</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">return</span> fib(n - <span class="number">1</span>) + fib(n - <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Worker</span>(<span class="title class_ inherited__">ConsumerProducerMixin</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, connection</span>) -&gt; <span class="literal">None</span>:</span><br><span class="line">        self.connection = connection</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_consumers</span>(<span class="params">self, Consumer, channel</span>):</span><br><span class="line">        <span class="keyword">return</span> [</span><br><span class="line">            Consumer(</span><br><span class="line">                queues=[Queue(<span class="string">&#x27;rpc_queue&#x27;</span>)],</span><br><span class="line">                accept=&#123;<span class="string">&#x27;text/plain&#x27;</span>, <span class="string">&#x27;application/json&#x27;</span>&#125;,</span><br><span class="line">                on_message=self.on_request,</span><br><span class="line">                prefetch_count=<span class="number">1</span>,</span><br><span class="line">            ),</span><br><span class="line">        ]</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">on_request</span>(<span class="params">self, message</span>):</span><br><span class="line">        n = message.payload.get(<span class="string">&#x27;n&#x27;</span>)</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&#x27; [.] fib(<span class="subst">&#123;n&#125;</span>)&#x27;</span>)</span><br><span class="line">        result = fib(n)</span><br><span class="line">        self.producer.publish(</span><br><span class="line">            &#123;<span class="string">&#x27;result&#x27;</span>: result&#125;,</span><br><span class="line">            exchange=<span class="string">&#x27;&#x27;</span>,</span><br><span class="line">            routing_key=message.properties[<span class="string">&#x27;reply_to&#x27;</span>],</span><br><span class="line">            correlation_id=message.properties[<span class="string">&#x27;correlation_id&#x27;</span>],</span><br><span class="line">            serializer=<span class="string">&#x27;json&#x27;</span>,</span><br><span class="line">            retry=<span class="literal">True</span>,</span><br><span class="line">        )</span><br><span class="line">        message.ack()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> Connection(<span class="string">&#x27;amqp://guest:guest@localhost:5672//&#x27;</span>) <span class="keyword">as</span> connection:</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        worker = Worker(connection=connection)</span><br><span class="line">        worker.run()</span><br><span class="line">    <span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;bye bye&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="示例（oslo-messaging）"><a href="#示例（oslo-messaging）" class="headerlink" title="示例（oslo_messaging）"></a>示例（oslo_messaging）</h3><h4 id="RPC"><a href="#RPC" class="headerlink" title="RPC"></a>RPC</h4><p>client.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> oslo_messaging <span class="keyword">as</span> messaging</span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">transport_url = <span class="string">&#x27;rabbit://guest:guest@127.0.0.1:5672/&#x27;</span></span><br><span class="line"></span><br><span class="line">context = &#123;&#125;</span><br><span class="line">transport = messaging.get_rpc_transport(conf=cfg.CONF, url=transport_url)</span><br><span class="line">target = messaging.Target(topic=<span class="string">&#x27;test&#x27;</span>)</span><br><span class="line">client = messaging.RPCClient(transport=transport, target=target)</span><br><span class="line">client = client.prepare()</span><br><span class="line"></span><br><span class="line">result = client.call(context, <span class="string">&#x27;add&#x27;</span>, x=<span class="number">1</span>, y=<span class="number">2</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&#x27;result is <span class="subst">&#123;result&#125;</span>&#x27;</span>)</span><br><span class="line"></span><br><span class="line">client.cast(context, <span class="string">&#x27;test&#x27;</span>)</span><br><span class="line"></span><br><span class="line">result = client.call(context, <span class="string">&#x27;fib&#x27;</span>, n=<span class="number">10</span>)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&#x27;fib(10) = <span class="subst">&#123;result&#125;</span>&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>server.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> oslo_messaging <span class="keyword">as</span> messaging</span><br><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"></span><br><span class="line">transport_url = <span class="string">&#x27;rabbit://guest:guest@127.0.0.1:5672/&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Endpoint</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_fib</span>(<span class="params">self, n</span>):</span><br><span class="line">        <span class="keyword">if</span> n == <span class="number">0</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">        <span class="keyword">elif</span> n == <span class="number">1</span>:</span><br><span class="line">            <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            <span class="keyword">return</span> self._fib(n - <span class="number">1</span>) + self._fib(n - <span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">fib</span>(<span class="params">self, context, n</span>):</span><br><span class="line">        <span class="built_in">print</span>(n)</span><br><span class="line">        <span class="keyword">return</span> self._fib(n)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">test</span>(<span class="params">self, context</span>):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;testing&#x27;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">self, context, x, y</span>):</span><br><span class="line">        result = x + y</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&#x27;result is <span class="subst">&#123;result&#125;</span>&#x27;</span>)</span><br><span class="line">        <span class="keyword">return</span> result</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">transport = messaging.get_rpc_transport(conf=cfg.CONF, url=transport_url)</span><br><span class="line">target = messaging.Target(topic=<span class="string">&#x27;test&#x27;</span>, server=<span class="string">&#x27;server-1&#x27;</span>)</span><br><span class="line">endpoints = [</span><br><span class="line">    Endpoint()</span><br><span class="line">]</span><br><span class="line">server = messaging.get_rpc_server(transport, target, endpoints=endpoints)</span><br><span class="line"><span class="keyword">try</span>:</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&#x27;Start Server&#x27;</span>)</span><br><span class="line">    server.start()</span><br><span class="line">    <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">        time.sleep(<span class="number">1</span>)</span><br><span class="line"><span class="keyword">except</span> KeyboardInterrupt:</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&#x27;Stopping Server&#x27;</span>)</span><br><span class="line">    server.stop()</span><br><span class="line">    server.wait()</span><br></pre></td></tr></table></figure>
+
+<h4 id="Notification"><a href="#Notification" class="headerlink" title="Notification"></a>Notification</h4><p>send.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"><span class="keyword">import</span> oslo_messaging <span class="keyword">as</span> messaging</span><br><span class="line"></span><br><span class="line">transport_url = <span class="string">&quot;rabbit://guest:guest@127.0.0.1:5672/&quot;</span></span><br><span class="line"></span><br><span class="line">transport = messaging.get_notification_transport(cfg.CONF, transport_url)</span><br><span class="line"></span><br><span class="line">notifier = messaging.Notifier(</span><br><span class="line">    transport,</span><br><span class="line">    publisher_id=<span class="string">&quot;local&quot;</span>,</span><br><span class="line">    driver=<span class="string">&quot;messaging&quot;</span>,</span><br><span class="line">    topics=[<span class="string">&quot;notifications&quot;</span>],</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">client = notifier.prepare()</span><br><span class="line">client.info(&#123;&#125;, event_type=<span class="string">&quot;my_type&quot;</span>, payload=&#123;<span class="string">&quot;content&quot;</span>: <span class="string">&quot;Hello World&quot;</span>&#125;)</span><br><span class="line">client.error(&#123;&#125;, event_type=<span class="string">&quot;error_type&quot;</span>, payload=&#123;<span class="string">&quot;content&quot;</span>: <span class="string">&quot;Hello World&quot;</span>&#125;)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>receiver.py</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> oslo_config <span class="keyword">import</span> cfg</span><br><span class="line"><span class="keyword">import</span> oslo_messaging <span class="keyword">as</span> messaging</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">NotificationEndpoint</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    filter_rule = messaging.NotificationFilter(publisher_id=<span class="string">&quot;^local.*&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">info</span>(<span class="params">self, context, publish_id, event_type, payload, metadata</span>):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;Info&quot;</span>)</span><br><span class="line">        <span class="built_in">print</span>(context, publish_id, event_type, payload, metadata)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">warn</span>(<span class="params">self, context, publish_id, event_type, payload, metadata</span>):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;Warn&quot;</span>)</span><br><span class="line">        <span class="built_in">print</span>(context, publish_id, event_type, payload, metadata)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">error</span>(<span class="params">self, context, publish_id, event_type, payload, metadata</span>):</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&quot;Error&quot;</span>)</span><br><span class="line">        <span class="built_in">print</span>(context, publish_id, event_type, payload, metadata)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">transport_url = <span class="string">&quot;rabbit://guest:guest@127.0.0.1:5672/&quot;</span></span><br><span class="line"></span><br><span class="line">transport = messaging.get_notification_transport(cfg.CONF, transport_url)</span><br><span class="line">target = messaging.Target(topic=<span class="string">&quot;notifications&quot;</span>)</span><br><span class="line">listener = messaging.get_notification_listener(</span><br><span class="line">    transport,</span><br><span class="line">    targets=[target],</span><br><span class="line">    endpoints=[NotificationEndpoint()],</span><br><span class="line">    pool=<span class="string">&#x27;listener&#x27;</span></span><br><span class="line">)</span><br><span class="line">listener.start()</span><br><span class="line">listener.wait()</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" rel="tag">消息队列</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    data-tooltip="你不知道的Nova之CPU拓扑"
+                    aria-label="PREVIOUS: 你不知道的Nova之CPU拓扑"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/12/07/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E9%82%A3%E4%BA%9B%E4%BA%8B%E5%84%BF/"
+                    data-tooltip="操作系统那些事儿"
+                    aria-label="NEXT: 操作系统那些事儿"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/&amp;title=走进消息队列"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/03/23/走进消息队列/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    data-tooltip="你不知道的Nova之CPU拓扑"
+                    aria-label="PREVIOUS: 你不知道的Nova之CPU拓扑"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/12/07/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E9%82%A3%E4%BA%9B%E4%BA%8B%E5%84%BF/"
+                    data-tooltip="操作系统那些事儿"
+                    aria-label="NEXT: 操作系统那些事儿"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/&amp;title=走进消息队列"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/&amp;title=走进消息队列"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

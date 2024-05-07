@@ -1,0 +1,1032 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>你不知道的Nova之CPU拓扑 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Nova">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述CPU拓扑是用来描述CPU的组成、向kernel调度器提供重要信息来合理调度CPU的重要因素。首先了解一下几个CPU结构。\nCPU架构SMP架构SMP（Symmetric multiprocessing，对称多处理），SMP架构由多个具有对称关系的处理器组成。所谓对称，即处理器之间是水平的镜像关系，无主从之分。\nSMP\n\n每个处理器都有自己的L1缓存，共享L2缓存，通过某种互联方式（如系统总线）共享资源如内存和I/O。\nSMP结构的特征就是多个处理器共享一个集中式存储器，每个处理器访问存储器的时间片一致，使工作负载能够均匀的分配到所有可用的处理器上，极大提到了整个系统的数据处理能力。\nSMP\n\n虽然系统具有多个处理器，但由于共享一个集中式存储器，所以只会运行一个操作系统和数据库的副本（实例），能够保持单机的特性，同时也要求系统需要保持共享存储器的数据一致性。如果多个处理器同时请求访问这些共享资源，就会引发资源竞态，需要软硬件实现加锁机制来解决这个问题。按照上面的情况，所以SMP是典型的UMA（Uniform Memory Access，一致性内存访问）架构。所谓一致性就是在UMA架构中：\n\n在任意时刻，多个处理器只能为存储器的每个数据保存或共享一个唯一的数值。\n每个处理器访问存储器所需要的时间都是一致的\n\n很显然，这样的架构设计注定没法拥有良好的处理器数量扩展性，因为缓存一致性和共享对象。综合来说，SMP架构广泛的适用于PC和移动设备领域，能显著提升并行计算性能。但SMP却不适合超大规模的服务器端场景，例如：云计算。\nNUMA架构现代的计算机系统中，处理器的处理速度远快于主存的速度，所以限制计算机性能的瓶颈在存储器带宽上。SMP架构因为限制了处理器访问存储器的频次，所以处理器可能会经常处于对数据访问的饥渴状态。\nNUMA（Non-Uniform Memory Access，非一致性内存访问）架构优化了SMP架构扩展性差以及存储器带宽瓶颈的问题。NUMA的设计理念就是将处理器和存储器划分到不同的节点（NUMA Node），使它们都拥有几乎相同的资源。在NUMA节点内部会通过自己的存储总线访问内部的本地内存，而所有NUMA节点都可以通过主板上的共享总线来访问其他节点的远程内存。\nNUMA\n\n显然，处理器访问本地内存和远程内存的耗时并不一致，NUMA非一致性内存访问因此得名。而且因为节点划分并没有实现真正意义上的存储隔离，所以NUMA同样只会保存一份操作系统和数据库系统的副本。\nNUMA多节点的结构设计也在一定程度上解决SMP存储器带宽瓶颈的问题。假设有一个4 NUMA节点的系统，每个NUMA节点内部具有1GB/s的存储带宽，外部共享总线也具有1GB/s的带宽。理想状态下，如果所有的处理器总是访问本地内存的话，那么系统就拥有了4GB/s的存储带宽，此时每个节点可以近似看成一个SMP；相反，在最不理想的情况下，如果所有处理器处理器总是跨节点访问远程内存的话，那么系统就只能有1GB/s的存储带宽了。\n除此之外，使用外部共享总线时，可能会触发NUMA节点间的Cache同步异常，这会严重影响内存密集型工作负载的性能。当I/O性能至关重要时，共享总线上的Cache资源浪费，会让连接到远程PCIe总线上的设备（不同NUMA节点间通信）作业性能急剧下降。\n由于这个特性，基于NUMA开发的应用程序应该尽可能避免跨节点的远程内存访问。因为，跨节点内存访问不仅通信速度慢，还可能需要处理不同节点间内存和缓存的数据一致性。多线程在不同节点间的切换，是需要花费很大成本的。\n虽然NUMA相比于SMP具有更好的处理器扩展性，但因为NUMA没有实现彻底的主存隔离。所以NUMA远没有达到无限扩展的水平，最多可支持几百个CPU。这是为了追求更高的并发性能所作出的妥协，一个节点未必就能完全满足多并发需求，多节点间线程切换实属一个折中的方案。这种做法使得NUMA具有一定的伸缩性，更加适合应用在服务器端。\nMPP架构MPP（Massive Parallel Processing，大规模并行处理），既然NUMA扩展性的限制是没有完全实现资源（存储器、互联模块）的隔离性，那么MPP的解决思路就是为处理器提供彻底的独立资源。\nMPP拥有多个真正意义上的独立SMP单元，每个SMP单元独占并且只会访问自己本地的内存、I/O资源，SMP单元间通过节点互联网络进行连接（Data Redistribution，数据重分配），是一个完全无共享（Share Nothing）的CPU计算平台结构。\nMPP的典型特征就是多个SMP单元组成，单元之间完全无共享。除此之外，MMP结构还有以下特点：\n\n每个SMP单元都可以包含一个操作系统副本，所以每个SMP单元都可以运行自己的操作系统。\nMPP需要一种复杂的机制来调度和平衡各个节点的负载和并行处理过程，目前一些基于MPP技术的服务器往往通过系统级软件（数据库）来屏蔽这种复杂性。\nMPP架构的本地区域内访存延迟低于远地访存延迟，因此Linux会自定采用局部节点分配策略，当一个任务请求分配内存时，首先在处理器自身节点内寻找空闲页，如果没有则到相邻的节点寻找空闲页，如果还没有再到远地节点中寻找空闲页，在操作系统层面就实现了访存性能优化。\n\n因为完全的资源隔离特性，所以MPP的扩展性是最好的，理论上可以无限扩展，目前的技术可以实现512个节点互联，数千个CPU，多应用于大型机。\nSMT架构SMT（Simultaneous Multithreading，同步多线程）是一种将硬件多线程与超标量处理器技术相结合的处理器设计。SMT把CPU的每个物理内核拆分为虚拟内核，这些虚拟内核被称为线程，这样做是为了提高性能并允许每个内核一次运行两个指令流。\nSMT是SMP架构的设计补充。SMP架构中的CPU共享一条总线和存储，而SMT架构中CPU共享更多的组件。共享组件的CPU被称为Siblings。所有的CPU在系统上都显示为可用CPU，并且可以执行工作负载。但是，与NUMA一样，都会有线程竞争共享资源的情况。\nIntel Hyper-Threading Technolog（超线程技术）和SMT完全一样，都是允许在每个内核上运行多个线程。\nNUMA和UMA的异同NUMA和UMA（SMP）的异同。\n\nNUMA和SMP中的处理器都可以访问整个系统的物理存储器。\nNUMA采用了分布式存储，提供了分离的存储器给各个节点，避免了SMP中多个处理器无法同时访问单一存储器的问题。\nNUMA节点的处理器访问内部存储器所需的时间，要比访问其他节点的远程存储器要快得多。\nNUMA即保持了SMP单一操作系统备份、简单应用程序编程以及易于管理的特点，又继承了大规模并行处理MPP的可扩展性，是一个折中的方案。\n\nNUMA和MPP的异同NUMA和MPP的相同点。\n\n它们都是由多个节点组成。\n每个节点都有自己的CPU、内存、I/O。\n节点之间都可以通过节点互联机制进行信息交互。\n\nNUMA和MPP的不同点。\n\n节点互联机制不同。\nNUMA节点互联机制是在同一台物理服务器内部实现的，当某个CPU需要进行异地内存访问时，它必须等待，这也是NUMA服务器无法实现CPU增加时性能线性扩展的主要原因。\nMPP节点互联机制是在不同SMP服务器外部通过I/O实现的，每个节点只访问本地内存和存储，节点之间的信息交互与节点本身的处理是并行进行的。因此，MPP节点在增加节点时，其性能基本上可以实现线性扩展。\n\n\n内存访问机制不同。\n在NUMA服务器内部，任何一个CPU都可以访问整个系统的内存，但异地内存访问的性能远低于本地内存访问，因此，在开发应用时应该尽量避免异地内存访问。\n在MPP服务器中，每个节点只访问本地内存，不存在异地内存访问的问题。\n\n\n\nLinux中的NUMANUMA的基本概念\nNode：包含有若干个物理CPU的组。\nSocket：表示一颗物理CPU的封装（物理CPU插槽），简称插槽。为了避免将逻辑处理器和物理处理器混淆，Intel将物理处理器称为插槽。\nCore：Socket内含有的物理核。\nThread：在具有Intel超线程技术的处理器上，每个Core可以被虚拟为若干个（通常为2个）逻辑处理器，逻辑处理器会共享大多数内核资源（内存缓存、功能单元）。逻辑处理器被统称为Thread。\nProcessor：处理器的统称，可以区分为物理处理器（Physical Processor）和逻辑处理器（Virtual Processor）。对于大多数应用程序而言，它们并不关心处理器是物理的还是逻辑的。\nSiblings：相同物理封装（Socket）中的逻辑处理器（Virtual Processor）的数量。Siblings的个数和CPU是否打开超线程有关。如果打开超线程，Siblings = 2 * Core（物理核心）的个数；关闭超线程，Siblings = Core（物理核心）的个数。\n\n包含关系：NUMA Node &gt; Socket &gt; Silblings &gt;= Core &gt; Thread\n调度策略Linux的每个进程或线程都会延续父进程的NUMA策略，优先会将其约束在同一个NUMA Node内。当然，如果NUMA策略允许的话，进程也可以调用其他Node上的资源。\nNUMA的CPU分配策略有下列两种：\n\ncpunodebind：规定进程运行在指定的若干个node内。\nphyscpubind：规定进程运行在指定的若干个物理CPU内。\n\nNUMA的内存分配策略有下列4种：\n\nlocalalloc：规定进程只能从当前Node（本地）请求分配内存。\npreferred：宽松地为进程指定一个优先Node获取内存，如果优先Node上没有足够的内存资源，那么进程允许尝试别的Node。\nmembind：规定进程只能从指定的若干个Node上请求分配内存。\ninterleave：规定进程可以使用RR（Round Robin 轮询调度）算法轮转地从指定的若干个Node中请求分配内存。\n\n因为NUMA默认的内存分配策略是localalloc，优先在进程所在CPU的本地内存中分配，会导致CPU节点之间内存分配不均衡，当某个CPU节点的内存不足时，会导致Swap产生，而不是从远程节点分配内存。这就是所谓的Swap Insanity现象。\n获取宿主机的NUMA拓扑判断系统是否支持NUMA12345678910111213dmesg | grep -i numa[    0.007710] NUMA: Initialized distance table, cnt=8[    0.007712] NUMA: Node 0 [mem 0x00000000-0x0009ffff] + [mem 0x00100000-0x7fffffff] -&gt; [mem 0x00000000-0x7fffffff][    0.007714] NUMA: Node 0 [mem 0x00000000-0x7fffffff] + [mem 0x100000000-0x107fffffff] -&gt; [mem 0x00000000-0x107fffffff][    1.825227] mempolicy: Enabling automatic NUMA balancing. Configure with numa_balancing= or the kernel.numa_balancing sysctl[    3.324096] pci_bus 0000:00: on NUMA node 0[    3.329176] pci_bus 0000:10: on NUMA node 1[    3.332958] pci_bus 0000:20: on NUMA node 2[    3.337737] pci_bus 0000:30: on NUMA node 3[    3.343137] pci_bus 0000:40: on NUMA node 4[    3.347268] pci_bus 0000:50: on NUMA node 5[    3.350978] pci_bus 0000:60: on NUMA node 6[    3.354477] pci_bus 0000:70: on NUMA node 7\n如果输出上述内容则表示支持NUMA，如果输出No NUMA configuration found则表示不支持。\nLinux命令lscpu1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253lscpu# 架构Architecture:        x86_64CPU op-mode(s):      32-bit, 64-bitByte Order:          Little Endian# 逻辑CPU个数CPU(s):              128On-line CPU(s) list: 0-127# 每个核心超线程数Thread(s) per core:  2# 每个核心CPU数Core(s) per socket:  32# 物理CPU个数Socket(s):           2# NUMA节点个数NUMA node(s):        8Vendor ID:           HygonGenuineCPU family:          24Model:               1Model name:          Hygon C86 7285 32-core ProcessorStepping:            1# CPU主频CPU MHz:             2489.534CPU max MHz:         2000.0000CPU min MHz:         1200.0000BogoMIPS:            4000.20# 虚拟化类型支持Virtualization:      AMD-V# cacheL1d cache:           32KL1i cache:           64KL2 cache:            512KL3 cache:            8192K# 逻辑CPU以及NUMA映射NUMA node0 CPU(s):   0-7,64-71NUMA node1 CPU(s):   8-15,72-79NUMA node2 CPU(s):   16-23,80-87NUMA node3 CPU(s):   24-31,88-95NUMA node4 CPU(s):   32-39,96-103NUMA node5 CPU(s):   40-47,104-111NUMA node6 CPU(s):   48-55,112-119NUMA node7 CPU(s):   56-63,120-127Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid amd_dcm aperfmperf pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb hw_pstate sme ssbd sev ibpb vmmcall fsgsbase bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves clzero irperf xsaveerptr arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif overflow_recov succor smca\n\nLinux命令numactl查看NUMA拓扑\n123456789101112131415161718192021222324252627282930313233343536numactl  --hardwareavailable: 8 nodes (0-7)node 0 cpus: 0 1 2 3 4 5 6 7 64 65 66 67 68 69 70 71node 0 size: 64349 MBnode 0 free: 866 MBnode 1 cpus: 8 9 10 11 12 13 14 15 72 73 74 75 76 77 78 79node 1 size: 64483 MBnode 1 free: 11573 MBnode 2 cpus: 16 17 18 19 20 21 22 23 80 81 82 83 84 85 86 87node 2 size: 0 MBnode 2 free: 0 MBnode 3 cpus: 24 25 26 27 28 29 30 31 88 89 90 91 92 93 94 95node 3 size: 0 MBnode 3 free: 0 MBnode 4 cpus: 32 33 34 35 36 37 38 39 96 97 98 99 100 101 102 103node 4 size: 64508 MBnode 4 free: 5046 MBnode 5 cpus: 40 41 42 43 44 45 46 47 104 105 106 107 108 109 110 111node 5 size: 64480 MBnode 5 free: 12262 MBnode 6 cpus: 48 49 50 51 52 53 54 55 112 113 114 115 116 117 118 119node 6 size: 0 MBnode 6 free: 0 MBnode 7 cpus: 56 57 58 59 60 61 62 63 120 121 122 123 124 125 126 127node 7 size: 0 MBnode 7 free: 0 MBnode distances:node   0   1   2   3   4   5   6   7  0:  10  16  16  16  28  28  22  28  1:  16  10  16  16  28  28  28  22  2:  16  16  10  16  22  28  28  28  3:  16  16  16  10  28  22  28  28  4:  28  28  22  28  10  16  16  16  5:  28  28  28  22  16  10  16  16  6:  22  28  28  28  16  16  10  16  7:  28  22  28  28  16  16  16  10\n\n查看NUMA策略\n1234567numactl  --showpolicy: defaultpreferred node: currentphyscpubind: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127cpubind: 0 1 4 5nodebind: 0 1 4 5membind: 0 1 4 5\n\nBash脚本12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576777879808182838485868788899091929394959697#!/bin/bashfunction get_nr_processor()&#123;   grep &#x27;^processor&#x27; /proc/cpuinfo | wc -l&#125;function get_nr_socket()&#123;   grep &#x27;physical id&#x27; /proc/cpuinfo | awk -F: &#x27;&#123;           print $2 | &quot;sort -un&quot;&#125;&#x27; | wc -l&#125;function get_nr_siblings()&#123;   grep &#x27;siblings&#x27; /proc/cpuinfo | awk -F: &#x27;&#123;           print $2 | &quot;sort -un&quot;&#125;&#x27;&#125;function get_nr_cores_of_socket()&#123;   grep &#x27;cpu cores&#x27; /proc/cpuinfo | awk -F: &#x27;&#123;           print $2 | &quot;sort -un&quot;&#125;&#x27;&#125;echo &#x27;===== CPU Topology Table =====&#x27;echoecho &#x27;+--------------+---------+-----------+&#x27;echo &#x27;| Processor ID | Core ID | Socket ID |&#x27;echo &#x27;+--------------+---------+-----------+&#x27;while read line; do   if [ -z &quot;$line&quot; ]; then       printf &#x27;| %-12s | %-7s | %-9s |\\n&#x27; $p_id $c_id $s_id       echo &#x27;+--------------+---------+-----------+&#x27;       continue   fi   if echo &quot;$line&quot; | grep -q &quot;^processor&quot;; then       p_id=`echo &quot;$line&quot; | awk -F: &#x27;&#123;print $2&#125;&#x27; | tr -d &#x27; &#x27;`   fi   if echo &quot;$line&quot; | grep -q &quot;^core id&quot;; then       c_id=`echo &quot;$line&quot; | awk -F: &#x27;&#123;print $2&#125;&#x27; | tr -d &#x27; &#x27;`   fi   if echo &quot;$line&quot; | grep -q &quot;^physical id&quot;; then       s_id=`echo &quot;$line&quot; | awk -F: &#x27;&#123;print $2&#125;&#x27; | tr -d &#x27; &#x27;`   fidone &lt; /proc/cpuinfoechoawk -F: &#x27;&#123;   if ($1 ~ /processor/) &#123;       gsub(/ /,&quot;&quot;,$2);       p_id=$2;   &#125; else if ($1 ~ /physical id/)&#123;       gsub(/ /,&quot;&quot;,$2);       s_id=$2;       arr[s_id]=arr[s_id] &quot; &quot; p_id   &#125;&#125;END&#123;   for (i in arr)       printf &quot;Socket %s:%s\\n&quot;, i, arr[i];&#125;&#x27; /proc/cpuinfoechoecho &#x27;===== CPU Info Summary =====&#x27;echonr_processor=`get_nr_processor`echo &quot;Logical processors: $nr_processor&quot;nr_socket=`get_nr_socket`echo &quot;Physical socket: $nr_socket&quot;nr_siblings=`get_nr_siblings`echo &quot;Siblings in one socket: $nr_siblings&quot;nr_cores=`get_nr_cores_of_socket`echo &quot;Cores in one socket: $nr_cores&quot;let nr_cores*=nr_socketecho &quot;Cores in total: $nr_cores&quot;if [ &quot;$nr_cores&quot; = &quot;$nr_processor&quot; ]; then   echo &quot;Hyper-Threading: off&quot;else   echo &quot;Hyper-Threading: on&quot;fiechoecho &#x27;===== END =====&#x27;\n运行结果。\n12345678910111213Socket 0: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95Socket 1: 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127===== CPU Info Summary =====Logical processors: 128Physical socket: 2Siblings in one socket:  64Cores in one socket:  32Cores in total: 64Hyper-Threading: on===== END =====\n\nNova中的NUMA在Icehouse版本之前，Nova定义的libvirt.xml，不会考虑宿主机NUMA的情况。导致Libvirt在默认情况下，有可能发生跨NUMA Node获取CPU/Memory资源的情况，导致Guest性能下降。Openstack在Juno版本中新增NUMA特性，用户可以通过将Guest的vCPU/Memory绑定到宿主机NUMA Node上，以此来提升Guest的性能。\n基本概念除了上文中提到的NUMA的基本概念之外，Nova还自定义一些对象概念。\n\nCell：NUMA Node的同义词，供Libvirt API使用。\nvCPU：虚拟机的CPU，根据虚拟机NUMA拓扑的不同，一个虚拟CPU可以是一个Socket、Core或者Thread。\npCPU：宿主机的CPU，根据宿主机NUMA拓扑的不同，一个物理CPU可以是一个Socket、Core或者Thread。\nSiblings Tread：兄弟线程，即由同一个Core超线程出来的Thread。\nHost NUMA Topology：宿主机的NUMA拓扑。\nInstance NUMA Topology（Guest NUMA Topology）：虚拟机的NUMA拓扑。\n\nNova中实现NUMA亲和背景操作系统发行版许可证（Licensing）根据不同的操作系统发行版许可证，可能会严格约束操作系统能够支持的最大Sockets数量，同时也就约束了服务器上可运行虚拟机的数量。所以，此时应该更加偏向于使用Core来作为vCPU，而不是Socket。\nOpenStack管理员应该遵从操作系统许可需求，限制虚拟机使用的CPU拓扑（e.g. max_sockets=2）。设置默认的CPU拓扑参数，在保证GuestOS镜像能够满足许可证的同时，又不必让每个用户都单独去设置镜像属性。\nCPU拓扑对宿主机性能的影响宿主机CPU拓扑的方式对其自身性能（Performance）具有很大影响。\n\n单Socket单Core拓扑（单核结构）：一个Socket只集成了一个Core。对于多线程程序，主要是通过时间片轮转来获得CPU的执行权，实际上是串行执行，没有做到并行执行。\n单Socket多Core拓扑（多核结构）：一个Socket集成了多个水平对称（镜像）的Core，Core之间通过CPU内部数据总线通信。对于多线程程序，可以通过多Core实现真正的并行执行。不过对于并发数或线程数要大于Core数的程序而言，多核结构存在线程（上下文）切换问题。这会带来一定的开销，但好在使用的是CPU内部数据总线，所以开销会比较低。除此之外，还因为多Core是水平镜像的，所以每个Core都有着自己的Cache，在某些需要使用共享数据（共享数据很可能会被Cache住）的场景中，存在多核Cache数据一致性的问题，这也会带来一些开销。\n多Socket单Core拓扑：多Socket之间通过主板上的总线进行通信，集成为一个统一的计算平台。每一个Socket都拥有独立的内部数据总线和Cache。对于多线程程序，可以通过多Socket来实现并行执行。不同于单Socket多Core拓扑，多Socket单Core拓扑的线程切换以及Socket间通信走的都是外部总线，所以开销会比使用CPU内部数据总线高得多、延时也更长。当然，在使用共享数据的场景中，也同样存在多Socket间Cache一致性的问题。多Socket拓扑的性能瓶颈在于Socket间的I/O通讯成本。\n超线程拓扑（Hyper-Threading）：将一个Core虚拟为多个Thread（逻辑处理器），实现一个Core也可以并行执行多个线程。Thread拥有自己的寄存器和中断逻辑，不过Thread之间会共享执行单元（ALU逻辑运算单元）和Cache，所以性能提升是比较有限的，但也非常极致了。\n多Socket多Core超线程拓扑：具有多个Socket，每个Socket又包含多个Core，每个Core又虚拟出多个Thread。是上述拓扑类型的集大成者，拥有最好的性能和最先进的工艺，常见于企业级的服务器产品，例如：MPP，NUMA计算平台系统。\n\n多Socket单Core拓扑的多线程，Socket间协作要通过外部总线通信，在不同Socket上执行的线程间的共享数据可能会同时存放在不同的Socket Cache上，所以要保证不同Cache的数据一致性。具有通信开销大，线程切换开销大，Cache数据一致性难维持，多Socket占位面积大，集成布线工艺难等问题。\n单Socket多Core拓扑的多线程，每个Core处理一个线程，支持并发。具有多Core之间通信开销小，Socket占位面积小等优势。但是，当需要运行多个“大程序”（一个程序就可以将内存、Cache、Core 占满）的话，就相当于多个大程序需要通过分时切片来使用CPU。此时，程序间的上下文（指令、数据替换）切换消耗将会是巨大的。所以单Socket多Core拓扑在多任务、高并发、高消耗内存的程序运行环境中效率会变得非常低下（大程序会独占一个Socket)。\n综上，对于程序规模小的应用场景，建议使用单Socket多Core拓扑，例如个人PC；对于多大规模程序的应用场景（云计算服务器端），建议使用多Socket单Core甚至是多Socket多Core超线程的组合，为每个程序分配到单个CPU，为每个程序的线程分配到单个CPU中的Core。\nCPU架构对性能的影响CPU架构对并发程序设计而言，主要需要考虑两个问题，一个是内存可见性问题，一个是Cache一致性问题。前者属于并发安全问题，后者则属于性能范畴的问题。\n\n内存可见性问题：该问题在单处理器或单线程情况下是不会发生的。但在多线程环境中，因为线程会被分配到不同的Core上执行，所以会出现Core1和Core2可能会同时把主存中某个位置的值load到自己的一级缓存中，而Core1修改了自己一级缓存中的值后，却不更新主存中对应的值，这样对于Core2来说，将永远看不到Core1对值的修改，从而导致不能保证并发安全性。\nCache一致性问题：假如Core1和Core2同时把主存中的值load到自己的一级缓存，Core1将值修改后，会通过BUS总线让Core2中的值失效。Core2发现自己一级缓存中的值失效后，会再通过BUS总线从主存中得到最新的值。但是，总线的通信带宽是固定的，通过总线来进行各CPU一级缓存数据同步的动作会产生很大的流量，从而总线成为了性能的瓶颈。可以通过减小数据同步竞争来减少Cache一致性的流量。\n\n超线程对性能的影响需要注意的是，超线程技术并非万能药。从Intel和VMware对外公开的资料看，开启超线程后，Core的总计算能力是否提升以及提升的幅度和业务模型相关，平均提升在20%-30%左右。但超线程对Core的执行资源的争抢，业务的执行时延也会相应增加。当超线程相互竞争时，超线程的计算能力相比不开超线程时的物理核甚至会下降30%左右。所以，超线程应该关闭还是开启，主要还是取决于应用模型。\n现在很多应用，比如Web App，大多会采用多Worker设计，在超线程的帮助下，两个被调度到同一个Core下不同Thread的Worker，由于Threads共享 Cache和TLB（Translation Lookaside Buffer，转换检测缓冲区），所以能够大幅降低Workers线程切换的开销。另外，在某个Worker不忙的时候，超线程允许其它的Worker先使用物理计算资源，以此来提升Core的整体吞吐量。\n\n对于时延敏感型任务，比如用户需要及时响应任务运行结果的场景，在节点负载过高，引发超线程竞争时，任务的执行时长会显著增加，导致影响用户体验。所以，不推荐计算密集型和时延敏感型任务使用超线程技术。\n对于后台计算型任务，它不要求单个任务的响应速度，比如超算中心上运行的后台计算型任务（一般要运行数小时或数天），就建议开启超线程来提高整个计算节点的吞吐量。\n\n即便在对虚拟机性能要求不高的场景中，除非我们将虚拟机的CPU和宿主机的超线程一一绑定，否则并不建议应该使用超线程技术，pCPU应该被映射为一个Socket或Core。换句话说，如果我们希望开启Nova Compute Node的超线程功能，那么我会建议你使用CPU绑定功能来将虚拟机的vCPU绑定到某一个 pCPU（此时pCPU映射为一个Thread）上。\nNUMA Topology现在的服务器基本都支持NUMA拓扑，上文已经提到过，主要驱动NUMA体系结构应用的因素是NUMA具有的高存储访问带宽、有效的Cache效率以及灵活PCIe I/O 设备的布局设计。但由于NUMA跨节点远程内存访问不仅延时高、带宽低、消耗大，还可能需要处理数据一致性的问题。因此，虚拟机的vCPU和内存在NUMA节点上的错误布局，将会导宿主机资源的严重浪费，这将抹掉任何内存与CPU决策所带来的好处。所以，标准的策略是尽量将一个虚拟机完全局限在单个NUMA节点内。\nGuest NUMA Topology将虚拟机的vCPU/Mem完全局限在单个NUMA节点内是最佳的方案，但假如分配给虚拟机的vCPU数量以及内存大小超过了一个NUMA节点所拥有的资源呢？此时必须针对大资源需求的虚拟机设计出合适的策略，Guest NUMA Topology的概念也是为此而提出。\n这些策略或许禁止创建超出单一NUMA节点拓扑的虚拟机，或许允许虚拟机跨多NUMA节点运行。并且在虚拟机迁移时，允许更改这些策略。也就是说，在对宿主机（Compute Node）进行维护时，接收临时降低性能而选择次优的NUMA拓扑布局。当然了，NUMA 拓扑布局的问题还需要考虑到虚拟机的具体使用场景，例如，NFV虚拟机的部署就会强制的要求严格的NUMA拓扑布局。\n如果虚拟机具有多个Guest NUMA Node，为了让操作系统能最大化利用其分配到的资源，宿主机的NUMA拓扑就必须暴露给虚拟机。让虚拟机的Guest NUMA Node与宿主机的Host NUMA Node进行关联映射。这样可以映射大块的虚拟机内存到宿主机内存，和设置vCPU与pCPU的映射。\nGuest NUMA Topology实际上是将一个大资源需求的虚拟机划分为多个小资源需求的虚拟机，将多个Guest NUMA Node分别绑定到不同的Host NUMA Node。这样做是因为虚拟机内部运行的工作负载同样会遵守NUMA节点原则，最终的效果实际上就是虚拟机的工作负载依旧有效的被限制在了一个Host NUMA Node内。也就是说，如果虚拟机有4 vCPU需要跨两个Host NUMA Node，vCPU 0/1 绑定到Host NUMA Node 1，而vCPU 2/3绑定到Host NUMA Node 2上。然后虚拟机内的DB应用分配到vCPU 0/1，Web应用分配到vCPU 2/3，这样实际就是DB应用和Web应用的线程始终被限制在了同一个 Host NUMA Node上。但是，Guest NUMA Topology并不强制将vCPU与对应的Host NUMA Node中特定的pCPU进行绑定，这可以由操作系统调度器来隐式完成。只是如果宿主机开启了超线程，则要求将超线程特性暴露给虚拟机，并在NUMA Node内绑定vCPU与pCPU的关系。否则vCPU会被分配给Siblings Thread，由于超线程竞争，性能远不如将vCPU分配到Socket或Core的好。\n\n如果Guest的vCPU/RAM分配大于单个Host NUAM Node，那么应该划分为多个Guest NUMA Topology，并分别映射到不同的Host NUMA Node上。\n如果Host开启了超线程，那么应该在单个Host NUMA Node上进行vCPU和pCPU的绑定，否则vCPU会被分配给Siblings Thread，性能不如物理Core好。\n\n大页内存绝大多数现代CPU支持多种内存页尺寸，从4KB到2MB/4MB，最大可以达到1GB；所有处理器都默认使用最小的4KB页。如果大量的内存可以使用大页进行分配，将会明显减少CPU页表项，因此会增加页表缓存的命中率，降低内存访问延迟。\n如果操作系统使用默认的小页内存，随着运行时间，系统会出现越来越多的碎片，以至于很难申请到大页的内存。在大页内存大小越大时，该问题越严重。因此，如果有使用大页内存的需求，最好的办法是在系统启动时就预留好内存空间。\n当前的Linux内核不允许针对特定的NUMA节点进行这样的设定，不过，在不久的将来这个限制将被取消。更进一步的限制是，由于MMIO空洞的存在，内存开始的1GB不能使用1GB的大页。Linux内核已经支持透明巨型页（THP，Transparent Huge Pages）特性。该特性会尝试为应用程序预分配大页内存。依赖该特性的一个问题是，虚拟机的拥有者，并不能保证给虚拟机使用的是大页内存还是小页内存。\n内存块是直接指定给特定的NUMA节点的，这就意味着大页内存也是直接存在于NUMA节点上的。因此在NUMA节点上分配虚拟机时，计算服务需要考虑在NUMA节点或者主机上可能会用到的大页内存（NUMA Node或Host存在哪一些大页内存类型和数量状况）。为虚拟机内存启用大页内存时，可以不用考虑虚拟机操作系统是否会使用。\n\n有使用大页内存的需求，需要在系统启动时就预留好内存空间，Linux内核使用THP来实现，但也存在着问题。\n如果希望让虚拟机使用大页内存，那么应该收集NUMA节点所拥有的内存页类型和数量信息。\n\n专用资源绑定计算节点可以配置CPU与内存的超配比例，例如，16个物理CPU可以允许使用成256个虚拟CPU，16GB内存可以允许使用24GB虚拟机内存。\n超配的概念可以扩展到基本的NUMA布局，但是一旦提到大页内存，内存便不能再进行超配。当使用大页内存时，虚拟机内存页必须与主机内存页一一映射，并且主机操作系统能通过交换分区分配大页内存，这也排除了内存超配的可能。但是大页内存的使用，意味着需要支持内存作为专用资源的虚拟机类型。尽管设置专用资源时，不会超配内存与CPU，但是CPU与内存的资源仍然需要主机操作系统提前预留。如果使用大页内存。必须在主机操作系统中明确预留。\n对于CPU则有一些灵活性。因为尽管使用专用资源绑定CPU，主机操作系统依然会使用这些CPU的一些时间。不管怎么样，需要预留一定的物理CPU专门为宿主机操作系统服务，以避免操作系统过多占用虚拟机CPU，而造成对虚拟机性能的影响。Nova可以保留一部分CPU专门为操作系统服务，这部分功能将会在后续的设计中加强。\n允许内存超配时，超出主机内存的部分将会使用到Swap。Swap将会影响主机整体I/O性能，所以尽量不要把需要专用内存的虚拟机与允许内存超配的虚拟机放在同一台物理主机上。\n如果专用CPU的虚拟机与允许超配的虚拟机竞争CPU，由于Cache的影响，将会严重影响专用CPU的虚拟机的性能，特别在同一个NUMA单元上时。因此，最好将使用专用CPU的虚拟机与允许超配的虚拟机放在不同的主机上，其次是不同的 NUMA 单元上。\n\n确定虚拟机支不支持使用大页内存。\n大页内存需要明确的在物理主机中预留。\n为了虚拟机能够更加好的“独占”物理CPU，一般的，也会预留一些物理CPU资源给宿主机使用。\n尽量不要将占用专用内存的虚拟机与使用内存超配的虚拟机放到同一个物理主机中运行。\n尽量不要将占用专用CPU的虚拟机与使用CPU超配的虚拟机放到同一个物理主机中运行，其次是不要放到同一个NUMA Node中运行。\n\n内存共享Linux内核有一项特性，叫做内核共享存储（KSM），该特性可以使得不同的处理器共享相同内容的内存页。内核会主动扫描内存，合并内容相同的内存页。如果有处理器改变这个共享的内存页时，会采用CoW的方式写入新的内存页。\n当一台主机上的多台虚拟机使用相同操作系统或者虚拟机使用很多相同内容内存页时，KSM可以显著提高内存的利用率。因为内存扫描的消耗，使用KSM的代价是增加了CPU的负载，并且如果虚拟机突然做写操作时，会引发大量共享的页面，此时会存在潜在的内存压力峰值。虚拟化管理层必须因此积极地监控内存压力情况并做好现有虚拟机迁移到其他主机的准备，如果内存压力超过一定的水平限制，将会引发大量不可预知的Swap操作，甚至引发OOM。ZSwap特性允许压缩内存页被写入Swap设备，这样可以大量减少Swap设备的I/O执行，减少了交换主机内存页面中固有的性能下降。\n虚拟化管理层应该积极的监控内存压力，适时的将虚拟机迁移到其他物理主机。\nPCI设备PCI设备与NUMA单元关系密切，PCI设备的DMA操作使用的内存最好在本地NUMA节点上。因此，在哪个NUMA单元上分配虚拟机，将会影响到PCI设备的分配。\nPCI设备要和虚拟机分配到同一个NUMA Node上。\n\n\n实现从上述背景知识我们能够清晰的认识到，为了最大化利用主机资源，好好利用NUMA与大页内存等工具显得尤为重要。即使使用默认配置，Nova也能够做到NUMA布局的优化以及考虑到大页内存的使用。显式的配置（通过配置虚拟机套餐类型 Flavor）只是为了满足性能优化或者虚拟机个性化需求，亦或者云平台提供商希望为不同的价格方案设置认为的设置。显示配置还能够限制用户可使用的拓扑，以防止用户使用非最优NUMA拓扑方案。\n只有当虚拟机的虚拟CPU与主机的物理CPU一一绑定时，配置超线程参数（threads != 1）才有意义。这不是一个最终用户需要考虑的东西，但是云平台管理员希望能够通过设置虚拟机类型明确避免使用主机超线程（如果vCPU和pCPU没有绑定，那么应该过滤物理主机的超线程ID）。这可以通过使用主机聚合调度的方式实现。\nCPU绑定CPU绑定：将虚拟机的vCPUs绑定到pCPUs，vCPU只会在指定的pCPU上运行，避免pCPU间线程切换（上下文切换，内存数据转移）带来的性能开销。\nopenstack命令。\n123openstack flavor set &lt;FLAVOR-NAME&gt; \\    --property hw:cpu_policy=&lt;CPU-POLICY&gt; \\    --property hw:cpu_thread_policy=&lt;CPU-THREAD-POLICY&gt;\n\nCPU-POLICY有2种参数类型。\n\nshared（默认的）：允许vCPUs跨pCPU浮动，尽管vCPUs受到的NUMA Node的限制也是如此。\ndedicated：Guest的vCPUs会严格的pinned到pCPUs的集合中。在没有明确vCPU拓扑的情况下，Drivers会将所有vCPU作为Sockets的一个Core或一个Thread（如果启动超线程）。如果已经明确的将vCPUs Topology Pinned到CPUs Topology中时，会严格执行CPU Pinning，将Guest内部的CPU的拓扑匹配到已经Pinned的宿主机的CPUs的拓扑中。此时的overcommit ratio 为 1.0。例如：虚拟机的两个vCPU被pinned到了一个宿主机的Core的两个Thread 上，那么虚拟机内部将会获得一个Core（对应的两个Thread）的拓扑。\n\n这里常结合NUMA Topology来一起使用。如果设定为shared，那么即便为虚拟机分配了一个NUMA node，但 vCPUs仍会在 NUMA Node所拥有的 pCPUs间浮动；如果设定为dedicated，那么虚拟机就会严格按照Guest NUMA Topology和Host NUMA Topology的映射关系将vCPUs pinned到pCPUs，实现CPU的绑定。而且这种映射，往往是一个vCPU被绑定到一个pCPU的Core或Thread上（如果开启超线程）。\n\n\nCPU-THREAD-POLICY有下列3种参数类型。\n\nprefer（默认的）：主机也许是SMT架构，如果是SMT架构，那么将会优先将一个vCPU绑定到一个宿主机的Thread Siblings上，否则按照一般的方式将vCPU绑定到Core上。\nisolate：主机不应该是SMT架构，或者能够识别Thread Siblings并从逻辑上屏蔽它。每一个vCPU都将会被pinned到一个物理CPU的Core上（如果是多核CPU）。如果物理机是SMT架构支持超线程，那么物理Cores就具有Thread Siblings，这样的话，如果一个Guest不同的vCPU被pinned到不同的物理Core上，那么这个物理Core将不会再继续接受其他Guest的vCPU。所以，需要保证物理Core上没有Thread Siblings。\nrequire：宿主机必须是SMT架构，每一个vCPU都分配给Thread Siblings。但如果没有足够的Thread Siblings，则会调度失败。如果主机不是 SMT架构，则配置无效。\n\n只有设定hw:cpu_policy=dedicated时，hw:cpu_thread_policy才会生效。可见，后者设定的是vCPU pinning to pCPU的策略。\n\n\n在启动了超线程的SMT-Base（Simultaneous Multithreading-Based，基于同步多线程） 架构中，Core通常被称为Hardware Thread，而使用超线程技术虚拟出来的Cores被称为Thread Siblings。\n\n\nSMT 架构，也就是以前的Hyper-Threading超线程技术，支持将一个物理Core虚拟为多个Thread（逻辑处理器）。\n\n\n应该使用HostAggregate来区分开pinned和unpinned的虚拟机，因为unpinned的虚拟机不会考虑到pinned的虚拟机的资源需求，避免发生资源占用。\n\n\n一个虚拟机在物理主机上就是一个进程，一个vCPU在物理主机上就是一个特殊的线程。\n\n\n\n专有CPU约束，如果为虚拟机设置物理CPU绑定，那么其他虚拟机要避免使用该虚拟机的专有物理CPU。\n在主机配置时，为所有虚拟机创建两个资源组，为两个组分配不同的物理CPU。使用专有资源的虚拟机与共享资源的虚拟机分别使用两个不同的资源组。\n准备一些不超配的主机只用于专用资源。\n当出现一个需要专有资源的虚拟机时，动态更新所有现有虚拟机的物理CPU绑定。\n为所有的虚拟机预先设置物理CPU亲和性，以预留一部分物理CPU为后面的专有资源虚拟机使用。\n为虚拟机设置固定的调度时间片，允许他们在物理CPU之间自由调度。\n\n\n\nNUMA亲和NUMA亲和：将虚拟机绑定NUMA Node，Guest vCPUs/RAM 都分配在同一个NUMA Node 上，充分使用NUMA Node Local Memory，避免访问Remote Memory的性能开销。\n1234openstack flavor set &lt;FLAVOR-NAME&gt; \\    --property hw:numa_nodes=&lt;FLAVOR-NODES&gt; \\    --property hw:numa_cpus.&lt;N&gt;=&lt;FLAVOR-CORES&gt; \\    --property hw:numa_mem.&lt;N&gt;=&lt;FLAVOR-MEMORY&gt;\n\nFLAVOR-NODES：整数，设定Guest NUMA Nodes的个数。如果不指定，则Guest vCPUs可以运行在任意可用的Host NUMA Nodes上。N：整数，Guest NUMA nodes ID，取值范围在[0, FLAVOR-NODES-1]。FLAVOR-CORES：逗号分隔的整数，设定分配到Guest NUMA Node N上运行的vCPUs列表。如果不指定，vCPUs在Guest NUMA Nodes之间平均分配。FLAVOR-MEMORY：整数，单位MB，设定分配到Guest NUMA Node N上Memory Size。如果不指定，Memory在Guest NUMA Nodes之间平均分配。\n只有在设定了hw:numa_nodes后hw:numa_cpus.N和hw:numa_mem.N才会生效。另外，只有当Guest NUMA Node存在非对称访问CPUs/RAM时（一个 Host NUMA Node无法满足虚拟机的vCPUs/RAM资源需求时），才需要去设定这些参数。\nN仅仅是Guest NUMA node 的索引，并非实际上的Host NUMA Node的ID。例如，Guest NUMA Node 0可能会被映射到Host NUMA Node 1。类似的，FLAVOR-CORES的值也仅仅是vCPU的索引。因此，Nova的NUMA特性并不能用来约束Guest vCPUs/RAM绑定到某一个Host NUMA node 上。要完成 vCPU 绑定到指定的 pCPU，需要借助CPU Pinning Policy和Nova底层隐式实现的CPU Binding（映射）机制。\n如果 hw:numa_cpus.N 和 hw:numa_mem.N 设定的值大于虚拟机本身可用的CPUs/Memory的话，则触发异常。\n举例：Flavor定义Guest有4个vCPU，4096MB内存，设定Guest的NUMA Topology为2个NUMA Node，vCPU 0、1运行在 NUMA Node 0上，vCPU 2、3运行在NUMA Node 1上。并且占用NUMA Node 0的Memory 2048MB，占用 NUMA Node 1 的Memory 2048MB。\n123456openstack flavor set aze-FLAVOR \\     --property hw:numa_nodes=2 \\     --property hw:numa_cpus.0=0,1 \\     --property hw:numa_cpus.1=2,3 \\     --property hw:numa_mem.0=2048 \\     --property hw:numa_mem.1=2048\n\n使用该flavor创建的虚拟机，将会具有上述Guest NUMA Topology，并由Libvirt Driver隐射到Host NUMA Node上。\nNova分配NUMA的两种方式：\n\n自动分配NUMA的约束和限制：仅指定Guest NUMA Nodes的个数，然后由Nova根据Flavor的规格平均将vCPU/Memory分布到不同的Host NUMA Nodes上（默认从 Host NUMA Node 0 开始分配，依次递增）。这将最大程度的降低配置参数的复杂性。如果没有NUMA节点的定义，管理程序可以在虚拟机上自由使用NUMA拓扑。\n不能设置numa_cpus 和numa_mem。\n自动从0节点开始平均分配。\n\n\n手动指定NUMA的约束和限制：不仅指定Guest NUMA Nodes的个数，还指定了每个Guest NUMA Nodes上分配的vCPU ID和 Memory Size。设定了Guest NUMA topology，由Nova来完成Guest NUMA Nodes和Host NUMA Nodes的映射关系。\n设定的vCPU总数需要和虚拟机flavor中的CPU总数一致。\n设定的Memory大小需要和虚拟机flavor中的memory大小一致。\n必须设置numa_cpus和numa_mem。\n需要从Guest NUMA Node 0开始指定各个NUMA节点的资源占用参数。\n\n\n\n\nnova-compute的ResourceTracker会定时上报Host NUMA的资源信息。\nSetup Flavor extra-specs实际上是设定 Guest NUMA Topology。\nGuest vCPU/Memory不能大于虚拟机自身flavor所拥有的CPU/Memory规格。\n如果Guest NUMA Node的vCPU/Memory规格大于Host NUMA Node的CPU/Memory规格，则应该将Guest NUMA Node划分为多个nodes。\n如果hw:numa_cpus.N或hw:numa_mem.N设定的值比Host可用CPU/Memory大，则会引发错误。\nhw:numa_cpus.N与hw:numa_mem.N只在设置了hw:numa_nodes后有效。\nN是Guest NUMA Node 的索引ID，并非实际上的Host NUMA Node ID。例如，Guest NUMA Node（hw:numa_mem.0），可能会被映射到Host NUMA Node 1。类似的，FLAVOR-CORES也值是vCPU的编号，并不对应pCPU。因此，Nova NUMA特性并不能用来约束Guest vCPU/Memory所处于的Host NUMA Node。要完成vCPU绑定到指定的pCPU，还需要应用Nova的CPU Binding机制。\n在最终的XML文件里面可能并没有numatune信息，因此从XML无法看出Guest NUMA Node的Memory是从哪个Host NUMA Node上分配的，在RHEL中，默认的Memory分配方式与CPU分配方式是一致的，但是在SUSE OS上，就需要指定numatune信息才能生效。\n\n\n\n除了通过flavor extra-specs来设定Guest NUMA Topology之外，还可以通过image metadata来设定。\n123456openstack image set &lt;IMAGE-NAME&gt; \\     --property hw_numa_nodes=2 \\     --property hw_numa_cpus.0=0 \\     --property hw_numa_mem.0=512 \\     --property hw_numa_cpus.1=0 \\     --property hw_numa_mem.1=512\n\n当用户镜像的NUMA约束与flavor的NUMA约束冲突时，以flavor中的约束为准。\n调度器使用虚拟机类型的参数numa_nodes决定如何布置虚拟机。如果没有设置numa_nodes参数, 调度器将自由决定在哪里运行虚拟机，而不关心单个NUMA节点是否能够满足虚拟机类型中的内存设置，尽管仍然会优先考虑一个NUMA节点可以满足情况的主机。\n\n如果参数numa_nodes设置为1，调度器将会选择单个NUMA节点能够满足虚拟机类型中内存设置的主机。\n如果参数numa_nodes设置大于1，调度器将会选择NUMA节点数量与NUMA节点中内存能够满足虚拟机类型中numa_nodes参数与内存设置的主机。\n\nComputeNode会暴露它们的NUMA拓扑信息(例如：每个NUMA节点上有多少CPU和内存)，以及当前的资源利用率。这些数据会被加入到计算节点的数据模型（compute_nodes）中。\n应用场景。\n\nhw:huma_nodes=1，应该让Guest的vCPU/Memory从一个固定的Host NUMA Node中获取，避免跨NUMA Node的Memory访问，减少不可预知的通信延时，提高Guest性能。\n\nhw:huma_nodes=N，当Guest的vCPU/Memory超过了单个Host NUMA Node占有的资源时，手动将Guest划分为多个Guest NUMA Node，然后再与 Host NUMA Node对应起来。这样做有助于Guest OS感知到Guest NUMA并优化应用资源调度。（数据库应用）\n\nhw:huma_nodes=N，对于Memory访问延时有高要求的Guest，即可以将vCPU/Memory完全放置到一个Host NUMA Node中，也可以主动将Guest划分为多个Guest NUMA Node，再分配到Host NUMA Node。以此来提高总的访存带宽。（NFV/搜索引擎）\n\n如果N == 1，表示Guest的vCPU/Memory固定从一个Host NUMA Node获取。\n如果N != 1，表示为Guest划分N个Guest NUMA Node，并对应到N个Host NUMA Node上。\n\n\n\n大页内存大页内存：使用大页来进行内存分配，那么将会明显减少CPU页表项，因此会增加页表缓存的命中率，降低内存访问延迟。\n与NUMA不同，如果虚拟机类型中声明了大页内存，则需要主机能够进行预留该内存块。因为这些内存同时也作为该主机上的NUMA节点专用内存，所以必须提前显式声明。例如，如果主机配置了大页内存，也应该从NUMA节点中分配。\n透明巨型页技术允许主机出现内存超配，并且调度程序可以使用该特性。如果主机支持内存预分配，主机将会上报是否支持保留内存或者THP，甚至在严格条件下，可以上报剩余可用内存页数。如果虚拟机使用的主机类型中将huge_pages参数设置为strict时，并且没有主机在单NUMA节点中拥有足够的大页内存可用，调度器将会返回失败。\n12openstack flavor set &lt;FLAVOR-NAME&gt; \\    --property hw:mem_page_size=&lt;PAGE_SIZE&gt;\nPAGE_SIZE有下列4种参数类型。\n\nsmall（默认）：使用最小的page size，例如：4KB，x86架构。\nlarge：只为Guest使用的larger page size，例如：2MB或1GB，x86 架构\nany：由Nova virt drivers决定，不同的driver具有不同的实现。\n：字符串，显式自定义page size，例如：4KB/2MB/2048/1GB。\n\n针对虚拟机的RAM可以启动large page特性，可以有效提供虚拟机性能。\n将大页内存分配给虚拟机，可以不考虑GuestOS是否使用。如果GuestOS不使用，则会识别小页内存。相反，如果GuestOS是需要使用大页内存的，则必须要为虚拟机分配大页内存，否则虚拟机的性能将达不到预期。\n为专有资源虚拟机使用大页内存。这需要主机拥有足够的可用大页内存，并且虚拟机内存大小是大页内存大小的倍数。在主机配置时，为所有虚拟机创建两个资源组，为两个组分配不同的物理内存区域。使用专有资源的虚拟机与共享资源的虚拟机分别使用两个不同的资源组。专用内存的分配的复杂性还在于，主要虚拟机之外，KVM还有许多不同的内存分配的需求，有些虚拟机处理视频内容，会在KVM过程处理I/O请求时，分配任意大小的内存。有些情况下，这也会影响虚拟CPU的使用，因为KVM模拟程序线程代表的就是虚拟机行为。更进一步讲，主机操作系统也需要内存与CPU资源。\n\n设置虚拟机类型参数page_sizes=large，只有当系统中有可用大页内存时，虚拟化程序才启动虚拟机。\n设置虚拟机类型参数page_sizes=any，虚拟化管理程序将会优先尝试大页内存，不可用时，使用小页内存启动虚拟机。\n设置虚拟机类型参数page_sizes=small，虚拟机程序将不选择大页内存启动虚拟机，即使大页内存可用。\n设置虚拟机类型参数page_sizes=1GB，只有当系统中有可用的1GB大页内存时，虚拟化管理程序才启动虚拟机，并且将不会使用2MB的大页内存。\n\n\n\nPCI passthrough可以通过下述属性参数来分配PCI直通设备给虚拟机。\n12openstack flavor set &lt;FLAVOR-NAME&gt; \\    --property pci_passthrough:alias=ALIAS:COUNT\nALIAS：字符串，在nova.conf中配置的特定PCI设备的alias。（PCI alias）COUNT：整数，分配给虚拟机的ALIAS类型的PCI设备数量。\n实现流程\nnova-api对flavor metadata或image property中的NUMA配置信息进行解析，生成Guest NUMA Topology，保存为instance[‘numa_topology’]。\nnova-scheduler通过NUMATopologyFilter判断Host NUMA Topology是否能够满足Guest NUMA Topology，进行ComputeNode调度。\nnova-compute再次通过instance_claim检查Host NUMA资源是否满足建立Guest NUMA。\nnova-compute建立Guest NUMA Node和Host NUMA Node的映射关系，并根据映射关系调用libvirt driver生成XML文件。\n\n1234567891011121314151617181920212223&lt;domain&gt;   &lt;cputune&gt;     /* vCPU与Host NUMA Node的绑定关系，4-7, 12-15在一个Host NUMA Node节点上，0-3,8-11 在另外一个Node上 */    /* cpuset设定的pCPU是由libvirt根据Host NUMA Node资源信息自动分配的 */    &lt;vcpupin vcpu=&quot;0&quot; cpuset=&quot;4-7,12-15&quot;/&gt;      &lt;vcpupin vcpu=&quot;1&quot; cpuset=&quot;4-7,12-15&quot;/&gt;      &lt;vcpupin vcpu=&quot;2&quot; cpuset=&quot;0-3,8-11&quot;/&gt;      &lt;vcpupin vcpu=&quot;3&quot; cpuset=&quot;0-3,8-11&quot;/&gt;      &lt;emulatorpin cpuset=&quot;0-15&quot;/&gt;   &lt;/cputune&gt;  ***  &lt;cpu match=&quot;host-model&quot;&gt;     &lt;model fallback=&quot;allow&quot;/&gt;      &lt;topology sockets=&quot;2&quot; cores=&quot;2&quot; threads=&quot;1&quot;/&gt;      /* Guest NUMA Topology，一个cell表示一个Guest NUMA Node，默认从0开始编号 */    &lt;numa&gt;       /* cpus表示该Guest NUMA Node内包含的vCPU ID */      /* memory表示该Guest NUMA Node包含的Memory大小，单位 KB */      &lt;cell id=&quot;0&quot; cpus=&quot;0-1&quot; memory=&quot;1048576&quot;/&gt;        &lt;cell id=&quot;1&quot; cpus=&quot;2-3&quot; memory=&quot;1048576&quot;/&gt;     &lt;/numa&gt;   &lt;/cpu&gt; &lt;/domain&gt;\n\n对 NUMA 相关数据的解析和处理，提供了以下class。nova/objects/numa.py\n\nNUMACell\nNUMA Cell，定义了NUMA Cell内的基本数据成员。\n\n\nNUMAPagesTopology\nNUMA Page，NUMA Node内存页大小。\n\n\nNUMATopology\nHost的NUMA拓扑，NUMA的基本数据成员，即cells[]\n\n\nNUMATopologyLimits\nNUMA限制，包括CPU和内存超配和网络元数据。\n\n\n\nnova/objects/instance_numa.py\n\nInstanceNUMACell\nGuest NUMA Cell。\n\n\nInstanceNUMATopology\nGuest的NUMA拓扑，NUMA的基本数据成员，即cells[]\n\n\n","dateCreated":"2022-06-20T14:55:16+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2022-06-20T14:55:16+08:00","description":"CPU拓扑","headline":"你不知道的Nova之CPU拓扑","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/","keywords":"Nova","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="CPU拓扑">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="你不知道的Nova之CPU拓扑">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="CPU拓扑">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/images/smp_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/images/smp_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/images/numa.png">
+<meta property="article:published_time" content="2022-06-20T06:55:16.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.151Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Nova">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/images/smp_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            你不知道的Nova之CPU拓扑
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-06-20T14:55:16+08:00">
+	
+		    Jun 20, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#CPU%E6%9E%B6%E6%9E%84"><span class="toc-text">CPU架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#SMP%E6%9E%B6%E6%9E%84"><span class="toc-text">SMP架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#NUMA%E6%9E%B6%E6%9E%84"><span class="toc-text">NUMA架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#MPP%E6%9E%B6%E6%9E%84"><span class="toc-text">MPP架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SMT%E6%9E%B6%E6%9E%84"><span class="toc-text">SMT架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#NUMA%E5%92%8CUMA%E7%9A%84%E5%BC%82%E5%90%8C"><span class="toc-text">NUMA和UMA的异同</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#NUMA%E5%92%8CMPP%E7%9A%84%E5%BC%82%E5%90%8C"><span class="toc-text">NUMA和MPP的异同</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Linux%E4%B8%AD%E7%9A%84NUMA"><span class="toc-text">Linux中的NUMA</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#NUMA%E7%9A%84%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-text">NUMA的基本概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B0%83%E5%BA%A6%E7%AD%96%E7%95%A5"><span class="toc-text">调度策略</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%8E%B7%E5%8F%96%E5%AE%BF%E4%B8%BB%E6%9C%BA%E7%9A%84NUMA%E6%8B%93%E6%89%91"><span class="toc-text">获取宿主机的NUMA拓扑</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A4%E6%96%AD%E7%B3%BB%E7%BB%9F%E6%98%AF%E5%90%A6%E6%94%AF%E6%8C%81NUMA"><span class="toc-text">判断系统是否支持NUMA</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Linux%E5%91%BD%E4%BB%A4lscpu"><span class="toc-text">Linux命令lscpu</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Linux%E5%91%BD%E4%BB%A4numactl"><span class="toc-text">Linux命令numactl</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Bash%E8%84%9A%E6%9C%AC"><span class="toc-text">Bash脚本</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Nova%E4%B8%AD%E7%9A%84NUMA"><span class="toc-text">Nova中的NUMA</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-text">基本概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Nova%E4%B8%AD%E5%AE%9E%E7%8E%B0NUMA%E4%BA%B2%E5%92%8C"><span class="toc-text">Nova中实现NUMA亲和</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%83%8C%E6%99%AF"><span class="toc-text">背景</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E5%8F%91%E8%A1%8C%E7%89%88%E8%AE%B8%E5%8F%AF%E8%AF%81%EF%BC%88Licensing%EF%BC%89"><span class="toc-text">操作系统发行版许可证（Licensing）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#CPU%E6%8B%93%E6%89%91%E5%AF%B9%E5%AE%BF%E4%B8%BB%E6%9C%BA%E6%80%A7%E8%83%BD%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-text">CPU拓扑对宿主机性能的影响</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#CPU%E6%9E%B6%E6%9E%84%E5%AF%B9%E6%80%A7%E8%83%BD%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-text">CPU架构对性能的影响</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B6%85%E7%BA%BF%E7%A8%8B%E5%AF%B9%E6%80%A7%E8%83%BD%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-text">超线程对性能的影响</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#NUMA-Topology"><span class="toc-text">NUMA Topology</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Guest-NUMA-Topology"><span class="toc-text">Guest NUMA Topology</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98"><span class="toc-text">大页内存</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%93%E7%94%A8%E8%B5%84%E6%BA%90%E7%BB%91%E5%AE%9A"><span class="toc-text">专用资源绑定</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E5%85%B1%E4%BA%AB"><span class="toc-text">内存共享</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#PCI%E8%AE%BE%E5%A4%87"><span class="toc-text">PCI设备</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0"><span class="toc-text">实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#CPU%E7%BB%91%E5%AE%9A"><span class="toc-text">CPU绑定</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#NUMA%E4%BA%B2%E5%92%8C"><span class="toc-text">NUMA亲和</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%A7%E9%A1%B5%E5%86%85%E5%AD%98-1"><span class="toc-text">大页内存</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#PCI-passthrough"><span class="toc-text">PCI passthrough</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E6%B5%81%E7%A8%8B"><span class="toc-text">实现流程</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>CPU拓扑是用来描述CPU的组成、向kernel调度器提供重要信息来合理调度CPU的重要因素。首先了解一下几个CPU结构。</p>
+<h1 id="CPU架构"><a href="#CPU架构" class="headerlink" title="CPU架构"></a>CPU架构</h1><h2 id="SMP架构"><a href="#SMP架构" class="headerlink" title="SMP架构"></a>SMP架构</h2><p>SMP（Symmetric multiprocessing，对称多处理），SMP架构由多个具有对称关系的处理器组成。所谓对称，即处理器之间是水平的镜像关系，无主从之分。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/smp_1.png" title="SMP" data-caption="SMP" data-fancybox="default"><img class="fig-img" src="images/smp_1.png" alt="SMP"></a><span class="caption">SMP</span></div>
+
+<p>每个处理器都有自己的L1缓存，共享L2缓存，通过某种互联方式（如系统总线）共享资源如内存和I/O。</p>
+<p>SMP结构的特征就是<strong>多个处理器共享一个集中式存储器</strong>，每个处理器访问存储器的时间片一致，使工作负载能够均匀的分配到所有可用的处理器上，极大提到了整个系统的数据处理能力。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/smp_2.png" title="SMP" data-caption="SMP" data-fancybox="default"><img class="fig-img" src="images/smp_2.png" alt="SMP"></a><span class="caption">SMP</span></div>
+
+<p>虽然系统具有多个处理器，但由于共享一个集中式存储器，所以只会运行一个操作系统和数据库的副本（实例），能够保持单机的特性，同时也要求系统需要保持共享存储器的数据一致性。如果多个处理器同时请求访问这些共享资源，就会引发资源竞态，需要软硬件实现加锁机制来解决这个问题。按照上面的情况，所以SMP是典型的UMA（Uniform Memory Access，一致性内存访问）架构。所谓一致性就是在UMA架构中：</p>
+<ul>
+<li>在任意时刻，多个处理器只能为存储器的每个数据保存或共享一个唯一的数值。</li>
+<li>每个处理器访问存储器所需要的时间都是一致的</li>
+</ul>
+<p>很显然，这样的架构设计注定没法拥有良好的处理器数量扩展性，因为缓存一致性和共享对象。综合来说，SMP架构广泛的适用于PC和移动设备领域，能显著提升并行计算性能。但SMP却不适合超大规模的服务器端场景，例如：云计算。</p>
+<h2 id="NUMA架构"><a href="#NUMA架构" class="headerlink" title="NUMA架构"></a>NUMA架构</h2><p>现代的计算机系统中，处理器的处理速度远快于主存的速度，所以限制计算机性能的瓶颈在存储器带宽上。SMP架构因为限制了处理器访问存储器的频次，所以处理器可能会经常处于对数据访问的饥渴状态。</p>
+<p>NUMA（Non-Uniform Memory Access，非一致性内存访问）架构优化了SMP架构扩展性差以及存储器带宽瓶颈的问题。NUMA的设计理念就是将处理器和存储器划分到不同的节点（NUMA Node），使它们都拥有几乎相同的资源。在NUMA节点内部会通过自己的存储总线访问内部的本地内存，而所有NUMA节点都可以通过主板上的共享总线来访问其他节点的远程内存。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/numa.png" title="NUMA" data-caption="NUMA" data-fancybox="default"><img class="fig-img" src="images/numa.png" alt="NUMA"></a><span class="caption">NUMA</span></div>
+
+<p>显然，处理器访问本地内存和远程内存的耗时并不一致，NUMA非一致性内存访问因此得名。而且因为节点划分并没有实现真正意义上的存储隔离，所以NUMA同样只会保存一份操作系统和数据库系统的副本。</p>
+<p>NUMA多节点的结构设计也在一定程度上解决SMP存储器带宽瓶颈的问题。假设有一个4 NUMA节点的系统，每个NUMA节点内部具有1GB/s的存储带宽，外部共享总线也具有1GB/s的带宽。理想状态下，如果所有的处理器总是访问本地内存的话，那么系统就拥有了4GB/s的存储带宽，此时每个节点可以近似看成一个SMP；相反，在最不理想的情况下，如果所有处理器处理器总是跨节点访问远程内存的话，那么系统就只能有1GB/s的存储带宽了。</p>
+<p>除此之外，使用外部共享总线时，可能会触发NUMA节点间的Cache同步异常，这会严重影响内存密集型工作负载的性能。当I/O性能至关重要时，共享总线上的Cache资源浪费，会让连接到远程PCIe总线上的设备（不同NUMA节点间通信）作业性能急剧下降。</p>
+<p>由于这个特性，基于NUMA开发的应用程序应该尽可能避免跨节点的远程内存访问。因为，跨节点内存访问不仅通信速度慢，还可能需要处理不同节点间内存和缓存的数据一致性。多线程在不同节点间的切换，是需要花费很大成本的。</p>
+<p>虽然NUMA相比于SMP具有更好的处理器扩展性，但因为NUMA没有实现彻底的主存隔离。所以NUMA远没有达到无限扩展的水平，最多可支持几百个CPU。这是为了追求更高的并发性能所作出的妥协，一个节点未必就能完全满足多并发需求，多节点间线程切换实属一个折中的方案。这种做法使得NUMA具有一定的伸缩性，更加适合应用在服务器端。</p>
+<h2 id="MPP架构"><a href="#MPP架构" class="headerlink" title="MPP架构"></a>MPP架构</h2><p>MPP（Massive Parallel Processing，大规模并行处理），既然NUMA扩展性的限制是没有完全实现资源（存储器、互联模块）的隔离性，那么MPP的解决思路就是为处理器提供彻底的独立资源。</p>
+<p>MPP拥有多个真正意义上的独立SMP单元，每个SMP单元独占并且只会访问自己本地的内存、I/O资源，SMP单元间通过节点互联网络进行连接（Data Redistribution，数据重分配），是一个完全无共享（Share Nothing）的CPU计算平台结构。</p>
+<p>MPP的典型特征就是<strong>多个SMP单元组成，单元之间完全无共享</strong>。除此之外，MMP结构还有以下特点：</p>
+<ul>
+<li>每个SMP单元都可以包含一个操作系统副本，所以每个SMP单元都可以运行自己的操作系统。</li>
+<li>MPP需要一种复杂的机制来调度和平衡各个节点的负载和并行处理过程，目前一些基于MPP技术的服务器往往通过系统级软件（数据库）来屏蔽这种复杂性。</li>
+<li>MPP架构的本地区域内访存延迟低于远地访存延迟，因此Linux会自定采用局部节点分配策略，当一个任务请求分配内存时，首先在处理器自身节点内寻找空闲页，如果没有则到相邻的节点寻找空闲页，如果还没有再到远地节点中寻找空闲页，在操作系统层面就实现了访存性能优化。</li>
+</ul>
+<p>因为完全的资源隔离特性，所以MPP的扩展性是最好的，理论上可以无限扩展，目前的技术可以实现512个节点互联，数千个CPU，多应用于大型机。</p>
+<h2 id="SMT架构"><a href="#SMT架构" class="headerlink" title="SMT架构"></a>SMT架构</h2><p>SMT（Simultaneous Multithreading，同步多线程）是一种将硬件多线程与超标量处理器技术相结合的处理器设计。SMT把CPU的每个物理内核拆分为虚拟内核，这些虚拟内核被称为线程，这样做是为了提高性能并允许每个内核一次运行两个指令流。</p>
+<p>SMT是SMP架构的设计补充。SMP架构中的CPU共享一条总线和存储，而SMT架构中CPU共享更多的组件。共享组件的CPU被称为Siblings。所有的CPU在系统上都显示为可用CPU，并且可以执行工作负载。但是，与NUMA一样，都会有线程竞争共享资源的情况。</p>
+<p>Intel Hyper-Threading Technolog（超线程技术）和SMT完全一样，都是允许在每个内核上运行多个线程。</p>
+<h2 id="NUMA和UMA的异同"><a href="#NUMA和UMA的异同" class="headerlink" title="NUMA和UMA的异同"></a>NUMA和UMA的异同</h2><p>NUMA和UMA（SMP）的异同。</p>
+<ul>
+<li>NUMA和SMP中的处理器都可以访问整个系统的物理存储器。</li>
+<li>NUMA采用了分布式存储，提供了分离的存储器给各个节点，避免了SMP中多个处理器无法同时访问单一存储器的问题。</li>
+<li>NUMA节点的处理器访问内部存储器所需的时间，要比访问其他节点的远程存储器要快得多。</li>
+<li>NUMA即保持了SMP单一操作系统备份、简单应用程序编程以及易于管理的特点，又继承了大规模并行处理MPP的可扩展性，是一个折中的方案。</li>
+</ul>
+<h2 id="NUMA和MPP的异同"><a href="#NUMA和MPP的异同" class="headerlink" title="NUMA和MPP的异同"></a>NUMA和MPP的异同</h2><p>NUMA和MPP的相同点。</p>
+<ul>
+<li>它们都是由多个节点组成。</li>
+<li>每个节点都有自己的CPU、内存、I/O。</li>
+<li>节点之间都可以通过节点互联机制进行信息交互。</li>
+</ul>
+<p>NUMA和MPP的不同点。</p>
+<ul>
+<li>节点互联机制不同。<ul>
+<li>NUMA节点互联机制是在同一台物理服务器内部实现的，当某个CPU需要进行异地内存访问时，它必须等待，这也是NUMA服务器无法实现CPU增加时性能线性扩展的主要原因。</li>
+<li>MPP节点互联机制是在不同SMP服务器外部通过I/O实现的，每个节点只访问本地内存和存储，节点之间的信息交互与节点本身的处理是并行进行的。因此，MPP节点在增加节点时，其性能基本上可以实现线性扩展。</li>
+</ul>
+</li>
+<li>内存访问机制不同。<ul>
+<li>在NUMA服务器内部，任何一个CPU都可以访问整个系统的内存，但异地内存访问的性能远低于本地内存访问，因此，在开发应用时应该尽量避免异地内存访问。</li>
+<li>在MPP服务器中，每个节点只访问本地内存，不存在异地内存访问的问题。</li>
+</ul>
+</li>
+</ul>
+<h1 id="Linux中的NUMA"><a href="#Linux中的NUMA" class="headerlink" title="Linux中的NUMA"></a>Linux中的NUMA</h1><h2 id="NUMA的基本概念"><a href="#NUMA的基本概念" class="headerlink" title="NUMA的基本概念"></a>NUMA的基本概念</h2><ul>
+<li>Node：包含有若干个物理CPU的组。</li>
+<li>Socket：表示一颗物理CPU的封装（物理CPU插槽），简称插槽。为了避免将逻辑处理器和物理处理器混淆，Intel将物理处理器称为插槽。</li>
+<li>Core：Socket内含有的物理核。</li>
+<li>Thread：在具有Intel超线程技术的处理器上，每个Core可以被虚拟为若干个（通常为2个）逻辑处理器，逻辑处理器会共享大多数内核资源（内存缓存、功能单元）。逻辑处理器被统称为Thread。</li>
+<li>Processor：处理器的统称，可以区分为物理处理器（Physical Processor）和逻辑处理器（Virtual Processor）。对于大多数应用程序而言，它们并不关心处理器是物理的还是逻辑的。</li>
+<li>Siblings：相同物理封装（Socket）中的逻辑处理器（Virtual Processor）的数量。Siblings的个数和CPU是否打开超线程有关。如果打开超线程，Siblings = 2 * Core（物理核心）的个数；关闭超线程，Siblings = Core（物理核心）的个数。</li>
+</ul>
+<p>包含关系：NUMA Node &gt; Socket &gt; Silblings &gt;= Core &gt; Thread</p>
+<h2 id="调度策略"><a href="#调度策略" class="headerlink" title="调度策略"></a>调度策略</h2><p>Linux的每个进程或线程都会延续父进程的NUMA策略，优先会将其约束在同一个NUMA Node内。当然，如果NUMA策略允许的话，进程也可以调用其他Node上的资源。</p>
+<p>NUMA的CPU分配策略有下列两种：</p>
+<ul>
+<li>cpunodebind：规定进程运行在指定的若干个node内。</li>
+<li>physcpubind：规定进程运行在指定的若干个物理CPU内。</li>
+</ul>
+<p>NUMA的内存分配策略有下列4种：</p>
+<ul>
+<li>localalloc：规定进程只能从当前Node（本地）请求分配内存。</li>
+<li>preferred：宽松地为进程指定一个优先Node获取内存，如果优先Node上没有足够的内存资源，那么进程允许尝试别的Node。</li>
+<li>membind：规定进程只能从指定的若干个Node上请求分配内存。</li>
+<li>interleave：规定进程可以使用RR（Round Robin 轮询调度）算法轮转地从指定的若干个Node中请求分配内存。</li>
+</ul>
+<p>因为NUMA默认的内存分配策略是localalloc，优先在进程所在CPU的本地内存中分配，会导致CPU节点之间内存分配不均衡，当某个CPU节点的内存不足时，会导致Swap产生，而不是从远程节点分配内存。这就是所谓的Swap Insanity现象。</p>
+<h2 id="获取宿主机的NUMA拓扑"><a href="#获取宿主机的NUMA拓扑" class="headerlink" title="获取宿主机的NUMA拓扑"></a>获取宿主机的NUMA拓扑</h2><h3 id="判断系统是否支持NUMA"><a href="#判断系统是否支持NUMA" class="headerlink" title="判断系统是否支持NUMA"></a>判断系统是否支持NUMA</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">dmesg | grep -i numa</span><br><span class="line">[    0.007710] NUMA: Initialized distance table, cnt=8</span><br><span class="line">[    0.007712] NUMA: Node 0 [mem 0x00000000-0x0009ffff] + [mem 0x00100000-0x7fffffff] -&gt; [mem 0x00000000-0x7fffffff]</span><br><span class="line">[    0.007714] NUMA: Node 0 [mem 0x00000000-0x7fffffff] + [mem 0x100000000-0x107fffffff] -&gt; [mem 0x00000000-0x107fffffff]</span><br><span class="line">[    1.825227] mempolicy: Enabling automatic NUMA balancing. Configure with numa_balancing= or the kernel.numa_balancing sysctl</span><br><span class="line">[    3.324096] pci_bus 0000:00: on NUMA node 0</span><br><span class="line">[    3.329176] pci_bus 0000:10: on NUMA node 1</span><br><span class="line">[    3.332958] pci_bus 0000:20: on NUMA node 2</span><br><span class="line">[    3.337737] pci_bus 0000:30: on NUMA node 3</span><br><span class="line">[    3.343137] pci_bus 0000:40: on NUMA node 4</span><br><span class="line">[    3.347268] pci_bus 0000:50: on NUMA node 5</span><br><span class="line">[    3.350978] pci_bus 0000:60: on NUMA node 6</span><br><span class="line">[    3.354477] pci_bus 0000:70: on NUMA node 7</span><br></pre></td></tr></table></figure>
+<p>如果输出上述内容则表示支持NUMA，如果输出No NUMA configuration found则表示不支持。</p>
+<h3 id="Linux命令lscpu"><a href="#Linux命令lscpu" class="headerlink" title="Linux命令lscpu"></a>Linux命令lscpu</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line">lscpu</span><br><span class="line"></span><br><span class="line"><span class="comment"># 架构</span></span><br><span class="line">Architecture:        x86_64</span><br><span class="line">CPU op-mode(s):      32-bit, 64-bit</span><br><span class="line">Byte Order:          Little Endian</span><br><span class="line"></span><br><span class="line"><span class="comment"># 逻辑CPU个数</span></span><br><span class="line">CPU(s):              128</span><br><span class="line">On-line CPU(s) list: 0-127</span><br><span class="line"></span><br><span class="line"><span class="comment"># 每个核心超线程数</span></span><br><span class="line">Thread(s) per core:  2</span><br><span class="line"></span><br><span class="line"><span class="comment"># 每个核心CPU数</span></span><br><span class="line">Core(s) per socket:  32</span><br><span class="line"></span><br><span class="line"><span class="comment"># 物理CPU个数</span></span><br><span class="line">Socket(s):           2</span><br><span class="line"></span><br><span class="line"><span class="comment"># NUMA节点个数</span></span><br><span class="line">NUMA node(s):        8</span><br><span class="line">Vendor ID:           HygonGenuine</span><br><span class="line">CPU family:          24</span><br><span class="line">Model:               1</span><br><span class="line">Model name:          Hygon C86 7285 32-core Processor</span><br><span class="line">Stepping:            1</span><br><span class="line"></span><br><span class="line"><span class="comment"># CPU主频</span></span><br><span class="line">CPU MHz:             2489.534</span><br><span class="line">CPU max MHz:         2000.0000</span><br><span class="line">CPU min MHz:         1200.0000</span><br><span class="line">BogoMIPS:            4000.20</span><br><span class="line"></span><br><span class="line"><span class="comment"># 虚拟化类型支持</span></span><br><span class="line">Virtualization:      AMD-V</span><br><span class="line"></span><br><span class="line"><span class="comment"># cache</span></span><br><span class="line">L1d cache:           32K</span><br><span class="line">L1i cache:           64K</span><br><span class="line">L2 cache:            512K</span><br><span class="line">L3 cache:            8192K</span><br><span class="line"></span><br><span class="line"><span class="comment"># 逻辑CPU以及NUMA映射</span></span><br><span class="line">NUMA node0 CPU(s):   0-7,64-71</span><br><span class="line">NUMA node1 CPU(s):   8-15,72-79</span><br><span class="line">NUMA node2 CPU(s):   16-23,80-87</span><br><span class="line">NUMA node3 CPU(s):   24-31,88-95</span><br><span class="line">NUMA node4 CPU(s):   32-39,96-103</span><br><span class="line">NUMA node5 CPU(s):   40-47,104-111</span><br><span class="line">NUMA node6 CPU(s):   48-55,112-119</span><br><span class="line">NUMA node7 CPU(s):   56-63,120-127</span><br><span class="line">Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid amd_dcm aperfmperf pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb hw_pstate sme ssbd sev ibpb vmmcall fsgsbase bmi1 avx2 smep bmi2 rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves clzero irperf xsaveerptr arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif overflow_recov succor smca</span><br></pre></td></tr></table></figure>
+
+<h3 id="Linux命令numactl"><a href="#Linux命令numactl" class="headerlink" title="Linux命令numactl"></a>Linux命令numactl</h3><p>查看NUMA拓扑</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">numactl  --hardware</span><br><span class="line">available: 8 nodes (0-7)</span><br><span class="line">node 0 cpus: 0 1 2 3 4 5 6 7 64 65 66 67 68 69 70 71</span><br><span class="line">node 0 size: 64349 MB</span><br><span class="line">node 0 free: 866 MB</span><br><span class="line">node 1 cpus: 8 9 10 11 12 13 14 15 72 73 74 75 76 77 78 79</span><br><span class="line">node 1 size: 64483 MB</span><br><span class="line">node 1 free: 11573 MB</span><br><span class="line">node 2 cpus: 16 17 18 19 20 21 22 23 80 81 82 83 84 85 86 87</span><br><span class="line">node 2 size: 0 MB</span><br><span class="line">node 2 free: 0 MB</span><br><span class="line">node 3 cpus: 24 25 26 27 28 29 30 31 88 89 90 91 92 93 94 95</span><br><span class="line">node 3 size: 0 MB</span><br><span class="line">node 3 free: 0 MB</span><br><span class="line">node 4 cpus: 32 33 34 35 36 37 38 39 96 97 98 99 100 101 102 103</span><br><span class="line">node 4 size: 64508 MB</span><br><span class="line">node 4 free: 5046 MB</span><br><span class="line">node 5 cpus: 40 41 42 43 44 45 46 47 104 105 106 107 108 109 110 111</span><br><span class="line">node 5 size: 64480 MB</span><br><span class="line">node 5 free: 12262 MB</span><br><span class="line">node 6 cpus: 48 49 50 51 52 53 54 55 112 113 114 115 116 117 118 119</span><br><span class="line">node 6 size: 0 MB</span><br><span class="line">node 6 free: 0 MB</span><br><span class="line">node 7 cpus: 56 57 58 59 60 61 62 63 120 121 122 123 124 125 126 127</span><br><span class="line">node 7 size: 0 MB</span><br><span class="line">node 7 free: 0 MB</span><br><span class="line">node distances:</span><br><span class="line">node   0   1   2   3   4   5   6   7</span><br><span class="line">  0:  10  16  16  16  28  28  22  28</span><br><span class="line">  1:  16  10  16  16  28  28  28  22</span><br><span class="line">  2:  16  16  10  16  22  28  28  28</span><br><span class="line">  3:  16  16  16  10  28  22  28  28</span><br><span class="line">  4:  28  28  22  28  10  16  16  16</span><br><span class="line">  5:  28  28  28  22  16  10  16  16</span><br><span class="line">  6:  22  28  28  28  16  16  10  16</span><br><span class="line">  7:  28  22  28  28  16  16  16  10</span><br></pre></td></tr></table></figure>
+
+<p>查看NUMA策略</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">numactl  --show</span><br><span class="line">policy: default</span><br><span class="line">preferred node: current</span><br><span class="line">physcpubind: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127</span><br><span class="line">cpubind: 0 1 4 5</span><br><span class="line">nodebind: 0 1 4 5</span><br><span class="line">membind: 0 1 4 5</span><br></pre></td></tr></table></figure>
+
+<h3 id="Bash脚本"><a href="#Bash脚本" class="headerlink" title="Bash脚本"></a>Bash脚本</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> <span class="function"><span class="title">get_nr_processor</span></span>()</span><br><span class="line">&#123;</span><br><span class="line">   grep <span class="string">&#x27;^processor&#x27;</span> /proc/cpuinfo | <span class="built_in">wc</span> -l</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> <span class="function"><span class="title">get_nr_socket</span></span>()</span><br><span class="line">&#123;</span><br><span class="line">   grep <span class="string">&#x27;physical id&#x27;</span> /proc/cpuinfo | awk -F: <span class="string">&#x27;&#123;</span></span><br><span class="line"><span class="string">           print $2 | &quot;sort -un&quot;&#125;&#x27;</span> | <span class="built_in">wc</span> -l</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> <span class="function"><span class="title">get_nr_siblings</span></span>()</span><br><span class="line">&#123;</span><br><span class="line">   grep <span class="string">&#x27;siblings&#x27;</span> /proc/cpuinfo | awk -F: <span class="string">&#x27;&#123;</span></span><br><span class="line"><span class="string">           print $2 | &quot;sort -un&quot;&#125;&#x27;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> <span class="function"><span class="title">get_nr_cores_of_socket</span></span>()</span><br><span class="line">&#123;</span><br><span class="line">   grep <span class="string">&#x27;cpu cores&#x27;</span> /proc/cpuinfo | awk -F: <span class="string">&#x27;&#123;</span></span><br><span class="line"><span class="string">           print $2 | &quot;sort -un&quot;&#125;&#x27;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;===== CPU Topology Table =====&#x27;</span></span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;+--------------+---------+-----------+&#x27;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;| Processor ID | Core ID | Socket ID |&#x27;</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;+--------------+---------+-----------+&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="built_in">read</span> line; <span class="keyword">do</span></span><br><span class="line">   <span class="keyword">if</span> [ -z <span class="string">&quot;<span class="variable">$line</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">       <span class="built_in">printf</span> <span class="string">&#x27;| %-12s | %-7s | %-9s |\n&#x27;</span> <span class="variable">$p_id</span> <span class="variable">$c_id</span> <span class="variable">$s_id</span></span><br><span class="line">       <span class="built_in">echo</span> <span class="string">&#x27;+--------------+---------+-----------+&#x27;</span></span><br><span class="line">       <span class="built_in">continue</span></span><br><span class="line">   <span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">   <span class="keyword">if</span> <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | grep -q <span class="string">&quot;^processor&quot;</span>; <span class="keyword">then</span></span><br><span class="line">       p_id=`<span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | awk -F: <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> | <span class="built_in">tr</span> -d <span class="string">&#x27; &#x27;</span>`</span><br><span class="line">   <span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">   <span class="keyword">if</span> <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | grep -q <span class="string">&quot;^core id&quot;</span>; <span class="keyword">then</span></span><br><span class="line">       c_id=`<span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | awk -F: <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> | <span class="built_in">tr</span> -d <span class="string">&#x27; &#x27;</span>`</span><br><span class="line">   <span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">   <span class="keyword">if</span> <span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | grep -q <span class="string">&quot;^physical id&quot;</span>; <span class="keyword">then</span></span><br><span class="line">       s_id=`<span class="built_in">echo</span> <span class="string">&quot;<span class="variable">$line</span>&quot;</span> | awk -F: <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> | <span class="built_in">tr</span> -d <span class="string">&#x27; &#x27;</span>`</span><br><span class="line">   <span class="keyword">fi</span></span><br><span class="line"><span class="keyword">done</span> &lt; /proc/cpuinfo</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"></span><br><span class="line">awk -F: <span class="string">&#x27;&#123;</span></span><br><span class="line"><span class="string">   if ($1 ~ /processor/) &#123;</span></span><br><span class="line"><span class="string">       gsub(/ /,&quot;&quot;,$2);</span></span><br><span class="line"><span class="string">       p_id=$2;</span></span><br><span class="line"><span class="string">   &#125; else if ($1 ~ /physical id/)&#123;</span></span><br><span class="line"><span class="string">       gsub(/ /,&quot;&quot;,$2);</span></span><br><span class="line"><span class="string">       s_id=$2;</span></span><br><span class="line"><span class="string">       arr[s_id]=arr[s_id] &quot; &quot; p_id</span></span><br><span class="line"><span class="string">   &#125;</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">END&#123;</span></span><br><span class="line"><span class="string">   for (i in arr)</span></span><br><span class="line"><span class="string">       printf &quot;Socket %s:%s\n&quot;, i, arr[i];</span></span><br><span class="line"><span class="string">&#125;&#x27;</span> /proc/cpuinfo</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;===== CPU Info Summary =====&#x27;</span></span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"></span><br><span class="line">nr_processor=`get_nr_processor`</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Logical processors: <span class="variable">$nr_processor</span>&quot;</span></span><br><span class="line"></span><br><span class="line">nr_socket=`get_nr_socket`</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Physical socket: <span class="variable">$nr_socket</span>&quot;</span></span><br><span class="line"></span><br><span class="line">nr_siblings=`get_nr_siblings`</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Siblings in one socket: <span class="variable">$nr_siblings</span>&quot;</span></span><br><span class="line"></span><br><span class="line">nr_cores=`get_nr_cores_of_socket`</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Cores in one socket: <span class="variable">$nr_cores</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">let</span> nr_cores*=nr_socket</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Cores in total: <span class="variable">$nr_cores</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> [ <span class="string">&quot;<span class="variable">$nr_cores</span>&quot;</span> = <span class="string">&quot;<span class="variable">$nr_processor</span>&quot;</span> ]; <span class="keyword">then</span></span><br><span class="line">   <span class="built_in">echo</span> <span class="string">&quot;Hyper-Threading: off&quot;</span></span><br><span class="line"><span class="keyword">else</span></span><br><span class="line">   <span class="built_in">echo</span> <span class="string">&quot;Hyper-Threading: on&quot;</span></span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;===== END =====&#x27;</span></span><br></pre></td></tr></table></figure>
+<p>运行结果。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">Socket 0: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95</span><br><span class="line">Socket 1: 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127</span><br><span class="line"></span><br><span class="line">===== CPU Info Summary =====</span><br><span class="line"></span><br><span class="line">Logical processors: 128</span><br><span class="line">Physical socket: 2</span><br><span class="line">Siblings <span class="keyword">in</span> one socket:  64</span><br><span class="line">Cores <span class="keyword">in</span> one socket:  32</span><br><span class="line">Cores <span class="keyword">in</span> total: 64</span><br><span class="line">Hyper-Threading: on</span><br><span class="line"></span><br><span class="line">===== END =====</span><br></pre></td></tr></table></figure>
+
+<h1 id="Nova中的NUMA"><a href="#Nova中的NUMA" class="headerlink" title="Nova中的NUMA"></a>Nova中的NUMA</h1><p>在Icehouse版本之前，Nova定义的libvirt.xml，不会考虑宿主机NUMA的情况。导致Libvirt在默认情况下，有可能发生跨NUMA Node获取CPU/Memory资源的情况，导致Guest性能下降。Openstack在Juno版本中新增NUMA特性，用户可以通过将Guest的vCPU/Memory绑定到宿主机NUMA Node上，以此来提升Guest的性能。</p>
+<h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><p>除了上文中提到的NUMA的基本概念之外，Nova还自定义一些对象概念。</p>
+<ul>
+<li>Cell：NUMA Node的同义词，供Libvirt API使用。</li>
+<li>vCPU：虚拟机的CPU，根据虚拟机NUMA拓扑的不同，一个虚拟CPU可以是一个Socket、Core或者Thread。</li>
+<li>pCPU：宿主机的CPU，根据宿主机NUMA拓扑的不同，一个物理CPU可以是一个Socket、Core或者Thread。</li>
+<li>Siblings Tread：兄弟线程，即由同一个Core超线程出来的Thread。</li>
+<li>Host NUMA Topology：宿主机的NUMA拓扑。</li>
+<li>Instance NUMA Topology（Guest NUMA Topology）：虚拟机的NUMA拓扑。</li>
+</ul>
+<h2 id="Nova中实现NUMA亲和"><a href="#Nova中实现NUMA亲和" class="headerlink" title="Nova中实现NUMA亲和"></a>Nova中实现NUMA亲和</h2><h3 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h3><h4 id="操作系统发行版许可证（Licensing）"><a href="#操作系统发行版许可证（Licensing）" class="headerlink" title="操作系统发行版许可证（Licensing）"></a>操作系统发行版许可证（Licensing）</h4><p>根据不同的操作系统发行版许可证，可能会严格约束操作系统能够支持的最大Sockets数量，同时也就约束了服务器上可运行虚拟机的数量。所以，此时应该更加偏向于使用Core来作为vCPU，而不是Socket。</p>
+<p>OpenStack管理员应该遵从操作系统许可需求，限制虚拟机使用的CPU拓扑（e.g. max_sockets=2）。设置默认的CPU拓扑参数，在保证GuestOS镜像能够满足许可证的同时，又不必让每个用户都单独去设置镜像属性。</p>
+<h4 id="CPU拓扑对宿主机性能的影响"><a href="#CPU拓扑对宿主机性能的影响" class="headerlink" title="CPU拓扑对宿主机性能的影响"></a>CPU拓扑对宿主机性能的影响</h4><p>宿主机CPU拓扑的方式对其自身性能（Performance）具有很大影响。</p>
+<ul>
+<li><strong>单Socket单Core拓扑（单核结构）</strong>：一个Socket只集成了一个Core。对于多线程程序，主要是通过时间片轮转来获得CPU的执行权，实际上是串行执行，没有做到并行执行。</li>
+<li><strong>单Socket多Core拓扑（多核结构）</strong>：一个Socket集成了多个水平对称（镜像）的Core，Core之间通过CPU内部数据总线通信。对于多线程程序，可以通过多Core实现真正的并行执行。不过对于并发数或线程数要大于Core数的程序而言，多核结构存在线程（上下文）切换问题。这会带来一定的开销，但好在使用的是CPU内部数据总线，所以开销会比较低。除此之外，还因为多Core是水平镜像的，所以每个Core都有着自己的Cache，在某些需要使用共享数据（共享数据很可能会被Cache住）的场景中，存在多核Cache数据一致性的问题，这也会带来一些开销。</li>
+<li><strong>多Socket单Core拓扑</strong>：多Socket之间通过主板上的总线进行通信，集成为一个统一的计算平台。每一个Socket都拥有独立的内部数据总线和Cache。对于多线程程序，可以通过多Socket来实现并行执行。不同于单Socket多Core拓扑，多Socket单Core拓扑的线程切换以及Socket间通信走的都是外部总线，所以开销会比使用CPU内部数据总线高得多、延时也更长。当然，在使用共享数据的场景中，也同样存在多Socket间Cache一致性的问题。多Socket拓扑的性能瓶颈在于Socket间的I/O通讯成本。</li>
+<li><strong>超线程拓扑（Hyper-Threading）</strong>：将一个Core虚拟为多个Thread（逻辑处理器），实现一个Core也可以并行执行多个线程。Thread拥有自己的寄存器和中断逻辑，不过Thread之间会共享执行单元（ALU逻辑运算单元）和Cache，所以性能提升是比较有限的，但也非常极致了。</li>
+<li><strong>多Socket多Core超线程拓扑</strong>：具有多个Socket，每个Socket又包含多个Core，每个Core又虚拟出多个Thread。是上述拓扑类型的集大成者，拥有最好的性能和最先进的工艺，常见于企业级的服务器产品，例如：MPP，NUMA计算平台系统。</li>
+</ul>
+<p>多Socket单Core拓扑的多线程，Socket间协作要通过外部总线通信，在不同Socket上执行的线程间的共享数据可能会同时存放在不同的Socket Cache上，所以要保证不同Cache的数据一致性。具有通信开销大，线程切换开销大，Cache数据一致性难维持，多Socket占位面积大，集成布线工艺难等问题。</p>
+<p>单Socket多Core拓扑的多线程，每个Core处理一个线程，支持并发。具有多Core之间通信开销小，Socket占位面积小等优势。但是，当需要运行多个“大程序”（一个程序就可以将内存、Cache、Core 占满）的话，就相当于多个大程序需要通过分时切片来使用CPU。此时，程序间的上下文（指令、数据替换）切换消耗将会是巨大的。所以单Socket多Core拓扑在多任务、高并发、高消耗内存的程序运行环境中效率会变得非常低下（大程序会独占一个Socket)。</p>
+<p>综上，对于程序规模小的应用场景，建议使用单Socket多Core拓扑，例如个人PC；对于多大规模程序的应用场景（云计算服务器端），建议使用多Socket单Core甚至是多Socket多Core超线程的组合，为每个程序分配到单个CPU，为每个程序的线程分配到单个CPU中的Core。</p>
+<h4 id="CPU架构对性能的影响"><a href="#CPU架构对性能的影响" class="headerlink" title="CPU架构对性能的影响"></a>CPU架构对性能的影响</h4><p>CPU架构对并发程序设计而言，主要需要考虑两个问题，一个是内存可见性问题，一个是Cache一致性问题。前者属于并发安全问题，后者则属于性能范畴的问题。</p>
+<ul>
+<li>内存可见性问题：该问题在单处理器或单线程情况下是不会发生的。但在多线程环境中，因为线程会被分配到不同的Core上执行，所以会出现Core1和Core2可能会同时把主存中某个位置的值load到自己的一级缓存中，而Core1修改了自己一级缓存中的值后，却不更新主存中对应的值，这样对于Core2来说，将永远看不到Core1对值的修改，从而导致不能保证并发安全性。</li>
+<li>Cache一致性问题：假如Core1和Core2同时把主存中的值load到自己的一级缓存，Core1将值修改后，会通过BUS总线让Core2中的值失效。Core2发现自己一级缓存中的值失效后，会再通过BUS总线从主存中得到最新的值。但是，总线的通信带宽是固定的，通过总线来进行各CPU一级缓存数据同步的动作会产生很大的流量，从而总线成为了性能的瓶颈。可以通过减小数据同步竞争来减少Cache一致性的流量。</li>
+</ul>
+<h4 id="超线程对性能的影响"><a href="#超线程对性能的影响" class="headerlink" title="超线程对性能的影响"></a>超线程对性能的影响</h4><p>需要注意的是，超线程技术并非万能药。从Intel和VMware对外公开的资料看，开启超线程后，Core的总计算能力是否提升以及提升的幅度和业务模型相关，平均提升在20%-30%左右。但超线程对Core的执行资源的争抢，业务的执行时延也会相应增加。当超线程相互竞争时，超线程的计算能力相比不开超线程时的物理核甚至会下降30%左右。所以，超线程应该关闭还是开启，主要还是取决于应用模型。</p>
+<p>现在很多应用，比如Web App，大多会采用多Worker设计，在超线程的帮助下，两个被调度到同一个Core下不同Thread的Worker，由于Threads共享 Cache和TLB（Translation Lookaside Buffer，转换检测缓冲区），所以能够大幅降低Workers线程切换的开销。另外，在某个Worker不忙的时候，超线程允许其它的Worker先使用物理计算资源，以此来提升Core的整体吞吐量。</p>
+<ul>
+<li>对于时延敏感型任务，比如用户需要及时响应任务运行结果的场景，在节点负载过高，引发超线程竞争时，任务的执行时长会显著增加，导致影响用户体验。所以，不推荐计算密集型和时延敏感型任务使用超线程技术。</li>
+<li>对于后台计算型任务，它不要求单个任务的响应速度，比如超算中心上运行的后台计算型任务（一般要运行数小时或数天），就建议开启超线程来提高整个计算节点的吞吐量。</li>
+</ul>
+<p>即便在对虚拟机性能要求不高的场景中，除非我们将虚拟机的CPU和宿主机的超线程一一绑定，否则并不建议应该使用超线程技术，pCPU应该被映射为一个Socket或Core。换句话说，如果我们希望开启Nova Compute Node的超线程功能，那么我会建议你使用CPU绑定功能来将虚拟机的vCPU绑定到某一个 pCPU（此时pCPU映射为一个Thread）上。</p>
+<h4 id="NUMA-Topology"><a href="#NUMA-Topology" class="headerlink" title="NUMA Topology"></a>NUMA Topology</h4><p>现在的服务器基本都支持NUMA拓扑，上文已经提到过，主要驱动NUMA体系结构应用的因素是NUMA具有的高存储访问带宽、有效的Cache效率以及灵活PCIe I/O 设备的布局设计。但由于NUMA跨节点远程内存访问不仅延时高、带宽低、消耗大，还可能需要处理数据一致性的问题。因此，虚拟机的vCPU和内存在NUMA节点上的错误布局，将会导宿主机资源的严重浪费，这将抹掉任何内存与CPU决策所带来的好处。所以，<strong>标准的策略是尽量将一个虚拟机完全局限在单个NUMA节点内</strong>。</p>
+<h4 id="Guest-NUMA-Topology"><a href="#Guest-NUMA-Topology" class="headerlink" title="Guest NUMA Topology"></a>Guest NUMA Topology</h4><p>将虚拟机的vCPU/Mem完全局限在单个NUMA节点内是最佳的方案，但假如分配给虚拟机的vCPU数量以及内存大小超过了一个NUMA节点所拥有的资源呢？此时必须针对大资源需求的虚拟机设计出合适的策略，Guest NUMA Topology的概念也是为此而提出。</p>
+<p>这些策略或许禁止创建超出单一NUMA节点拓扑的虚拟机，或许允许虚拟机跨多NUMA节点运行。并且在虚拟机迁移时，允许更改这些策略。也就是说，在对宿主机（Compute Node）进行维护时，接收临时降低性能而选择次优的NUMA拓扑布局。当然了，NUMA 拓扑布局的问题还需要考虑到虚拟机的具体使用场景，例如，NFV虚拟机的部署就会强制的要求严格的NUMA拓扑布局。</p>
+<p>如果虚拟机具有多个Guest NUMA Node，为了让操作系统能最大化利用其分配到的资源，宿主机的NUMA拓扑就必须暴露给虚拟机。让虚拟机的Guest NUMA Node与宿主机的Host NUMA Node进行关联映射。这样可以映射大块的虚拟机内存到宿主机内存，和设置vCPU与pCPU的映射。</p>
+<p>Guest NUMA Topology实际上是将一个大资源需求的虚拟机划分为多个小资源需求的虚拟机，将多个Guest NUMA Node分别绑定到不同的Host NUMA Node。这样做是因为虚拟机内部运行的工作负载同样会遵守NUMA节点原则，最终的效果实际上就是虚拟机的工作负载依旧有效的被限制在了一个Host NUMA Node内。也就是说，如果虚拟机有4 vCPU需要跨两个Host NUMA Node，vCPU 0/1 绑定到Host NUMA Node 1，而vCPU 2/3绑定到Host NUMA Node 2上。然后虚拟机内的DB应用分配到vCPU 0/1，Web应用分配到vCPU 2/3，这样实际就是DB应用和Web应用的线程始终被限制在了同一个 Host NUMA Node上。但是，Guest NUMA Topology并不强制将vCPU与对应的Host NUMA Node中特定的pCPU进行绑定，这可以由操作系统调度器来隐式完成。只是如果宿主机开启了超线程，则要求将超线程特性暴露给虚拟机，并在NUMA Node内绑定vCPU与pCPU的关系。否则vCPU会被分配给Siblings Thread，由于超线程竞争，性能远不如将vCPU分配到Socket或Core的好。</p>
+<ul>
+<li>如果Guest的vCPU/RAM分配大于单个Host NUAM Node，那么应该划分为多个Guest NUMA Topology，并分别映射到不同的Host NUMA Node上。</li>
+<li>如果Host开启了超线程，那么应该在单个Host NUMA Node上进行vCPU和pCPU的绑定，否则vCPU会被分配给Siblings Thread，性能不如物理Core好。</li>
+</ul>
+<h4 id="大页内存"><a href="#大页内存" class="headerlink" title="大页内存"></a>大页内存</h4><p>绝大多数现代CPU支持多种内存页尺寸，从4KB到2MB/4MB，最大可以达到1GB；所有处理器都默认使用最小的4KB页。如果大量的内存可以使用大页进行分配，将会明显减少CPU页表项，因此会增加页表缓存的命中率，降低内存访问延迟。</p>
+<p>如果操作系统使用默认的小页内存，随着运行时间，系统会出现越来越多的碎片，以至于很难申请到大页的内存。在大页内存大小越大时，该问题越严重。因此，如果有使用大页内存的需求，最好的办法是在系统启动时就预留好内存空间。</p>
+<p>当前的Linux内核不允许针对特定的NUMA节点进行这样的设定，不过，在不久的将来这个限制将被取消。更进一步的限制是，由于MMIO空洞的存在，内存开始的1GB不能使用1GB的大页。Linux内核已经支持透明巨型页（THP，Transparent Huge Pages）特性。该特性会尝试为应用程序预分配大页内存。依赖该特性的一个问题是，虚拟机的拥有者，并不能保证给虚拟机使用的是大页内存还是小页内存。</p>
+<p>内存块是直接指定给特定的NUMA节点的，这就意味着大页内存也是直接存在于NUMA节点上的。因此在NUMA节点上分配虚拟机时，计算服务需要考虑在NUMA节点或者主机上可能会用到的大页内存（NUMA Node或Host存在哪一些大页内存类型和数量状况）。为虚拟机内存启用大页内存时，可以不用考虑虚拟机操作系统是否会使用。</p>
+<ul>
+<li>有使用大页内存的需求，需要在系统启动时就预留好内存空间，Linux内核使用THP来实现，但也存在着问题。</li>
+<li>如果希望让虚拟机使用大页内存，那么应该收集NUMA节点所拥有的内存页类型和数量信息。</li>
+</ul>
+<h4 id="专用资源绑定"><a href="#专用资源绑定" class="headerlink" title="专用资源绑定"></a>专用资源绑定</h4><p>计算节点可以配置CPU与内存的超配比例，例如，16个物理CPU可以允许使用成256个虚拟CPU，16GB内存可以允许使用24GB虚拟机内存。</p>
+<p>超配的概念可以扩展到基本的NUMA布局，但是一旦提到大页内存，内存便不能再进行超配。当使用大页内存时，虚拟机内存页必须与主机内存页一一映射，并且主机操作系统能通过交换分区分配大页内存，这也排除了内存超配的可能。但是大页内存的使用，意味着需要支持内存作为专用资源的虚拟机类型。尽管设置专用资源时，不会超配内存与CPU，但是CPU与内存的资源仍然需要主机操作系统提前预留。如果使用大页内存。必须在主机操作系统中明确预留。</p>
+<p>对于CPU则有一些灵活性。因为尽管使用专用资源绑定CPU，主机操作系统依然会使用这些CPU的一些时间。不管怎么样，需要预留一定的物理CPU专门为宿主机操作系统服务，以避免操作系统过多占用虚拟机CPU，而造成对虚拟机性能的影响。Nova可以保留一部分CPU专门为操作系统服务，这部分功能将会在后续的设计中加强。</p>
+<p>允许内存超配时，超出主机内存的部分将会使用到Swap。Swap将会影响主机整体I/O性能，所以尽量不要把需要专用内存的虚拟机与允许内存超配的虚拟机放在同一台物理主机上。</p>
+<p>如果专用CPU的虚拟机与允许超配的虚拟机竞争CPU，由于Cache的影响，将会严重影响专用CPU的虚拟机的性能，特别在同一个NUMA单元上时。因此，最好将使用专用CPU的虚拟机与允许超配的虚拟机放在不同的主机上，其次是不同的 NUMA 单元上。</p>
+<ul>
+<li>确定虚拟机支不支持使用大页内存。</li>
+<li>大页内存需要明确的在物理主机中预留。</li>
+<li>为了虚拟机能够更加好的“独占”物理CPU，一般的，也会预留一些物理CPU资源给宿主机使用。</li>
+<li>尽量不要将占用专用内存的虚拟机与使用内存超配的虚拟机放到同一个物理主机中运行。</li>
+<li>尽量不要将占用专用CPU的虚拟机与使用CPU超配的虚拟机放到同一个物理主机中运行，其次是不要放到同一个NUMA Node中运行。</li>
+</ul>
+<h4 id="内存共享"><a href="#内存共享" class="headerlink" title="内存共享"></a>内存共享</h4><p>Linux内核有一项特性，叫做内核共享存储（KSM），该特性可以使得不同的处理器共享相同内容的内存页。内核会主动扫描内存，合并内容相同的内存页。如果有处理器改变这个共享的内存页时，会采用CoW的方式写入新的内存页。</p>
+<p>当一台主机上的多台虚拟机使用相同操作系统或者虚拟机使用很多相同内容内存页时，KSM可以显著提高内存的利用率。因为内存扫描的消耗，使用KSM的代价是增加了CPU的负载，并且如果虚拟机突然做写操作时，会引发大量共享的页面，此时会存在潜在的内存压力峰值。虚拟化管理层必须因此积极地监控内存压力情况并做好现有虚拟机迁移到其他主机的准备，如果内存压力超过一定的水平限制，将会引发大量不可预知的Swap操作，甚至引发OOM。ZSwap特性允许压缩内存页被写入Swap设备，这样可以大量减少Swap设备的I/O执行，减少了交换主机内存页面中固有的性能下降。</p>
+<p>虚拟化管理层应该积极的监控内存压力，适时的将虚拟机迁移到其他物理主机。</p>
+<h4 id="PCI设备"><a href="#PCI设备" class="headerlink" title="PCI设备"></a>PCI设备</h4><p>PCI设备与NUMA单元关系密切，PCI设备的DMA操作使用的内存最好在本地NUMA节点上。因此，在哪个NUMA单元上分配虚拟机，将会影响到PCI设备的分配。</p>
+<div class="alert info no-icon"><p>PCI设备要和虚拟机分配到同一个NUMA Node上。</p>
+</div>
+
+<h3 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h3><p>从上述背景知识我们能够清晰的认识到，为了最大化利用主机资源，好好利用NUMA与大页内存等工具显得尤为重要。即使使用默认配置，Nova也能够做到NUMA布局的优化以及考虑到大页内存的使用。显式的配置（通过配置虚拟机套餐类型 Flavor）只是为了满足性能优化或者虚拟机个性化需求，亦或者云平台提供商希望为不同的价格方案设置认为的设置。显示配置还能够限制用户可使用的拓扑，以防止用户使用非最优NUMA拓扑方案。</p>
+<p>只有当虚拟机的虚拟CPU与主机的物理CPU一一绑定时，配置超线程参数（threads != 1）才有意义。这不是一个最终用户需要考虑的东西，但是云平台管理员希望能够通过设置虚拟机类型明确避免使用主机超线程（如果vCPU和pCPU没有绑定，那么应该过滤物理主机的超线程ID）。这可以通过使用主机聚合调度的方式实现。</p>
+<h4 id="CPU绑定"><a href="#CPU绑定" class="headerlink" title="CPU绑定"></a>CPU绑定</h4><p>CPU绑定：将虚拟机的vCPUs绑定到pCPUs，vCPU只会在指定的pCPU上运行，避免pCPU间线程切换（上下文切换，内存数据转移）带来的性能开销。</p>
+<p>openstack命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openstack flavor <span class="built_in">set</span> &lt;FLAVOR-NAME&gt; \</span><br><span class="line">    --property hw:cpu_policy=&lt;CPU-POLICY&gt; \</span><br><span class="line">    --property hw:cpu_thread_policy=&lt;CPU-THREAD-POLICY&gt;</span><br></pre></td></tr></table></figure>
+
+<p>CPU-POLICY有2种参数类型。</p>
+<ul>
+<li>shared（默认的）：允许vCPUs跨pCPU浮动，尽管vCPUs受到的NUMA Node的限制也是如此。</li>
+<li>dedicated：Guest的vCPUs会严格的pinned到pCPUs的集合中。在没有明确vCPU拓扑的情况下，Drivers会将所有vCPU作为Sockets的一个Core或一个Thread（如果启动超线程）。如果已经明确的将vCPUs Topology Pinned到CPUs Topology中时，会严格执行CPU Pinning，将Guest内部的CPU的拓扑匹配到已经Pinned的宿主机的CPUs的拓扑中。此时的overcommit ratio 为 1.0。例如：虚拟机的两个vCPU被pinned到了一个宿主机的Core的两个Thread 上，那么虚拟机内部将会获得一个Core（对应的两个Thread）的拓扑。</li>
+</ul>
+<div class="alert info no-icon"><p>这里常结合NUMA Topology来一起使用。<br>如果设定为shared，那么即便为虚拟机分配了一个NUMA node，但 vCPUs仍会在 NUMA Node所拥有的 pCPUs间浮动；<br>如果设定为dedicated，那么虚拟机就会严格按照Guest NUMA Topology和Host NUMA Topology的映射关系将vCPUs pinned到pCPUs，实现CPU的绑定。而且这种映射，往往是一个vCPU被绑定到一个pCPU的Core或Thread上（如果开启超线程）。</p>
+</div>
+
+<p>CPU-THREAD-POLICY有下列3种参数类型。</p>
+<ul>
+<li>prefer（默认的）：主机也许是SMT架构，如果是SMT架构，那么将会优先将一个vCPU绑定到一个宿主机的Thread Siblings上，否则按照一般的方式将vCPU绑定到Core上。</li>
+<li>isolate：主机不应该是SMT架构，或者能够识别Thread Siblings并从逻辑上屏蔽它。每一个vCPU都将会被pinned到一个物理CPU的Core上（如果是多核CPU）。如果物理机是SMT架构支持超线程，那么物理Cores就具有Thread Siblings，这样的话，如果一个Guest不同的vCPU被pinned到不同的物理Core上，那么这个物理Core将不会再继续接受其他Guest的vCPU。所以，需要保证物理Core上没有Thread Siblings。</li>
+<li>require：宿主机必须是SMT架构，每一个vCPU都分配给Thread Siblings。但如果没有足够的Thread Siblings，则会调度失败。如果主机不是 SMT架构，则配置无效。</li>
+</ul>
+<div class="alert info no-icon"><p>只有设定hw:cpu_policy=dedicated时，hw:cpu_thread_policy才会生效。可见，后者设定的是vCPU pinning to pCPU的策略。</p>
+</div>
+
+<div class="alert info no-icon"><p>在启动了超线程的SMT-Base（Simultaneous Multithreading-Based，基于同步多线程） 架构中，Core通常被称为Hardware Thread，而使用超线程技术虚拟出来的Cores被称为Thread Siblings。</p>
+</div>
+
+<div class="alert info no-icon"><p>SMT 架构，也就是以前的Hyper-Threading超线程技术，支持将一个物理Core虚拟为多个Thread（逻辑处理器）。</p>
+</div>
+
+<div class="alert info no-icon"><p>应该使用HostAggregate来区分开pinned和unpinned的虚拟机，因为unpinned的虚拟机不会考虑到pinned的虚拟机的资源需求，避免发生资源占用。</p>
+</div>
+
+<div class="alert info no-icon"><p>一个虚拟机在物理主机上就是一个进程，一个vCPU在物理主机上就是一个特殊的线程。</p>
+</div>
+
+<div class="alert info no-icon"><ol>
+<li>专有CPU约束，如果为虚拟机设置物理CPU绑定，那么其他虚拟机要避免使用该虚拟机的专有物理CPU。</li>
+<li>在主机配置时，为所有虚拟机创建两个资源组，为两个组分配不同的物理CPU。使用专有资源的虚拟机与共享资源的虚拟机分别使用两个不同的资源组。</li>
+<li>准备一些不超配的主机只用于专用资源。</li>
+<li>当出现一个需要专有资源的虚拟机时，动态更新所有现有虚拟机的物理CPU绑定。</li>
+<li>为所有的虚拟机预先设置物理CPU亲和性，以预留一部分物理CPU为后面的专有资源虚拟机使用。</li>
+<li>为虚拟机设置固定的调度时间片，允许他们在物理CPU之间自由调度。</li>
+</ol>
+</div>
+
+<h4 id="NUMA亲和"><a href="#NUMA亲和" class="headerlink" title="NUMA亲和"></a>NUMA亲和</h4><p>NUMA亲和：将虚拟机绑定NUMA Node，Guest vCPUs/RAM 都分配在同一个NUMA Node 上，充分使用NUMA Node Local Memory，避免访问Remote Memory的性能开销。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openstack flavor <span class="built_in">set</span> &lt;FLAVOR-NAME&gt; \</span><br><span class="line">    --property hw:numa_nodes=&lt;FLAVOR-NODES&gt; \</span><br><span class="line">    --property hw:numa_cpus.&lt;N&gt;=&lt;FLAVOR-CORES&gt; \</span><br><span class="line">    --property hw:numa_mem.&lt;N&gt;=&lt;FLAVOR-MEMORY&gt;</span><br></pre></td></tr></table></figure>
+
+<p>FLAVOR-NODES：整数，设定Guest NUMA Nodes的个数。如果不指定，则Guest vCPUs可以运行在任意可用的Host NUMA Nodes上。<br>N：整数，Guest NUMA nodes ID，取值范围在[0, FLAVOR-NODES-1]。<br>FLAVOR-CORES：逗号分隔的整数，设定分配到Guest NUMA Node N上运行的vCPUs列表。如果不指定，vCPUs在Guest NUMA Nodes之间平均分配。<br>FLAVOR-MEMORY：整数，单位MB，设定分配到Guest NUMA Node N上Memory Size。如果不指定，Memory在Guest NUMA Nodes之间平均分配。</p>
+<p>只有在设定了hw:numa_nodes后hw:numa_cpus.N和hw:numa_mem.N才会生效。另外，只有当Guest NUMA Node存在非对称访问CPUs/RAM时（一个 Host NUMA Node无法满足虚拟机的vCPUs/RAM资源需求时），才需要去设定这些参数。</p>
+<p>N仅仅是Guest NUMA node 的索引，并非实际上的Host NUMA Node的ID。例如，Guest NUMA Node 0可能会被映射到Host NUMA Node 1。类似的，FLAVOR-CORES的值也仅仅是vCPU的索引。因此，Nova的NUMA特性并不能用来约束Guest vCPUs/RAM绑定到某一个Host NUMA node 上。要完成 vCPU 绑定到指定的 pCPU，需要借助CPU Pinning Policy和Nova底层隐式实现的CPU Binding（映射）机制。</p>
+<p>如果 hw:numa_cpus.N 和 hw:numa_mem.N 设定的值大于虚拟机本身可用的CPUs/Memory的话，则触发异常。</p>
+<p>举例：Flavor定义Guest有4个vCPU，4096MB内存，设定Guest的NUMA Topology为2个NUMA Node，vCPU 0、1运行在 NUMA Node 0上，vCPU 2、3运行在NUMA Node 1上。并且占用NUMA Node 0的Memory 2048MB，占用 NUMA Node 1 的Memory 2048MB。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">openstack flavor <span class="built_in">set</span> aze-FLAVOR \ </span><br><span class="line">    --property hw:numa_nodes=2 \ </span><br><span class="line">    --property hw:numa_cpus.0=0,1 \ </span><br><span class="line">    --property hw:numa_cpus.1=2,3 \ </span><br><span class="line">    --property hw:numa_mem.0=2048 \ </span><br><span class="line">    --property hw:numa_mem.1=2048</span><br></pre></td></tr></table></figure>
+
+<p>使用该flavor创建的虚拟机，将会具有上述Guest NUMA Topology，并由Libvirt Driver隐射到Host NUMA Node上。</p>
+<p>Nova分配NUMA的两种方式：</p>
+<ul>
+<li>自动分配NUMA的约束和限制：仅指定Guest NUMA Nodes的个数，然后由Nova根据Flavor的规格平均将vCPU/Memory分布到不同的Host NUMA Nodes上（默认从 Host NUMA Node 0 开始分配，依次递增）。这将最大程度的降低配置参数的复杂性。如果没有NUMA节点的定义，管理程序可以在虚拟机上自由使用NUMA拓扑。<ul>
+<li>不能设置numa_cpus 和numa_mem。</li>
+<li>自动从0节点开始平均分配。</li>
+</ul>
+</li>
+<li>手动指定NUMA的约束和限制：不仅指定Guest NUMA Nodes的个数，还指定了每个Guest NUMA Nodes上分配的vCPU ID和 Memory Size。设定了Guest NUMA topology，由Nova来完成Guest NUMA Nodes和Host NUMA Nodes的映射关系。<ul>
+<li>设定的vCPU总数需要和虚拟机flavor中的CPU总数一致。</li>
+<li>设定的Memory大小需要和虚拟机flavor中的memory大小一致。</li>
+<li>必须设置numa_cpus和numa_mem。</li>
+<li>需要从Guest NUMA Node 0开始指定各个NUMA节点的资源占用参数。</li>
+</ul>
+</li>
+</ul>
+<div class="alert info no-icon"><ol>
+<li>nova-compute的ResourceTracker会定时上报Host NUMA的资源信息。</li>
+<li>Setup Flavor extra-specs实际上是设定 Guest NUMA Topology。</li>
+<li>Guest vCPU/Memory不能大于虚拟机自身flavor所拥有的CPU/Memory规格。</li>
+<li>如果Guest NUMA Node的vCPU/Memory规格大于Host NUMA Node的CPU/Memory规格，则应该将Guest NUMA Node划分为多个nodes。</li>
+<li>如果hw:numa_cpus.N或hw:numa_mem.N设定的值比Host可用CPU/Memory大，则会引发错误。</li>
+<li>hw:numa_cpus.N与hw:numa_mem.N只在设置了hw:numa_nodes后有效。</li>
+<li>N是Guest NUMA Node 的索引ID，并非实际上的Host NUMA Node ID。例如，Guest NUMA Node（hw:numa_mem.0），可能会被映射到Host NUMA Node 1。类似的，FLAVOR-CORES也值是vCPU的编号，并不对应pCPU。因此，Nova NUMA特性并不能用来约束Guest vCPU/Memory所处于的Host NUMA Node。要完成vCPU绑定到指定的pCPU，还需要应用Nova的CPU Binding机制。</li>
+<li>在最终的XML文件里面可能并没有numatune信息，因此从XML无法看出Guest NUMA Node的Memory是从哪个Host NUMA Node上分配的，在RHEL中，默认的Memory分配方式与CPU分配方式是一致的，但是在SUSE OS上，就需要指定numatune信息才能生效。</li>
+</ol>
+</div>
+
+<p>除了通过flavor extra-specs来设定Guest NUMA Topology之外，还可以通过image metadata来设定。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">openstack image <span class="built_in">set</span> &lt;IMAGE-NAME&gt; \ </span><br><span class="line">    --property hw_numa_nodes=2 \ </span><br><span class="line">    --property hw_numa_cpus.0=0 \ </span><br><span class="line">    --property hw_numa_mem.0=512 \ </span><br><span class="line">    --property hw_numa_cpus.1=0 \ </span><br><span class="line">    --property hw_numa_mem.1=512</span><br></pre></td></tr></table></figure>
+
+<p>当用户镜像的NUMA约束与flavor的NUMA约束冲突时，以flavor中的约束为准。</p>
+<p>调度器使用虚拟机类型的参数numa_nodes决定如何布置虚拟机。如果没有设置numa_nodes参数, 调度器将自由决定在哪里运行虚拟机，而不关心单个NUMA节点是否能够满足虚拟机类型中的内存设置，尽管仍然会优先考虑一个NUMA节点可以满足情况的主机。</p>
+<ul>
+<li>如果参数numa_nodes设置为1，调度器将会选择单个NUMA节点能够满足虚拟机类型中内存设置的主机。</li>
+<li>如果参数numa_nodes设置大于1，调度器将会选择NUMA节点数量与NUMA节点中内存能够满足虚拟机类型中numa_nodes参数与内存设置的主机。</li>
+</ul>
+<p>ComputeNode会暴露它们的NUMA拓扑信息(例如：每个NUMA节点上有多少CPU和内存)，以及当前的资源利用率。这些数据会被加入到计算节点的数据模型（compute_nodes）中。</p>
+<p>应用场景。</p>
+<ul>
+<li><p>hw:huma_nodes=1，应该让Guest的vCPU/Memory从一个固定的Host NUMA Node中获取，避免跨NUMA Node的Memory访问，减少不可预知的通信延时，提高Guest性能。</p>
+</li>
+<li><p>hw:huma_nodes=N，当Guest的vCPU/Memory超过了单个Host NUMA Node占有的资源时，手动将Guest划分为多个Guest NUMA Node，然后再与 Host NUMA Node对应起来。这样做有助于Guest OS感知到Guest NUMA并优化应用资源调度。（数据库应用）</p>
+</li>
+<li><p>hw:huma_nodes=N，对于Memory访问延时有高要求的Guest，即可以将vCPU/Memory完全放置到一个Host NUMA Node中，也可以主动将Guest划分为多个Guest NUMA Node，再分配到Host NUMA Node。以此来提高总的访存带宽。（NFV/搜索引擎）</p>
+<ul>
+<li>如果N == 1，表示Guest的vCPU/Memory固定从一个Host NUMA Node获取。</li>
+<li>如果N != 1，表示为Guest划分N个Guest NUMA Node，并对应到N个Host NUMA Node上。</li>
+</ul>
+</li>
+</ul>
+<h4 id="大页内存-1"><a href="#大页内存-1" class="headerlink" title="大页内存"></a>大页内存</h4><p>大页内存：使用大页来进行内存分配，那么将会明显减少CPU页表项，因此会增加页表缓存的命中率，降低内存访问延迟。</p>
+<p>与NUMA不同，如果虚拟机类型中声明了大页内存，则需要主机能够进行预留该内存块。因为这些内存同时也作为该主机上的NUMA节点专用内存，所以必须提前显式声明。例如，如果主机配置了大页内存，也应该从NUMA节点中分配。</p>
+<p>透明巨型页技术允许主机出现内存超配，并且调度程序可以使用该特性。如果主机支持内存预分配，主机将会上报是否支持保留内存或者THP，甚至在严格条件下，可以上报剩余可用内存页数。如果虚拟机使用的主机类型中将huge_pages参数设置为strict时，并且没有主机在单NUMA节点中拥有足够的大页内存可用，调度器将会返回失败。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openstack flavor <span class="built_in">set</span> &lt;FLAVOR-NAME&gt; \</span><br><span class="line">    --property hw:mem_page_size=&lt;PAGE_SIZE&gt;</span><br></pre></td></tr></table></figure>
+<p>PAGE_SIZE有下列4种参数类型。</p>
+<ul>
+<li>small（默认）：使用最小的page size，例如：4KB，x86架构。</li>
+<li>large：只为Guest使用的larger page size，例如：2MB或1GB，x86 架构</li>
+<li>any：由Nova virt drivers决定，不同的driver具有不同的实现。</li>
+<li><PAGE_SIZE>：字符串，显式自定义page size，例如：4KB/2MB/2048/1GB。</li>
+</ul>
+<p>针对虚拟机的RAM可以启动large page特性，可以有效提供虚拟机性能。</p>
+<p>将大页内存分配给虚拟机，可以不考虑GuestOS是否使用。如果GuestOS不使用，则会识别小页内存。相反，如果GuestOS是需要使用大页内存的，则必须要为虚拟机分配大页内存，否则虚拟机的性能将达不到预期。</p>
+<p>为专有资源虚拟机使用大页内存。这需要主机拥有足够的可用大页内存，并且虚拟机内存大小是大页内存大小的倍数。在主机配置时，为所有虚拟机创建两个资源组，为两个组分配不同的物理内存区域。使用专有资源的虚拟机与共享资源的虚拟机分别使用两个不同的资源组。专用内存的分配的复杂性还在于，主要虚拟机之外，KVM还有许多不同的内存分配的需求，有些虚拟机处理视频内容，会在KVM过程处理I/O请求时，分配任意大小的内存。有些情况下，这也会影响虚拟CPU的使用，因为KVM模拟程序线程代表的就是虚拟机行为。更进一步讲，主机操作系统也需要内存与CPU资源。</p>
+<div class="alert info no-icon"><ol>
+<li>设置虚拟机类型参数page_sizes=large，只有当系统中有可用大页内存时，虚拟化程序才启动虚拟机。</li>
+<li>设置虚拟机类型参数page_sizes=any，虚拟化管理程序将会优先尝试大页内存，不可用时，使用小页内存启动虚拟机。</li>
+<li>设置虚拟机类型参数page_sizes=small，虚拟机程序将不选择大页内存启动虚拟机，即使大页内存可用。</li>
+<li>设置虚拟机类型参数page_sizes=1GB，只有当系统中有可用的1GB大页内存时，虚拟化管理程序才启动虚拟机，并且将不会使用2MB的大页内存。</li>
+</ol>
+</div>
+
+<h4 id="PCI-passthrough"><a href="#PCI-passthrough" class="headerlink" title="PCI passthrough"></a>PCI passthrough</h4><p>可以通过下述属性参数来分配PCI直通设备给虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openstack flavor <span class="built_in">set</span> &lt;FLAVOR-NAME&gt; \</span><br><span class="line">    --property pci_passthrough:<span class="built_in">alias</span>=ALIAS:COUNT</span><br></pre></td></tr></table></figure>
+<p>ALIAS：字符串，在nova.conf中配置的特定PCI设备的alias。（PCI alias）<br>COUNT：整数，分配给虚拟机的ALIAS类型的PCI设备数量。</p>
+<h3 id="实现流程"><a href="#实现流程" class="headerlink" title="实现流程"></a>实现流程</h3><ol>
+<li>nova-api对flavor metadata或image property中的NUMA配置信息进行解析，生成Guest NUMA Topology，保存为instance[‘numa_topology’]。</li>
+<li>nova-scheduler通过NUMATopologyFilter判断Host NUMA Topology是否能够满足Guest NUMA Topology，进行ComputeNode调度。</li>
+<li>nova-compute再次通过instance_claim检查Host NUMA资源是否满足建立Guest NUMA。</li>
+<li>nova-compute建立Guest NUMA Node和Host NUMA Node的映射关系，并根据映射关系调用libvirt driver生成XML文件。</li>
+</ol>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">domain</span>&gt;</span> </span><br><span class="line">  <span class="tag">&lt;<span class="name">cputune</span>&gt;</span> </span><br><span class="line">    /* vCPU与Host NUMA Node的绑定关系，4-7, 12-15在一个Host NUMA Node节点上，0-3,8-11 在另外一个Node上 */</span><br><span class="line">    /* cpuset设定的pCPU是由libvirt根据Host NUMA Node资源信息自动分配的 */</span><br><span class="line">    <span class="tag">&lt;<span class="name">vcpupin</span> <span class="attr">vcpu</span>=<span class="string">&quot;0&quot;</span> <span class="attr">cpuset</span>=<span class="string">&quot;4-7,12-15&quot;</span>/&gt;</span>  </span><br><span class="line">    <span class="tag">&lt;<span class="name">vcpupin</span> <span class="attr">vcpu</span>=<span class="string">&quot;1&quot;</span> <span class="attr">cpuset</span>=<span class="string">&quot;4-7,12-15&quot;</span>/&gt;</span>  </span><br><span class="line">    <span class="tag">&lt;<span class="name">vcpupin</span> <span class="attr">vcpu</span>=<span class="string">&quot;2&quot;</span> <span class="attr">cpuset</span>=<span class="string">&quot;0-3,8-11&quot;</span>/&gt;</span>  </span><br><span class="line">    <span class="tag">&lt;<span class="name">vcpupin</span> <span class="attr">vcpu</span>=<span class="string">&quot;3&quot;</span> <span class="attr">cpuset</span>=<span class="string">&quot;0-3,8-11&quot;</span>/&gt;</span>  </span><br><span class="line">    <span class="tag">&lt;<span class="name">emulatorpin</span> <span class="attr">cpuset</span>=<span class="string">&quot;0-15&quot;</span>/&gt;</span> </span><br><span class="line">  <span class="tag">&lt;/<span class="name">cputune</span>&gt;</span>  </span><br><span class="line">***</span><br><span class="line">  <span class="tag">&lt;<span class="name">cpu</span> <span class="attr">match</span>=<span class="string">&quot;host-model&quot;</span>&gt;</span> </span><br><span class="line">    <span class="tag">&lt;<span class="name">model</span> <span class="attr">fallback</span>=<span class="string">&quot;allow&quot;</span>/&gt;</span>  </span><br><span class="line">    <span class="tag">&lt;<span class="name">topology</span> <span class="attr">sockets</span>=<span class="string">&quot;2&quot;</span> <span class="attr">cores</span>=<span class="string">&quot;2&quot;</span> <span class="attr">threads</span>=<span class="string">&quot;1&quot;</span>/&gt;</span>  </span><br><span class="line">    /* Guest NUMA Topology，一个cell表示一个Guest NUMA Node，默认从0开始编号 */</span><br><span class="line">    <span class="tag">&lt;<span class="name">numa</span>&gt;</span> </span><br><span class="line">      /* cpus表示该Guest NUMA Node内包含的vCPU ID */</span><br><span class="line">      /* memory表示该Guest NUMA Node包含的Memory大小，单位 KB */</span><br><span class="line">      <span class="tag">&lt;<span class="name">cell</span> <span class="attr">id</span>=<span class="string">&quot;0&quot;</span> <span class="attr">cpus</span>=<span class="string">&quot;0-1&quot;</span> <span class="attr">memory</span>=<span class="string">&quot;1048576&quot;</span>/&gt;</span>  </span><br><span class="line">      <span class="tag">&lt;<span class="name">cell</span> <span class="attr">id</span>=<span class="string">&quot;1&quot;</span> <span class="attr">cpus</span>=<span class="string">&quot;2-3&quot;</span> <span class="attr">memory</span>=<span class="string">&quot;1048576&quot;</span>/&gt;</span> </span><br><span class="line">    <span class="tag">&lt;/<span class="name">numa</span>&gt;</span> </span><br><span class="line">  <span class="tag">&lt;/<span class="name">cpu</span>&gt;</span> </span><br><span class="line"><span class="tag">&lt;/<span class="name">domain</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>对 NUMA 相关数据的解析和处理，提供了以下class。<br>nova/objects/numa.py</p>
+<ul>
+<li>NUMACell<ul>
+<li>NUMA Cell，定义了NUMA Cell内的基本数据成员。</li>
+</ul>
+</li>
+<li>NUMAPagesTopology<ul>
+<li>NUMA Page，NUMA Node内存页大小。</li>
+</ul>
+</li>
+<li>NUMATopology<ul>
+<li>Host的NUMA拓扑，NUMA的基本数据成员，即cells[]</li>
+</ul>
+</li>
+<li>NUMATopologyLimits<ul>
+<li>NUMA限制，包括CPU和内存超配和网络元数据。</li>
+</ul>
+</li>
+</ul>
+<p>nova/objects/instance_numa.py</p>
+<ul>
+<li>InstanceNUMACell<ul>
+<li>Guest NUMA Cell。</li>
+</ul>
+</li>
+<li>InstanceNUMATopology<ul>
+<li>Guest的NUMA拓扑，NUMA的基本数据成员，即cells[]</li>
+</ul>
+</li>
+</ul>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Nova/" rel="tag">Nova</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    data-tooltip="UOS考试"
+                    aria-label="PREVIOUS: UOS考试"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    data-tooltip="走进消息队列"
+                    aria-label="NEXT: 走进消息队列"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/&amp;title=你不知道的Nova之CPU拓扑"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/06/20/你不知道的Nova之CPU拓扑/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    data-tooltip="UOS考试"
+                    aria-label="PREVIOUS: UOS考试"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/03/23/%E8%B5%B0%E8%BF%9B%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/"
+                    data-tooltip="走进消息队列"
+                    aria-label="NEXT: 走进消息队列"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/&amp;title=你不知道的Nova之CPU拓扑"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/&amp;title=你不知道的Nova之CPU拓扑"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

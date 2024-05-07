@@ -1,0 +1,836 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Linux命令大全（一）ip 命令大全 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Linux">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。\n\n\n\n\n\nip link\n查看当前所有的网络接口的状态1ip link\n\n启动接口1ip link set qg-3127fe33-2f up\n\n删除接口1ip link delete qg-3127fe33-2f\n\nip addr\n查看所有网络接口的mac地址和ip地址等1ip addr\n\n查看指定网络接口的mac地址和ip地址等1ip addr show [device]\n\n作用域（scope）\n\nglobal 全局可用，即两个接口进来的数据我都可以响应。是默认状态。\nlink 仅链接可用，进来的数据只有直接相连的那个接口能够响应。\nhost 本机可用，即只能自己访问。\n\n\n\n增加ip1ip addr add [ip]/[netmask] dev [interface]\n删除ip1ip addr del [ip]/[netmask] dev [interface]\n\n清空指定网卡的所有ip1ip addr flush dev [interface]\n\n使用命令的方式增肌或者删除ip，都是临时的，如果重启network服务，那么操作就会失效。\n\n\nip addrlabel\n添加别名1ip addr add [ip]/[netmask] dev [interface] label [name]\n\n相当于给网卡多绑定了一个ip。\n\n\n删除别名1ip addr del [ip]/[netmask] dev [interface] label [name]\n使用命令设置别名，重启服务就会失效。\n\n\nip route\n查看所有路由信息1ip route\n\n添加路由\n添加到达目标主机的路由\n1ip route add [host] via [gateway]\n\n添加到达网络的路由\n1ip route add [network]/[netmask] via [gateway]\n\n添加默认路由\n1ip route add default via [gateway]\n\n\n\n删除路由12ip route del [network]/[netmask]ip route del default via [gateway]\n\n刷新路由缓存创建完路由若需要立即生效。\n1ip route flush table [id]\n\n使用命令的方式增加或者删除路由，都是临时的，如果重启network服务，那么操作就会失效。\n\n\n\n\n路由表查看路由表\n12ip route [list|show] table [table-id]ip route [list|show] table [table-name]\n\nLinux系统中，可以定义从1~252个路由表，其中，系统维护了4个路由表。\n\n0表。系统保留表。\n253表。default table没什么特别指定的默认路由都会放在该表。\n254表。main table没指明路由表的所有路由都放在该表。\n255表。locale table保存了本地接口地址，广播地址、NAT地址，由系统维护，用户不得更改。\n\n\n\n添加路由\n12ip route add default via [ip] table [id]ip route add [network]/[netmask] via [gateway] table [id]\n\n删除路由\n12ip route del default table [id]ip route del [network]/[netmask] table [id]\n\n\nip rule\n查看路由策略规则1ip rule\n\n在Linux系统启动时，内核会为路由策略数据库配置三条缺省的规则。\n\n0 匹配任何条件 查询路由表local（ID 255）路由表local是一个特殊的路由表，包含对本地和广播地址的高优先级控制路由。rule 0非常特殊不能被删除或者覆盖。\n\n32766 匹配任何条件 查询路由表main（ID 254）路由表main是一个通常的表，包含所有的无策略路由。系统管理员可以删除或者使用另外的规则覆盖这条规则。\n\n32767 匹配任何条件 查询路由表default（ID 253）路由表default是一个空表，它是为一些后续处理保留的。对于前面的缺省策略没有匹配到的数据包，系统使用这个策略进行处理，这个规则也可以删除。\n\n\n\n\n规则指向路由表，多个规则可以引用一个路由表，而某些路由表可以没有策略指向它。\n如果系统管理员删除了指向某个路由表的所有规则，这个表就没有用了，但是仍然存在，直到里面的所有路由都被删除，它才会消失。\n\n\n删除路由策略规则1ip rule del [ip]/[netmask] from table [id]\n\n\nip neigh\n查看接入所在局域网的设备的mac地址。\n1ip neigh\n\nip netns\n查看所有网络命名空间1ip netns\n\n进入网络命名空间1ip netns exec [name] [command]\n\noptions-V -version输出ip命令的版本并退出。\n-h输出帮助信息。\n-s -stats -statistics输出更多信息。\n-d输出详细信息。\n-l指定IP地址刷新逻辑将尝试的最大循环次数，默认是10.\n-f -family指定要使用的协议族。协议可以是一个inet、intet6、bridge、ipx、dnet或者link。\n-4是-family inet的简写。\n-6是-family inet6的简写。\n-0是-family link的简写。\n-I是-family ipx的简写。\n-o -oneline单行输出。\n-n -netns交换机的IP到指定的网络空间netns。\n-r -resolve使用系统名称解析来打印DNS名称而不是主机地址。\n-t使用监视器选项时显示当前时间。\n-a -all对所有的对象执行指定的命令，这取决于命令是否支持这个选项。\n-rc -rcvbuf（size）设置Netlink套接字接收缓冲区的大小设置，默认为1MB。\nss -lnt\nlsof -p\n","dateCreated":"2018-12-05T17:54:30+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2018-12-05T17:54:30+08:00","description":"ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。","headline":"Linux命令大全（一）ip 命令大全","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Linux命令大全（一）ip 命令大全">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-h.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-link.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-addr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-addr-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-addrlabel.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-route-h.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-route.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-rule-h.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-rule.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-neigh-h.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-neigh.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-netns-h.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-netns.png">
+<meta property="article:published_time" content="2018-12-05T09:54:30.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.951Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/ip-h.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Linux命令大全（一）ip 命令大全
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-12-05T17:54:30+08:00">
+	
+		    Dec 05, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>ip命令用来显示或操纵Linux主机的路由、网络设备、策略路由和隧道，是Linux下较新的功能强大的网络配置工具。</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-link"><span class="toc-text">ip link</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E5%BD%93%E5%89%8D%E6%89%80%E6%9C%89%E7%9A%84%E7%BD%91%E7%BB%9C%E6%8E%A5%E5%8F%A3%E7%9A%84%E7%8A%B6%E6%80%81"><span class="toc-text">查看当前所有的网络接口的状态</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E6%8E%A5%E5%8F%A3"><span class="toc-text">启动接口</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E6%8E%A5%E5%8F%A3"><span class="toc-text">删除接口</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-addr"><span class="toc-text">ip addr</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%89%80%E6%9C%89%E7%BD%91%E7%BB%9C%E6%8E%A5%E5%8F%A3%E7%9A%84mac%E5%9C%B0%E5%9D%80%E5%92%8Cip%E5%9C%B0%E5%9D%80%E7%AD%89"><span class="toc-text">查看所有网络接口的mac地址和ip地址等</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%8C%87%E5%AE%9A%E7%BD%91%E7%BB%9C%E6%8E%A5%E5%8F%A3%E7%9A%84mac%E5%9C%B0%E5%9D%80%E5%92%8Cip%E5%9C%B0%E5%9D%80%E7%AD%89"><span class="toc-text">查看指定网络接口的mac地址和ip地址等</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A2%9E%E5%8A%A0ip"><span class="toc-text">增加ip</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%A0%E9%99%A4ip"><span class="toc-text">删除ip</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B8%85%E7%A9%BA%E6%8C%87%E5%AE%9A%E7%BD%91%E5%8D%A1%E7%9A%84%E6%89%80%E6%9C%89ip"><span class="toc-text">清空指定网卡的所有ip</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-addrlabel"><span class="toc-text">ip addrlabel</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E5%88%AB%E5%90%8D"><span class="toc-text">添加别名</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E5%88%AB%E5%90%8D"><span class="toc-text">删除别名</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-route"><span class="toc-text">ip route</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%89%80%E6%9C%89%E8%B7%AF%E7%94%B1%E4%BF%A1%E6%81%AF"><span class="toc-text">查看所有路由信息</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E8%B7%AF%E7%94%B1"><span class="toc-text">添加路由</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E8%B7%AF%E7%94%B1"><span class="toc-text">删除路由</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%B7%E6%96%B0%E8%B7%AF%E7%94%B1%E7%BC%93%E5%AD%98"><span class="toc-text">刷新路由缓存</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E8%A1%A8"><span class="toc-text">路由表</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-rule"><span class="toc-text">ip rule</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E8%B7%AF%E7%94%B1%E7%AD%96%E7%95%A5%E8%A7%84%E5%88%99"><span class="toc-text">查看路由策略规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E8%B7%AF%E7%94%B1%E7%AD%96%E7%95%A5%E8%A7%84%E5%88%99"><span class="toc-text">删除路由策略规则</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-neigh"><span class="toc-text">ip neigh</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ip-netns"><span class="toc-text">ip netns</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%89%80%E6%9C%89%E7%BD%91%E7%BB%9C%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-text">查看所有网络命名空间</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%9B%E5%85%A5%E7%BD%91%E7%BB%9C%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-text">进入网络命名空间</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#options"><span class="toc-text">options</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#V-version"><span class="toc-text">-V -version</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#h"><span class="toc-text">-h</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#s-stats-statistics"><span class="toc-text">-s -stats -statistics</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#d"><span class="toc-text">-d</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#l"><span class="toc-text">-l</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#f-family"><span class="toc-text">-f -family</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#4"><span class="toc-text">-4</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#6"><span class="toc-text">-6</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#0"><span class="toc-text">-0</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#I"><span class="toc-text">-I</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#o-oneline"><span class="toc-text">-o -oneline</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#n-netns"><span class="toc-text">-n -netns</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#r-resolve"><span class="toc-text">-r -resolve</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#t"><span class="toc-text">-t</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#a-all"><span class="toc-text">-a -all</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#rc-rcvbuf%EF%BC%88size%EF%BC%89"><span class="toc-text">-rc -rcvbuf（size）</span></a></li></ol></li></ol>
+
+<p><img src="images/ip-h.png" alt="ip"></p>
+<h3 id="ip-link"><a href="#ip-link" class="headerlink" title="ip link"></a>ip link</h3><p><img src="images/ip-link.png" alt="ip-link"></p>
+<h4 id="查看当前所有的网络接口的状态"><a href="#查看当前所有的网络接口的状态" class="headerlink" title="查看当前所有的网络接口的状态"></a>查看当前所有的网络接口的状态</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="启动接口"><a href="#启动接口" class="headerlink" title="启动接口"></a>启动接口</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> qg-3127fe33-2f up</span><br></pre></td></tr></table></figure>
+
+<h4 id="删除接口"><a href="#删除接口" class="headerlink" title="删除接口"></a>删除接口</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> delete qg-3127fe33-2f</span><br></pre></td></tr></table></figure>
+
+<h3 id="ip-addr"><a href="#ip-addr" class="headerlink" title="ip addr"></a>ip addr</h3><p><img src="images/ip-addr.png" alt="ip-addr"></p>
+<h4 id="查看所有网络接口的mac地址和ip地址等"><a href="#查看所有网络接口的mac地址和ip地址等" class="headerlink" title="查看所有网络接口的mac地址和ip地址等"></a>查看所有网络接口的mac地址和ip地址等</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr</span><br></pre></td></tr></table></figure>
+
+<h4 id="查看指定网络接口的mac地址和ip地址等"><a href="#查看指定网络接口的mac地址和ip地址等" class="headerlink" title="查看指定网络接口的mac地址和ip地址等"></a>查看指定网络接口的mac地址和ip地址等</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr show [device]</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-addr-show.png" alt="ip-addr-show"></p>
+<div class="alert info no-icon"><p>作用域（scope）</p>
+<ol>
+<li>global 全局可用，即两个接口进来的数据我都可以响应。是默认状态。</li>
+<li>link 仅链接可用，进来的数据只有直接相连的那个接口能够响应。</li>
+<li>host 本机可用，即只能自己访问。</li>
+</ol>
+</div>
+
+<h4 id="增加ip"><a href="#增加ip" class="headerlink" title="增加ip"></a>增加ip</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr add [ip]/[netmask] dev [interface]</span><br></pre></td></tr></table></figure>
+<h4 id="删除ip"><a href="#删除ip" class="headerlink" title="删除ip"></a>删除ip</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr del [ip]/[netmask] dev [interface]</span><br></pre></td></tr></table></figure>
+
+<h4 id="清空指定网卡的所有ip"><a href="#清空指定网卡的所有ip" class="headerlink" title="清空指定网卡的所有ip"></a>清空指定网卡的所有ip</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr flush dev [interface]</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>使用命令的方式增肌或者删除ip，都是临时的，如果重启network服务，那么操作就会失效。</p>
+</div>
+
+<h3 id="ip-addrlabel"><a href="#ip-addrlabel" class="headerlink" title="ip addrlabel"></a>ip addrlabel</h3><p><img src="images/ip-addrlabel.png" alt="ip-addrlabel"></p>
+<h4 id="添加别名"><a href="#添加别名" class="headerlink" title="添加别名"></a>添加别名</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr add [ip]/[netmask] dev [interface] label [name]</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>相当于给网卡多绑定了一个ip。</p>
+</div>
+
+<h4 id="删除别名"><a href="#删除别名" class="headerlink" title="删除别名"></a>删除别名</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr del [ip]/[netmask] dev [interface] label [name]</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>使用命令设置别名，重启服务就会失效。</p>
+</div>
+
+<h3 id="ip-route"><a href="#ip-route" class="headerlink" title="ip route"></a>ip route</h3><p><img src="images/ip-route-h.png" alt="ip-route"></p>
+<h4 id="查看所有路由信息"><a href="#查看所有路由信息" class="headerlink" title="查看所有路由信息"></a>查看所有路由信息</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip route</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-route.png" alt="ip-route"></p>
+<h4 id="添加路由"><a href="#添加路由" class="headerlink" title="添加路由"></a>添加路由</h4><ol>
+<li><p>添加到达目标主机的路由</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip route add [host] via [gateway]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>添加到达网络的路由</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip route add [network]/[netmask] via [gateway]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>添加默认路由</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip route add default via [gateway]</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="删除路由"><a href="#删除路由" class="headerlink" title="删除路由"></a>删除路由</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip route del [network]/[netmask]</span><br><span class="line">ip route del default via [gateway]</span><br></pre></td></tr></table></figure>
+
+<h4 id="刷新路由缓存"><a href="#刷新路由缓存" class="headerlink" title="刷新路由缓存"></a>刷新路由缓存</h4><p>创建完路由若需要立即生效。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip route flush table [<span class="built_in">id</span>]</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>使用命令的方式增加或者删除路由，都是临时的，如果重启network服务，那么操作就会失效。</p>
+</div>
+
+
+
+<h4 id="路由表"><a href="#路由表" class="headerlink" title="路由表"></a>路由表</h4><p>查看路由表</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip route [list|show] table [table-id]</span><br><span class="line">ip route [list|show] table [table-name]</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>Linux系统中，可以定义从1~252个路由表，其中，系统维护了4个路由表。</p>
+<ol>
+<li>0表。系统保留表。</li>
+<li>253表。default table没什么特别指定的默认路由都会放在该表。</li>
+<li>254表。main table没指明路由表的所有路由都放在该表。</li>
+<li>255表。locale table保存了本地接口地址，广播地址、NAT地址，由系统维护，用户不得更改。</li>
+</ol>
+</div>
+
+<p>添加路由</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip route add default via [ip] table [<span class="built_in">id</span>]</span><br><span class="line">ip route add [network]/[netmask] via [gateway] table [<span class="built_in">id</span>]</span><br></pre></td></tr></table></figure>
+
+<p>删除路由</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip route del default table [<span class="built_in">id</span>]</span><br><span class="line">ip route del [network]/[netmask] table [<span class="built_in">id</span>]</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="ip-rule"><a href="#ip-rule" class="headerlink" title="ip rule"></a>ip rule</h3><p><img src="images/ip-rule-h.png" alt="ip-rule"></p>
+<h4 id="查看路由策略规则"><a href="#查看路由策略规则" class="headerlink" title="查看路由策略规则"></a>查看路由策略规则</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip rule</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-rule.png" alt="ip-rule"></p>
+<div class="alert info no-icon"><p>在Linux系统启动时，内核会为路由策略数据库配置三条缺省的规则。</p>
+<ol>
+<li><p>0 匹配任何条件 查询路由表local（ID 255）<br>路由表local是一个特殊的路由表，包含对本地和广播地址的高优先级控制路由。<br>rule 0非常特殊不能被删除或者覆盖。</p>
+</li>
+<li><p>32766 匹配任何条件 查询路由表main（ID 254）<br>路由表main是一个通常的表，包含所有的无策略路由。系统管理员可以删除或者使用另外的规则覆盖这条规则。</p>
+</li>
+<li><p>32767 匹配任何条件 查询路由表default（ID 253）<br>路由表default是一个空表，它是为一些后续处理保留的。对于前面的缺省策略没有匹配到的数据包，系统使用这个策略进行处理，这个规则也可以删除。</p>
+</li>
+</ol>
+</div>
+
+<div class="alert danger no-icon"><p>规则指向路由表，多个规则可以引用一个路由表，而某些路由表可以没有策略指向它。</p>
+<p>如果系统管理员删除了指向某个路由表的所有规则，这个表就没有用了，但是仍然存在，直到里面的所有路由都被删除，它才会消失。</p>
+</div>
+
+<h4 id="删除路由策略规则"><a href="#删除路由策略规则" class="headerlink" title="删除路由策略规则"></a>删除路由策略规则</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip rule del [ip]/[netmask] from table [<span class="built_in">id</span>]</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="ip-neigh"><a href="#ip-neigh" class="headerlink" title="ip neigh"></a>ip neigh</h3><p><img src="images/ip-neigh-h.png" alt="ip-neigh"></p>
+<p>查看接入所在局域网的设备的mac地址。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip neigh</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-neigh.png" alt="ip-neigh"></p>
+<h3 id="ip-netns"><a href="#ip-netns" class="headerlink" title="ip netns"></a>ip netns</h3><p><img src="images/ip-netns-h.png" alt="ip-netns"></p>
+<h4 id="查看所有网络命名空间"><a href="#查看所有网络命名空间" class="headerlink" title="查看所有网络命名空间"></a>查看所有网络命名空间</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-netns.png" alt="ip-netns"></p>
+<h4 id="进入网络命名空间"><a href="#进入网络命名空间" class="headerlink" title="进入网络命名空间"></a>进入网络命名空间</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> [name] [<span class="built_in">command</span>]</span><br></pre></td></tr></table></figure>
+
+<h3 id="options"><a href="#options" class="headerlink" title="options"></a>options</h3><h4 id="V-version"><a href="#V-version" class="headerlink" title="-V -version"></a>-V -version</h4><p>输出ip命令的版本并退出。</p>
+<h4 id="h"><a href="#h" class="headerlink" title="-h"></a>-h</h4><p>输出帮助信息。</p>
+<h4 id="s-stats-statistics"><a href="#s-stats-statistics" class="headerlink" title="-s -stats -statistics"></a>-s -stats -statistics</h4><p>输出更多信息。</p>
+<h4 id="d"><a href="#d" class="headerlink" title="-d"></a>-d</h4><p>输出详细信息。</p>
+<h4 id="l"><a href="#l" class="headerlink" title="-l"></a>-l</h4><p>指定IP地址刷新逻辑将尝试的最大循环次数，默认是10.</p>
+<h4 id="f-family"><a href="#f-family" class="headerlink" title="-f -family"></a>-f -family</h4><p>指定要使用的协议族。协议可以是一个inet、intet6、bridge、ipx、dnet或者link。</p>
+<h4 id="4"><a href="#4" class="headerlink" title="-4"></a>-4</h4><p>是-family inet的简写。</p>
+<h4 id="6"><a href="#6" class="headerlink" title="-6"></a>-6</h4><p>是-family inet6的简写。</p>
+<h4 id="0"><a href="#0" class="headerlink" title="-0"></a>-0</h4><p>是-family link的简写。</p>
+<h4 id="I"><a href="#I" class="headerlink" title="-I"></a>-I</h4><p>是-family ipx的简写。</p>
+<h4 id="o-oneline"><a href="#o-oneline" class="headerlink" title="-o -oneline"></a>-o -oneline</h4><p>单行输出。</p>
+<h4 id="n-netns"><a href="#n-netns" class="headerlink" title="-n -netns"></a>-n -netns</h4><p>交换机的IP到指定的网络空间netns。</p>
+<h4 id="r-resolve"><a href="#r-resolve" class="headerlink" title="-r -resolve"></a>-r -resolve</h4><p>使用系统名称解析来打印DNS名称而不是主机地址。</p>
+<h4 id="t"><a href="#t" class="headerlink" title="-t"></a>-t</h4><p>使用监视器选项时显示当前时间。</p>
+<h4 id="a-all"><a href="#a-all" class="headerlink" title="-a -all"></a>-a -all</h4><p>对所有的对象执行指定的命令，这取决于命令是否支持这个选项。</p>
+<h4 id="rc-rcvbuf（size）"><a href="#rc-rcvbuf（size）" class="headerlink" title="-rc -rcvbuf（size）"></a>-rc -rcvbuf（size）</h4><p>设置Netlink套接字接收缓冲区的大小设置，默认为1MB。</p>
+<p>ss -lnt</p>
+<p>lsof -p</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Linux/" rel="tag">Linux</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/12/11/Ubuntu-Server%E9%82%A3%E7%82%B9%E4%BA%8B/"
+                    data-tooltip="Ubuntu Server那点儿事"
+                    aria-label="PREVIOUS: Ubuntu Server那点儿事"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/21/Mac%E8%BD%AF%E4%BB%B6/"
+                    data-tooltip="Mac软件"
+                    aria-label="NEXT: Mac软件"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Linux命令大全（一）ip 命令大全"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/12/05/Linux命令大全（一）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/12/11/Ubuntu-Server%E9%82%A3%E7%82%B9%E4%BA%8B/"
+                    data-tooltip="Ubuntu Server那点儿事"
+                    aria-label="PREVIOUS: Ubuntu Server那点儿事"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/21/Mac%E8%BD%AF%E4%BB%B6/"
+                    data-tooltip="Mac软件"
+                    aria-label="NEXT: Mac软件"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Linux命令大全（一）ip 命令大全"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Linux命令大全（一）ip 命令大全"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/05/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

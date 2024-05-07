@@ -1,0 +1,721 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Neutron-Metering-Agent源码分析 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n介绍Neutron-metering-agent用来监控公网IP的流量。文档\n版本Rocky\n插件加载neutron-server在启动时会加载ml2和service_plugins，service_plugins中就包括插件metering。\n12345# setup.cfg[entry_points]neutron.service_plugins =    metering = neutron.services.metering.metering_plugin:MeteringPlugin\nMeteringPlugin中定义了metering的rpc_listener，时刻监听从neutron-metering-agent发送过来的消息。\n服务启动文件setup.cfg中定义neutron-metering-agent服务启动方法。\n12345# setup.cfg[entry_points]console_scripts =     neutron-metering-agent = neutron.cmd.eventlet.services.metering_agent:main\n可以看到neutron-metering-agent的启动方法是位于neutron.cmd.eventlet.services.metering_agent的main方法。\n1234567# neutron/cmd/eventlet/services/metering_agent.pyfrom neutron.services.metering.agents import metering_agentdef main():    metering_agent.main()\n\n紧接着找到python文件neutron/services/metering/agents/metering_agent.py。\n1234567891011121314151617181920212223242526# neutron/services/metering/agents/metering_agent.pydef main():    conf = cfg.CONF    # 注册服务需要的配置项    metering_agent.register_metering_agent_opts()    config.register_agent_state_opts_helper(conf)    # 设置配置文件    common_config.init(sys.argv[1:])    # 启动日志    config.setup_logging()    config.setup_privsep()    # 创建服务    server = neutron_service.Service.create(        binary=&#x27;neutron-metering-agent&#x27;,        topic=topics.METERING_AGENT,        report_interval=cfg.CONF.AGENT.report_interval,        manager=&#x27;neutron.services.metering.agents.&#x27;                &#x27;metering_agent.MeteringAgentWithStateReport&#x27;)        # 启动服务    service.launch(cfg.CONF, server, restart_method=&#x27;mutate&#x27;).wait()\n\n创建服务过程中，会指定neutron-metering-agent的manager为neutron.services.metering.agents.metering_agent.MeteringAgentWithStateReport。来看一下MeteringAgentWithStateReport的代码。\n1234567891011121314151617181920212223242526272829303132333435363738394041424344class MeteringAgentWithStateReport(MeteringAgent):    def __init__(self, host, conf=None):        super(MeteringAgentWithStateReport, self).__init__(host=host,                                                           conf=conf)        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)        self.agent_state = &#123;            &#x27;binary&#x27;: &#x27;neutron-metering-agent&#x27;,            &#x27;host&#x27;: host,            &#x27;topic&#x27;: topics.METERING_AGENT,            &#x27;configurations&#x27;: &#123;                # 驱动，默认是neutron.services.metering.drivers.noop.noop_driver.NoopMeteringDriver                &#x27;metering_driver&#x27;: self.conf.driver,                # 监控间隔，默认30秒                &#x27;measure_interval&#x27;:                # 数据发送间隔，默认300秒                self.conf.measure_interval,                &#x27;report_interval&#x27;: self.conf.report_interval            &#125;,            &#x27;start_flag&#x27;: True,            &#x27;agent_type&#x27;: constants.AGENT_TYPE_METERING&#125;        report_interval = cfg.CONF.AGENT.report_interval        self.use_call = True        if report_interval:            self.heartbeat = loopingcall.FixedIntervalLoopingCall(                self._report_state)            self.heartbeat.start(interval=report_interval)    def _report_state(self):        try:            self.state_rpc.report_state(self.context, self.agent_state,                                        self.use_call)            self.agent_state.pop(&#x27;start_flag&#x27;, None)            self.use_call = False        except AttributeError:            # This means the server does not support report_state            LOG.warning(&quot;Neutron server does not support state report. &quot;                        &quot;State report for this agent will be disabled.&quot;)            self.heartbeat.stop()        except Exception:            LOG.exception(&quot;Failed reporting state!&quot;)    def agent_updated(self, context, payload):        LOG.info(&quot;agent_updated by server side %s!&quot;, payload)\n\nMeteringAgentWithStateReport的基类是MeteringAgent，neutron-metering-agent最主要的部分都是由MeteringAgent来实现的。\n1234567891011121314151617181920class MeteringAgent(MeteringPluginRpc, manager.Manager):    def __init__(self, host, conf=None):        self.conf = conf or cfg.CONF        # 加载驱动        self._load_drivers()        self.context = context.get_admin_context_without_session()        # 创建定时任务        self.metering_loop = loopingcall.FixedIntervalLoopingCall(            self._metering_loop        )        measure_interval = self.conf.measure_interval        self.last_report = 0        self.metering_loop.start(interval=measure_interval)        self.host = host        self.label_tenant_id = &#123;&#125;        self.routers = &#123;&#125;        self.metering_infos = &#123;&#125;        super(MeteringAgent, self).__init__(host=host)\n\n其中self.metering_loop是负责监控流量的定时任务，来看一下定时执行的任务_metering_loop。\n12345678910111213141516def _metering_loop(self):    # 获取监控数据    self._add_metering_infos()    ts = timeutils.utcnow_ts()    delta = ts - self.last_report    report_interval = self.conf.report_interval    # 时间间隔超过报告时间，就将监控数据发送。    if delta &gt;= report_interval:        # 发送监控数据        self._metering_notification()        # 清空监控数据        self._purge_metering_info()        self.last_report = ts\n\nMeteringAgent还有一个_sync_routers_task方法，用来在服务启动一开始同步router的信息。\n1234567891011121314@periodic_task.periodic_task(run_immediately=True)    def _sync_routers_task(self, context):        routers = self._get_sync_data_metering(self.context)        routers_on_agent = set(self.routers.keys())        routers_on_server = set(            [router[&#x27;id&#x27;] for router in routers] if routers else [])        for router_id in routers_on_agent - routers_on_server:            del self.routers[router_id]            self._invoke_driver(context, router_id, &#x27;remove_router&#x27;)        if not routers:            return        self._update_routers(context, routers)\n\n\n收集监控数据监控数据的收集主要由MeteringAgent中的_add_metering_infos方法负责。\n123456789101112131415def _add_metering_infos(self):    self.label_tenant_id = &#123;&#125;    for router in self.routers.values():        tenant_id = router[&#x27;tenant_id&#x27;]        labels = router.get(n_const.METERING_LABEL_KEY, [])        for label in labels:            label_id = label[&#x27;id&#x27;]            self.label_tenant_id[label_id] = tenant_id    accs = self._get_traffic_counters(self.context, self.routers.values())    if not accs:        return    for label_id, acc in accs.items():        self._add_metering_info(label_id, acc[&#x27;pkts&#x27;], acc[&#x27;bytes&#x27;])\n其中_get_traffic_counters用来获取监控的数据。\n1234def _get_traffic_counters(self, context, routers):    LOG.debug(&quot;Get router traffic counters&quot;)    # 调用Driver的get_traffic_counters方法    return self._invoke_driver(context, routers, &#x27;get_traffic_counters&#x27;)\n\n\n123456789101112131415161718192021222324252627282930313233343536373839# neutron/services/metering/drivers/iptables/iptables_driver.py@log_helpers.log_method_call    def get_traffic_counters(self, context, routers):        accs = &#123;&#125;        routers_to_reconfigure = set()        for router in routers:            rm = self.routers.get(router[&#x27;id&#x27;])            if not rm:                continue            for label_id in rm.metering_labels:                try:                    chain = iptables_manager.get_chain_name(WRAP_NAME +                                                            LABEL +                                                            label_id,                                                            wrap=False)                    chain_acc = rm.iptables_manager.get_traffic_counters(                        chain, wrap=False, zero=True)                except RuntimeError:                    LOG.exception(&#x27;Failed to get traffic counters, &#x27;                                  &#x27;router: %s&#x27;, router)                    routers_to_reconfigure.add(router[&#x27;id&#x27;])                    continue                if not chain_acc:                    continue                acc = accs.get(label_id, &#123;&#x27;pkts&#x27;: 0, &#x27;bytes&#x27;: 0&#125;)                acc[&#x27;pkts&#x27;] += chain_acc[&#x27;pkts&#x27;]                acc[&#x27;bytes&#x27;] += chain_acc[&#x27;bytes&#x27;]                accs[label_id] = acc        for router_id in routers_to_reconfigure:            del self.routers[router_id]        return accs","dateCreated":"2019-10-17T10:48:11+08:00","dateModified":"2023-09-21T14:01:34+08:00","datePublished":"2019-10-17T10:48:11+08:00","description":"Neutron-Metering-Agent源码分析","headline":"Neutron-Metering-Agent源码分析","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron-Metering-Agent源码分析">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Neutron-Metering-Agent源码分析">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron-Metering-Agent源码分析">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-10-17T02:48:11.000Z">
+<meta property="article:modified_time" content="2023-09-21T06:01:34.154Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Neutron-Metering-Agent源码分析
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-10-17T10:48:11+08:00">
+	
+		    Oct 17, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%88%E6%9C%AC"><span class="toc-text">版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8F%92%E4%BB%B6%E5%8A%A0%E8%BD%BD"><span class="toc-text">插件加载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%90%AF%E5%8A%A8"><span class="toc-text">服务启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%94%B6%E9%9B%86%E7%9B%91%E6%8E%A7%E6%95%B0%E6%8D%AE"><span class="toc-text">收集监控数据</span></a></li></ol>
+
+<h3 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h3><p>Neutron-metering-agent用来监控公网IP的流量。<a target="_blank" rel="noopener" href="https://wiki.openstack.org/wiki/Neutron/Metering/Bandwidth">文档</a></p>
+<h3 id="版本"><a href="#版本" class="headerlink" title="版本"></a>版本</h3><p><strong>Rocky</strong></p>
+<h3 id="插件加载"><a href="#插件加载" class="headerlink" title="插件加载"></a>插件加载</h3><p>neutron-server在启动时会加载ml2和service_plugins，service_plugins中就包括插件metering。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line">[<span class="string">entry_points</span>]</span><br><span class="line"><span class="string">neutron.service_plugins</span> <span class="string">=</span></span><br><span class="line">    <span class="string">metering</span> <span class="string">=</span> <span class="string">neutron.services.metering.metering_plugin:MeteringPlugin</span></span><br></pre></td></tr></table></figure>
+<p>MeteringPlugin中定义了metering的rpc_listener，时刻监听从neutron-metering-agent发送过来的消息。</p>
+<h3 id="服务启动"><a href="#服务启动" class="headerlink" title="服务启动"></a>服务启动</h3><p>文件setup.cfg中定义neutron-metering-agent服务启动方法。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># setup.cfg</span></span><br><span class="line"></span><br><span class="line">[<span class="string">entry_points</span>]</span><br><span class="line"><span class="string">console_scripts</span> <span class="string">=</span> </span><br><span class="line">    <span class="string">neutron-metering-agent</span> <span class="string">=</span> <span class="string">neutron.cmd.eventlet.services.metering_agent:main</span></span><br></pre></td></tr></table></figure>
+<p>可以看到neutron-metering-agent的启动方法是位于neutron.cmd.eventlet.services.metering_agent的main方法。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># neutron/cmd/eventlet/services/metering_agent.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">from</span> neutron.services.metering.agents <span class="keyword">import</span> metering_agent</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">main</span>():</span><br><span class="line">    metering_agent.main()</span><br></pre></td></tr></table></figure>
+
+<p>紧接着找到python文件neutron/services/metering/agents/metering_agent.py。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># neutron/services/metering/agents/metering_agent.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">main</span>():</span><br><span class="line">    conf = cfg.CONF</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 注册服务需要的配置项</span></span><br><span class="line">    metering_agent.register_metering_agent_opts()</span><br><span class="line">    config.register_agent_state_opts_helper(conf)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 设置配置文件</span></span><br><span class="line">    common_config.init(sys.argv[<span class="number">1</span>:])</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 启动日志</span></span><br><span class="line">    config.setup_logging()</span><br><span class="line">    config.setup_privsep()</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 创建服务</span></span><br><span class="line">    server = neutron_service.Service.create(</span><br><span class="line">        binary=<span class="string">&#x27;neutron-metering-agent&#x27;</span>,</span><br><span class="line">        topic=topics.METERING_AGENT,</span><br><span class="line">        report_interval=cfg.CONF.AGENT.report_interval,</span><br><span class="line">        manager=<span class="string">&#x27;neutron.services.metering.agents.&#x27;</span></span><br><span class="line">                <span class="string">&#x27;metering_agent.MeteringAgentWithStateReport&#x27;</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># 启动服务</span></span><br><span class="line">    service.launch(cfg.CONF, server, restart_method=<span class="string">&#x27;mutate&#x27;</span>).wait()</span><br></pre></td></tr></table></figure>
+
+<p>创建服务过程中，会指定neutron-metering-agent的manager为neutron.services.metering.agents.metering_agent.MeteringAgentWithStateReport。来看一下MeteringAgentWithStateReport的代码。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MeteringAgentWithStateReport</span>(<span class="title class_ inherited__">MeteringAgent</span>):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, host, conf=<span class="literal">None</span></span>):</span><br><span class="line">        <span class="built_in">super</span>(MeteringAgentWithStateReport, self).__init__(host=host,</span><br><span class="line">                                                           conf=conf)</span><br><span class="line">        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)</span><br><span class="line">        self.agent_state = &#123;</span><br><span class="line">            <span class="string">&#x27;binary&#x27;</span>: <span class="string">&#x27;neutron-metering-agent&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;host&#x27;</span>: host,</span><br><span class="line">            <span class="string">&#x27;topic&#x27;</span>: topics.METERING_AGENT,</span><br><span class="line">            <span class="string">&#x27;configurations&#x27;</span>: &#123;</span><br><span class="line">                <span class="comment"># 驱动，默认是neutron.services.metering.drivers.noop.noop_driver.NoopMeteringDriver</span></span><br><span class="line">                <span class="string">&#x27;metering_driver&#x27;</span>: self.conf.driver,</span><br><span class="line">                <span class="comment"># 监控间隔，默认30秒</span></span><br><span class="line">                <span class="string">&#x27;measure_interval&#x27;</span>:</span><br><span class="line">                <span class="comment"># 数据发送间隔，默认300秒</span></span><br><span class="line">                self.conf.measure_interval,</span><br><span class="line">                <span class="string">&#x27;report_interval&#x27;</span>: self.conf.report_interval</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="string">&#x27;start_flag&#x27;</span>: <span class="literal">True</span>,</span><br><span class="line">            <span class="string">&#x27;agent_type&#x27;</span>: constants.AGENT_TYPE_METERING&#125;</span><br><span class="line">        report_interval = cfg.CONF.AGENT.report_interval</span><br><span class="line">        self.use_call = <span class="literal">True</span></span><br><span class="line">        <span class="keyword">if</span> report_interval:</span><br><span class="line">            self.heartbeat = loopingcall.FixedIntervalLoopingCall(</span><br><span class="line">                self._report_state)</span><br><span class="line">            self.heartbeat.start(interval=report_interval)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_report_state</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            self.state_rpc.report_state(self.context, self.agent_state,</span><br><span class="line">                                        self.use_call)</span><br><span class="line">            self.agent_state.pop(<span class="string">&#x27;start_flag&#x27;</span>, <span class="literal">None</span>)</span><br><span class="line">            self.use_call = <span class="literal">False</span></span><br><span class="line">        <span class="keyword">except</span> AttributeError:</span><br><span class="line">            <span class="comment"># This means the server does not support report_state</span></span><br><span class="line">            LOG.warning(<span class="string">&quot;Neutron server does not support state report. &quot;</span></span><br><span class="line">                        <span class="string">&quot;State report for this agent will be disabled.&quot;</span>)</span><br><span class="line">            self.heartbeat.stop()</span><br><span class="line">        <span class="keyword">except</span> Exception:</span><br><span class="line">            LOG.exception(<span class="string">&quot;Failed reporting state!&quot;</span>)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">agent_updated</span>(<span class="params">self, context, payload</span>):</span><br><span class="line">        LOG.info(<span class="string">&quot;agent_updated by server side %s!&quot;</span>, payload)</span><br></pre></td></tr></table></figure>
+
+<p>MeteringAgentWithStateReport的基类是MeteringAgent，neutron-metering-agent最主要的部分都是由MeteringAgent来实现的。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MeteringAgent</span>(MeteringPluginRpc, manager.Manager):</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, host, conf=<span class="literal">None</span></span>):</span><br><span class="line">        self.conf = conf <span class="keyword">or</span> cfg.CONF</span><br><span class="line">        <span class="comment"># 加载驱动</span></span><br><span class="line">        self._load_drivers()</span><br><span class="line">        self.context = context.get_admin_context_without_session()</span><br><span class="line">        <span class="comment"># 创建定时任务</span></span><br><span class="line">        self.metering_loop = loopingcall.FixedIntervalLoopingCall(</span><br><span class="line">            self._metering_loop</span><br><span class="line">        )</span><br><span class="line">        measure_interval = self.conf.measure_interval</span><br><span class="line">        self.last_report = <span class="number">0</span></span><br><span class="line">        self.metering_loop.start(interval=measure_interval)</span><br><span class="line">        self.host = host</span><br><span class="line"></span><br><span class="line">        self.label_tenant_id = &#123;&#125;</span><br><span class="line">        self.routers = &#123;&#125;</span><br><span class="line">        self.metering_infos = &#123;&#125;</span><br><span class="line">        <span class="built_in">super</span>(MeteringAgent, self).__init__(host=host)</span><br></pre></td></tr></table></figure>
+
+<p>其中self.metering_loop是负责监控流量的定时任务，来看一下定时执行的任务_metering_loop。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">_metering_loop</span>(<span class="params">self</span>):</span><br><span class="line">    <span class="comment"># 获取监控数据</span></span><br><span class="line">    self._add_metering_infos()</span><br><span class="line"></span><br><span class="line">    ts = timeutils.utcnow_ts()</span><br><span class="line">    delta = ts - self.last_report</span><br><span class="line"></span><br><span class="line">    report_interval = self.conf.report_interval</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 时间间隔超过报告时间，就将监控数据发送。</span></span><br><span class="line">    <span class="keyword">if</span> delta &gt;= report_interval:</span><br><span class="line">        <span class="comment"># 发送监控数据</span></span><br><span class="line">        self._metering_notification()</span><br><span class="line">        <span class="comment"># 清空监控数据</span></span><br><span class="line">        self._purge_metering_info()</span><br><span class="line">        self.last_report = ts</span><br></pre></td></tr></table></figure>
+
+<p>MeteringAgent还有一个_sync_routers_task方法，用来在服务启动一开始同步router的信息。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@periodic_task.periodic_task(<span class="params">run_immediately=<span class="literal">True</span></span>)</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">_sync_routers_task</span>(<span class="params">self, context</span>):</span><br><span class="line">        routers = self._get_sync_data_metering(self.context)</span><br><span class="line"></span><br><span class="line">        routers_on_agent = <span class="built_in">set</span>(self.routers.keys())</span><br><span class="line">        routers_on_server = <span class="built_in">set</span>(</span><br><span class="line">            [router[<span class="string">&#x27;id&#x27;</span>] <span class="keyword">for</span> router <span class="keyword">in</span> routers] <span class="keyword">if</span> routers <span class="keyword">else</span> [])</span><br><span class="line">        <span class="keyword">for</span> router_id <span class="keyword">in</span> routers_on_agent - routers_on_server:</span><br><span class="line">            <span class="keyword">del</span> self.routers[router_id]</span><br><span class="line">            self._invoke_driver(context, router_id, <span class="string">&#x27;remove_router&#x27;</span>)</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> routers:</span><br><span class="line">            <span class="keyword">return</span></span><br><span class="line">        self._update_routers(context, routers)</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="收集监控数据"><a href="#收集监控数据" class="headerlink" title="收集监控数据"></a>收集监控数据</h3><p>监控数据的收集主要由MeteringAgent中的_add_metering_infos方法负责。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">_add_metering_infos</span>(<span class="params">self</span>):</span><br><span class="line">    self.label_tenant_id = &#123;&#125;</span><br><span class="line">    <span class="keyword">for</span> router <span class="keyword">in</span> self.routers.values():</span><br><span class="line">        tenant_id = router[<span class="string">&#x27;tenant_id&#x27;</span>]</span><br><span class="line">        labels = router.get(n_const.METERING_LABEL_KEY, [])</span><br><span class="line">        <span class="keyword">for</span> label <span class="keyword">in</span> labels:</span><br><span class="line">            label_id = label[<span class="string">&#x27;id&#x27;</span>]</span><br><span class="line">            self.label_tenant_id[label_id] = tenant_id</span><br><span class="line"></span><br><span class="line">    accs = self._get_traffic_counters(self.context, self.routers.values())</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> accs:</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> label_id, acc <span class="keyword">in</span> accs.items():</span><br><span class="line">        self._add_metering_info(label_id, acc[<span class="string">&#x27;pkts&#x27;</span>], acc[<span class="string">&#x27;bytes&#x27;</span>])</span><br></pre></td></tr></table></figure>
+<p>其中_get_traffic_counters用来获取监控的数据。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">_get_traffic_counters</span>(<span class="params">self, context, routers</span>):</span><br><span class="line">    LOG.debug(<span class="string">&quot;Get router traffic counters&quot;</span>)</span><br><span class="line">    <span class="comment"># 调用Driver的get_traffic_counters方法</span></span><br><span class="line">    <span class="keyword">return</span> self._invoke_driver(context, routers, <span class="string">&#x27;get_traffic_counters&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># neutron/services/metering/drivers/iptables/iptables_driver.py</span></span><br><span class="line"><span class="meta">@log_helpers.log_method_call</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_traffic_counters</span>(<span class="params">self, context, routers</span>):</span><br><span class="line">        accs = &#123;&#125;</span><br><span class="line">        routers_to_reconfigure = <span class="built_in">set</span>()</span><br><span class="line">        <span class="keyword">for</span> router <span class="keyword">in</span> routers:</span><br><span class="line">            rm = self.routers.get(router[<span class="string">&#x27;id&#x27;</span>])</span><br><span class="line">            <span class="keyword">if</span> <span class="keyword">not</span> rm:</span><br><span class="line">                <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> label_id <span class="keyword">in</span> rm.metering_labels:</span><br><span class="line">                <span class="keyword">try</span>:</span><br><span class="line">                    chain = iptables_manager.get_chain_name(WRAP_NAME +</span><br><span class="line">                                                            LABEL +</span><br><span class="line">                                                            label_id,</span><br><span class="line">                                                            wrap=<span class="literal">False</span>)</span><br><span class="line"></span><br><span class="line">                    chain_acc = rm.iptables_manager.get_traffic_counters(</span><br><span class="line">                        chain, wrap=<span class="literal">False</span>, zero=<span class="literal">True</span>)</span><br><span class="line">                <span class="keyword">except</span> RuntimeError:</span><br><span class="line">                    LOG.exception(<span class="string">&#x27;Failed to get traffic counters, &#x27;</span></span><br><span class="line">                                  <span class="string">&#x27;router: %s&#x27;</span>, router)</span><br><span class="line">                    routers_to_reconfigure.add(router[<span class="string">&#x27;id&#x27;</span>])</span><br><span class="line">                    <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> <span class="keyword">not</span> chain_acc:</span><br><span class="line">                    <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">                acc = accs.get(label_id, &#123;<span class="string">&#x27;pkts&#x27;</span>: <span class="number">0</span>, <span class="string">&#x27;bytes&#x27;</span>: <span class="number">0</span>&#125;)</span><br><span class="line"></span><br><span class="line">                acc[<span class="string">&#x27;pkts&#x27;</span>] += chain_acc[<span class="string">&#x27;pkts&#x27;</span>]</span><br><span class="line">                acc[<span class="string">&#x27;bytes&#x27;</span>] += chain_acc[<span class="string">&#x27;bytes&#x27;</span>]</span><br><span class="line"></span><br><span class="line">                accs[label_id] = acc</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> router_id <span class="keyword">in</span> routers_to_reconfigure:</span><br><span class="line">            <span class="keyword">del</span> self.routers[router_id]</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> accs</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="PREVIOUS: OpenTracing"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/14/Neutron-Server%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Server源码分析"
+                    aria-label="NEXT: Neutron-Server源码分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/&amp;title=Neutron-Metering-Agent源码分析"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/10/17/Neutron-Metering-Agent源码分析/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="PREVIOUS: OpenTracing"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/14/Neutron-Server%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Server源码分析"
+                    aria-label="NEXT: Neutron-Server源码分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/&amp;title=Neutron-Metering-Agent源码分析"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/&amp;title=Neutron-Metering-Agent源码分析"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

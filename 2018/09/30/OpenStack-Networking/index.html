@@ -1,0 +1,774 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack Networking - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Openstack,Network">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"OpenStack Networking允许创建并管理网络、子网和端口等网络对象，其他OpenStack服务可以使用这些对象。可以实现插件以适应不同的网络设备和软件，为OpenStack架构和部署提供灵活性。\n\n\n\n代号为neutron的网络服务提供了一个API，可让您在云中定义网络连接和寻址。 网络服务使运营商能够利用不同的网络技术为其云网络提供支持。 Networking服务还提供API，用于配置和管理各种网络服务，范围从L3转发和网络地址转换（NAT）到负载平衡，外围防火墙和虚拟专用网络。\nneutron包括：\n\nAPI serverOpenStack Networking API包括对第2层网络和IP地址管理（IPAM）的支持，以及第3层路由器构造的扩展，该构造支持在第2层网络和网关之间路由到外部网络。OpenStack Networking包含越来越多的插件，可实现与各种商业和开源网络技术的互操作，包括路由器，交换机，虚拟交换机和软件定义网络（SDN）控制器。\n\nOpenStack Networking插件和代理插拔端口，创建网络或子网，并提供IP寻址。所选插件和代理程序因特定云中使用的供应商和技术而异。一次只能使用一个插件。\n\n消息队列接受并路由代理之间的RPC请求以完成API操作。\n\n\n概念要配置富网络拓扑，可以创建和配置网络和子网，并指示其他OpenStack服务（如Compute）将虚拟设备连接到这些网络上的端口。OpenStack Compute是OpenStack Networking的主要消费者，为其实例提供连接。特别是，OpenStack Networking支持每个项目有多个专用的网络，并使项目能够选择自己的IP寻址方案，即使这些IP地址与其他项目使用的IP地址重叠。有两种类型的网络，项目网络和提供商网络。作为网络创建过程的一部分，可以在项目之间共享任何这些类型的网络。\nProvider networksProvider networks提供与实例的第2层连接，并可选择支持DHCP和元数据服务。这些网络连接或映射到数据中心中的现有第2层网络，通常使用VLAN（802.1q）标记来识别和分离它们。\n提供商网络通常以灵活性为代价提供简单性、性能和可靠性。默认情况下，只有管理员可以创建或更新提供商网络，因为它们需要配置物理网络基础。更改允许创建或更新提供者网络的用户，可以使用policy.json的以下参数：\n\ncreate_network:provider:physical_network\nupdate_network:provider:physical_network\n\n提供商网络的创建和修改会使用物理网络资源，例如VLAN-s。所以要受信任的项目启用这些更改。\n\n\n此外，提供商网络仅处理实例的第2层连接，因此缺乏对路由器和浮动IP地址等功能的支持。\n在许多情况下，已经熟悉依赖于第2层、第3层或其他服务的物理网络基础架构的虚拟网络架构的运营商可以无缝部署OpenStack Networking服务。特别是，那些希望从Compute网络服务（nova-network）迁移到OpenStack Networking服务的运营商。随着时间的推移，运营商可以在这个最小的架构上构建，以实现更多云网络功能。\n通常，处理第3层操作的OpenStack Networking软件组件最能影响性能和可靠性。为了提高性能和可靠性，提供商网络将第3层操作移至物理网络基础架构。\n在一个特定用例中，OpenStack部署位于混合环境中，该环境具有使用相当大的物理网络基础架构的传统虚拟化和bare-metal主机。在OpenStack部署中运行的应用程序可能需要对部署之外的应用程序进行直接的第2层访问（通常使用VLAN）。\nRouted provider networks路由提供商网络提供与实例的第3层连接。这些网络映射到数据中心的现有第3层网络。更具体地，网络映射到多个第2层段，每个第2层段基本上是提供商网络。每个都有一个连接到它的路由器网关，它在它们和外部之间路由流量。网络服务不提供路由。路由提供商网络提供大规模性能，这是通过普通提供商网络难以实现的，但代价是保证了第2层连接。\nSelf-service networks自助服务网络主要使普通（非特权）项目能够在不涉及管理员的情况下管理网络。这些网络完全是虚拟的，需要虚拟路由器与提供商和外部网络（如Internet）进行交互。自助服务网络通常还为实例提供DHCP和元数据服务。在大多数情况下，自助服务网络使用Overlay协议（如VXLAN或GRE），因为它们可以支持比使用VLAN标记（802.1q）的第2层分段更多的网络。此外，VLAN通常需要额外配置物理网络基础结构。\nIPv4自助服务网络通常使用专用IP地址范围（RFC1918），并通过虚拟路由器上的源NAT与提供商网络进行交互。浮动IP地址允许通过虚拟路由器上的目标NAT从提供商网络访问实例。IPv6自助服务网络始终使用公共IP地址范围，并通过具有静态路由的虚拟路由器与提供商网络进行交互。\nNetworking服务使用通常至少存在一个网络节点的第3层代理实现路由器。与将实例连接到第2层的物理网络基础架构的提供商网络相反，自助服务网络必须遍历第3层代理。因此，第3层代理或网络节点的超额订购或故障可能会影响大量的自助服务网络和使用它们的实例。考虑实施一个或多个高可用性功能，以提高自助服务网络的冗余和性能。\n用户为项目内的连接创建项目网络。默认情况下，它们是完全隔离的，不与其他项目共享。OpenStack Networking支持以下类型的网络隔离和覆盖技术。\nFlat所有实例都驻留在同一网络上，也可以与主机共享。 不会发生VLAN标记或其他网络隔离。\nVLAN网络允许用户使用与物理网络中存在的VLAN对应的VLAN ID（802.1Q标记）创建多个提供商或项目网络。这允许实例在整个环境中相互通信。它们还可以与同一第2层VLAN上的专用服务器、防火墙、负载平衡器和其他网络基础架构进行通信。\nGRE and VXLANVXLAN和GRE是封装协议，可创建覆盖网络以激活和控制计算实例之间的通信。需要网络路由器才能允许流量流向GRE或VXLAN项目网络之外。还需要路由器将直接连接的项目网络与外部网络（包括Internet）连接。路由器提供使用浮动IP地址直接从外部网络连接到实例的功能。\nSubnetsIP地址块和关联的配置状态。这也称为网络服务为项目和提供商网络提供的本机IPAM（IP地址管理）。子网用于在网络上创建新端口时分配IP地址。\nSubnet pools最终用户通常可以创建具有任何有效IP地址的子网，而无需其他限制。但是，在某些情况下，管理员或项目可以预先定义一个地址池，从中创建具有自动分配的子网。使用子网池通过要求每个子网都在定义的池中来约束可以使用的地址。它还可以防止来自同一池的两个子网重用地址或重叠。\nPorts端口是用于将单个设备（例如虚拟服务器的NIC）连接到虚拟网络的连接点。该端口还描述了相关的网络配置，例如要在该端口上使用的MAC和IP地址。\nRouters路由器提供虚拟第3层服务，例如自助服务网络和提供商网络之间或某一项目的自助服务网络之间的路由和NAT。通过命名空间，Networking服务使用第3层代理管理路由器。\nSecurity groups安全组为虚拟防火墙规则提供容器，用于控制端口级别的入口（入站到实例）和出口（从实例出站）网络流量。安全组使用默认拒绝策略，仅包含允许特定流量的规则。每个端口可以以加性方式引用一个或多个安全组。防火墙驱动程序将安全组规则转换为基础数据包过滤技术（如iptables）的配置。\n每个项目都包含一个默认安全组，允许所有出口流量并拒绝所有入口流量。可以更改默认安全组中的规则。如果在未指定安全组的情况下启动实例，则默认安全组会自动应用于该安全组。同样，如果在未指定安全组的情况下创建端口，则默认安全组会自动应用于该端口。\n如果使用元数据服务，则删除默认出口规则来拒绝访问169.254.169.254上的TCP端口80，从而阻止实例检索元数据。\n\n\n安全组规则是有状态的。因此，允许入口TCP端口22用于安全shell自动创建允许返回涉及那些TCP连接的出口流量和ICMP错误消息的规则。\n默认情况下，所有安全组都包含一系列执行以下操作的基本（完整性）和反欺骗规则：\n\n仅当出口流量使用实例端口的源MAC和IP地址，允许地址对中的源MAC和IP组合，或有效MAC地址（端口或允许地址对）和相关的EUI64本地链路地址时，才允许出口流量。\n允许egress DHCP发现并请求的消息，来使用实例端口的源MAC地址和未指定的IPv4地址（0.0.0.0）\n允许ingress来自子网上DHCP服务器的DHCP和DHCPv6响应，以便实例可以获取IP地址。\n拒绝egress DHCP和DHCPv6响应以防止实例充当DHCP（v6）服务器。\n允许ingress/egress ICMPv6 MLD，邻居请求和邻居发现消息，以便实例可以发现邻居并加入多播组。\n拒绝egress ICMPv6路由器通告，以防止实例充当IPv6路由器并为其他实例转发IPv6流量。\n允许egress ICMPv6 MLD报告（v1和v2）以及使用特定实例的源MAC地址和未指定的IPv6地址（：:)的邻居请求消息。重复地址检测（DAD）依赖于这些消息。\n允许egress从实例端口的MAC地址的非IP流量，并允许实例端口上的允许地址对中的任何其他MAC地址。\n\n虽然非IP流量，但安全组不会隐式允许所有ARP流量。单独的ARP过滤规则可防止实例使用ARP拦截另一个实例的流量。您无法禁用或删除这些规则。您可以通过将端口属性port_security_enabled设置为False来禁用安全组，包括基本规则和反欺骗规则。\nExtensionsOpenStack Networking服务是可扩展的。扩展有两个目的：它们允许在API中引入新功能而无需更改版本，并且它们允许引入供应商特定的利基功能。应用程序可以通过在/extensions URI上执行GET以编程方式列出可用扩展。请注意，这是一个版本化请求;也就是说，一个API版本中可用的扩展可能在另一个API版本中不可用。\nDHCP可选的DHCP服务管理提供商和自助服务网络上的实例的IP地址。Networking服务使用管理qdhcp命名空间和dnsmasq服务的代理实现DHCP服务。\nMetadata可选的元数据服务为实例提供API以获取诸如SSH密钥之类的元数据。\nService and component hierarchy（服务和组件层次结构）Server\n提供API，管理数据库等。\n\nPlug-ins\n管理代理。\n\nAgents\n提供与实例的第2/3层连接。\n处理物理 - 虚拟网络转换。\n处理元数据等。\n\nLayer 2 (Ethernet and Switching)\nLinux Bridge\nOVS\n\nLayer 3 (IP and Routing)\nL3\nDHCP\n\nMiscellaneous\nMetadata\n\nServicesRouting services\nVPNaaS虚拟专用网络即服务（Virtual Private Network-as-a-Service）是一种引入VPN功能集的neutron extension。\nLBaaS负载均衡即服务（Load-Balancer-as-a-Service）API提供并配置负载平衡器。参考实现基于HAProxy软件负载均衡器。\nFWaaS防火墙即服务（Firewall-as-a-Service）API是一种实验性API，使早期采用者和供应商能够测试其网络实施。\n","dateCreated":"2018-09-30T14:18:35+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-09-30T14:18:35+08:00","description":"OpenStack Networking允许创建并管理网络、子网和端口等网络对象，其他OpenStack服务可以使用这些对象。可以实现插件以适应不同的网络设备和软件，为OpenStack架构和部署提供灵活性。","headline":"OpenStack Networking","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/","keywords":"OpenStack, Network","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="OpenStack Networking允许创建并管理网络、子网和端口等网络对象，其他OpenStack服务可以使用这些对象。可以实现插件以适应不同的网络设备和软件，为OpenStack架构和部署提供灵活性。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack Networking">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack Networking允许创建并管理网络、子网和端口等网络对象，其他OpenStack服务可以使用这些对象。可以实现插件以适应不同的网络设备和软件，为OpenStack架构和部署提供灵活性。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-09-30T06:18:35.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.039Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Network">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack Networking
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-30T14:18:35+08:00">
+	
+		    Sep 30, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>OpenStack Networking允许创建并管理网络、子网和端口等网络对象，其他OpenStack服务可以使用这些对象。可以实现插件以适应不同的网络设备和软件，为OpenStack架构和部署提供灵活性。</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5"><span class="toc-text">概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Provider-networks"><span class="toc-text">Provider networks</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Routed-provider-networks"><span class="toc-text">Routed provider networks</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Self-service-networks"><span class="toc-text">Self-service networks</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Flat"><span class="toc-text">Flat</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#VLAN"><span class="toc-text">VLAN</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#GRE-and-VXLAN"><span class="toc-text">GRE and VXLAN</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Subnets"><span class="toc-text">Subnets</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Subnet-pools"><span class="toc-text">Subnet pools</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Ports"><span class="toc-text">Ports</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Routers"><span class="toc-text">Routers</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Security-groups"><span class="toc-text">Security groups</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Extensions"><span class="toc-text">Extensions</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DHCP"><span class="toc-text">DHCP</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Metadata"><span class="toc-text">Metadata</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Service-and-component-hierarchy%EF%BC%88%E6%9C%8D%E5%8A%A1%E5%92%8C%E7%BB%84%E4%BB%B6%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84%EF%BC%89"><span class="toc-text">Service and component hierarchy（服务和组件层次结构）</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Server"><span class="toc-text">Server</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Plug-ins"><span class="toc-text">Plug-ins</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Agents"><span class="toc-text">Agents</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Layer-2-Ethernet-and-Switching"><span class="toc-text">Layer 2 (Ethernet and Switching)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Layer-3-IP-and-Routing"><span class="toc-text">Layer 3 (IP and Routing)</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Miscellaneous"><span class="toc-text">Miscellaneous</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Services"><span class="toc-text">Services</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#VPNaaS"><span class="toc-text">VPNaaS</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#LBaaS"><span class="toc-text">LBaaS</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#FWaaS"><span class="toc-text">FWaaS</span></a></li></ol></li></ol></li></ol>
+
+<p>代号为neutron的网络服务提供了一个API，可让您在云中定义网络连接和寻址。 网络服务使运营商能够利用不同的网络技术为其云网络提供支持。 Networking服务还提供API，用于配置和管理各种网络服务，范围从L3转发和网络地址转换（NAT）到负载平衡，外围防火墙和虚拟专用网络。</p>
+<p>neutron包括：</p>
+<ul>
+<li><p>API server<br>OpenStack Networking API包括对第2层网络和IP地址管理（IPAM）的支持，以及第3层路由器构造的扩展，该构造支持在第2层网络和网关之间路由到外部网络。OpenStack Networking包含越来越多的插件，可实现与各种商业和开源网络技术的互操作，包括路由器，交换机，虚拟交换机和软件定义网络（SDN）控制器。</p>
+</li>
+<li><p>OpenStack Networking插件和代理<br>插拔端口，创建网络或子网，并提供IP寻址。所选插件和代理程序因特定云中使用的供应商和技术而异。一次只能使用一个插件。</p>
+</li>
+<li><p>消息队列<br>接受并路由代理之间的RPC请求以完成API操作。</p>
+</li>
+</ul>
+<h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>要配置富网络拓扑，可以创建和配置网络和子网，并指示其他OpenStack服务（如Compute）将虚拟设备连接到这些网络上的端口。OpenStack Compute是OpenStack Networking的主要消费者，为其实例提供连接。特别是，OpenStack Networking支持每个项目有多个专用的网络，并使项目能够选择自己的IP寻址方案，即使这些IP地址与其他项目使用的IP地址重叠。有两种类型的网络，项目网络和提供商网络。作为网络创建过程的一部分，可以在项目之间共享任何这些类型的网络。</p>
+<h4 id="Provider-networks"><a href="#Provider-networks" class="headerlink" title="Provider networks"></a>Provider networks</h4><p>Provider networks提供与实例的第2层连接，并可选择支持DHCP和元数据服务。这些网络连接或映射到数据中心中的现有第2层网络，通常使用VLAN（802.1q）标记来识别和分离它们。</p>
+<p>提供商网络通常以灵活性为代价提供简单性、性能和可靠性。默认情况下，只有管理员可以创建或更新提供商网络，因为它们需要配置物理网络基础。更改允许创建或更新提供者网络的用户，可以使用policy.json的以下参数：</p>
+<ul>
+<li>create_network:provider:physical_network</li>
+<li>update_network:provider:physical_network</li>
+</ul>
+<div class="alert warning no-icon"><p>提供商网络的创建和修改会使用物理网络资源，例如VLAN-s。所以要受信任的项目启用这些更改。</p>
+</div>
+
+<p>此外，提供商网络仅处理实例的第2层连接，因此缺乏对路由器和浮动IP地址等功能的支持。</p>
+<p>在许多情况下，已经熟悉依赖于第2层、第3层或其他服务的物理网络基础架构的虚拟网络架构的运营商可以无缝部署OpenStack Networking服务。特别是，那些希望从Compute网络服务（nova-network）迁移到OpenStack Networking服务的运营商。随着时间的推移，运营商可以在这个最小的架构上构建，以实现更多云网络功能。</p>
+<p>通常，处理第3层操作的OpenStack Networking软件组件最能影响性能和可靠性。为了提高性能和可靠性，提供商网络将第3层操作移至物理网络基础架构。</p>
+<p>在一个特定用例中，OpenStack部署位于混合环境中，该环境具有使用相当大的物理网络基础架构的传统虚拟化和bare-metal主机。在OpenStack部署中运行的应用程序可能需要对部署之外的应用程序进行直接的第2层访问（通常使用VLAN）。</p>
+<h4 id="Routed-provider-networks"><a href="#Routed-provider-networks" class="headerlink" title="Routed provider networks"></a>Routed provider networks</h4><p>路由提供商网络提供与实例的第3层连接。这些网络映射到数据中心的现有第3层网络。更具体地，网络映射到多个第2层段，每个第2层段基本上是提供商网络。每个都有一个连接到它的路由器网关，它在它们和外部之间路由流量。网络服务不提供路由。路由提供商网络提供大规模性能，这是通过普通提供商网络难以实现的，但代价是保证了第2层连接。</p>
+<h4 id="Self-service-networks"><a href="#Self-service-networks" class="headerlink" title="Self-service networks"></a>Self-service networks</h4><p>自助服务网络主要使普通（非特权）项目能够在不涉及管理员的情况下管理网络。这些网络完全是虚拟的，需要虚拟路由器与提供商和外部网络（如Internet）进行交互。自助服务网络通常还为实例提供DHCP和元数据服务。在大多数情况下，自助服务网络使用Overlay协议（如VXLAN或GRE），因为它们可以支持比使用VLAN标记（802.1q）的第2层分段更多的网络。此外，VLAN通常需要额外配置物理网络基础结构。</p>
+<p>IPv4自助服务网络通常使用专用IP地址范围（RFC1918），并通过虚拟路由器上的源NAT与提供商网络进行交互。浮动IP地址允许通过虚拟路由器上的目标NAT从提供商网络访问实例。IPv6自助服务网络始终使用公共IP地址范围，并通过具有静态路由的虚拟路由器与提供商网络进行交互。</p>
+<p>Networking服务使用通常至少存在一个网络节点的第3层代理实现路由器。与将实例连接到第2层的物理网络基础架构的提供商网络相反，自助服务网络必须遍历第3层代理。因此，第3层代理或网络节点的超额订购或故障可能会影响大量的自助服务网络和使用它们的实例。考虑实施一个或多个高可用性功能，以提高自助服务网络的冗余和性能。</p>
+<p>用户为项目内的连接创建项目网络。默认情况下，它们是完全隔离的，不与其他项目共享。OpenStack Networking支持以下类型的网络隔离和覆盖技术。</p>
+<h5 id="Flat"><a href="#Flat" class="headerlink" title="Flat"></a>Flat</h5><p>所有实例都驻留在同一网络上，也可以与主机共享。 不会发生VLAN标记或其他网络隔离。</p>
+<h5 id="VLAN"><a href="#VLAN" class="headerlink" title="VLAN"></a>VLAN</h5><p>网络允许用户使用与物理网络中存在的VLAN对应的VLAN ID（802.1Q标记）创建多个提供商或项目网络。这允许实例在整个环境中相互通信。它们还可以与同一第2层VLAN上的专用服务器、防火墙、负载平衡器和其他网络基础架构进行通信。</p>
+<h5 id="GRE-and-VXLAN"><a href="#GRE-and-VXLAN" class="headerlink" title="GRE and VXLAN"></a>GRE and VXLAN</h5><p>VXLAN和GRE是封装协议，可创建覆盖网络以激活和控制计算实例之间的通信。需要网络路由器才能允许流量流向GRE或VXLAN项目网络之外。还需要路由器将直接连接的项目网络与外部网络（包括Internet）连接。路由器提供使用浮动IP地址直接从外部网络连接到实例的功能。</p>
+<h4 id="Subnets"><a href="#Subnets" class="headerlink" title="Subnets"></a>Subnets</h4><p>IP地址块和关联的配置状态。这也称为网络服务为项目和提供商网络提供的本机IPAM（IP地址管理）。子网用于在网络上创建新端口时分配IP地址。</p>
+<h4 id="Subnet-pools"><a href="#Subnet-pools" class="headerlink" title="Subnet pools"></a>Subnet pools</h4><p>最终用户通常可以创建具有任何有效IP地址的子网，而无需其他限制。但是，在某些情况下，管理员或项目可以预先定义一个地址池，从中创建具有自动分配的子网。使用子网池通过要求每个子网都在定义的池中来约束可以使用的地址。它还可以防止来自同一池的两个子网重用地址或重叠。</p>
+<h4 id="Ports"><a href="#Ports" class="headerlink" title="Ports"></a>Ports</h4><p>端口是用于将单个设备（例如虚拟服务器的NIC）连接到虚拟网络的连接点。该端口还描述了相关的网络配置，例如要在该端口上使用的MAC和IP地址。</p>
+<h4 id="Routers"><a href="#Routers" class="headerlink" title="Routers"></a>Routers</h4><p>路由器提供虚拟第3层服务，例如自助服务网络和提供商网络之间或某一项目的自助服务网络之间的路由和NAT。通过命名空间，Networking服务使用第3层代理管理路由器。</p>
+<h4 id="Security-groups"><a href="#Security-groups" class="headerlink" title="Security groups"></a>Security groups</h4><p>安全组为虚拟防火墙规则提供容器，用于控制端口级别的入口（入站到实例）和出口（从实例出站）网络流量。安全组使用默认拒绝策略，仅包含允许特定流量的规则。每个端口可以以加性方式引用一个或多个安全组。防火墙驱动程序将安全组规则转换为基础数据包过滤技术（如iptables）的配置。</p>
+<p>每个项目都包含一个默认安全组，允许所有出口流量并拒绝所有入口流量。可以更改默认安全组中的规则。如果在未指定安全组的情况下启动实例，则默认安全组会自动应用于该安全组。同样，如果在未指定安全组的情况下创建端口，则默认安全组会自动应用于该端口。</p>
+<div class="alert info no-icon"><p>如果使用元数据服务，则删除默认出口规则来拒绝访问169.254.169.254上的TCP端口80，从而阻止实例检索元数据。</p>
+</div>
+
+<p>安全组规则是有状态的。因此，允许入口TCP端口22用于安全shell自动创建允许返回涉及那些TCP连接的出口流量和ICMP错误消息的规则。</p>
+<p>默认情况下，所有安全组都包含一系列执行以下操作的基本（完整性）和反欺骗规则：</p>
+<ul>
+<li>仅当出口流量使用实例端口的源MAC和IP地址，允许地址对中的源MAC和IP组合，或有效MAC地址（端口或允许地址对）和相关的EUI64本地链路地址时，才允许出口流量。</li>
+<li>允许egress DHCP发现并请求的消息，来使用实例端口的源MAC地址和未指定的IPv4地址（0.0.0.0）</li>
+<li>允许ingress来自子网上DHCP服务器的DHCP和DHCPv6响应，以便实例可以获取IP地址。</li>
+<li>拒绝egress DHCP和DHCPv6响应以防止实例充当DHCP（v6）服务器。</li>
+<li>允许ingress/egress ICMPv6 MLD，邻居请求和邻居发现消息，以便实例可以发现邻居并加入多播组。</li>
+<li>拒绝egress ICMPv6路由器通告，以防止实例充当IPv6路由器并为其他实例转发IPv6流量。</li>
+<li>允许egress ICMPv6 MLD报告（v1和v2）以及使用特定实例的源MAC地址和未指定的IPv6地址（：:)的邻居请求消息。重复地址检测（DAD）依赖于这些消息。</li>
+<li>允许egress从实例端口的MAC地址的非IP流量，并允许实例端口上的允许地址对中的任何其他MAC地址。</li>
+</ul>
+<p>虽然非IP流量，但安全组不会隐式允许所有ARP流量。单独的ARP过滤规则可防止实例使用ARP拦截另一个实例的流量。您无法禁用或删除这些规则。您可以通过将端口属性port_security_enabled设置为False来禁用安全组，包括基本规则和反欺骗规则。</p>
+<h4 id="Extensions"><a href="#Extensions" class="headerlink" title="Extensions"></a>Extensions</h4><p>OpenStack Networking服务是可扩展的。扩展有两个目的：它们允许在API中引入新功能而无需更改版本，并且它们允许引入供应商特定的利基功能。应用程序可以通过在/extensions URI上执行GET以编程方式列出可用扩展。请注意，这是一个版本化请求;也就是说，一个API版本中可用的扩展可能在另一个API版本中不可用。</p>
+<h4 id="DHCP"><a href="#DHCP" class="headerlink" title="DHCP"></a>DHCP</h4><p>可选的DHCP服务管理提供商和自助服务网络上的实例的IP地址。Networking服务使用管理qdhcp命名空间和dnsmasq服务的代理实现DHCP服务。</p>
+<h4 id="Metadata"><a href="#Metadata" class="headerlink" title="Metadata"></a>Metadata</h4><p>可选的元数据服务为实例提供API以获取诸如SSH密钥之类的元数据。</p>
+<h3 id="Service-and-component-hierarchy（服务和组件层次结构）"><a href="#Service-and-component-hierarchy（服务和组件层次结构）" class="headerlink" title="Service and component hierarchy（服务和组件层次结构）"></a>Service and component hierarchy（服务和组件层次结构）</h3><h4 id="Server"><a href="#Server" class="headerlink" title="Server"></a>Server</h4><ul>
+<li>提供API，管理数据库等。</li>
+</ul>
+<h4 id="Plug-ins"><a href="#Plug-ins" class="headerlink" title="Plug-ins"></a>Plug-ins</h4><ul>
+<li>管理代理。</li>
+</ul>
+<h4 id="Agents"><a href="#Agents" class="headerlink" title="Agents"></a>Agents</h4><ul>
+<li>提供与实例的第2/3层连接。</li>
+<li>处理物理 - 虚拟网络转换。</li>
+<li>处理元数据等。</li>
+</ul>
+<h5 id="Layer-2-Ethernet-and-Switching"><a href="#Layer-2-Ethernet-and-Switching" class="headerlink" title="Layer 2 (Ethernet and Switching)"></a>Layer 2 (Ethernet and Switching)</h5><ul>
+<li>Linux Bridge</li>
+<li>OVS</li>
+</ul>
+<h5 id="Layer-3-IP-and-Routing"><a href="#Layer-3-IP-and-Routing" class="headerlink" title="Layer 3 (IP and Routing)"></a>Layer 3 (IP and Routing)</h5><ul>
+<li>L3</li>
+<li>DHCP</li>
+</ul>
+<h5 id="Miscellaneous"><a href="#Miscellaneous" class="headerlink" title="Miscellaneous"></a>Miscellaneous</h5><ul>
+<li>Metadata</li>
+</ul>
+<h4 id="Services"><a href="#Services" class="headerlink" title="Services"></a>Services</h4><p>Routing services</p>
+<h5 id="VPNaaS"><a href="#VPNaaS" class="headerlink" title="VPNaaS"></a>VPNaaS</h5><p>虚拟专用网络即服务（Virtual Private Network-as-a-Service）是一种引入VPN功能集的neutron extension。</p>
+<h5 id="LBaaS"><a href="#LBaaS" class="headerlink" title="LBaaS"></a>LBaaS</h5><p>负载均衡即服务（Load-Balancer-as-a-Service）API提供并配置负载平衡器。参考实现基于HAProxy软件负载均衡器。</p>
+<h5 id="FWaaS"><a href="#FWaaS" class="headerlink" title="FWaaS"></a>FWaaS</h5><p>防火墙即服务（Firewall-as-a-Service）API是一种实验性API，使早期采用者和供应商能够测试其网络实施。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Network/" rel="tag">Network</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Open vSwitch（一）"
+                    aria-label="PREVIOUS: Open vSwitch（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Understand Neutron（一）"
+                    aria-label="NEXT: Understand Neutron（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/&amp;title=OpenStack Networking"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/09/30/OpenStack-Networking/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Open vSwitch（一）"
+                    aria-label="PREVIOUS: Open vSwitch（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Understand Neutron（一）"
+                    aria-label="NEXT: Understand Neutron（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/&amp;title=OpenStack Networking"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/&amp;title=OpenStack Networking"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/30/OpenStack-Networking/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

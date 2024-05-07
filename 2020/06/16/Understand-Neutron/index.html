@@ -1,0 +1,852 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Understand Neutron - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述Neutron是OpenStack项目中负责提供网络服务的组件，它基于软件定义网络的思想，实现了网络虚拟化下的资源管理。\n涉及Linux网络技术\nbridge：网桥，Linux中表示一个能连接不同网络设备的虚拟设备，Linux中传统实现的网桥类似一个hub设备，而ovs管理的网桥一般类似交换机。\n\n\nbr-int：bridge-integration，综合网桥，常用于表示实现主要内部网络功能的网桥。\n\n\nbr-ex：bridge-external，外部网桥，通常表示负责和外部网络通信的网桥。\n\n\nGRE：General Routing Encapsulation，一种通过封装来实现隧道的方式，在OpenStack中一般是基于L3的GRE，即original pkt/IP/Ethernet。\n\n\nveth：虚拟ethernet接口，通常以pair的方式出现，一端发出的网包，会被另一端接收，可以形成两个网桥之间的通道。\n\n\nqvb：neutron veth，Linux Bridge-side。\n\n\nqvo：neutron veth，OVS-side\n\n\nTAP设备：模拟一个二层的网络设备，可以接收和发送二层网包。\n\n\nTUN设备：模拟一个三层的网络设备，可以接收和发送三层网包。\n\n\niptables：Linux上常见的实现安全策略的防火墙软件。\n\n\nVLAN：虚拟Lan，同一个物理Lan下用标签实现隔离，可用标号为1-4094。\n\n\nVXLAN：一套利用UDP协议作为底层传输协议的Overlay实现。一般认为作为VLan技术的延伸或者替代者。\n\n\nnamespace：用来实现隔离的一套机制，不同namespace中的资源之间彼此不可见。\n\n基本概念Neutron下面管理下面的实体：\n\n网络：隔离的L2域，可以是虚拟、逻辑或交换。\n子网：隔离的L3域，IP地址块。其中每一个机器都有一个IP，同一个子网的主机彼此L3可见。\n端口：网络上虚拟、逻辑或交换端口。所有这些实体都是虚拟的，拥有自动生成的唯一标识ID，支持CRUD功能，并在数据库中跟踪记录状态。\n\n网络隔离的L2广播域，一般是创建它的用户所有。用户可以拥有多个网络。网络是最基础的，子网和端口都需要关联到网络上。\n网络上可以有多个子网。用一个网络上的主机一般可以通过交换机或路由器连通起来。\n子网隔离的L3域，子网代表了一组分配了IP的虚拟机。每个子网必须有一个CIDR和关联到一个网络。IP可以从CIDR或者用户指定池中选取。\n子网可能会有一个网关、一组DNS和主机路由。不同子网之间L3是互相不可见的，必须通过一个三层网关（即路由器）经过L3进行通信。\n端口可以进出流量的端口，往往绑定上若干MAC地址和IP地址，以进行寻址。一般为虚拟交换机上的虚拟接口。\n虚拟机挂载网卡到端口上，通过端口访问网络。当端口有IP的时候，意味着它属于某个子网。\n抽象系统架构TODO在启用DVR特性（J版本以后支持）之前，所有流量（东西向、南北向）都需要经过网络节点的转发。DVR特性则允许东西流量和带有Floating IP的南北流量不经过网络节点的转发，直接从计算节点的外部网络出去。\n网络命名空间在Linux中，网络命名空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境。网络命名空间经常用来隔离网络设备和服务，只有拥有同样网络命名空间的设备，才能看到彼此。\n123ip netnsqdhcp-xxxx-xxxx-xxxx-xxxxqrouter-xxxx-xxxx-xxxx-xxxx\n\nqdhcp开头的命名空间时dhcp服务使用的，qrouter开头的则是router服务使用的。可以通过ip netns exec [namespace] [command]，在指定网络命名空间中执行网络命令。\n1\n\ndhcp服务dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp命名空间中的br-int的接口上。可以查看相关进程。\n1\n\nrouter服务router是提供跨subnet（子网）的互联功能的。用户的内部网络中主机想要访问外部互联网的地址，就需要router来转发（因此，所有跟外部网络的流量都必须经过router）。目前router的实现是通过iptables进行的。\nTODOGRE模式TODO在OpenStack中，所有网络有关的逻辑管理均在Network节点中实现，例如DNS、DHCP以及路由等。Compute节点上只需要对所部署的虚拟机提供基本的网络功能支持，包括隔离不同租户的虚拟机和进行一些基本的安全策略管理（Security Group）。\n计算节点以抽象系统架构的图表为例，Compute节点上包括两台虚拟机VM1和VM2，分别经过一个网桥（如qbr-xxx）连接到br-int网桥上。br-int网桥再经过br-tun网桥（物理网络是GRE实现）连接到物理主机外部网络。\n对于物理网络通过VLAN来隔离的情况，则一般会存在一个br-eth网桥，替代br-tun网桥。\nqbr在VM1中，虚拟机的网卡实际上接到了物理机的一个TAP设备（即A，常见名称如tap-xxx）上，A则进一步通过VETH pair（A-B）连接到网桥qbr-xxx的端口vnet0（端口B）上，之后再通过veth pair（C-D）连接到br-int网桥上。一般C的名称为qvb-xxx，而D的名称为qvo-xxx。\n注意，它们的名称除了前缀外，后面的ID都是一样的，表示位于同一个虚拟机网络到物理机网络的连接上。\n\n\n之所以TAP设备A没有直接连接到网桥br-int上，是因为OpenStack需要通过iptables实现security group的安全策略功能。目前OpenvSwitch并不支持应用iptables规则的TAP设备。\n因为qbr的存在主要是为了辅助iptables来实现security group功能。有时也被称为安全网桥。\n\n\nbr-int一个典型的br-int的端口如下所示：\n123456789101112ovs-vsctl show Bridge br-int    Port &quot;qvo-xxx&quot;        tag: 1        Interface: &quot;qvo-xxx&quot;    Port patch-tun        Interface patch-tun            type: patch            options: &#123;peer=patch-int&#125;    Port br-int        Interface br-int            type: internal\n\n其中：\n\nbr-int为内部端口。\npatch-tun（即端口E，端口号为1）连接到br-tun上，实现到外部网络的隧道。\nqvo-xxx（即端口D，端口号为2）带有tag 1，说明这个口是一个1号VLAN的access口。从虚拟机发出的从该端口到达br-int的网包将自动带上VLAN tag 1，而其他带有VLAN tag 1的网包则可以去掉VLAN Tag后从该端口发出（即VLAN access端口）。这个VLAN tag是用来实现不同网络相互隔离的，比如租户创建一个网络，则会被分配一个唯一的VLAN tag。\n\nbr-in在GRE模式中作为一个NORMAL交换机使用，因此有效规则只有一条正常转发。如果两个在同一个主机上的VM属于同一个tenant的（同一个VLAN tag），则它们之间的通信只需要经过br-int即可。\n123ovs-ofctl dump-flows br-intNXST_FLOW reply (xid=0x4):    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL\n\nbr-tun一个典型的br-tun上的端口类似：\n12345678910111213ovs-vsctl show Bridge br-tun    Port &quot;gre-1&quot;        Interface: &quot;gre-1&quot;            type: gre            options: &#123;in_key=flow, local_ip=&quot;10.0.0.101&quot;, out_key=flow, remote_ip=&quot;10.0.0.100&quot;&#125;    Port patch-int        Interface patch-int            type: patch            options: &#123;peer=patch-tun&#125;    Port br-tun        Interface br-tun            type: internal\n\n其中：\n\npatch-int（即端口F，端口号为1）是连接到br-int上的veth pair的端口。\ngre-1端口（即端口G，端口号为2）对应VM到外面的隧道。gre-1端口是虚拟gre端口，当网包发送到这个端口的时候，会经过内核封包，然后从10.0.0.101发送到10.0.0.100，即从本地的物理网卡（10.0.0.101）发出。\n\nbr-tun将带有VLAN tag的VM跟外部通信的流量转换到对应的gre隧道，上面要实现主要的转换逻辑，规则要复杂，一般通过多张表来实现。\n典型的转发规则为：\nTODO网络节点br-tun12345678910111213ovs-vsctl show Bridge br-tun    Port &quot;gre-2&quot;        Interface: &quot;gre-2&quot;            type: gre            options: &#123;in_key=flow, local_ip=&quot;10.0.0.100&quot;, out_key=flow, remote_ip=&quot;10.0.0.101&quot;&#125;    Port patch-int        Interface patch-int            type: patch            options: &#123;peer=patch-tun&#125;    Port br-tun        Interface br-tun            type: internal\n\nCompute节点上发往GRE隧道的网包最终抵达Network节点上的br-tun，该网桥的规则包括：\n1234567891011121314151617181920```这些规则跟Compute节点上br-tun的规则相似，完成tunnel跟VLAN之间的转换。### br-int```bashovs-vsctl show Bridge br-int    Port &quot;qr-xxx&quot;        tag: 1        Interface: &quot;qvo-xxx&quot;        type: internal    Port patch-tun        Interface patch-tun            type: patch            options: &#123;peer=patch-int&#125;    Port &quot;tap-xxx&quot;        tag: 1        Interface &quot;tap-xxx&quot;            type: internal\n\n该集成网桥上挂载了很多进程来提供网络服务，包括路由器、DHCP服务器等。这些进程不同的租户可能都需要，彼此的地址空间可能冲突，也可能跟物理网络的地址空间冲突，因此都运行在独立的网络命名空间中。规则跟Compute节点的br-int规则一致，表现为一个正常的交换机。\n123ovs-ofctl dump-flows br-intNXST_FLOW reply (xid=0x4):    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL\n\nbr-ex12345678910ovs-vsctl show Bridge br-ex    Port &quot;eth1&quot;        Interface: &quot;eth1&quot;    Port br-ex        Interface br-ex            type: internal    Port &quot;qg-xxxx&quot;        Interface &quot;qg-xxxx&quot;            type: internal\nbr-ex上直接连接到外部物理网络，一般情况下网关在物理网络中已经存在，直接转发即可。\n123ovs-ofctl dump-flows br-exNXST_FLOW reply (xid=0x4):    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL\n\n如果对外部网络的网关地址配置到了br-ex（br-ex作为一个网关）。\n1ip addr add 172.24.4.225/28 dev br-ex\n需要将内部虚拟机发出的流量进行SNAT，之后发出。\n123iptables -A FORWARD -d 172.24.4.224/28 -j ACCEPTiptables -A FORWARD -s 172.24.4.224/28 -j ACCEPTiptables -t nat -I POSTROUTING 1 -s 172.24.4.224/28 -j MASQUERADE\n\nVLAN模式VLAN模式下的系统架构和GRE模式下类似。\nTODO需要注意的是，在VLAN模式下，VLAN tag的转换需要在br-int和br-ethx两个网桥上进行相互配合。即br-int负责从int-br-ethx过来的包（带外部VLAN tag）转换为内部VLAN，而br-ethx负责从phy-br-ethx过来的包（带内部VLAN）转化为外部的VLAN。\n\n\n计算节点TODO1ovs-vsctl show\n\n类似GRE模式下，br-int负责租户隔离，br-eth1负责跟计算节点外的网络通信。在VLAN模式下，租户的流量隔离是通过vlan来进行的，因此此时包括两种VLAN，虚拟机在计算节点内带有VLAN Tag的Local VLAN和在计算节点之外物理网络上隔离不同租户的VLAN。\nbr-int和br-eth1分别从端口int-br-eth1和phy-别人-二天后1上到达的网包进行VLAN Tag的处理。此处有两个网，分别带有两个VLAN Tag（内部Tag1对应外部Tag101，内部Tag2对应外部Tag102）。其中安全组策略仍然在qbr相关的iptables上实现。\nbr-int与GRE模式不同的是，br-int完成从br-eth1上过来流量（从int-br-eth1到达）的VLAN Tag转换，可能的规则为。\n1ovs-ofctl dump-flows br-int\n\nbr-eth1br-eth1上负责从br-int上过来的流量（从phy-br-eth1到达），实现Local VLAN到外部VLAN的转换。\n1ovs-ofctl dump-flows br-eth1\n\n网络节点类似GRE模式下，br-eth1收到到达的网包，int-br-eth1和phy-br-eth1上分别进行VLAN转换，保证到达br-int上的网包都是带有内部VLAN Tag，到达br-eth1上的都是带有外部VLAN Tag。br-ex则完成到OpenStack以外网络的连接。查看网桥信息，包括三个网桥br-eth1\b、br-int和br-ex。\nbr-eth1br-eth1主要负责把物理网络上外部VLAN Tag转化为Local VLAN。\n1ovs-ofctl dump-flows br-eth1\n\nbr-intbr-in上面挂载了大量的agent来提供各种网络服务，另外负责对发往br-eth1的流量，实现Local VLAN转化为外部VLAN。\n1ovs-ofctl dump-flows br-int\n\ndnsmasq负责提供DHCP服务，绑定到某个特定的命名空间上，每个需要DHCP服务的租户网络有自己专属隔离的DHCP服务。\n路由是L3 Agent来实现的，每个子网在br-int上有一个端口（qr-YYY和qr-ZZZ，已配置IP，分别是各自内部子网的网关），L3 Agent绑定到上面。要访问外部的公共网络，需要通过L3 Agent发出，而不是经过int-br-ex到phy-br-ex（实际上并没有网包从这个veth pair运输）。如果，使用外部可见的Floating IP，L3 Agent仍然需要通过iptables来进行NAT。\n每个L3 Agent或dnsmasq都在各自独立的命名空间中。下图，其中同一租户的两个子网都是用了同一个路由器。\nTODO对于子网使用不同路由器的情况，多个路由器会在自己独立的命名空间中。\nbr-exbr-ex要做的事情很简单，只需要正常转发即可。\n1ovs-ofctl dump-flows br-ex\n\nVXLAN模式VXLAN模式下，网络的架构和GRE模式类似，不同的是，不同节点之间通过VXLAN隧道互通，即虚拟化层采用的是VXLAN协议。\n其中，节点网络配置如下所示，注意网络接口需要IP地址，因为隧道协议需要底下的三层转发来支持。\n控制节点\n\neth0：192.168.100.10/24作为管理网络（同时也是公共网络）\neth1：10.0.100.10/24作为数据网络接口。\n\n计算节点\n\neth0：192.168.100.20/24作为管理网络（同时也是公共网络）\neth1：10.0.100.20/24作为数据网络接口。\n\n计算节点主要包括两个网桥：集成网桥br-int和隧道网桥br-tun。\n1ovs-vsctl show\n\n安全网桥可以通过brctl show命令看到，该网桥主要绑定控制组的iptables规则，跟转发无直接关系。\n1brctl show\n\nbr-int集成网桥br-int规则比较简单，作为一个正常的二层交换机使用。无论下面虚拟化层是哪种技术实现，集成网桥是看不到的，只知道根据VLAN和MAC地址进行转发。\n所连接口除了从安全网桥过来的qvo-xxx（每个虚拟机都会有一个），就是一个往外的patch-tun接口，连接到br-tun。\n其中，qvo-xxx接口上会为每个网络分配一个内部VLAN号。\n123419:12:08.198164 IP 10.88.188.2 &gt; 10.88.188.161: ICMP echo request, id 36561, seq 41, length 6419:12:08.198258 IP 10.88.188.2 &gt; 10.0.0.20: ICMP echo request, id 36561, seq 41, length 6419:12:08.199952 IP 10.0.0.20 &gt; 10.88.188.2: ICMP echo reply, id 36561, seq 41, length 6419:12:08.200084 IP 10.88.188.161 &gt; 10.88.188.2: ICMP echo reply, id 36561, seq 41, length 64\n12345ip netns exec qrouter-3405c17d-82f2-4b23-96fd-ff2828c94acc iptables -t nat -vnL neutron-l3-agent-float-snatChain neutron-l3-agent-float-snat (1 references) pkts bytes target     prot opt in     out     source               destination    1    84 SNAT       all  --  *      *       10.0.0.20            0.0.0.0/0            to:10.88.188.161","dateCreated":"2020-06-16T14:18:03+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2020-06-16T14:18:03+08:00","description":"Neutron是OpenStack项目中负责提供网络服务的组件，它基于软件定义网络的思想，实现了网络虚拟化下的资源管理。","headline":"Understand Neutron","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/06/16/Understand-Neutron/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron是OpenStack项目中负责提供网络服务的组件，它基于软件定义网络的思想，实现了网络虚拟化下的资源管理。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Understand Neutron">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/06/16/Understand-Neutron/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron是OpenStack项目中负责提供网络服务的组件，它基于软件定义网络的思想，实现了网络虚拟化下的资源管理。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2020-06-16T06:18:03.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.103Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/06/16/Understand-Neutron/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/06/16/Understand-Neutron/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Understand Neutron
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-06-16T14:18:03+08:00">
+	
+		    Jun 16, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B6%89%E5%8F%8ALinux%E7%BD%91%E7%BB%9C%E6%8A%80%E6%9C%AF"><span class="toc-text">涉及Linux网络技术</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-text">基本概念</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C"><span class="toc-text">网络</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%90%E7%BD%91"><span class="toc-text">子网</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3"><span class="toc-text">端口</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8A%BD%E8%B1%A1%E7%B3%BB%E7%BB%9F%E6%9E%B6%E6%9E%84"><span class="toc-text">抽象系统架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-text">网络命名空间</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#dhcp%E6%9C%8D%E5%8A%A1"><span class="toc-text">dhcp服务</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#router%E6%9C%8D%E5%8A%A1"><span class="toc-text">router服务</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO-1"><span class="toc-text">TODO</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#GRE%E6%A8%A1%E5%BC%8F"><span class="toc-text">GRE模式</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-2"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#qbr"><span class="toc-text">qbr</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-int"><span class="toc-text">br-int</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-tun"><span class="toc-text">br-tun</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#TODO-3"><span class="toc-text">TODO</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%8A%82%E7%82%B9"><span class="toc-text">网络节点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#br-tun-1"><span class="toc-text">br-tun</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-ex"><span class="toc-text">br-ex</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#VLAN%E6%A8%A1%E5%BC%8F"><span class="toc-text">VLAN模式</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-4"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9-1"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO-5"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-int-1"><span class="toc-text">br-int</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-eth1"><span class="toc-text">br-eth1</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%8A%82%E7%82%B9-1"><span class="toc-text">网络节点</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#br-eth1-1"><span class="toc-text">br-eth1</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-int-2"><span class="toc-text">br-int</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#TODO-6"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#br-ex-1"><span class="toc-text">br-ex</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VXLAN%E6%A8%A1%E5%BC%8F"><span class="toc-text">VXLAN模式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9-2"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#br-int-3"><span class="toc-text">br-int</span></a></li></ol></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Neutron是OpenStack项目中负责提供网络服务的组件，它基于软件定义网络的思想，实现了网络虚拟化下的资源管理。</p>
+<h1 id="涉及Linux网络技术"><a href="#涉及Linux网络技术" class="headerlink" title="涉及Linux网络技术"></a>涉及Linux网络技术</h1><ul>
+<li>bridge：网桥，Linux中表示一个能连接不同网络设备的虚拟设备，Linux中传统实现的网桥类似一个hub设备，而ovs管理的网桥一般类似交换机。</li>
+</ul>
+<ul>
+<li>br-int：bridge-integration，综合网桥，常用于表示实现主要内部网络功能的网桥。</li>
+</ul>
+<ul>
+<li>br-ex：bridge-external，外部网桥，通常表示负责和外部网络通信的网桥。</li>
+</ul>
+<ul>
+<li>GRE：General Routing Encapsulation，一种通过封装来实现隧道的方式，在OpenStack中一般是基于L3的GRE，即original pkt/IP/Ethernet。</li>
+</ul>
+<ul>
+<li>veth：虚拟ethernet接口，通常以pair的方式出现，一端发出的网包，会被另一端接收，可以形成两个网桥之间的通道。</li>
+</ul>
+<ul>
+<li>qvb：neutron veth，Linux Bridge-side。</li>
+</ul>
+<ul>
+<li>qvo：neutron veth，OVS-side</li>
+</ul>
+<ul>
+<li>TAP设备：模拟一个二层的网络设备，可以接收和发送二层网包。</li>
+</ul>
+<ul>
+<li>TUN设备：模拟一个三层的网络设备，可以接收和发送三层网包。</li>
+</ul>
+<ul>
+<li>iptables：Linux上常见的实现安全策略的防火墙软件。</li>
+</ul>
+<ul>
+<li>VLAN：虚拟Lan，同一个物理Lan下用标签实现隔离，可用标号为1-4094。</li>
+</ul>
+<ul>
+<li>VXLAN：一套利用UDP协议作为底层传输协议的Overlay实现。一般认为作为VLan技术的延伸或者替代者。</li>
+</ul>
+<ul>
+<li>namespace：用来实现隔离的一套机制，不同namespace中的资源之间彼此不可见。</li>
+</ul>
+<h1 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h1><p>Neutron下面管理下面的实体：</p>
+<ul>
+<li>网络：隔离的L2域，可以是虚拟、逻辑或交换。</li>
+<li>子网：隔离的L3域，IP地址块。其中每一个机器都有一个IP，同一个子网的主机彼此L3可见。</li>
+<li>端口：网络上虚拟、逻辑或交换端口。所有这些实体都是虚拟的，拥有自动生成的唯一标识ID，支持CRUD功能，并在数据库中跟踪记录状态。</li>
+</ul>
+<h2 id="网络"><a href="#网络" class="headerlink" title="网络"></a>网络</h2><p>隔离的L2广播域，一般是创建它的用户所有。用户可以拥有多个网络。网络是最基础的，子网和端口都需要关联到网络上。</p>
+<p>网络上可以有多个子网。用一个网络上的主机一般可以通过交换机或路由器连通起来。</p>
+<h2 id="子网"><a href="#子网" class="headerlink" title="子网"></a>子网</h2><p>隔离的L3域，子网代表了一组分配了IP的虚拟机。每个子网必须有一个CIDR和关联到一个网络。IP可以从CIDR或者用户指定池中选取。</p>
+<p>子网可能会有一个网关、一组DNS和主机路由。不同子网之间L3是互相不可见的，必须通过一个三层网关（即路由器）经过L3进行通信。</p>
+<h2 id="端口"><a href="#端口" class="headerlink" title="端口"></a>端口</h2><p>可以进出流量的端口，往往绑定上若干MAC地址和IP地址，以进行寻址。一般为虚拟交换机上的虚拟接口。</p>
+<p>虚拟机挂载网卡到端口上，通过端口访问网络。当端口有IP的时候，意味着它属于某个子网。</p>
+<h2 id="抽象系统架构"><a href="#抽象系统架构" class="headerlink" title="抽象系统架构"></a>抽象系统架构</h2><h3 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h3><p>在启用DVR特性（J版本以后支持）之前，所有流量（东西向、南北向）都需要经过网络节点的转发。DVR特性则允许东西流量和带有Floating IP的南北流量不经过网络节点的转发，直接从计算节点的外部网络出去。</p>
+<h2 id="网络命名空间"><a href="#网络命名空间" class="headerlink" title="网络命名空间"></a>网络命名空间</h2><p>在Linux中，网络命名空间可以被认为是隔离的拥有单独网络栈（网卡、路由转发表、iptables）的环境。网络命名空间经常用来隔离网络设备和服务，只有拥有同样网络命名空间的设备，才能看到彼此。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ip netns</span><br><span class="line">qdhcp-xxxx-xxxx-xxxx-xxxx</span><br><span class="line">qrouter-xxxx-xxxx-xxxx-xxxx</span><br></pre></td></tr></table></figure>
+
+<p>qdhcp开头的命名空间时dhcp服务使用的，qrouter开头的则是router服务使用的。可以通过ip netns exec [namespace] [command]，在指定网络命名空间中执行网络命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="dhcp服务"><a href="#dhcp服务" class="headerlink" title="dhcp服务"></a>dhcp服务</h2><p>dhcp服务是通过dnsmasq进程（轻量级服务器，可以提供dns、dhcp、tftp等服务）来实现的，该进程绑定到dhcp命名空间中的br-int的接口上。可以查看相关进程。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="router服务"><a href="#router服务" class="headerlink" title="router服务"></a>router服务</h2><p>router是提供跨subnet（子网）的互联功能的。用户的内部网络中主机想要访问外部互联网的地址，就需要router来转发（因此，所有跟外部网络的流量都必须经过router）。目前router的实现是通过iptables进行的。</p>
+<h3 id="TODO-1"><a href="#TODO-1" class="headerlink" title="TODO"></a>TODO</h3><h1 id="GRE模式"><a href="#GRE模式" class="headerlink" title="GRE模式"></a>GRE模式</h1><h2 id="TODO-2"><a href="#TODO-2" class="headerlink" title="TODO"></a>TODO</h2><p>在OpenStack中，所有网络有关的逻辑管理均在Network节点中实现，例如DNS、DHCP以及路由等。Compute节点上只需要对所部署的虚拟机提供基本的网络功能支持，包括隔离不同租户的虚拟机和进行一些基本的安全策略管理（Security Group）。</p>
+<h2 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h2><p>以抽象系统架构的图表为例，Compute节点上包括两台虚拟机VM1和VM2，分别经过一个网桥（如qbr-xxx）连接到br-int网桥上。br-int网桥再经过br-tun网桥（物理网络是GRE实现）连接到物理主机外部网络。</p>
+<p>对于物理网络通过VLAN来隔离的情况，则一般会存在一个br-eth网桥，替代br-tun网桥。</p>
+<h3 id="qbr"><a href="#qbr" class="headerlink" title="qbr"></a>qbr</h3><p>在VM1中，虚拟机的网卡实际上接到了物理机的一个TAP设备（即A，常见名称如tap-xxx）上，A则进一步通过VETH pair（A-B）连接到网桥qbr-xxx的端口vnet0（端口B）上，之后再通过veth pair（C-D）连接到br-int网桥上。一般C的名称为qvb-xxx，而D的名称为qvo-xxx。</p>
+<div class="alert danger no-icon"><p>注意，它们的名称除了前缀外，后面的ID都是一样的，表示位于同一个虚拟机网络到物理机网络的连接上。</p>
+</div>
+
+<div class="alert info no-icon"><p>之所以TAP设备A没有直接连接到网桥br-int上，是因为OpenStack需要通过iptables实现security group的安全策略功能。目前OpenvSwitch并不支持应用iptables规则的TAP设备。</p>
+<p>因为qbr的存在主要是为了辅助iptables来实现security group功能。有时也被称为安全网桥。</p>
+</div>
+
+<h3 id="br-int"><a href="#br-int" class="headerlink" title="br-int"></a>br-int</h3><p>一个典型的br-int的端口如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show </span><br><span class="line">Bridge br-int</span><br><span class="line">    Port <span class="string">&quot;qvo-xxx&quot;</span></span><br><span class="line">        tag: 1</span><br><span class="line">        Interface: <span class="string">&quot;qvo-xxx&quot;</span></span><br><span class="line">    Port patch-tun</span><br><span class="line">        Interface patch-tun</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-int&#125;</span><br><span class="line">    Port br-int</span><br><span class="line">        Interface br-int</span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+
+<p>其中：</p>
+<ul>
+<li>br-int为内部端口。</li>
+<li>patch-tun（即端口E，端口号为1）连接到br-tun上，实现到外部网络的隧道。</li>
+<li>qvo-xxx（即端口D，端口号为2）带有tag 1，说明这个口是一个1号VLAN的access口。从虚拟机发出的从该端口到达br-int的网包将自动带上VLAN tag 1，而其他带有VLAN tag 1的网包则可以去掉VLAN Tag后从该端口发出（即VLAN access端口）。这个VLAN tag是用来实现不同网络相互隔离的，比如租户创建一个网络，则会被分配一个唯一的VLAN tag。</li>
+</ul>
+<p>br-in在GRE模式中作为一个NORMAL交换机使用，因此有效规则只有一条正常转发。如果两个在同一个主机上的VM属于同一个tenant的（同一个VLAN tag），则它们之间的通信只需要经过br-int即可。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br><span class="line">NXST_FLOW reply (xid=0x4):</span><br><span class="line">    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL</span><br></pre></td></tr></table></figure>
+
+<h3 id="br-tun"><a href="#br-tun" class="headerlink" title="br-tun"></a>br-tun</h3><p>一个典型的br-tun上的端口类似：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show </span><br><span class="line">Bridge br-tun</span><br><span class="line">    Port <span class="string">&quot;gre-1&quot;</span></span><br><span class="line">        Interface: <span class="string">&quot;gre-1&quot;</span></span><br><span class="line">            <span class="built_in">type</span>: gre</span><br><span class="line">            options: &#123;in_key=flow, local_ip=<span class="string">&quot;10.0.0.101&quot;</span>, out_key=flow, remote_ip=<span class="string">&quot;10.0.0.100&quot;</span>&#125;</span><br><span class="line">    Port patch-int</span><br><span class="line">        Interface patch-int</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-tun&#125;</span><br><span class="line">    Port br-tun</span><br><span class="line">        Interface br-tun</span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+
+<p>其中：</p>
+<ul>
+<li>patch-int（即端口F，端口号为1）是连接到br-int上的veth pair的端口。</li>
+<li>gre-1端口（即端口G，端口号为2）对应VM到外面的隧道。gre-1端口是虚拟gre端口，当网包发送到这个端口的时候，会经过内核封包，然后从10.0.0.101发送到10.0.0.100，即从本地的物理网卡（10.0.0.101）发出。</li>
+</ul>
+<p>br-tun将带有VLAN tag的VM跟外部通信的流量转换到对应的gre隧道，上面要实现主要的转换逻辑，规则要复杂，一般通过多张表来实现。</p>
+<p>典型的转发规则为：</p>
+<h4 id="TODO-3"><a href="#TODO-3" class="headerlink" title="TODO"></a>TODO</h4><h2 id="网络节点"><a href="#网络节点" class="headerlink" title="网络节点"></a>网络节点</h2><h3 id="br-tun-1"><a href="#br-tun-1" class="headerlink" title="br-tun"></a>br-tun</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show </span><br><span class="line">Bridge br-tun</span><br><span class="line">    Port <span class="string">&quot;gre-2&quot;</span></span><br><span class="line">        Interface: <span class="string">&quot;gre-2&quot;</span></span><br><span class="line">            <span class="built_in">type</span>: gre</span><br><span class="line">            options: &#123;in_key=flow, local_ip=<span class="string">&quot;10.0.0.100&quot;</span>, out_key=flow, remote_ip=<span class="string">&quot;10.0.0.101&quot;</span>&#125;</span><br><span class="line">    Port patch-int</span><br><span class="line">        Interface patch-int</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-tun&#125;</span><br><span class="line">    Port br-tun</span><br><span class="line">        Interface br-tun</span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+
+<p>Compute节点上发往GRE隧道的网包最终抵达Network节点上的br-tun，该网桥的规则包括：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">```</span><br><span class="line"></span><br><span class="line">这些规则跟Compute节点上br-tun的规则相似，完成tunnel跟VLAN之间的转换。</span><br><span class="line"></span><br><span class="line"><span class="comment">### br-int</span></span><br><span class="line">```bash</span><br><span class="line">ovs-vsctl show </span><br><span class="line">Bridge br-int</span><br><span class="line">    Port <span class="string">&quot;qr-xxx&quot;</span></span><br><span class="line">        tag: 1</span><br><span class="line">        Interface: <span class="string">&quot;qvo-xxx&quot;</span></span><br><span class="line">        <span class="built_in">type</span>: internal</span><br><span class="line">    Port patch-tun</span><br><span class="line">        Interface patch-tun</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-int&#125;</span><br><span class="line">    Port <span class="string">&quot;tap-xxx&quot;</span></span><br><span class="line">        tag: 1</span><br><span class="line">        Interface <span class="string">&quot;tap-xxx&quot;</span></span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+
+<p>该集成网桥上挂载了很多进程来提供网络服务，包括路由器、DHCP服务器等。这些进程不同的租户可能都需要，彼此的地址空间可能冲突，也可能跟物理网络的地址空间冲突，因此都运行在独立的网络命名空间中。规则跟Compute节点的br-int规则一致，表现为一个正常的交换机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br><span class="line">NXST_FLOW reply (xid=0x4):</span><br><span class="line">    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL</span><br></pre></td></tr></table></figure>
+
+<h3 id="br-ex"><a href="#br-ex" class="headerlink" title="br-ex"></a>br-ex</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show </span><br><span class="line">Bridge br-ex</span><br><span class="line">    Port <span class="string">&quot;eth1&quot;</span></span><br><span class="line">        Interface: <span class="string">&quot;eth1&quot;</span></span><br><span class="line">    Port br-ex</span><br><span class="line">        Interface br-ex</span><br><span class="line">            <span class="built_in">type</span>: internal</span><br><span class="line">    Port <span class="string">&quot;qg-xxxx&quot;</span></span><br><span class="line">        Interface <span class="string">&quot;qg-xxxx&quot;</span></span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+<p>br-ex上直接连接到外部物理网络，一般情况下网关在物理网络中已经存在，直接转发即可。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-ex</span><br><span class="line">NXST_FLOW reply (xid=0x4):</span><br><span class="line">    cookie=0x0, duration=1000s, table=0, n_packets=200, n_bytes=2100, idle_age=13, priority=1 actions=NORMAL</span><br></pre></td></tr></table></figure>
+
+<p>如果对外部网络的网关地址配置到了br-ex（br-ex作为一个网关）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip addr add 172.24.4.225/28 dev br-ex</span><br></pre></td></tr></table></figure>
+<p>需要将内部虚拟机发出的流量进行SNAT，之后发出。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">iptables -A FORWARD -d 172.24.4.224/28 -j ACCEPT</span><br><span class="line">iptables -A FORWARD -s 172.24.4.224/28 -j ACCEPT</span><br><span class="line">iptables -t nat -I POSTROUTING 1 -s 172.24.4.224/28 -j MASQUERADE</span><br></pre></td></tr></table></figure>
+
+<h1 id="VLAN模式"><a href="#VLAN模式" class="headerlink" title="VLAN模式"></a>VLAN模式</h1><p>VLAN模式下的系统架构和GRE模式下类似。</p>
+<h2 id="TODO-4"><a href="#TODO-4" class="headerlink" title="TODO"></a>TODO</h2><div class="alert info no-icon"><p>需要注意的是，在VLAN模式下，VLAN tag的转换需要在br-int和br-ethx两个网桥上进行相互配合。即br-int负责从int-br-ethx过来的包（带外部VLAN tag）转换为内部VLAN，而br-ethx负责从phy-br-ethx过来的包（带内部VLAN）转化为外部的VLAN。</p>
+</div>
+
+<h2 id="计算节点-1"><a href="#计算节点-1" class="headerlink" title="计算节点"></a>计算节点</h2><h3 id="TODO-5"><a href="#TODO-5" class="headerlink" title="TODO"></a>TODO</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show</span><br></pre></td></tr></table></figure>
+
+<p>类似GRE模式下，br-int负责租户隔离，br-eth1负责跟计算节点外的网络通信。在VLAN模式下，租户的流量隔离是通过vlan来进行的，因此此时包括两种VLAN，虚拟机在计算节点内带有VLAN Tag的Local VLAN和在计算节点之外物理网络上隔离不同租户的VLAN。</p>
+<p>br-int和br-eth1分别从端口int-br-eth1和phy-别人-二天后1上到达的网包进行VLAN Tag的处理。此处有两个网，分别带有两个VLAN Tag（内部Tag1对应外部Tag101，内部Tag2对应外部Tag102）。其中安全组策略仍然在qbr相关的iptables上实现。</p>
+<h3 id="br-int-1"><a href="#br-int-1" class="headerlink" title="br-int"></a>br-int</h3><p>与GRE模式不同的是，br-int完成从br-eth1上过来流量（从int-br-eth1到达）的VLAN Tag转换，可能的规则为。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br></pre></td></tr></table></figure>
+
+<h3 id="br-eth1"><a href="#br-eth1" class="headerlink" title="br-eth1"></a>br-eth1</h3><p>br-eth1上负责从br-int上过来的流量（从phy-br-eth1到达），实现Local VLAN到外部VLAN的转换。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-eth1</span><br></pre></td></tr></table></figure>
+
+<h2 id="网络节点-1"><a href="#网络节点-1" class="headerlink" title="网络节点"></a>网络节点</h2><p>类似GRE模式下，br-eth1收到到达的网包，int-br-eth1和phy-br-eth1上分别进行VLAN转换，保证到达br-int上的网包都是带有内部VLAN Tag，到达br-eth1上的都是带有外部VLAN Tag。br-ex则完成到OpenStack以外网络的连接。查看网桥信息，包括三个网桥br-eth1、br-int和br-ex。</p>
+<h3 id="br-eth1-1"><a href="#br-eth1-1" class="headerlink" title="br-eth1"></a>br-eth1</h3><p>br-eth1主要负责把物理网络上外部VLAN Tag转化为Local VLAN。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-eth1</span><br></pre></td></tr></table></figure>
+
+<h3 id="br-int-2"><a href="#br-int-2" class="headerlink" title="br-int"></a>br-int</h3><p>br-in上面挂载了大量的agent来提供各种网络服务，另外负责对发往br-eth1的流量，实现Local VLAN转化为外部VLAN。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br></pre></td></tr></table></figure>
+
+<p>dnsmasq负责提供DHCP服务，绑定到某个特定的命名空间上，每个需要DHCP服务的租户网络有自己专属隔离的DHCP服务。</p>
+<p>路由是L3 Agent来实现的，每个子网在br-int上有一个端口（qr-YYY和qr-ZZZ，已配置IP，分别是各自内部子网的网关），L3 Agent绑定到上面。要访问外部的公共网络，需要通过L3 Agent发出，而不是经过int-br-ex到phy-br-ex（实际上并没有网包从这个veth pair运输）。如果，使用外部可见的Floating IP，L3 Agent仍然需要通过iptables来进行NAT。</p>
+<p>每个L3 Agent或dnsmasq都在各自独立的命名空间中。下图，其中同一租户的两个子网都是用了同一个路由器。</p>
+<h4 id="TODO-6"><a href="#TODO-6" class="headerlink" title="TODO"></a>TODO</h4><p>对于子网使用不同路由器的情况，多个路由器会在自己独立的命名空间中。</p>
+<h3 id="br-ex-1"><a href="#br-ex-1" class="headerlink" title="br-ex"></a>br-ex</h3><p>br-ex要做的事情很简单，只需要正常转发即可。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-ex</span><br></pre></td></tr></table></figure>
+
+<h3 id="VXLAN模式"><a href="#VXLAN模式" class="headerlink" title="VXLAN模式"></a>VXLAN模式</h3><p>VXLAN模式下，网络的架构和GRE模式类似，不同的是，不同节点之间通过VXLAN隧道互通，即虚拟化层采用的是VXLAN协议。</p>
+<p>其中，节点网络配置如下所示，注意网络接口需要IP地址，因为隧道协议需要底下的三层转发来支持。</p>
+<p>控制节点</p>
+<ul>
+<li>eth0：192.168.100.10/24作为管理网络（同时也是公共网络）</li>
+<li>eth1：10.0.100.10/24作为数据网络接口。</li>
+</ul>
+<p>计算节点</p>
+<ul>
+<li>eth0：192.168.100.20/24作为管理网络（同时也是公共网络）</li>
+<li>eth1：10.0.100.20/24作为数据网络接口。</li>
+</ul>
+<h4 id="计算节点-2"><a href="#计算节点-2" class="headerlink" title="计算节点"></a>计算节点</h4><p>主要包括两个网桥：集成网桥br-int和隧道网桥br-tun。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show</span><br></pre></td></tr></table></figure>
+
+<p>安全网桥可以通过brctl show命令看到，该网桥主要绑定控制组的iptables规则，跟转发无直接关系。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br></pre></td></tr></table></figure>
+
+<h5 id="br-int-3"><a href="#br-int-3" class="headerlink" title="br-int"></a>br-int</h5><p>集成网桥br-int规则比较简单，作为一个正常的二层交换机使用。无论下面虚拟化层是哪种技术实现，集成网桥是看不到的，只知道根据VLAN和MAC地址进行转发。</p>
+<p>所连接口除了从安全网桥过来的qvo-xxx（每个虚拟机都会有一个），就是一个往外的patch-tun接口，连接到br-tun。</p>
+<p>其中，qvo-xxx接口上会为每个网络分配一个内部VLAN号。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">19:12:08.198164 IP 10.88.188.2 &gt; 10.88.188.161: ICMP <span class="built_in">echo</span> request, <span class="built_in">id</span> 36561, <span class="built_in">seq</span> 41, length 64</span><br><span class="line">19:12:08.198258 IP 10.88.188.2 &gt; 10.0.0.20: ICMP <span class="built_in">echo</span> request, <span class="built_in">id</span> 36561, <span class="built_in">seq</span> 41, length 64</span><br><span class="line">19:12:08.199952 IP 10.0.0.20 &gt; 10.88.188.2: ICMP <span class="built_in">echo</span> reply, <span class="built_in">id</span> 36561, <span class="built_in">seq</span> 41, length 64</span><br><span class="line">19:12:08.200084 IP 10.88.188.161 &gt; 10.88.188.2: ICMP <span class="built_in">echo</span> reply, <span class="built_in">id</span> 36561, <span class="built_in">seq</span> 41, length 64</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qrouter-3405c17d-82f2-4b23-96fd-ff2828c94acc iptables -t nat -vnL neutron-l3-agent-float-snat</span><br><span class="line">Chain neutron-l3-agent-float-snat (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination</span><br><span class="line">    1    84 SNAT       all  --  *      *       10.0.0.20            0.0.0.0/0            to:10.88.188.161</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    data-tooltip="Oh my zsh使用指南"
+                    aria-label="PREVIOUS: Oh my zsh使用指南"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    data-tooltip="Neutron OVS OpenFlow流表和L2 Population"
+                    aria-label="NEXT: Neutron OVS OpenFlow流表和L2 Population"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/&amp;title=Understand Neutron"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/06/16/Understand-Neutron/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    data-tooltip="Oh my zsh使用指南"
+                    aria-label="PREVIOUS: Oh my zsh使用指南"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    data-tooltip="Neutron OVS OpenFlow流表和L2 Population"
+                    aria-label="NEXT: Neutron OVS OpenFlow流表和L2 Population"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/&amp;title=Understand Neutron"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/&amp;title=Understand Neutron"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/16/Understand-Neutron/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

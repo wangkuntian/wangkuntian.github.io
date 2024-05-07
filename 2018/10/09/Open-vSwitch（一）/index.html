@@ -1,0 +1,829 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Open vSwitch（一） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Open vSwitch">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Open vSwitch: High availability using DVR\n\n此体系结构示例使用分布式虚拟路由器（DVR）高可用性机制扩充了自助部署示例，该机制在计算节点上提供自助服务和提供商网络之间的连接，而不是针对特定方案的网络节点。 对于具有浮动IPv4地址的实例，自助服务和提供商网络之间的路由完全驻留在计算节点上，以消除网络节点的单点故障和性能问题。 对于具有固定或浮动IPv4地址的实例，路由也完全驻留在计算节点上，使用同一分布式虚拟路由器上的自助服务网络。 但是，具有固定IP地址的实例仍依赖于网络节点在自助服务和提供商网络之间进行路由和SNAT服务。\n请考虑此高可用性机制的以下属性，以确定您的环境中的实用性：\n\n仅当实例驻留在具有浮动IPv4地址的self-service network上时，才通过实例所在的计算节点提供与实例的连接。仅具有IPv6地址或IPv4和IPv6地址的自助服务网络上的实例依赖于网络节点进行IPv6连接。\n每个计算节点上的路由器实例在其包含网关的provider network上使用IPv4地址。\n\n先决条件使用以下组件修改计算节点：\n\n安装OpenStack Networking layer-3 agent。\n\n考虑添加至少一个额外的网络节点，以便为具有固定IP地址的实例提供高可用性。 有关更多信息，请参阅使用VRRP查看分布式虚拟路由。\n\n\n架构\n下图显示了一个self-service network和一个未标记（平面）网络的组件和连接。在此特定情况下，实例与网络的DHCP代理驻留在同一计算节点上。如果DHCP代理驻留在另一个计算节点上，则后者仅包含具有OVS集成桥上端口的DHCP命名空间。\n\nNetwork traffic flow以下部分描述了几种常见方案中的网络流量流。南北网络流量在实例和外部网络（如Internet）之间传输。东西向网络流量在相同或不同网络上的实例之间传输。在所有情况下，物理网络基础设施处理提供商网络和外部网络（例如因特网）之间的交换和路由。每种情况都引用一个或多个以下组件：\n\nProvider network (VLAN)\nVLAN ID 101 (tagged)\n\n\nSelf-service network 1 (VXLAN)\nVXLAN ID (VNI) 101\n\n\nSelf-service network 2 (VXLAN)\nVXLAN ID (VNI) 102\n\n\nSelf-service router\nGateway on the provider network\nInterface on self-service network 1\nInterface on self-service network 2\n\n\nInstance 1\nInstance 2\n\nNorth-south scenario 1: Instance with a fixed IP address除了网络节点上的路由器命名空间成为SNAT命名空间。 网络节点仍然包含路由器命名空间，但在这种情况下它没有用处。计算节点的步骤：\n\n实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。\n安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。\n安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥为内部隧道ID交换内部VLAN标记。\nOVS集成网桥补丁端口[patch port]（6）将数据包转发到OVS隧道网桥补丁端口[patch port]（7）。\nOVS隧道网桥（8）使用VNI 101打包分组。\n用于覆盖网络[overlay networks]的底层物理接口（9）经由覆盖网络[overlay networks]（10）将分组转发到网络节点。\n\n网络节点步骤：\n\n覆盖网络[overlay networks]的底层物理接口（11）将分组转发到OVS隧道网桥（12）。\n\nOVS隧道网桥解包并为其添加内部隧道ID。\n\nOVS隧道网桥为内部VLAN标记交换内部隧道ID。\n\nOVS隧道网桥补丁端口[patch port]（13）将数据包转发到OVS集成网桥补丁端口[patch port]（14）。\n\n用于自助服务网络[self-service network]（15）的OVS集成网桥端口移除内部VLAN标记并将该分组转发到SNAT命名空间中的自助服务网络[self-service network]接口（16）。\n \n\nSNAT将数据包转发到提供商网络[provider network]的OVS集成网桥端口（18）\n\nOVS集成网桥将内部VLAN标记添加到数据包。\n\nOVS集成网桥接器int-br-provider补丁端口[patch port]（19）将分组转发到OVS rovider bridge的phy-br-provider补丁端口[patch port]（20）。\n\nOVS provider bridge将内部VLAN标记与实际VLAN标记101交换。\n\nOVS provider bridge网络端口（21）将分组转发到物理网络接口（22）。\n\n物理网络接口通过物理网络基础设施将数据包转发到Internet（23）。\n\n\nNorth-south scenario 2: Instance with a floating IPv4 address对于在分布式路由器上使用自助服务网络[self-service network]的浮动IPv4地址的实例，包含该实例的计算节点在从实例传递到外部网络（例如因特网和南北流量的DNAT）的南北流量上执行SNAT从外部网络到实例。浮动IP地址和NAT不适用于IPv6。因此，网络节点在此方案中路由IPv6流量。实例与外部网络（如Internet）之间传递的南北流量。\n\n实例1驻留在计算节点1上并使用自助服务网络[self-service network]1。\nInternet上的主机将数据包发送到实例。\n\n\n计算节点步骤：\n\n物理网络基础设施[physical network infrastructure]（1）将分组转发到provider物理网络接口[physical network interface]（2）。\nprovider物理网络接口[physical network interface]将数据包转发到OVS provider bridge provider network port（3）。\nOVS provider bridge将实际VLAN标记101与内部VLAN标记交换。\nOVS provider bridge phy-br-provider port（4）将数据包转发到OVS integration bridge int-br-provider port（5）。\nprovider network（6）的OVS integration bridge port删除内部VLAN标记，并将数据包转发到浮动IP名称空间中的provider network interface（7）。此接口响应实例浮动IPv4地址的任何ARP请求。\n浮动IP命名空间使用DVR内部网络上的一对IP地址将分组（8）路由到分布式路由器命名空间（9）。此命名空间包含实例浮动IPv4地址。\n路由器在数据包上执行DNAT，通过自助服务网络接口[self-service network interface]（10）将目标IP地址更改为自助服务网络[self-service network]上的实例IP地址。\n路由器将数据包转发到自助服务网络[ self-service network]的OVS集成网桥端口（11）。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥从数据包中删除内部VLAN标记。\nOVS集成网桥安全组端口（12）通过veth对将数据包转发到安全组网桥OVS端口（13）。\n安全组网桥上的安全组规则（14）处理数据包的防火墙和连接跟踪。\n安全组网桥实例端口（15）通过veth对将数据包转发到实例接口（16）。\n\n出口流量反向遵循类似的步骤，除了SNAT将数据包的源IPv4地址更改为浮动IPv4地址。\n\n\nEast-west scenario 1: Instances on different networks on the same router在同一计算节点上具有固定IPv4/IPv6地址或浮动IPv4地址的实例通过计算节点上的路由器进行通信。不同计算节点上的实例通过每个计算节点上的路由器实例进行通信。\n此方案将实例放在不同的计算节点上以显示最复杂的情况。\n\n\n\n计算节点1步骤：\n\n实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。\n安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。\n安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。\nOVS集成网桥为数据包添加内部VLAN标记。\n用于自助服务网络[self-service network]1（6）的OVS集成桥接端口移除内部VLAN标记并将分组转发到分布式路由器命名空间中的自助服务网络[self-service network]1接口（6）。\n分布式路由器命名空间（8）将分组路由到自助服务网络[self-service network]2。\n分布式路由器命名空间（8）中的自助服务网络[self-service network]2接口将分组转发到用于自助服务网络[self-service network]2（9）的OVS集成网桥端口。\nOVS集成网桥为数据包添加内部VLAN标记。\nOVS集成网桥为内部隧道ID交换内部VLAN标记。\nOVS集成网桥patch-tun端口（10）将数据包转发到OVS隧道网桥patch-int端口（11）。\nOVS隧道网桥（12）使用VNI 101包裹分组。\n用于覆盖网络[overlay networks]的底层物理接口（13）经由覆盖网络[overlay networks]（14）将分组转发到计算节点2。\n\n计算节点2步骤：\n\n覆盖网络[overlay networks]的底层物理接口（15）将分组转发到OVS隧道网桥（16）。\nOVS隧道网桥解包并为其添加内部隧道ID。\nOVS隧道网桥为内部VLAN标记交换内部隧道ID。\nOVS隧道网桥patch-int补丁端口[patch port]（17）将数据包转发到OVS集成网桥patch-tun补丁端口[patch port]（18）。\nOVS集成网桥从数据包中删除内部VLAN标记。\nOVS集成网桥安全组端口（19）通过veth对将数据包转发到安全组网桥OVS端口（20）。\n安全组网桥上的安全组规则（21）处理数据包的防火墙和连接跟踪。\n安全组网桥实例端口（22）通过veth对将数据包转发到实例2接口（23）。\n\n自助服务网络[self-service network]之间的路由发生在包含发送数据包的实例的计算节点上。 在这种情况下，路由发生在计算节点1上，用于从实例1到实例2的数据包，在计算节点2上，用于从实例2到实例1的数据包。\n\n","dateCreated":"2018-10-09T09:23:11+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-10-09T09:23:11+08:00","description":"Open vSwitch: High availability using DVR","headline":"Open vSwitch（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"Open vSwitch","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Open vSwitch: High availability using DVR">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Open vSwitch（一）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Open vSwitch: High availability using DVR">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-overview.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-compconn1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-flowns1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-flowns2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-flowew1.png">
+<meta property="article:published_time" content="2018-10-09T01:23:11.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.031Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Open vSwitch">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/deploy-ovs-ha-dvr-overview.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Open vSwitch（一）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-10-09T09:23:11+08:00">
+	
+		    Oct 09, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Open vSwitch: High availability using DVR</p>
+<span id="more"></span>
+<p>此体系结构示例使用分布式虚拟路由器（DVR）高可用性机制扩充了自助部署示例，该机制在计算节点上提供自助服务和提供商网络之间的连接，而不是针对特定方案的网络节点。 对于具有浮动IPv4地址的实例，自助服务和提供商网络之间的路由完全驻留在计算节点上，以消除网络节点的单点故障和性能问题。 对于具有固定或浮动IPv4地址的实例，路由也完全驻留在计算节点上，使用同一分布式虚拟路由器上的自助服务网络。 但是，具有固定IP地址的实例仍依赖于网络节点在自助服务和提供商网络之间进行路由和SNAT服务。</p>
+<p>请考虑此高可用性机制的以下属性，以确定您的环境中的实用性：</p>
+<ul>
+<li>仅当实例驻留在具有浮动IPv4地址的self-service network上时，才通过实例所在的计算节点提供与实例的连接。仅具有IPv6地址或IPv4和IPv6地址的自助服务网络上的实例依赖于网络节点进行IPv6连接。</li>
+<li>每个计算节点上的路由器实例在其包含网关的provider network上使用IPv4地址。</li>
+</ul>
+<h3 id="先决条件"><a href="#先决条件" class="headerlink" title="先决条件"></a>先决条件</h3><p>使用以下组件修改计算节点：</p>
+<ul>
+<li>安装OpenStack Networking layer-3 agent。</li>
+</ul>
+<div class="alert info no-icon"><p>考虑添加至少一个额外的网络节点，以便为具有固定IP地址的实例提供高可用性。 有关更多信息，请参阅使用VRRP查看分布式虚拟路由。</p>
+</div>
+
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="images/deploy-ovs-ha-dvr-overview.png" alt="deploy-ovs-ha-dvr-overview"></p>
+<p>下图显示了一个self-service network和一个未标记（平面）网络的组件和连接。在此特定情况下，实例与网络的DHCP代理驻留在同一计算节点上。如果DHCP代理驻留在另一个计算节点上，则后者仅包含具有OVS集成桥上端口的DHCP命名空间。</p>
+<p><img src="images/deploy-ovs-ha-dvr-compconn1.png" alt="deploy-ovs-ha-dvr-compconn"></p>
+<h3 id="Network-traffic-flow"><a href="#Network-traffic-flow" class="headerlink" title="Network traffic flow"></a>Network traffic flow</h3><p>以下部分描述了几种常见方案中的网络流量流。南北网络流量在实例和外部网络（如Internet）之间传输。东西向网络流量在相同或不同网络上的实例之间传输。在所有情况下，物理网络基础设施处理提供商网络和外部网络（例如因特网）之间的交换和路由。每种情况都引用一个或多个以下组件：</p>
+<ul>
+<li>Provider network (VLAN)<ul>
+<li>VLAN ID 101 (tagged)</li>
+</ul>
+</li>
+<li>Self-service network 1 (VXLAN)<ul>
+<li>VXLAN ID (VNI) 101</li>
+</ul>
+</li>
+<li>Self-service network 2 (VXLAN)<ul>
+<li>VXLAN ID (VNI) 102</li>
+</ul>
+</li>
+<li>Self-service router<ul>
+<li>Gateway on the provider network</li>
+<li>Interface on self-service network 1</li>
+<li>Interface on self-service network 2</li>
+</ul>
+</li>
+<li>Instance 1</li>
+<li>Instance 2</li>
+</ul>
+<h4 id="North-south-scenario-1-Instance-with-a-fixed-IP-address"><a href="#North-south-scenario-1-Instance-with-a-fixed-IP-address" class="headerlink" title="North-south scenario 1: Instance with a fixed IP address"></a>North-south scenario 1: Instance with a fixed IP address</h4><p>除了网络节点上的路由器命名空间成为SNAT命名空间。 网络节点仍然包含路由器命名空间，但在这种情况下它没有用处。<br><img src="images/deploy-ovs-ha-dvr-flowns1.png" alt="deploy-ovs-ha-dvr-flowns"><br>计算节点的步骤：</p>
+<ol>
+<li>实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。</li>
+<li>安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。</li>
+<li>安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。</li>
+<li>OVS集成网桥为数据包添加内部VLAN标记。</li>
+<li>OVS集成网桥为内部隧道ID交换内部VLAN标记。</li>
+<li>OVS集成网桥补丁端口[patch port]（6）将数据包转发到OVS隧道网桥补丁端口[patch port]（7）。</li>
+<li>OVS隧道网桥（8）使用VNI 101打包分组。</li>
+<li>用于覆盖网络[overlay networks]的底层物理接口（9）经由覆盖网络[overlay networks]（10）将分组转发到网络节点。</li>
+</ol>
+<p>网络节点步骤：</p>
+<ol>
+<li><p>覆盖网络[overlay networks]的底层物理接口（11）将分组转发到OVS隧道网桥（12）。</p>
+</li>
+<li><p>OVS隧道网桥解包并为其添加内部隧道ID。</p>
+</li>
+<li><p>OVS隧道网桥为内部VLAN标记交换内部隧道ID。</p>
+</li>
+<li><p>OVS隧道网桥补丁端口[patch port]（13）将数据包转发到OVS集成网桥补丁端口[patch port]（14）。</p>
+</li>
+<li><p>用于自助服务网络[self-service network]（15）的OVS集成网桥端口移除内部VLAN标记并将该分组转发到SNAT命名空间中的自助服务网络[self-service network]接口（16）。</p>
+ <!-- - 对于IPv4，路由器在数据包上执行SNAT，将源IP地址更改为提供商网络[provider network]上的路由器IP地址，并通过提供商网络[provider network]上的网关接口将其发送到提供商网络[provider network]上的网关IP地址（17）。
+ - 对于IPv6，路由器通过提供商网关接口[provider gateway interface]将数据包发送到下一跳IP地址，通常是提供商网络[provider network]上的网关IP地址（17）。 -->
+</li>
+<li><p>SNAT将数据包转发到提供商网络[provider network]的OVS集成网桥端口（18）</p>
+</li>
+<li><p>OVS集成网桥将内部VLAN标记添加到数据包。</p>
+</li>
+<li><p>OVS集成网桥接器int-br-provider补丁端口[patch port]（19）将分组转发到OVS rovider bridge的phy-br-provider补丁端口[patch port]（20）。</p>
+</li>
+<li><p>OVS provider bridge将内部VLAN标记与实际VLAN标记101交换。</p>
+</li>
+<li><p>OVS provider bridge网络端口（21）将分组转发到物理网络接口（22）。</p>
+</li>
+<li><p>物理网络接口通过物理网络基础设施将数据包转发到Internet（23）。</p>
+</li>
+</ol>
+<h4 id="North-south-scenario-2-Instance-with-a-floating-IPv4-address"><a href="#North-south-scenario-2-Instance-with-a-floating-IPv4-address" class="headerlink" title="North-south scenario 2: Instance with a floating IPv4 address"></a>North-south scenario 2: Instance with a floating IPv4 address</h4><p>对于在分布式路由器上使用自助服务网络[self-service network]的浮动IPv4地址的实例，包含该实例的计算节点在从实例传递到外部网络（例如因特网和南北流量的DNAT）的南北流量上执行SNAT从外部网络到实例。浮动IP地址和NAT不适用于IPv6。因此，网络节点在此方案中路由IPv6流量。实例与外部网络（如Internet）之间传递的南北流量。</p>
+<ul>
+<li>实例1驻留在计算节点1上并使用自助服务网络[self-service network]1。</li>
+<li>Internet上的主机将数据包发送到实例。</li>
+</ul>
+<p><img src="images/deploy-ovs-ha-dvr-flowns2.png" alt="deploy-ovs-ha-dvr-flowns"></p>
+<p>计算节点步骤：</p>
+<ol>
+<li>物理网络基础设施[physical network infrastructure]（1）将分组转发到provider物理网络接口[physical network interface]（2）。</li>
+<li>provider物理网络接口[physical network interface]将数据包转发到OVS provider bridge provider network port（3）。</li>
+<li>OVS provider bridge将实际VLAN标记101与内部VLAN标记交换。</li>
+<li>OVS provider bridge phy-br-provider port（4）将数据包转发到OVS integration bridge int-br-provider port（5）。</li>
+<li>provider network（6）的OVS integration bridge port删除内部VLAN标记，并将数据包转发到浮动IP名称空间中的provider network interface（7）。此接口响应实例浮动IPv4地址的任何ARP请求。</li>
+<li>浮动IP命名空间使用DVR内部网络上的一对IP地址将分组（8）路由到分布式路由器命名空间（9）。此命名空间包含实例浮动IPv4地址。</li>
+<li>路由器在数据包上执行DNAT，通过自助服务网络接口[self-service network interface]（10）将目标IP地址更改为自助服务网络[self-service network]上的实例IP地址。</li>
+<li>路由器将数据包转发到自助服务网络[ self-service network]的OVS集成网桥端口（11）。</li>
+<li>OVS集成网桥为数据包添加内部VLAN标记。</li>
+<li>OVS集成网桥从数据包中删除内部VLAN标记。</li>
+<li>OVS集成网桥安全组端口（12）通过veth对将数据包转发到安全组网桥OVS端口（13）。</li>
+<li>安全组网桥上的安全组规则（14）处理数据包的防火墙和连接跟踪。</li>
+<li>安全组网桥实例端口（15）通过veth对将数据包转发到实例接口（16）。</li>
+</ol>
+<div class="alert info no-icon"><p>出口流量反向遵循类似的步骤，除了SNAT将数据包的源IPv4地址更改为浮动IPv4地址。</p>
+</div>
+
+<h4 id="East-west-scenario-1-Instances-on-different-networks-on-the-same-router"><a href="#East-west-scenario-1-Instances-on-different-networks-on-the-same-router" class="headerlink" title="East-west scenario 1: Instances on different networks on the same router"></a>East-west scenario 1: Instances on different networks on the same router</h4><p>在同一计算节点上具有固定IPv4/IPv6地址或浮动IPv4地址的实例通过计算节点上的路由器进行通信。不同计算节点上的实例通过每个计算节点上的路由器实例进行通信。</p>
+<div class="alert info no-icon"><p>此方案将实例放在不同的计算节点上以显示最复杂的情况。</p>
+</div>
+
+<p><img src="images/deploy-ovs-ha-dvr-flowew1.png" alt="deploy-ovs-ha-dvr-flowew"></p>
+<p>计算节点1步骤：</p>
+<ol>
+<li>实例接口（1）通过veth对将数据包转发到安全组网桥实例端口（2）。</li>
+<li>安全组网桥上的安全组规则（3）处理数据包的防火墙和连接跟踪。</li>
+<li>安全组网桥OVS端口（4）通过veth对将数据包转发到OVS集成网桥安全组端口（5）。</li>
+<li>OVS集成网桥为数据包添加内部VLAN标记。</li>
+<li>用于自助服务网络[self-service network]1（6）的OVS集成桥接端口移除内部VLAN标记并将分组转发到分布式路由器命名空间中的自助服务网络[self-service network]1接口（6）。</li>
+<li>分布式路由器命名空间（8）将分组路由到自助服务网络[self-service network]2。</li>
+<li>分布式路由器命名空间（8）中的自助服务网络[self-service network]2接口将分组转发到用于自助服务网络[self-service network]2（9）的OVS集成网桥端口。</li>
+<li>OVS集成网桥为数据包添加内部VLAN标记。</li>
+<li>OVS集成网桥为内部隧道ID交换内部VLAN标记。</li>
+<li>OVS集成网桥patch-tun端口（10）将数据包转发到OVS隧道网桥patch-int端口（11）。</li>
+<li>OVS隧道网桥（12）使用VNI 101包裹分组。</li>
+<li>用于覆盖网络[overlay networks]的底层物理接口（13）经由覆盖网络[overlay networks]（14）将分组转发到计算节点2。</li>
+</ol>
+<p>计算节点2步骤：</p>
+<ol>
+<li>覆盖网络[overlay networks]的底层物理接口（15）将分组转发到OVS隧道网桥（16）。</li>
+<li>OVS隧道网桥解包并为其添加内部隧道ID。</li>
+<li>OVS隧道网桥为内部VLAN标记交换内部隧道ID。</li>
+<li>OVS隧道网桥patch-int补丁端口[patch port]（17）将数据包转发到OVS集成网桥patch-tun补丁端口[patch port]（18）。</li>
+<li>OVS集成网桥从数据包中删除内部VLAN标记。</li>
+<li>OVS集成网桥安全组端口（19）通过veth对将数据包转发到安全组网桥OVS端口（20）。</li>
+<li>安全组网桥上的安全组规则（21）处理数据包的防火墙和连接跟踪。</li>
+<li>安全组网桥实例端口（22）通过veth对将数据包转发到实例2接口（23）。</li>
+</ol>
+<div class="alert info no-icon"><p>自助服务网络[self-service network]之间的路由发生在包含发送数据包的实例的计算节点上。 在这种情况下，路由发生在计算节点1上，用于从实例1到实例2的数据包，在计算节点2上，用于从实例2到实例1的数据包。</p>
+</div>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Open-vSwitch/" rel="tag">Open vSwitch</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/11/%E4%BA%91%E8%AE%A1%E7%AE%97%E4%B9%8B%E6%9C%8D%E5%8A%A1%E6%A8%A1%E5%BC%8F/"
+                    data-tooltip="云计算之服务模式"
+                    aria-label="PREVIOUS: 云计算之服务模式"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/30/OpenStack-Networking/"
+                    data-tooltip="OpenStack Networking"
+                    aria-label="NEXT: OpenStack Networking"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Open vSwitch（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/10/09/Open-vSwitch（一）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/11/%E4%BA%91%E8%AE%A1%E7%AE%97%E4%B9%8B%E6%9C%8D%E5%8A%A1%E6%A8%A1%E5%BC%8F/"
+                    data-tooltip="云计算之服务模式"
+                    aria-label="PREVIOUS: 云计算之服务模式"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/30/OpenStack-Networking/"
+                    data-tooltip="OpenStack Networking"
+                    aria-label="NEXT: OpenStack Networking"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Open vSwitch（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Open vSwitch（一）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/09/Open-vSwitch%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

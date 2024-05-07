@@ -1,0 +1,706 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Neutron OVS OpenFlow流表和L2 Population - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n基础知识OpenFlow结构、流表和数据包处理Proxy ARPProxy ARP就是通过一个主机（通常是Router）来作为指定的设备对另一个设备做出ARP的请求进行应答。\n主机A，IP地址是192.168.0.11/24，主机B，IP地址是192.168.1.22/24。主机A和主机B通过路由R相连接，并且路由器R启用了Proxy ARP，并配置路由。\nTODO在主机A上执行：ping 192.168.1.22，主机A不知道主机B的MAC地址是多少，首先要发送ARP查询报文，路由器R接收到主机A发出的ARP报文，并代替主机B应答，应答ARP报文中填入的就是路由器R的MAC地址。这样主机A就会认为路由器R的地址是192.168.1.22。以后所有发往192.168.1.22的报文都会发到路由器R，路由器R再根据已配置好的路由表将报文转发给主机B。\n主机A上不需要设置任何默认网关或路由策略，不管路由器R的IP地址怎么变换，主机A都能通过路由器R到达主机B，也就实现了所谓的代理透明。相反，若主机A上设置有默认网关或者路由策略时，当主机A向192.168.1.22发送报文，首先要查找路由表，而主机A所在的网段是192.168.0.0/24，主机B所在的网段是192.168.1.0/24，主机A只能通过默认网关将报文发送出去，这样代理ARP也就失去了作用。\n优点：最主要的一个优点就是能够在不影响其他Router的路由表的情况下在网络上添加一个新的Router，这样使得子网的变化对主机是透明的。Proxy ARP应该使用在没有配置默认网关或没有任何路由策略的主机上。\n\n\n缺点：\n\n增加某一网段上ARP流量。\n主机需要更大的ARP Table来处理IP地址到MAC地址的映射。\n安全问题，ARP欺骗（spoofing）。\n不使用ARP解析地址的网络使用不了。\n不能概括和推广网络拓扑。\n\n\n\n不使用ARP和DVR时br-tun中的流表。OpenStack中，Neutron作为OVS的controller，向OVS发出管理Tunnel Port的指令，以及提供流表。\n流表分析","dateCreated":"2020-06-12T10:14:19+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2020-06-12T10:14:19+08:00","description":"OVS Bridge有两种模式：normal和flow。normal模式的Bridge同普通的Linux桥，而flow模式的Bridge是根据其流表（flow tables）来进行转发的。Neutron使用两种OVS Bridge：br-int和br-tun。其中br-int是normal模式的虚拟网桥，而br-tun是flow模式的。","headline":"Neutron OVS OpenFlow流表和L2 Population","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="OVS Bridge有两种模式：normal和flow。normal模式的Bridge同普通的Linux桥，而flow模式的Bridge是根据其流表（flow tables）来进行转发的。Neutron使用两种OVS Bridge：br-int和br-tun。其中br-int是normal模式的虚拟网桥，而br-tun是flow模式的。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Neutron OVS OpenFlow流表和L2 Population">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OVS Bridge有两种模式：normal和flow。normal模式的Bridge同普通的Linux桥，而flow模式的Bridge是根据其流表（flow tables）来进行转发的。Neutron使用两种OVS Bridge：br-int和br-tun。其中br-int是normal模式的虚拟网桥，而br-tun是flow模式的。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2020-06-12T02:14:19.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.963Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Neutron OVS OpenFlow流表和L2 Population
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-06-12T10:14:19+08:00">
+	
+		    Jun 12, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="toc-text">基础知识</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#OpenFlow%E7%BB%93%E6%9E%84%E3%80%81%E6%B5%81%E8%A1%A8%E5%92%8C%E6%95%B0%E6%8D%AE%E5%8C%85%E5%A4%84%E7%90%86"><span class="toc-text">OpenFlow结构、流表和数据包处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Proxy-ARP"><span class="toc-text">Proxy ARP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO"><span class="toc-text">TODO</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%8D%E4%BD%BF%E7%94%A8ARP%E5%92%8CDVR%E6%97%B6br-tun%E4%B8%AD%E7%9A%84%E6%B5%81%E8%A1%A8%E3%80%82"><span class="toc-text">不使用ARP和DVR时br-tun中的流表。</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E5%88%86%E6%9E%90"><span class="toc-text">流表分析</span></a></li></ol></li></ol>
+<h1 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h1><h2 id="OpenFlow结构、流表和数据包处理"><a href="#OpenFlow结构、流表和数据包处理" class="headerlink" title="OpenFlow结构、流表和数据包处理"></a>OpenFlow结构、流表和数据包处理</h2><h2 id="Proxy-ARP"><a href="#Proxy-ARP" class="headerlink" title="Proxy ARP"></a>Proxy ARP</h2><p>Proxy ARP就是通过一个主机（通常是Router）来作为指定的设备对另一个设备做出ARP的请求进行应答。</p>
+<p>主机A，IP地址是192.168.0.11/24，主机B，IP地址是192.168.1.22/24。主机A和主机B通过路由R相连接，并且路由器R启用了Proxy ARP，并配置路由。</p>
+<h3 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h3><p>在主机A上执行：ping 192.168.1.22，主机A不知道主机B的MAC地址是多少，首先要发送ARP查询报文，路由器R接收到主机A发出的ARP报文，并代替主机B应答，应答ARP报文中填入的就是路由器R的MAC地址。这样主机A就会认为路由器R的地址是192.168.1.22。以后所有发往192.168.1.22的报文都会发到路由器R，路由器R再根据已配置好的路由表将报文转发给主机B。</p>
+<p>主机A上不需要设置任何默认网关或路由策略，不管路由器R的IP地址怎么变换，主机A都能通过路由器R到达主机B，也就实现了所谓的代理透明。相反，若主机A上设置有默认网关或者路由策略时，当主机A向192.168.1.22发送报文，首先要查找路由表，而主机A所在的网段是192.168.0.0/24，主机B所在的网段是192.168.1.0/24，主机A只能通过默认网关将报文发送出去，这样代理ARP也就失去了作用。</p>
+<div class="alert info no-icon"><p>优点：最主要的一个优点就是能够在不影响其他Router的路由表的情况下在网络上添加一个新的Router，这样使得子网的变化对主机是透明的。Proxy ARP应该使用在没有配置默认网关或没有任何路由策略的主机上。</p>
+</div>
+
+<div class="alert info no-icon"><p>缺点：</p>
+<ol>
+<li>增加某一网段上ARP流量。</li>
+<li>主机需要更大的ARP Table来处理IP地址到MAC地址的映射。</li>
+<li>安全问题，ARP欺骗（spoofing）。</li>
+<li>不使用ARP解析地址的网络使用不了。</li>
+<li>不能概括和推广网络拓扑。</li>
+</ol>
+</div>
+
+<h1 id="不使用ARP和DVR时br-tun中的流表。"><a href="#不使用ARP和DVR时br-tun中的流表。" class="headerlink" title="不使用ARP和DVR时br-tun中的流表。"></a>不使用ARP和DVR时br-tun中的流表。</h1><p>OpenStack中，Neutron作为OVS的controller，向OVS发出管理Tunnel Port的指令，以及提供流表。</p>
+<h2 id="流表分析"><a href="#流表分析" class="headerlink" title="流表分析"></a>流表分析</h2>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/16/Understand-Neutron/"
+                    data-tooltip="Understand Neutron"
+                    aria-label="PREVIOUS: Understand Neutron"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（七）网络安全"
+                    aria-label="NEXT: 深入浅出Neutron（七）网络安全"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/&amp;title=Neutron OVS OpenFlow流表和L2 Population"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/06/12/Neutron-OVS-OpenFlow流表和L2-Population/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/16/Understand-Neutron/"
+                    data-tooltip="Understand Neutron"
+                    aria-label="PREVIOUS: Understand Neutron"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（七）网络安全"
+                    aria-label="NEXT: 深入浅出Neutron（七）网络安全"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/&amp;title=Neutron OVS OpenFlow流表和L2 Population"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/&amp;title=Neutron OVS OpenFlow流表和L2 Population"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

@@ -1,0 +1,888 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Kolla-ansible部署Openstack Rocky - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Kolla-ansible,Rocky">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n环境MacOS + Parallels Desktop + CentOS 7\nCentOS换源备份原文件\n12mv /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backupmv /etc/yum.repos.d/epel.repo /etc/yum.repos.d/epel.repo.backup\n\n下载阿里云镜像源文件，并替换。\n12wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repowget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo\n\n清除缓存\n1yum clean all\n\n生成缓存\n1yum makecache\n\npip换源12mkdir .pipvim .pip/pip.conf\n\npip.conf\n1234567[global]timeout = 6000index-url = https://pypi.tuna.tsinghua.edu.cn/simple[install]use-mirros = truemirrors = https://pypi.tuna.tsinghua.edu.cn/simpletrusted-host = pypi.tuna.tsinghua.edu.cn\n\n网络配置\nNetwork 1（Shared）\n\n子网：172.88.0.0/24用途：用于虚拟机连接外网。\n\nNetwork 2（Host Only）\n\n子网：10.88.88.0/24用途：管理网络，用作OpenStack内部网络。\n\nNetwork 3（Host Only）\n\n子网：10.88.188.0/24用途：外部网络，用作OpenStack Floating IP使用的外网网卡。\n\n\nnmclinmclinmcli是redhat7或者centos7之后的命令，该命令可以完成网卡上所有的配置工作，并且可以写入配置文件，永久生效。\n查看所有设备。\n1nmcli d\n所有设备\n\n设置网卡一。\n1nmcli c modify eth0 ipv4.address 172.88.0.3/24\n\n设置网卡二，静态IP。\n12nmcli c modify eth1 ipv4.address 10.88.88.3/24nmcli c modify eth1 ipv4.method manual\n\n设置网卡三，网卡三不需要设置IP。\n1nmcli c modify eth2 ipv4.method disabled\n\n重启网络，激活配置。\n1systemctl restart network\n\n不可为网卡一设置静态IP，不然会出现上不了外网的情况。网卡三不能设置IP！！！网卡三不能设置IP！！！网卡三不能设置IP！！！\n\n\n不想用命令行，可以使用nmtui命令进入NetworkManager TUI界面进行修改。\n\n\n\n安装依赖安装pip123yum install epel-releaseyum install python-pippip install -U pip\n\n安装python等依赖1yum install python-devel libffi-devel gcc openssl-devel libselinux-python\n\n安装ansible1yum install ansible\n\n1pip install ansible == 2.4 \nansible版本过高部署时会出错。\n\n\n配置ansible。\n12345678# /etc/ansible/ansible.cfg[defaults]# 关闭首次连接服务器验证host_key_checking = False# 打开ssh pipelining加速pipelining = True# 并发进程数forks=100\n\n安装kolla-ansible设虚环境123pip install virtualenvcd /opt &amp;&amp; mkdir kolla-ansible &amp;&amp; cd kolla-ansiblevirtualenv virtualenv -p /usr/bin/python2.7\n\n源码安装源码安装。\n12345git clone https://github.com/openstack/kolla-ansiblecd kolla-ansiblegit checkout -b rocky remotes/origin/stable/rocky/opt/kolla-ansible/virtualenv/bin/python setup.py install/opt/kolla-ansible/virtualenv/bin/python -m pip install -r requirements.txt\n\n添加别名\n12345678# /root/.zshrcalias kolla-ansible=&quot;/opt/kolla-ansible/virtualenv/bin/kolla-ansible&quot;alias kolla-genpwd=&quot;/opt/kolla-ansible/virtualenv/bin/kolla-genpwd&quot;alias kolla-ansible-python=&quot;/opt/kolla-ansible/virtualenv/bin/python&quot;alias kolla-ansible-pip=&quot;/opt/kolla-ansible/virtualenv/bin/python -m pip&quot;source /root/.zshrc\n\n安装完成后，使用pip命令查看一下kolla-ansible的版本\n12kolla-ansible-pip list | grep kollakolla-ansible                7.2.2.dev8\n\n复制globals.yml和passwords.yml到/etc/kolla。\n1cp -r /root/kolla-ansible/etc/kolla /etc/\n\n复制all-in-one和multinode到当前目录。\n1cp /root/kolla-ansible/ansible/inventory/* .\n\n部署前配置节点配置All-In-OneCPU：2核Memory：4GOS：CentOS 7网卡一（eth0）：Network 1 IP：DHCP网卡二（eth1）：Network 2 IP：10.88.88.10/2网卡三（eth2）：Network 3 IP：无IP\n1234567891011        eth1|10.0.0.10 +-----------+-----------+|    [ Control Node ]   ||                       ||  MariaDB    RabbitMQ  ||  Memcached  httpd     ||  Keystone   Glance    ||   Nova API,Compute    ||    Neutron Server     ||  L2,L3,Metadata Agent |+-----------------------+\n\nMultinode1234567891011121314------------+---------------------------+---------------------------+------------            |                           |                           |        eth1|10.88.88.10            eth1|10.88.88.20            eth1|10.88.88.30   +-----------+-----------+   +-----------+-----------+   +-----------+-----------+|    [ Control Node ]   |   |    [ Network Node ]   |   |    [ Compute Node ]   ||                       |   |                       |   |                       ||  MariaDB    RabbitMQ  |   |      Open vSwitch     |   |        Libvirt        ||  Memcached  httpd     |   |        L2 Agent       |   |     Nova Compute      ||  Keystone   Glance    |   |        L3 Agent       |   |      Open vSwitch     ||  Nova API             |   |     Metadata Agent    |   |        L2 Agent       ||  Neutron Server       |   |                       |   |                       ||  Metadata Agent       |   |                       |   |                       |+-----------------------+   +-----------+-----------+   +-----------------------+                                    eth2|(UP with no IP)\n\n节点配置文件All-In-One因为是部署all-in-one，所以all-in-one配置文件不需要做任何修改。\nMultinode123456789101112131415161718192021222324[control]10.88.88.10 ansible_ssh_user=root ansible_become=True[network]10.88.88.20 ansible_ssh_user=root ansible_become=True[inner-compute]10.88.88.30 ansible_ssh_user=root ansible_become=True[external-compute][compute:children]inner-computeexternal-compute[monitoring]10.88.88.10 ansible_ssh_user=root ansible_become=True[storage]10.88.88.30 ansible_ssh_user=root ansible_become=True[deployment]localhost       ansible_connection=local\n\n密码使用命令生成OpenStack组件的密码，文件位于/etc/kolla/passwords.yml。\n1kolla-genpwd\n\n在/etc/kolla/passwords.yml找到keystone_admin_password，将它修改成你常用的密码。\n1keystone_admin_password: 199412\nOpenStack配置文件主要配置位于/etc/kolla/globals.yml。\n我的配置文件。\n1234567891011121314151617# /etc/kolla/global.yamlkolla_base_distro: &quot;centos&quot;kolla_install_type: &quot;source&quot;openstack_release: &quot;rocky&quot;kolla_internal_vip_address: &quot;10.88.88.88&quot;network_interface: &quot;eth1&quot;neutron_external_interface: &quot;eth2&quot;enable_chrony: &quot;yes&quot;enable_horizon: &quot;yes&quot;nova_compute_virt_type: &quot;qemu&quot;nova_console: &quot;spice&quot;neutron_plugin_agent: &quot;openvswitch&quot;# All-In-One时可不加docker_registry: 10.88.88.10:4000\n\n字段解释。镜像相关kolla_base_distro镜像系统版本，建议centos或者ubuntu。\nkolla_install_type可选binary：二进制镜像。可选source：源代码镜像。\nopenstack_releaseOpenStack的版本。\n网络相关network_interfaceOpenStack管理网络的网卡。\nneutron_external_interfaceOpenStack外部网络使用的网卡，不能有IP。\nkolla_internal_vip_address高可用的虚拟的IP地址，为管理网络提供的一个Floating IP，和管理网络同网段且没有被占用。\nnova_compute_virt_type由于在虚拟机中部署OpenStack，不支持KVM，所以这里要改成qemu。\n部署All-In-One部署引导程序12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one bootstrap-servers\n\n部署检查12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one prechecks\n\n真正部署部署时需要从docker镜像仓库中拉取镜像，此步骤比较耗时，可以先将镜像拉至本地。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one pull\n部署\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one deploy\n\n销毁12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one destroy --yes-i-really-really-mean-it\n\nMultinodeDocker Registry这里先生成一个Docker的本地仓库。首先先用kolla-ansible命令将Openstack的相关镜像拉到本地。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one pull\n\n启动Docker Registry容器。\n1234567docker run -d \\    --name registry \\    --restart=always \\    -p 4000:5000 \\    -v registry:/var/lib/registry \\    registry:2\n\n使用curl访问本地镜像仓库。\n123456789 curl -X GET http://10.88.88.10:4000/v2/_catalog | python -m json.tool  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current                                 Dload  Upload   Total   Spent    Left  Speed100  1238  100  1238    0     0  6140      0 --:--:-- --:--:-- --:--:-- 6900&#123;    &quot;repositories&quot;: []&#125;\n\n把拉取到的镜像上传到本地仓库。\n1234567891011121314151617181920#!/usr/bin/env bashregistry_ip=&#x27;10.88.88.10&#x27;registry_port=&#x27;4000&#x27;openstack_version_tag=&#x27;rocky&#x27;images=$(docker images | grep -v registry | grep -v REPOSITORY | grep -v $registry_ip | awk &#x27;&#123;print $1&#125;&#x27;)for image in $images;do    docker image tag $image:$openstack_version_tag $registry_ip:$registry_port/$image:$openstack_version_tagdoneimages=$(docker images | grep $registry_ip | awk &#x27;&#123;print $1&#125;&#x27;)for image in $images;do    docker push $image:$openstack_version_tag    #docker rmi -f $image:$openstack_version_tagdone\n\n使用curl访问本地镜像仓库。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445 curl -X GET http://10.88.88.10:4000/v2/_catalog | python -m json.tool  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current                                 Dload  Upload   Total   Spent    Left  Speed100  1238  100  1238    0     0  60140      0 --:--:-- --:--:-- --:--:-- 61900&#123;    &quot;repositories&quot;: [        &quot;kolla/centos-source-chrony&quot;,        &quot;kolla/centos-source-cron&quot;,        &quot;kolla/centos-source-fluentd&quot;,        &quot;kolla/centos-source-glance-api&quot;,        &quot;kolla/centos-source-haproxy&quot;,        &quot;kolla/centos-source-heat-api&quot;,        &quot;kolla/centos-source-heat-api-cfn&quot;,        &quot;kolla/centos-source-heat-engine&quot;,        &quot;kolla/centos-source-horizon&quot;,        &quot;kolla/centos-source-keepalived&quot;,        &quot;kolla/centos-source-keystone&quot;,        &quot;kolla/centos-source-keystone-fernet&quot;,        &quot;kolla/centos-source-keystone-ssh&quot;,        &quot;kolla/centos-source-kolla-toolbox&quot;,        &quot;kolla/centos-source-mariadb&quot;,        &quot;kolla/centos-source-memcached&quot;,        &quot;kolla/centos-source-neutron-dhcp-agent&quot;,        &quot;kolla/centos-source-neutron-l3-agent&quot;,        &quot;kolla/centos-source-neutron-linuxbridge-agent&quot;,        &quot;kolla/centos-source-neutron-metadata-agent&quot;,        &quot;kolla/centos-source-neutron-openvswitch-agent&quot;,        &quot;kolla/centos-source-neutron-server&quot;,        &quot;kolla/centos-source-nova-api&quot;,        &quot;kolla/centos-source-nova-compute&quot;,        &quot;kolla/centos-source-nova-conductor&quot;,        &quot;kolla/centos-source-nova-consoleauth&quot;,        &quot;kolla/centos-source-nova-libvirt&quot;,        &quot;kolla/centos-source-nova-placement-api&quot;,        &quot;kolla/centos-source-nova-scheduler&quot;,        &quot;kolla/centos-source-nova-spicehtml5proxy&quot;,        &quot;kolla/centos-source-nova-ssh&quot;,        &quot;kolla/centos-source-openvswitch-db-server&quot;,        &quot;kolla/centos-source-openvswitch-vswitchd&quot;,        &quot;kolla/centos-source-rabbitmq&quot;    ]&#125;\n\n上传成功后，编辑/etc/kolla/globals.yml文件，添加。\n1docker_registry = 10.88.88.10:4000\n\n执行部署引导程序。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode bootstrap-servers\n\n查看每个节点上的/etc/systemd/system/docker.service.d/kolla.conf文件应该和下面一致。\n123[Service]MountFlags=sharedExecStart=/usr/bin/dockerd --insecure-registry 10.88.88.10:4000 --log-opt max-file=5 --log-opt max-size=50m\n\n将镜像仓库中的镜像拉取到每一个节点上。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode pull\n\n查看镜像列表。\n1234567891011121314151617# 网络节点docker imagesREPOSITORY                                                       TAG                 IMAGE ID            CREATED             SIZE10.88.88.10:4000/kolla/centos-source-neutron-linuxbridge-agent   rocky               91c3147f334a        3 months ago        1.17GB10.88.88.10:4000/kolla/centos-source-neutron-metadata-agent      rocky               93bfc32c90be        3 months ago        1.14GB10.88.88.10:4000/kolla/centos-source-neutron-openvswitch-agent   rocky               e62d9136aeff        3 months ago        1.14GB10.88.88.10:4000/kolla/centos-source-neutron-l3-agent            rocky               b8b4d7cdc637        3 months ago        1.17GB10.88.88.10:4000/kolla/centos-source-neutron-dhcp-agent          rocky               08fbe6e215c3        3 months ago        1.14GB10.88.88.10:4000/kolla/centos-source-cron                        rocky               93f91f08261d        3 months ago        452MB10.88.88.10:4000/kolla/centos-source-openvswitch-vswitchd        rocky               3a404d3f0b6d        3 months ago        492MB10.88.88.10:4000/kolla/centos-source-openvswitch-db-server       rocky               6ce2892e744f        3 months ago        492MB10.88.88.10:4000/kolla/centos-source-kolla-toolbox               rocky               70beff5a1cba        3 months ago        749MB10.88.88.10:4000/kolla/centos-source-haproxy                     rocky               812b6786a74d        3 months ago        477MB10.88.88.10:4000/kolla/centos-source-fluentd                     rocky               99ac3e878eac        3 months ago        586MB10.88.88.10:4000/kolla/centos-source-chrony                      rocky               a311eb23d70a        3 months ago        453MB10.88.88.10:4000/kolla/centos-source-keepalived                  rocky               4f6014abefd0        3 months ago        462MB\n\n部署引导程序在创建Docker镜像仓库时已经完成，可以略过。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode bootstrap-servers\n\n部署检查12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode prechecks\n\n真正部署在创建Docker镜像仓库时已经完成，可以略过。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode pull\n部署\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./multinode deploy\n\n\n销毁12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible -i ./all-in-one destroy --yes-i-really-really-mean-it\n\n使用OpenStack安装OpenStack命令行包。\n1pip install python-openstackclient python-glanceclient python-neutronclient\n生成admin-openrc文件，生成后的admin-openrc.sh位于/ect/kolla/下。\n12source /opt/kolla-ansible/virtualenv/bin/activatekolla-ansible post-deploy\n\n1source /etc/kolla/admin-openrc.sh\n\nkolla-ansible中还带有一次初始化的工具。\n1. /root/kolla-ansible/tools/init-runonce\n创建虚拟机。\n1openstack server create --image cirros --flavor m1.tiny --key-name mykey --network demo-net demo1\n\n出错整理bootstrap-servers出错12345678TASK [baremetal : Install apt packages] ***********************************************************************************************************************task path: /usr/share/kolla-ansible/ansible/roles/baremetal/tasks/install.yml:46fatal: [localhost]: FAILED! =&gt; &#123;    &quot;msg&quot;: &quot;An unhandled exception occurred while templating &#x27;[u&#x27;&#123;&#123; docker_apt_package &#125;&#125;&#x27;, u&#x27;git&#x27;, u&#x27;&#123;% if not easy_install_available %&#125;python-pip&#123;% endif %&#125;&#x27;, u&#x27;python-setuptools&#x27;, u&#x27;&#123;% if enable_host_ntp | bool %&#125;ntp&#123;% endif %&#125;&#x27;, u&#x27;&#123;% if enable_ceph_nfs|bool %&#125;rpcbind&#123;% endif %&#125;&#x27;]&#x27;. Error was a &lt;class &#x27;ansible.errors.AnsibleError&#x27;&gt;, original message: An unhandled exception occurred while templating &#x27;&#123;&#123; ansible_distribution != &#x27;Ubuntu&#x27; or\\n   ansible_distribution_major_version | version_compare(18, &#x27;lt&#x27;) &#125;&#125;&#x27;. Error was a &lt;class &#x27;ansible.errors.AnsibleError&#x27;&gt;, original message: template error while templating string: no filter named &#x27;version_compare&#x27;. String: &#123;&#123; ansible_distribution != &#x27;Ubuntu&#x27; or\\n   ansible_distribution_major_version | version_compare(18, &#x27;lt&#x27;) &#125;&#125;&quot;&#125;\npull出错pull超时123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596TASK [placement : Pulling placement images] *******************************************************************************************************************task path: /usr/share/kolla-ansible/ansible/roles/placement/tasks/pull.yml:2&lt;localhost&gt; ESTABLISH LOCAL CONNECTION FOR USER: root&lt;localhost&gt; EXEC /bin/sh -c &#x27;echo ~root &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;( umask 77 &amp;&amp; mkdir -p &quot;` echo /root/.ansible/tmp `&quot;&amp;&amp; mkdir /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419 &amp;&amp; echo ansible-tmp-1592558256.52-14167-175147722269419=&quot;` echo /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419 `&quot; ) &amp;&amp; sleep 0&#x27;Using module file /usr/share/kolla-ansible/ansible/library/kolla_docker.py&lt;localhost&gt; PUT /root/.ansible/tmp/ansible-local-12855YYid72/tmpWIiQl1 TO /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py&lt;localhost&gt; EXEC /bin/sh -c &#x27;chmod u+x /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/ /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;/usr/bin/python /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;rm -f -r /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/ &gt; /dev/null 2&gt;&amp;1 &amp;&amp; sleep 0&#x27;The full traceback is:WARNING: The below traceback may *not* be related to the actual failure.  File &quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;, line 1024, in main  File &quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;, line 571, in pull_image  File &quot;/usr/lib/python2.7/site-packages/docker/api/image.py&quot;, line 415, in pull    self._raise_for_status(response)  File &quot;/usr/lib/python2.7/site-packages/docker/api/client.py&quot;, line 263, in _raise_for_status    raise create_api_error_from_http_exception(e)  File &quot;/usr/lib/python2.7/site-packages/docker/errors.py&quot;, line 31, in create_api_error_from_http_exception    raise cls(e, response=response, explanation=explanation)failed: [localhost] (item=&#123;&#x27;value&#x27;: &#123;u&#x27;haproxy&#x27;: &#123;u&#x27;placement_api_external&#x27;: &#123;u&#x27;mode&#x27;: u&#x27;http&#x27;, u&#x27;enabled&#x27;: True, u&#x27;external&#x27;: True, u&#x27;listen_port&#x27;: u&#x27;8780&#x27;, u&#x27;port&#x27;: u&#x27;8780&#x27;&#125;, u&#x27;placement_api&#x27;: &#123;u&#x27;mode&#x27;: u&#x27;http&#x27;, u&#x27;enabled&#x27;: True, u&#x27;external&#x27;: False, u&#x27;listen_port&#x27;: u&#x27;8780&#x27;, u&#x27;port&#x27;: u&#x27;8780&#x27;&#125;&#125;, u&#x27;group&#x27;: u&#x27;placement-api&#x27;, u&#x27;dimensions&#x27;: &#123;&#125;, u&#x27;volumes&#x27;: [u&#x27;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&#x27;, u&#x27;/etc/localtime:/etc/localtime:ro&#x27;, u&#x27;&#x27;, u&#x27;kolla_logs:/var/log/kolla/&#x27;, u&#x27;&#x27;], u&#x27;container_name&#x27;: u&#x27;placement_api&#x27;, u&#x27;image&#x27;: u&#x27;kolla/centos-source-placement-api:rocky&#x27;, u&#x27;enabled&#x27;: True&#125;, &#x27;key&#x27;: u&#x27;placement-api&#x27;&#125;) =&gt; &#123;    &quot;ansible_loop_var&quot;: &quot;item&quot;,    &quot;changed&quot;: true,    &quot;invocation&quot;: &#123;        &quot;module_args&quot;: &#123;            &quot;action&quot;: &quot;pull_image&quot;,            &quot;api_version&quot;: &quot;auto&quot;,            &quot;auth_email&quot;: null,            &quot;auth_password&quot;: null,            &quot;auth_registry&quot;: null,            &quot;auth_username&quot;: null,            &quot;cap_add&quot;: [],            &quot;client_timeout&quot;: 120,            &quot;command&quot;: null,            &quot;detach&quot;: true,            &quot;dimensions&quot;: &#123;&#125;,            &quot;environment&quot;: &#123;                &quot;KOLLA_CONFIG_STRATEGY&quot;: &quot;COPY_ALWAYS&quot;            &#125;,            &quot;graceful_timeout&quot;: 10,            &quot;image&quot;: &quot;kolla/centos-source-placement-api:rocky&quot;,            &quot;labels&quot;: &#123;&#125;,            &quot;name&quot;: null,            &quot;privileged&quot;: false,            &quot;remove_on_exit&quot;: true,            &quot;restart_policy&quot;: &quot;unless-stopped&quot;,            &quot;restart_retries&quot;: 10,            &quot;security_opt&quot;: [],            &quot;state&quot;: &quot;running&quot;,            &quot;tls_cacert&quot;: null,            &quot;tls_cert&quot;: null,            &quot;tls_key&quot;: null,            &quot;tls_verify&quot;: false,            &quot;tty&quot;: false,            &quot;volumes&quot;: null,            &quot;volumes_from&quot;: null        &#125;    &#125;,    &quot;item&quot;: &#123;        &quot;key&quot;: &quot;placement-api&quot;,        &quot;value&quot;: &#123;            &quot;container_name&quot;: &quot;placement_api&quot;,            &quot;dimensions&quot;: &#123;&#125;,            &quot;enabled&quot;: true,            &quot;group&quot;: &quot;placement-api&quot;,            &quot;haproxy&quot;: &#123;                &quot;placement_api&quot;: &#123;                    &quot;enabled&quot;: true,                    &quot;external&quot;: false,                    &quot;listen_port&quot;: &quot;8780&quot;,                    &quot;mode&quot;: &quot;http&quot;,                    &quot;port&quot;: &quot;8780&quot;                &#125;,                &quot;placement_api_external&quot;: &#123;                    &quot;enabled&quot;: true,                    &quot;external&quot;: true,                    &quot;listen_port&quot;: &quot;8780&quot;,                    &quot;mode&quot;: &quot;http&quot;,                    &quot;port&quot;: &quot;8780&quot;                &#125;            &#125;,            &quot;image&quot;: &quot;kolla/centos-source-placement-api:rocky&quot;,            &quot;volumes&quot;: [                &quot;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&quot;,                &quot;/etc/localtime:/etc/localtime:ro&quot;,                &quot;&quot;,                &quot;kolla_logs:/var/log/kolla/&quot;,                &quot;&quot;            ]        &#125;    &#125;,    &quot;msg&quot;: &quot;&#x27;Traceback (most recent call last):\\\\n  File \\&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\\&quot;, line 1024, in main\\\\n  File \\&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\\&quot;, line 571, in pull_image\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/api/image.py\\&quot;, line 415, in pull\\\\n    self._raise_for_status(response)\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/api/client.py\\&quot;, line 263, in _raise_for_status\\\\n    raise create_api_error_from_http_exception(e)\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/errors.py\\&quot;, line 31, in create_api_error_from_http_exception\\\\n    raise cls(e, response=response, explanation=explanation)\\\\nAPIError: 500 Server Error: Internal Server Error (\\&quot;Get https://registry-1.docker.io/v2/: dial tcp: lookup registry-1.docker.io on 172.88.0.1:53: read udp 172.88.0.3:34546-&gt;172.88.0.1:53: i/o timeout\\&quot;)\\\\n&#x27;&quot;&#125;\n拉取镜像超时，可以配置docker镜像加速器。\n镜像找不到123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293TASK [placement : Pulling placement images] *******************************************************************************************************************task path: /usr/share/kolla-ansible/ansible/roles/placement/tasks/pull.yml:2&lt;localhost&gt; ESTABLISH LOCAL CONNECTION FOR USER: root&lt;localhost&gt; EXEC /bin/sh -c &#x27;echo ~root &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;( umask 77 &amp;&amp; mkdir -p &quot;` echo /root/.ansible/tmp `&quot;&amp;&amp; mkdir /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375 &amp;&amp; echo ansible-tmp-1592558605.61-15468-139107170430375=&quot;` echo /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375 `&quot; ) &amp;&amp; sleep 0&#x27;Using module file /usr/share/kolla-ansible/ansible/library/kolla_docker.py&lt;localhost&gt; PUT /root/.ansible/tmp/ansible-local-148157iZlQ7/tmp_iUgbJ TO /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py&lt;localhost&gt; EXEC /bin/sh -c &#x27;chmod u+x /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/ /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;/usr/bin/python /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;&lt;localhost&gt; EXEC /bin/sh -c &#x27;rm -f -r /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/ &gt; /dev/null 2&gt;&amp;1 &amp;&amp; sleep 0&#x27;The full traceback is:WARNING: The below traceback may *not* be related to the actual failure.  File &quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;, line 1024, in main  File &quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;, line 571, in pull_image  File &quot;/usr/lib/python2.7/site-packages/docker/api/image.py&quot;, line 415, in pull    self._raise_for_status(response)  File &quot;/usr/lib/python2.7/site-packages/docker/api/client.py&quot;, line 263, in _raise_for_status    raise create_api_error_from_http_exception(e)  File &quot;/usr/lib/python2.7/site-packages/docker/errors.py&quot;, line 31, in create_api_error_from_http_exception    raise cls(e, response=response, explanation=explanation)failed: [localhost] (item=&#123;&#x27;value&#x27;: &#123;u&#x27;haproxy&#x27;: &#123;u&#x27;placement_api_external&#x27;: &#123;u&#x27;mode&#x27;: u&#x27;http&#x27;, u&#x27;enabled&#x27;: True, u&#x27;external&#x27;: True, u&#x27;listen_port&#x27;: u&#x27;8780&#x27;, u&#x27;port&#x27;: u&#x27;8780&#x27;&#125;, u&#x27;placement_api&#x27;: &#123;u&#x27;mode&#x27;: u&#x27;http&#x27;, u&#x27;enabled&#x27;: True, u&#x27;external&#x27;: False, u&#x27;listen_port&#x27;: u&#x27;8780&#x27;, u&#x27;port&#x27;: u&#x27;8780&#x27;&#125;&#125;, u&#x27;group&#x27;: u&#x27;placement-api&#x27;, u&#x27;dimensions&#x27;: &#123;&#125;, u&#x27;volumes&#x27;: [u&#x27;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&#x27;, u&#x27;/etc/localtime:/etc/localtime:ro&#x27;, u&#x27;&#x27;, u&#x27;kolla_logs:/var/log/kolla/&#x27;, u&#x27;&#x27;], u&#x27;container_name&#x27;: u&#x27;placement_api&#x27;, u&#x27;image&#x27;: u&#x27;kolla/centos-source-placement-api:rocky&#x27;, u&#x27;enabled&#x27;: True&#125;, &#x27;key&#x27;: u&#x27;placement-api&#x27;&#125;) =&gt; &#123;    &quot;ansible_loop_var&quot;: &quot;item&quot;,    &quot;changed&quot;: true,    &quot;invocation&quot;: &#123;        &quot;module_args&quot;: &#123;            &quot;action&quot;: &quot;pull_image&quot;,            &quot;api_version&quot;: &quot;auto&quot;,            &quot;auth_email&quot;: null,            &quot;auth_password&quot;: null,            &quot;auth_registry&quot;: null,            &quot;auth_username&quot;: null,            &quot;cap_add&quot;: [],            &quot;client_timeout&quot;: 120,            &quot;command&quot;: null,            &quot;detach&quot;: true,            &quot;dimensions&quot;: &#123;&#125;,            &quot;environment&quot;: &#123;                &quot;KOLLA_CONFIG_STRATEGY&quot;: &quot;COPY_ALWAYS&quot;            &#125;,            &quot;graceful_timeout&quot;: 10,            &quot;image&quot;: &quot;kolla/centos-source-placement-api:rocky&quot;,            &quot;labels&quot;: &#123;&#125;,            &quot;name&quot;: null,            &quot;privileged&quot;: false,            &quot;remove_on_exit&quot;: true,            &quot;restart_policy&quot;: &quot;unless-stopped&quot;,            &quot;restart_retries&quot;: 10,            &quot;security_opt&quot;: [],            &quot;state&quot;: &quot;running&quot;,            &quot;tls_cacert&quot;: null,            &quot;tls_cert&quot;: null,            &quot;tls_key&quot;: null,            &quot;tls_verify&quot;: false,            &quot;tty&quot;: false,            &quot;volumes&quot;: null,            &quot;volumes_from&quot;: null        &#125;    &#125;,    &quot;item&quot;: &#123;        &quot;key&quot;: &quot;placement-api&quot;,        &quot;value&quot;: &#123;            &quot;container_name&quot;: &quot;placement_api&quot;,            &quot;dimensions&quot;: &#123;&#125;,            &quot;enabled&quot;: true,            &quot;group&quot;: &quot;placement-api&quot;,            &quot;haproxy&quot;: &#123;                &quot;placement_api&quot;: &#123;                    &quot;enabled&quot;: true,                    &quot;external&quot;: false,                    &quot;listen_port&quot;: &quot;8780&quot;,                    &quot;mode&quot;: &quot;http&quot;,                    &quot;port&quot;: &quot;8780&quot;                &#125;,                &quot;placement_api_external&quot;: &#123;                    &quot;enabled&quot;: true,                    &quot;external&quot;: true,                    &quot;listen_port&quot;: &quot;8780&quot;,                    &quot;mode&quot;: &quot;http&quot;,                    &quot;port&quot;: &quot;8780&quot;                &#125;            &#125;,            &quot;image&quot;: &quot;kolla/centos-source-placement-api:rocky&quot;,            &quot;volumes&quot;: [                &quot;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&quot;,                &quot;/etc/localtime:/etc/localtime:ro&quot;,                &quot;&quot;,                &quot;kolla_logs:/var/log/kolla/&quot;,                &quot;&quot;            ]        &#125;    &#125;,    &quot;msg&quot;: &quot;&#x27;Traceback (most recent call last):\\\\n  File \\&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\\&quot;, line 1024, in main\\\\n  File \\&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\\&quot;, line 571, in pull_image\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/api/image.py\\&quot;, line 415, in pull\\\\n    self._raise_for_status(response)\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/api/client.py\\&quot;, line 263, in _raise_for_status\\\\n    raise create_api_error_from_http_exception(e)\\\\n  File \\&quot;/usr/lib/python2.7/site-packages/docker/errors.py\\&quot;, line 31, in create_api_error_from_http_exception\\\\n    raise cls(e, response=response, explanation=explanation)\\\\nNotFound: 404 Client Error: Not Found (\\&quot;manifest for kolla/centos-source-placement-api:rocky not found: manifest unknown: manifest unknown\\&quot;)\\\\n&#x27;&quot;&#125;\n在Rocky版本中placement-api是nova组件的一部分，kolla-ansible版本过高导致的。\n原因\n1234# /usr/share/kolla-ansible/ansible/roles/placement/defaults/main.yml placement_api_image: &quot;&#123;&#123; docker_registry ~ &#x27;/&#x27; if docker_registry else &#x27;&#x27; &#125;&#125;&#123;&#123; docker_namespace &#125;&#125;/&#123;&#123; kolla_base_distro &#125;&#125;-&#123;&#123; placement_install_type &#125;&#125;-nova-  placement-api&quot;\n\ndeploy出错12345TASK [mariadb : Writing hostname of host with existing cluster files to temp file] ****************************************************************************task path: /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml:22fatal: [localhost]: FAILED! =&gt; &#123;    &quot;msg&quot;: &quot;The conditional check &#x27;not mariadb_volume | changed&#x27; failed. The error was: template error while templating string: no filter named &#x27;changed&#x27;. String: &#123;% if not mariadb_volume | changed %&#125; True &#123;% else %&#125; False &#123;% endif %&#125;\\n\\nThe error appears to be in &#x27;/opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml&#x27;: line 22, column 3, but may\\nbe elsewhere in the file depending on the exact syntax problem.\\n\\nThe offending line appears to be:\\n\\n\\n- name: Writing hostname of host with existing cluster files to temp file\\n  ^ here\\n&quot;&#125;\n原因\n1Since Ansible 2.5, the use of jinja tests as filters has been deprecated.\n方案一：安装ansbile时，需要指定版本2.4.0。\n方案二：修改\n123456# /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml - name: Writing hostname of host with existing cluster files to temp file   local_action: copy content=&#123;&#123; ansible_hostname &#125;&#125; dest=/tmp/kolla_mariadb_cluster mode=0644   changed_when: False   check_mode: no   when: not mariadb_volume | changed\n\n123456# /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml - name: Writing hostname of host with existing cluster files to temp file   local_action: copy content=&#123;&#123; ansible_hostname &#125;&#125; dest=/tmp/kolla_mariadb_cluster mode=0644   changed_when: False   check_mode: no   when: mariadb_volume is not changed\n\nmariadb启动错误1InnoDB: Cannot allocate memory for the buffer pool","dateCreated":"2019-08-22T11:27:11+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2019-08-22T11:27:11+08:00","description":"kolla_ansible安装OpenStack Rocky","headline":"Kolla-ansible部署Openstack Rocky","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/","keywords":"Kolla-ansible, Rocky","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="kolla_ansible安装OpenStack Rocky">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Kolla-ansible部署Openstack Rocky">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="kolla_ansible安装OpenStack Rocky">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/network_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/network_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/network_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/nmcli_d_new.png">
+<meta property="article:published_time" content="2019-08-22T03:27:11.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.939Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Kolla-ansible">
+<meta property="article:tag" content="Rocky">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/network_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Kolla-ansible部署Openstack Rocky
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-08-22T11:27:11+08:00">
+	
+		    Aug 22, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83"><span class="toc-text">环境</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#CentOS%E6%8D%A2%E6%BA%90"><span class="toc-text">CentOS换源</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pip%E6%8D%A2%E6%BA%90"><span class="toc-text">pip换源</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE"><span class="toc-text">网络配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#nmcli"><span class="toc-text">nmcli</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85%E4%BE%9D%E8%B5%96"><span class="toc-text">安装依赖</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85pip"><span class="toc-text">安装pip</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85python%E7%AD%89%E4%BE%9D%E8%B5%96"><span class="toc-text">安装python等依赖</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85ansible"><span class="toc-text">安装ansible</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85kolla-ansible"><span class="toc-text">安装kolla-ansible</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E8%99%9A%E7%8E%AF%E5%A2%83"><span class="toc-text">设虚环境</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%AE%89%E8%A3%85"><span class="toc-text">源码安装</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E5%89%8D%E9%85%8D%E7%BD%AE"><span class="toc-text">部署前配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE"><span class="toc-text">节点配置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#All-In-One"><span class="toc-text">All-In-One</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Multinode"><span class="toc-text">Multinode</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-text">节点配置文件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#All-In-One-1"><span class="toc-text">All-In-One</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Multinode-1"><span class="toc-text">Multinode</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%86%E7%A0%81"><span class="toc-text">密码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#OpenStack%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-text">OpenStack配置文件</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2"><span class="toc-text">部署</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#All-In-One-2"><span class="toc-text">All-In-One</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E5%BC%95%E5%AF%BC%E7%A8%8B%E5%BA%8F"><span class="toc-text">部署引导程序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E6%A3%80%E6%9F%A5"><span class="toc-text">部署检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9C%9F%E6%AD%A3%E9%83%A8%E7%BD%B2"><span class="toc-text">真正部署</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%94%80%E6%AF%81"><span class="toc-text">销毁</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Multinode-2"><span class="toc-text">Multinode</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Docker-Registry"><span class="toc-text">Docker Registry</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E5%BC%95%E5%AF%BC%E7%A8%8B%E5%BA%8F-1"><span class="toc-text">部署引导程序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E6%A3%80%E6%9F%A5-1"><span class="toc-text">部署检查</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9C%9F%E6%AD%A3%E9%83%A8%E7%BD%B2-1"><span class="toc-text">真正部署</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%94%80%E6%AF%81-1"><span class="toc-text">销毁</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8OpenStack"><span class="toc-text">使用OpenStack</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%87%BA%E9%94%99%E6%95%B4%E7%90%86"><span class="toc-text">出错整理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#bootstrap-servers%E5%87%BA%E9%94%99"><span class="toc-text">bootstrap-servers出错</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#pull%E5%87%BA%E9%94%99"><span class="toc-text">pull出错</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#pull%E8%B6%85%E6%97%B6"><span class="toc-text">pull超时</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E6%89%BE%E4%B8%8D%E5%88%B0"><span class="toc-text">镜像找不到</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#deploy%E5%87%BA%E9%94%99"><span class="toc-text">deploy出错</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#mariadb%E5%90%AF%E5%8A%A8%E9%94%99%E8%AF%AF"><span class="toc-text">mariadb启动错误</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h1><p>MacOS + Parallels Desktop + CentOS 7</p>
+<h2 id="CentOS换源"><a href="#CentOS换源" class="headerlink" title="CentOS换源"></a>CentOS换源</h2><p>备份原文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mv</span> /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.backup</span><br><span class="line"><span class="built_in">mv</span> /etc/yum.repos.d/epel.repo /etc/yum.repos.d/epel.repo.backup</span><br></pre></td></tr></table></figure>
+
+<p>下载阿里云镜像源文件，并替换。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo</span><br><span class="line">wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo</span><br></pre></td></tr></table></figure>
+
+<p>清除缓存</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum clean all</span><br></pre></td></tr></table></figure>
+
+<p>生成缓存</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum makecache</span><br></pre></td></tr></table></figure>
+
+<h2 id="pip换源"><a href="#pip换源" class="headerlink" title="pip换源"></a>pip换源</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> .pip</span><br><span class="line">vim .pip/pip.conf</span><br></pre></td></tr></table></figure>
+
+<p>pip.conf</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[global]</span><br><span class="line"><span class="built_in">timeout</span> = 6000</span><br><span class="line">index-url = https://pypi.tuna.tsinghua.edu.cn/simple</span><br><span class="line">[install]</span><br><span class="line">use-mirros = <span class="literal">true</span></span><br><span class="line">mirrors = https://pypi.tuna.tsinghua.edu.cn/simple</span><br><span class="line">trusted-host = pypi.tuna.tsinghua.edu.cn</span><br></pre></td></tr></table></figure>
+
+<h2 id="网络配置"><a href="#网络配置" class="headerlink" title="网络配置"></a>网络配置</h2><ul>
+<li><p>Network 1（Shared）</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network_1.png" alt=""></a></div>
+<p>子网：172.88.0.0/24<br>用途：用于虚拟机连接外网。</p>
+</li>
+<li><p>Network 2（Host Only）</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network_2.png" alt=""></a></div>
+<p>子网：10.88.88.0/24<br>用途：管理网络，用作OpenStack内部网络。</p>
+</li>
+<li><p>Network 3（Host Only）</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network_3.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network_3.png" alt=""></a></div>
+<p>子网：10.88.188.0/24<br>用途：外部网络，用作OpenStack Floating IP使用的外网网卡。</p>
+</li>
+</ul>
+<h3 id="nmcli"><a href="#nmcli" class="headerlink" title="nmcli"></a>nmcli</h3><p><strong>nmcli</strong><br>nmcli是redhat7或者centos7之后的命令，该命令可以完成网卡上所有的配置工作，并且可以写入配置文件，永久生效。</p>
+<p>查看所有设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmcli d</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/nmcli_d_new.png" title="所有设备" data-caption="所有设备" data-fancybox="default"><img class="fig-img" src="images/nmcli_d_new.png" alt="所有设备"></a><span class="caption">所有设备</span></div>
+
+<p>设置网卡一。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmcli c modify eth0 ipv4.address 172.88.0.3/24</span><br></pre></td></tr></table></figure>
+
+<p>设置网卡二，静态IP。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">nmcli c modify eth1 ipv4.address 10.88.88.3/24</span><br><span class="line">nmcli c modify eth1 ipv4.method manual</span><br></pre></td></tr></table></figure>
+
+<p>设置网卡三，网卡三不需要设置IP。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nmcli c modify eth2 ipv4.method disabled</span><br></pre></td></tr></table></figure>
+
+<p>重启网络，激活配置。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart network</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>不可为网卡一设置静态IP，不然会出现上不了外网的情况。<br>网卡三不能设置IP！！！<br>网卡三不能设置IP！！！<br>网卡三不能设置IP！！！</p>
+</div>
+
+<div class="alert info no-icon"><p>不想用命令行，可以使用nmtui命令进入NetworkManager TUI界面进行修改。</p>
+</div>
+
+
+<h2 id="安装依赖"><a href="#安装依赖" class="headerlink" title="安装依赖"></a>安装依赖</h2><h3 id="安装pip"><a href="#安装pip" class="headerlink" title="安装pip"></a>安装pip</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">yum install epel-release</span><br><span class="line">yum install python-pip</span><br><span class="line">pip install -U pip</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装python等依赖"><a href="#安装python等依赖" class="headerlink" title="安装python等依赖"></a>安装python等依赖</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install python-devel libffi-devel gcc openssl-devel libselinux-python</span><br></pre></td></tr></table></figure>
+
+<h3 id="安装ansible"><a href="#安装ansible" class="headerlink" title="安装ansible"></a>安装ansible</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install ansible</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install ansible == 2.4 </span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>ansible版本过高部署时会出错。</p>
+</div>
+
+<p>配置ansible。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/ansible/ansible.cfg</span></span><br><span class="line">[defaults]</span><br><span class="line"><span class="comment"># 关闭首次连接服务器验证</span></span><br><span class="line">host_key_checking = False</span><br><span class="line"><span class="comment"># 打开ssh pipelining加速</span></span><br><span class="line">pipelining = True</span><br><span class="line"><span class="comment"># 并发进程数</span></span><br><span class="line">forks=100</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装kolla-ansible"><a href="#安装kolla-ansible" class="headerlink" title="安装kolla-ansible"></a>安装kolla-ansible</h2><h3 id="设虚环境"><a href="#设虚环境" class="headerlink" title="设虚环境"></a>设虚环境</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pip install virtualenv</span><br><span class="line"><span class="built_in">cd</span> /opt &amp;&amp; <span class="built_in">mkdir</span> kolla-ansible &amp;&amp; <span class="built_in">cd</span> kolla-ansible</span><br><span class="line">virtualenv virtualenv -p /usr/bin/python2.7</span><br></pre></td></tr></table></figure>
+
+<h3 id="源码安装"><a href="#源码安装" class="headerlink" title="源码安装"></a>源码安装</h3><p>源码安装。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/openstack/kolla-ansible</span><br><span class="line"><span class="built_in">cd</span> kolla-ansible</span><br><span class="line">git checkout -b rocky remotes/origin/stable/rocky</span><br><span class="line">/opt/kolla-ansible/virtualenv/bin/python setup.py install</span><br><span class="line">/opt/kolla-ansible/virtualenv/bin/python -m pip install -r requirements.txt</span><br></pre></td></tr></table></figure>
+
+<p>添加别名</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /root/.zshrc</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">alias</span> kolla-ansible=<span class="string">&quot;/opt/kolla-ansible/virtualenv/bin/kolla-ansible&quot;</span></span><br><span class="line"><span class="built_in">alias</span> kolla-genpwd=<span class="string">&quot;/opt/kolla-ansible/virtualenv/bin/kolla-genpwd&quot;</span></span><br><span class="line"><span class="built_in">alias</span> kolla-ansible-python=<span class="string">&quot;/opt/kolla-ansible/virtualenv/bin/python&quot;</span></span><br><span class="line"><span class="built_in">alias</span> kolla-ansible-pip=<span class="string">&quot;/opt/kolla-ansible/virtualenv/bin/python -m pip&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">source</span> /root/.zshrc</span><br></pre></td></tr></table></figure>
+
+<p>安装完成后，使用pip命令查看一下kolla-ansible的版本</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kolla-ansible-pip list | grep kolla</span><br><span class="line">kolla-ansible                7.2.2.dev8</span><br></pre></td></tr></table></figure>
+
+<p>复制globals.yml和passwords.yml到/etc/kolla。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cp</span> -r /root/kolla-ansible/etc/kolla /etc/</span><br></pre></td></tr></table></figure>
+
+<p>复制all-in-one和multinode到当前目录。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cp</span> /root/kolla-ansible/ansible/inventory/* .</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署前配置"><a href="#部署前配置" class="headerlink" title="部署前配置"></a>部署前配置</h1><h2 id="节点配置"><a href="#节点配置" class="headerlink" title="节点配置"></a>节点配置</h2><h3 id="All-In-One"><a href="#All-In-One" class="headerlink" title="All-In-One"></a>All-In-One</h3><p>CPU：2核<br>Memory：4G<br>OS：CentOS 7<br>网卡一（eth0）：Network 1 IP：DHCP<br>网卡二（eth1）：Network 2 IP：10.88.88.10/2<br>网卡三（eth2）：Network 3 IP：无IP</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">        eth1|10.0.0.10 </span><br><span class="line">+-----------+-----------+</span><br><span class="line">|    [ Control Node ]   |</span><br><span class="line">|                       |</span><br><span class="line">|  MariaDB    RabbitMQ  |</span><br><span class="line">|  Memcached  httpd     |</span><br><span class="line">|  Keystone   Glance    |</span><br><span class="line">|   Nova API,Compute    |</span><br><span class="line">|    Neutron Server     |</span><br><span class="line">|  L2,L3,Metadata Agent |</span><br><span class="line">+-----------------------+</span><br></pre></td></tr></table></figure>
+
+<h3 id="Multinode"><a href="#Multinode" class="headerlink" title="Multinode"></a>Multinode</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">------------+---------------------------+---------------------------+------------</span><br><span class="line">            |                           |                           |</span><br><span class="line">        eth1|10.88.88.10            eth1|10.88.88.20            eth1|10.88.88.30   </span><br><span class="line">+-----------+-----------+   +-----------+-----------+   +-----------+-----------+</span><br><span class="line">|    [ Control Node ]   |   |    [ Network Node ]   |   |    [ Compute Node ]   |</span><br><span class="line">|                       |   |                       |   |                       |</span><br><span class="line">|  MariaDB    RabbitMQ  |   |      Open vSwitch     |   |        Libvirt        |</span><br><span class="line">|  Memcached  httpd     |   |        L2 Agent       |   |     Nova Compute      |</span><br><span class="line">|  Keystone   Glance    |   |        L3 Agent       |   |      Open vSwitch     |</span><br><span class="line">|  Nova API             |   |     Metadata Agent    |   |        L2 Agent       |</span><br><span class="line">|  Neutron Server       |   |                       |   |                       |</span><br><span class="line">|  Metadata Agent       |   |                       |   |                       |</span><br><span class="line">+-----------------------+   +-----------+-----------+   +-----------------------+</span><br><span class="line">                                    eth2|(UP with no IP)</span><br></pre></td></tr></table></figure>
+
+<h2 id="节点配置文件"><a href="#节点配置文件" class="headerlink" title="节点配置文件"></a>节点配置文件</h2><h3 id="All-In-One-1"><a href="#All-In-One-1" class="headerlink" title="All-In-One"></a>All-In-One</h3><p>因为是部署all-in-one，所以all-in-one配置文件不需要做任何修改。</p>
+<h3 id="Multinode-1"><a href="#Multinode-1" class="headerlink" title="Multinode"></a>Multinode</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">[control]</span><br><span class="line">10.88.88.10 ansible_ssh_user=root ansible_become=True</span><br><span class="line"></span><br><span class="line">[network]</span><br><span class="line">10.88.88.20 ansible_ssh_user=root ansible_become=True</span><br><span class="line"></span><br><span class="line">[inner-compute]</span><br><span class="line">10.88.88.30 ansible_ssh_user=root ansible_become=True</span><br><span class="line"></span><br><span class="line">[external-compute]</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[compute:children]</span><br><span class="line">inner-compute</span><br><span class="line">external-compute</span><br><span class="line"></span><br><span class="line">[monitoring]</span><br><span class="line">10.88.88.10 ansible_ssh_user=root ansible_become=True</span><br><span class="line"></span><br><span class="line">[storage]</span><br><span class="line">10.88.88.30 ansible_ssh_user=root ansible_become=True</span><br><span class="line"></span><br><span class="line">[deployment]</span><br><span class="line">localhost       ansible_connection=<span class="built_in">local</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="密码"><a href="#密码" class="headerlink" title="密码"></a>密码</h2><p>使用命令生成OpenStack组件的密码，文件位于/etc/kolla/passwords.yml。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kolla-genpwd</span><br></pre></td></tr></table></figure>
+
+<p>在/etc/kolla/passwords.yml找到keystone_admin_password，将它修改成你常用的密码。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">keystone_admin_password: 199412</span><br></pre></td></tr></table></figure>
+<h2 id="OpenStack配置文件"><a href="#OpenStack配置文件" class="headerlink" title="OpenStack配置文件"></a>OpenStack配置文件</h2><p>主要配置位于/etc/kolla/globals.yml。</p>
+<p>我的配置文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /etc/kolla/global.yaml</span></span><br><span class="line"></span><br><span class="line">kolla_base_distro: <span class="string">&quot;centos&quot;</span></span><br><span class="line">kolla_install_type: <span class="string">&quot;source&quot;</span></span><br><span class="line">openstack_release: <span class="string">&quot;rocky&quot;</span></span><br><span class="line"></span><br><span class="line">kolla_internal_vip_address: <span class="string">&quot;10.88.88.88&quot;</span></span><br><span class="line">network_interface: <span class="string">&quot;eth1&quot;</span></span><br><span class="line">neutron_external_interface: <span class="string">&quot;eth2&quot;</span></span><br><span class="line">enable_chrony: <span class="string">&quot;yes&quot;</span></span><br><span class="line">enable_horizon: <span class="string">&quot;yes&quot;</span></span><br><span class="line">nova_compute_virt_type: <span class="string">&quot;qemu&quot;</span></span><br><span class="line">nova_console: <span class="string">&quot;spice&quot;</span></span><br><span class="line">neutron_plugin_agent: <span class="string">&quot;openvswitch&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># All-In-One时可不加</span></span><br><span class="line">docker_registry: 10.88.88.10:4000</span><br></pre></td></tr></table></figure>
+
+<p>字段解释。<br>镜像相关<br><strong>kolla_base_distro</strong><br>镜像系统版本，建议centos或者ubuntu。</p>
+<p><strong>kolla_install_type</strong><br>可选binary：二进制镜像。<br>可选source：源代码镜像。</p>
+<p><strong>openstack_release</strong><br>OpenStack的版本。</p>
+<p>网络相关<br><strong>network_interface</strong><br>OpenStack管理网络的网卡。</p>
+<p><strong>neutron_external_interface</strong><br>OpenStack外部网络使用的网卡，不能有IP。</p>
+<p><strong>kolla_internal_vip_address</strong><br>高可用的虚拟的IP地址，为管理网络提供的一个Floating IP，和管理网络同网段且没有被占用。</p>
+<p><strong>nova_compute_virt_type</strong><br>由于在虚拟机中部署OpenStack，不支持KVM，所以这里要改成qemu。</p>
+<h1 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h1><h2 id="All-In-One-2"><a href="#All-In-One-2" class="headerlink" title="All-In-One"></a>All-In-One</h2><h3 id="部署引导程序"><a href="#部署引导程序" class="headerlink" title="部署引导程序"></a>部署引导程序</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one bootstrap-servers</span><br></pre></td></tr></table></figure>
+
+<h3 id="部署检查"><a href="#部署检查" class="headerlink" title="部署检查"></a>部署检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one prechecks</span><br></pre></td></tr></table></figure>
+
+<h3 id="真正部署"><a href="#真正部署" class="headerlink" title="真正部署"></a>真正部署</h3><p>部署时需要从docker镜像仓库中拉取镜像，此步骤比较耗时，可以先将镜像拉至本地。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one pull</span><br></pre></td></tr></table></figure>
+<p>部署</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one deploy</span><br></pre></td></tr></table></figure>
+
+<h3 id="销毁"><a href="#销毁" class="headerlink" title="销毁"></a>销毁</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one destroy --yes-i-really-really-mean-it</span><br></pre></td></tr></table></figure>
+
+<h2 id="Multinode-2"><a href="#Multinode-2" class="headerlink" title="Multinode"></a>Multinode</h2><h3 id="Docker-Registry"><a href="#Docker-Registry" class="headerlink" title="Docker Registry"></a>Docker Registry</h3><p>这里先生成一个Docker的本地仓库。首先先用kolla-ansible命令将Openstack的相关镜像拉到本地。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one pull</span><br></pre></td></tr></table></figure>
+
+<p>启动Docker Registry容器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">docker run -d \</span><br><span class="line">    --name registry \</span><br><span class="line">    --restart=always \</span><br><span class="line">    -p 4000:5000 \</span><br><span class="line">    -v registry:/var/lib/registry \</span><br><span class="line">    registry:2</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>使用curl访问本地镜像仓库。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"> curl -X GET http://10.88.88.10:4000/v2/_catalog | python -m json.tool</span><br><span class="line"></span><br><span class="line">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current</span><br><span class="line">                                 Dload  Upload   Total   Spent    Left  Speed</span><br><span class="line">100  1238  100  1238    0     0  6140      0 --:--:-- --:--:-- --:--:-- 6900</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    <span class="string">&quot;repositories&quot;</span>: []</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>把拉取到的镜像上传到本地仓库。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/usr/bin/env bash</span></span><br><span class="line"></span><br><span class="line">registry_ip=<span class="string">&#x27;10.88.88.10&#x27;</span></span><br><span class="line">registry_port=<span class="string">&#x27;4000&#x27;</span></span><br><span class="line">openstack_version_tag=<span class="string">&#x27;rocky&#x27;</span></span><br><span class="line"></span><br><span class="line">images=$(docker images | grep -v registry | grep -v REPOSITORY | grep -v <span class="variable">$registry_ip</span> | awk <span class="string">&#x27;&#123;print $1&#125;&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> image <span class="keyword">in</span> <span class="variable">$images</span>;</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">    docker image tag <span class="variable">$image</span>:<span class="variable">$openstack_version_tag</span> <span class="variable">$registry_ip</span>:<span class="variable">$registry_port</span>/<span class="variable">$image</span>:<span class="variable">$openstack_version_tag</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line">images=$(docker images | grep <span class="variable">$registry_ip</span> | awk <span class="string">&#x27;&#123;print $1&#125;&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> image <span class="keyword">in</span> <span class="variable">$images</span>;</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">    docker push <span class="variable">$image</span>:<span class="variable">$openstack_version_tag</span></span><br><span class="line">    <span class="comment">#docker rmi -f $image:$openstack_version_tag</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure>
+
+<p>使用curl访问本地镜像仓库。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"> curl -X GET http://10.88.88.10:4000/v2/_catalog | python -m json.tool</span><br><span class="line"></span><br><span class="line">  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current</span><br><span class="line">                                 Dload  Upload   Total   Spent    Left  Speed</span><br><span class="line">100  1238  100  1238    0     0  60140      0 --:--:-- --:--:-- --:--:-- 61900</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    <span class="string">&quot;repositories&quot;</span>: [</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-chrony&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-cron&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-fluentd&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-glance-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-haproxy&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-heat-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-heat-api-cfn&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-heat-engine&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-horizon&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-keepalived&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-keystone&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-keystone-fernet&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-keystone-ssh&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-kolla-toolbox&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-mariadb&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-memcached&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-dhcp-agent&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-l3-agent&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-linuxbridge-agent&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-metadata-agent&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-openvswitch-agent&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-neutron-server&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-compute&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-conductor&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-consoleauth&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-libvirt&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-placement-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-scheduler&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-spicehtml5proxy&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-nova-ssh&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-openvswitch-db-server&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-openvswitch-vswitchd&quot;</span>,</span><br><span class="line">        <span class="string">&quot;kolla/centos-source-rabbitmq&quot;</span></span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>上传成功后，编辑/etc/kolla/globals.yml文件，添加。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker_registry = 10.88.88.10:4000</span><br></pre></td></tr></table></figure>
+
+<p>执行部署引导程序。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode bootstrap-servers</span><br></pre></td></tr></table></figure>
+
+<p>查看每个节点上的/etc/systemd/system/docker.service.d/kolla.conf文件应该和下面一致。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[Service]</span><br><span class="line">MountFlags=shared</span><br><span class="line">ExecStart=/usr/bin/dockerd --insecure-registry 10.88.88.10:4000 --log-opt max-file=5 --log-opt max-size=50m</span><br></pre></td></tr></table></figure>
+
+<p>将镜像仓库中的镜像拉取到每一个节点上。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode pull</span><br></pre></td></tr></table></figure>
+
+<p>查看镜像列表。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 网络节点</span></span><br><span class="line">docker images</span><br><span class="line"></span><br><span class="line">REPOSITORY                                                       TAG                 IMAGE ID            CREATED             SIZE</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-neutron-linuxbridge-agent   rocky               91c3147f334a        3 months ago        1.17GB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-neutron-metadata-agent      rocky               93bfc32c90be        3 months ago        1.14GB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-neutron-openvswitch-agent   rocky               e62d9136aeff        3 months ago        1.14GB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-neutron-l3-agent            rocky               b8b4d7cdc637        3 months ago        1.17GB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-neutron-dhcp-agent          rocky               08fbe6e215c3        3 months ago        1.14GB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-cron                        rocky               93f91f08261d        3 months ago        452MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-openvswitch-vswitchd        rocky               3a404d3f0b6d        3 months ago        492MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-openvswitch-db-server       rocky               6ce2892e744f        3 months ago        492MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-kolla-toolbox               rocky               70beff5a1cba        3 months ago        749MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-haproxy                     rocky               812b6786a74d        3 months ago        477MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-fluentd                     rocky               99ac3e878eac        3 months ago        586MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-chrony                      rocky               a311eb23d70a        3 months ago        453MB</span><br><span class="line">10.88.88.10:4000/kolla/centos-source-keepalived                  rocky               4f6014abefd0        3 months ago        462MB</span><br></pre></td></tr></table></figure>
+
+<h3 id="部署引导程序-1"><a href="#部署引导程序-1" class="headerlink" title="部署引导程序"></a>部署引导程序</h3><p>在创建Docker镜像仓库时已经完成，可以略过。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode bootstrap-servers</span><br></pre></td></tr></table></figure>
+
+<h3 id="部署检查-1"><a href="#部署检查-1" class="headerlink" title="部署检查"></a>部署检查</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode prechecks</span><br></pre></td></tr></table></figure>
+
+<h3 id="真正部署-1"><a href="#真正部署-1" class="headerlink" title="真正部署"></a>真正部署</h3><p>在创建Docker镜像仓库时已经完成，可以略过。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode pull</span><br></pre></td></tr></table></figure>
+<p>部署</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./multinode deploy</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="销毁-1"><a href="#销毁-1" class="headerlink" title="销毁"></a>销毁</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible -i ./all-in-one destroy --yes-i-really-really-mean-it</span><br></pre></td></tr></table></figure>
+
+<h1 id="使用OpenStack"><a href="#使用OpenStack" class="headerlink" title="使用OpenStack"></a>使用OpenStack</h1><p>安装OpenStack命令行包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install python-openstackclient python-glanceclient python-neutronclient</span><br></pre></td></tr></table></figure>
+<p>生成admin-openrc文件，生成后的admin-openrc.sh位于/ect/kolla/下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /opt/kolla-ansible/virtualenv/bin/activate</span><br><span class="line">kolla-ansible post-deploy</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> /etc/kolla/admin-openrc.sh</span><br></pre></td></tr></table></figure>
+
+<p>kolla-ansible中还带有一次初始化的工具。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">. /root/kolla-ansible/tools/init-runonce</span><br></pre></td></tr></table></figure>
+<p>创建虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack server create --image cirros --flavor m1.tiny --key-name mykey --network demo-net demo1</span><br></pre></td></tr></table></figure>
+
+<h1 id="出错整理"><a href="#出错整理" class="headerlink" title="出错整理"></a>出错整理</h1><h2 id="bootstrap-servers出错"><a href="#bootstrap-servers出错" class="headerlink" title="bootstrap-servers出错"></a>bootstrap-servers出错</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">TASK [baremetal : Install apt packages] ***********************************************************************************************************************</span><br><span class="line">task path: /usr/share/kolla-ansible/ansible/roles/baremetal/tasks/install.yml:46</span><br><span class="line">fatal: [localhost]: FAILED! =&gt; &#123;</span><br><span class="line">    <span class="string">&quot;msg&quot;</span>: <span class="string">&quot;An unhandled exception occurred while templating &#x27;[u&#x27;&#123;&#123; docker_apt_package &#125;&#125;&#x27;, u&#x27;git&#x27;, u&#x27;&#123;% if not easy_install_available %&#125;python-pip&#123;% endif %&#125;&#x27;, u&#x27;python-setuptools&#x27;, u&#x27;&#123;% if enable_host_ntp | bool %&#125;ntp&#123;% endif %&#125;&#x27;, u&#x27;&#123;% if enable_ceph_nfs|bool %&#125;rpcbind&#123;% endif %&#125;&#x27;]&#x27;. Error was a &lt;class &#x27;ansible.errors.AnsibleError&#x27;&gt;, original message: An unhandled exception occurred while templating &#x27;&#123;&#123; ansible_distribution != &#x27;Ubuntu&#x27; or\n   ansible_distribution_major_version | version_compare(18, &#x27;lt&#x27;) &#125;&#125;&#x27;. Error was a &lt;class &#x27;ansible.errors.AnsibleError&#x27;&gt;, original message: template error while templating string: no filter named &#x27;version_compare&#x27;. String: &#123;&#123; ansible_distribution != &#x27;Ubuntu&#x27; or\n   ansible_distribution_major_version | version_compare(18, &#x27;lt&#x27;) &#125;&#125;&quot;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h2 id="pull出错"><a href="#pull出错" class="headerlink" title="pull出错"></a>pull出错</h2><h3 id="pull超时"><a href="#pull超时" class="headerlink" title="pull超时"></a>pull超时</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line">TASK [placement : Pulling placement images] *******************************************************************************************************************</span><br><span class="line">task path: /usr/share/kolla-ansible/ansible/roles/placement/tasks/pull.yml:2</span><br><span class="line">&lt;localhost&gt; ESTABLISH LOCAL CONNECTION FOR USER: root</span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;echo ~root &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;( umask 77 &amp;&amp; mkdir -p &quot;` echo /root/.ansible/tmp `&quot;&amp;&amp; mkdir /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419 &amp;&amp; echo ansible-tmp-1592558256.52-14167-175147722269419=&quot;` echo /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419 `&quot; ) &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">Using module file /usr/share/kolla-ansible/ansible/library/kolla_docker.py</span><br><span class="line">&lt;localhost&gt; PUT /root/.ansible/tmp/ansible-local-12855YYid72/tmpWIiQl1 TO /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py</span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;chmod u+x /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/ /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;/usr/bin/python /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;rm -f -r /root/.ansible/tmp/ansible-tmp-1592558256.52-14167-175147722269419/ &gt; /dev/null 2&gt;&amp;1 &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">The full traceback is:</span><br><span class="line">WARNING: The below traceback may *not* be related to the actual failure.</span><br><span class="line">  File <span class="string">&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;</span>, line 1024, <span class="keyword">in</span> main</span><br><span class="line">  File <span class="string">&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;</span>, line 571, <span class="keyword">in</span> pull_image</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/api/image.py&quot;</span>, line 415, <span class="keyword">in</span> pull</span><br><span class="line">    self._raise_for_status(response)</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/api/client.py&quot;</span>, line 263, <span class="keyword">in</span> _raise_for_status</span><br><span class="line">    raise create_api_error_from_http_exception(e)</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/errors.py&quot;</span>, line 31, <span class="keyword">in</span> create_api_error_from_http_exception</span><br><span class="line">    raise cls(e, response=response, explanation=explanation)</span><br><span class="line">failed: [localhost] (item=&#123;<span class="string">&#x27;value&#x27;</span>: &#123;u<span class="string">&#x27;haproxy&#x27;</span>: &#123;u<span class="string">&#x27;placement_api_external&#x27;</span>: &#123;u<span class="string">&#x27;mode&#x27;</span>: u<span class="string">&#x27;http&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True, u<span class="string">&#x27;external&#x27;</span>: True, u<span class="string">&#x27;listen_port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>, u<span class="string">&#x27;port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>&#125;, u<span class="string">&#x27;placement_api&#x27;</span>: &#123;u<span class="string">&#x27;mode&#x27;</span>: u<span class="string">&#x27;http&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True, u<span class="string">&#x27;external&#x27;</span>: False, u<span class="string">&#x27;listen_port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>, u<span class="string">&#x27;port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>&#125;&#125;, u<span class="string">&#x27;group&#x27;</span>: u<span class="string">&#x27;placement-api&#x27;</span>, u<span class="string">&#x27;dimensions&#x27;</span>: &#123;&#125;, u<span class="string">&#x27;volumes&#x27;</span>: [u<span class="string">&#x27;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&#x27;</span>, u<span class="string">&#x27;/etc/localtime:/etc/localtime:ro&#x27;</span>, u<span class="string">&#x27;&#x27;</span>, u<span class="string">&#x27;kolla_logs:/var/log/kolla/&#x27;</span>, u<span class="string">&#x27;&#x27;</span>], u<span class="string">&#x27;container_name&#x27;</span>: u<span class="string">&#x27;placement_api&#x27;</span>, u<span class="string">&#x27;image&#x27;</span>: u<span class="string">&#x27;kolla/centos-source-placement-api:rocky&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True&#125;, <span class="string">&#x27;key&#x27;</span>: u<span class="string">&#x27;placement-api&#x27;</span>&#125;) =&gt; &#123;</span><br><span class="line">    <span class="string">&quot;ansible_loop_var&quot;</span>: <span class="string">&quot;item&quot;</span>,</span><br><span class="line">    <span class="string">&quot;changed&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="string">&quot;invocation&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;module_args&quot;</span>: &#123;</span><br><span class="line">            <span class="string">&quot;action&quot;</span>: <span class="string">&quot;pull_image&quot;</span>,</span><br><span class="line">            <span class="string">&quot;api_version&quot;</span>: <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="string">&quot;auth_email&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_password&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_registry&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_username&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;cap_add&quot;</span>: [],</span><br><span class="line">            <span class="string">&quot;client_timeout&quot;</span>: 120,</span><br><span class="line">            <span class="string">&quot;command&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;detach&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;dimensions&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;environment&quot;</span>: &#123;</span><br><span class="line">                <span class="string">&quot;KOLLA_CONFIG_STRATEGY&quot;</span>: <span class="string">&quot;COPY_ALWAYS&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="string">&quot;graceful_timeout&quot;</span>: 10,</span><br><span class="line">            <span class="string">&quot;image&quot;</span>: <span class="string">&quot;kolla/centos-source-placement-api:rocky&quot;</span>,</span><br><span class="line">            <span class="string">&quot;labels&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;name&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;privileged&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;remove_on_exit&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;restart_policy&quot;</span>: <span class="string">&quot;unless-stopped&quot;</span>,</span><br><span class="line">            <span class="string">&quot;restart_retries&quot;</span>: 10,</span><br><span class="line">            <span class="string">&quot;security_opt&quot;</span>: [],</span><br><span class="line">            <span class="string">&quot;state&quot;</span>: <span class="string">&quot;running&quot;</span>,</span><br><span class="line">            <span class="string">&quot;tls_cacert&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_cert&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_key&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_verify&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;tty&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;volumes&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;volumes_from&quot;</span>: null</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;item&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;key&quot;</span>: <span class="string">&quot;placement-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;value&quot;</span>: &#123;</span><br><span class="line">            <span class="string">&quot;container_name&quot;</span>: <span class="string">&quot;placement_api&quot;</span>,</span><br><span class="line">            <span class="string">&quot;dimensions&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;group&quot;</span>: <span class="string">&quot;placement-api&quot;</span>,</span><br><span class="line">            <span class="string">&quot;haproxy&quot;</span>: &#123;</span><br><span class="line">                <span class="string">&quot;placement_api&quot;</span>: &#123;</span><br><span class="line">                    <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;external&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">                    <span class="string">&quot;listen_port&quot;</span>: <span class="string">&quot;8780&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;mode&quot;</span>: <span class="string">&quot;http&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;port&quot;</span>: <span class="string">&quot;8780&quot;</span></span><br><span class="line">                &#125;,</span><br><span class="line">                <span class="string">&quot;placement_api_external&quot;</span>: &#123;</span><br><span class="line">                    <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;external&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;listen_port&quot;</span>: <span class="string">&quot;8780&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;mode&quot;</span>: <span class="string">&quot;http&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;port&quot;</span>: <span class="string">&quot;8780&quot;</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="string">&quot;image&quot;</span>: <span class="string">&quot;kolla/centos-source-placement-api:rocky&quot;</span>,</span><br><span class="line">            <span class="string">&quot;volumes&quot;</span>: [</span><br><span class="line">                <span class="string">&quot;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&quot;</span>,</span><br><span class="line">                <span class="string">&quot;/etc/localtime:/etc/localtime:ro&quot;</span>,</span><br><span class="line">                <span class="string">&quot;&quot;</span>,</span><br><span class="line">                <span class="string">&quot;kolla_logs:/var/log/kolla/&quot;</span>,</span><br><span class="line">                <span class="string">&quot;&quot;</span></span><br><span class="line">            ]</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;msg&quot;</span>: <span class="string">&quot;&#x27;Traceback (most recent call last):\\n  File \&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\&quot;, line 1024, in main\\n  File \&quot;/tmp/ansible_kolla_docker_payload_ztPmIS/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\&quot;, line 571, in pull_image\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/api/image.py\&quot;, line 415, in pull\\n    self._raise_for_status(response)\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/api/client.py\&quot;, line 263, in _raise_for_status\\n    raise create_api_error_from_http_exception(e)\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/errors.py\&quot;, line 31, in create_api_error_from_http_exception\\n    raise cls(e, response=response, explanation=explanation)\\nAPIError: 500 Server Error: Internal Server Error (\&quot;Get https://registry-1.docker.io/v2/: dial tcp: lookup registry-1.docker.io on 172.88.0.1:53: read udp 172.88.0.3:34546-&gt;172.88.0.1:53: i/o timeout\&quot;)\\n&#x27;&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>拉取镜像超时，可以配置docker镜像加速器。</p>
+<h3 id="镜像找不到"><a href="#镜像找不到" class="headerlink" title="镜像找不到"></a>镜像找不到</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br></pre></td><td class="code"><pre><span class="line">TASK [placement : Pulling placement images] *******************************************************************************************************************</span><br><span class="line">task path: /usr/share/kolla-ansible/ansible/roles/placement/tasks/pull.yml:2</span><br><span class="line">&lt;localhost&gt; ESTABLISH LOCAL CONNECTION FOR USER: root</span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;echo ~root &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;( umask 77 &amp;&amp; mkdir -p &quot;` echo /root/.ansible/tmp `&quot;&amp;&amp; mkdir /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375 &amp;&amp; echo ansible-tmp-1592558605.61-15468-139107170430375=&quot;` echo /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375 `&quot; ) &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">Using module file /usr/share/kolla-ansible/ansible/library/kolla_docker.py</span><br><span class="line">&lt;localhost&gt; PUT /root/.ansible/tmp/ansible-local-148157iZlQ7/tmp_iUgbJ TO /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py</span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;chmod u+x /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/ /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;/usr/bin/python /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/AnsiballZ_kolla_docker.py &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">&lt;localhost&gt; EXEC /bin/sh -c <span class="string">&#x27;rm -f -r /root/.ansible/tmp/ansible-tmp-1592558605.61-15468-139107170430375/ &gt; /dev/null 2&gt;&amp;1 &amp;&amp; sleep 0&#x27;</span></span><br><span class="line">The full traceback is:</span><br><span class="line">WARNING: The below traceback may *not* be related to the actual failure.</span><br><span class="line">  File <span class="string">&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;</span>, line 1024, <span class="keyword">in</span> main</span><br><span class="line">  File <span class="string">&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py&quot;</span>, line 571, <span class="keyword">in</span> pull_image</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/api/image.py&quot;</span>, line 415, <span class="keyword">in</span> pull</span><br><span class="line">    self._raise_for_status(response)</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/api/client.py&quot;</span>, line 263, <span class="keyword">in</span> _raise_for_status</span><br><span class="line">    raise create_api_error_from_http_exception(e)</span><br><span class="line">  File <span class="string">&quot;/usr/lib/python2.7/site-packages/docker/errors.py&quot;</span>, line 31, <span class="keyword">in</span> create_api_error_from_http_exception</span><br><span class="line">    raise cls(e, response=response, explanation=explanation)</span><br><span class="line">failed: [localhost] (item=&#123;<span class="string">&#x27;value&#x27;</span>: &#123;u<span class="string">&#x27;haproxy&#x27;</span>: &#123;u<span class="string">&#x27;placement_api_external&#x27;</span>: &#123;u<span class="string">&#x27;mode&#x27;</span>: u<span class="string">&#x27;http&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True, u<span class="string">&#x27;external&#x27;</span>: True, u<span class="string">&#x27;listen_port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>, u<span class="string">&#x27;port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>&#125;, u<span class="string">&#x27;placement_api&#x27;</span>: &#123;u<span class="string">&#x27;mode&#x27;</span>: u<span class="string">&#x27;http&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True, u<span class="string">&#x27;external&#x27;</span>: False, u<span class="string">&#x27;listen_port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>, u<span class="string">&#x27;port&#x27;</span>: u<span class="string">&#x27;8780&#x27;</span>&#125;&#125;, u<span class="string">&#x27;group&#x27;</span>: u<span class="string">&#x27;placement-api&#x27;</span>, u<span class="string">&#x27;dimensions&#x27;</span>: &#123;&#125;, u<span class="string">&#x27;volumes&#x27;</span>: [u<span class="string">&#x27;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&#x27;</span>, u<span class="string">&#x27;/etc/localtime:/etc/localtime:ro&#x27;</span>, u<span class="string">&#x27;&#x27;</span>, u<span class="string">&#x27;kolla_logs:/var/log/kolla/&#x27;</span>, u<span class="string">&#x27;&#x27;</span>], u<span class="string">&#x27;container_name&#x27;</span>: u<span class="string">&#x27;placement_api&#x27;</span>, u<span class="string">&#x27;image&#x27;</span>: u<span class="string">&#x27;kolla/centos-source-placement-api:rocky&#x27;</span>, u<span class="string">&#x27;enabled&#x27;</span>: True&#125;, <span class="string">&#x27;key&#x27;</span>: u<span class="string">&#x27;placement-api&#x27;</span>&#125;) =&gt; &#123;</span><br><span class="line">    <span class="string">&quot;ansible_loop_var&quot;</span>: <span class="string">&quot;item&quot;</span>,</span><br><span class="line">    <span class="string">&quot;changed&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="string">&quot;invocation&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;module_args&quot;</span>: &#123;</span><br><span class="line">            <span class="string">&quot;action&quot;</span>: <span class="string">&quot;pull_image&quot;</span>,</span><br><span class="line">            <span class="string">&quot;api_version&quot;</span>: <span class="string">&quot;auto&quot;</span>,</span><br><span class="line">            <span class="string">&quot;auth_email&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_password&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_registry&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;auth_username&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;cap_add&quot;</span>: [],</span><br><span class="line">            <span class="string">&quot;client_timeout&quot;</span>: 120,</span><br><span class="line">            <span class="string">&quot;command&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;detach&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;dimensions&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;environment&quot;</span>: &#123;</span><br><span class="line">                <span class="string">&quot;KOLLA_CONFIG_STRATEGY&quot;</span>: <span class="string">&quot;COPY_ALWAYS&quot;</span></span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="string">&quot;graceful_timeout&quot;</span>: 10,</span><br><span class="line">            <span class="string">&quot;image&quot;</span>: <span class="string">&quot;kolla/centos-source-placement-api:rocky&quot;</span>,</span><br><span class="line">            <span class="string">&quot;labels&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;name&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;privileged&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;remove_on_exit&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;restart_policy&quot;</span>: <span class="string">&quot;unless-stopped&quot;</span>,</span><br><span class="line">            <span class="string">&quot;restart_retries&quot;</span>: 10,</span><br><span class="line">            <span class="string">&quot;security_opt&quot;</span>: [],</span><br><span class="line">            <span class="string">&quot;state&quot;</span>: <span class="string">&quot;running&quot;</span>,</span><br><span class="line">            <span class="string">&quot;tls_cacert&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_cert&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_key&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;tls_verify&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;tty&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">            <span class="string">&quot;volumes&quot;</span>: null,</span><br><span class="line">            <span class="string">&quot;volumes_from&quot;</span>: null</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;item&quot;</span>: &#123;</span><br><span class="line">        <span class="string">&quot;key&quot;</span>: <span class="string">&quot;placement-api&quot;</span>,</span><br><span class="line">        <span class="string">&quot;value&quot;</span>: &#123;</span><br><span class="line">            <span class="string">&quot;container_name&quot;</span>: <span class="string">&quot;placement_api&quot;</span>,</span><br><span class="line">            <span class="string">&quot;dimensions&quot;</span>: &#123;&#125;,</span><br><span class="line">            <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">            <span class="string">&quot;group&quot;</span>: <span class="string">&quot;placement-api&quot;</span>,</span><br><span class="line">            <span class="string">&quot;haproxy&quot;</span>: &#123;</span><br><span class="line">                <span class="string">&quot;placement_api&quot;</span>: &#123;</span><br><span class="line">                    <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;external&quot;</span>: <span class="literal">false</span>,</span><br><span class="line">                    <span class="string">&quot;listen_port&quot;</span>: <span class="string">&quot;8780&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;mode&quot;</span>: <span class="string">&quot;http&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;port&quot;</span>: <span class="string">&quot;8780&quot;</span></span><br><span class="line">                &#125;,</span><br><span class="line">                <span class="string">&quot;placement_api_external&quot;</span>: &#123;</span><br><span class="line">                    <span class="string">&quot;enabled&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;external&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">                    <span class="string">&quot;listen_port&quot;</span>: <span class="string">&quot;8780&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;mode&quot;</span>: <span class="string">&quot;http&quot;</span>,</span><br><span class="line">                    <span class="string">&quot;port&quot;</span>: <span class="string">&quot;8780&quot;</span></span><br><span class="line">                &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            <span class="string">&quot;image&quot;</span>: <span class="string">&quot;kolla/centos-source-placement-api:rocky&quot;</span>,</span><br><span class="line">            <span class="string">&quot;volumes&quot;</span>: [</span><br><span class="line">                <span class="string">&quot;/etc/kolla/placement-api/:/var/lib/kolla/config_files/:ro&quot;</span>,</span><br><span class="line">                <span class="string">&quot;/etc/localtime:/etc/localtime:ro&quot;</span>,</span><br><span class="line">                <span class="string">&quot;&quot;</span>,</span><br><span class="line">                <span class="string">&quot;kolla_logs:/var/log/kolla/&quot;</span>,</span><br><span class="line">                <span class="string">&quot;&quot;</span></span><br><span class="line">            ]</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;,</span><br><span class="line">    <span class="string">&quot;msg&quot;</span>: <span class="string">&quot;&#x27;Traceback (most recent call last):\\n  File \&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\&quot;, line 1024, in main\\n  File \&quot;/tmp/ansible_kolla_docker_payload_gMkBSM/ansible_kolla_docker_payload.zip/ansible/modules/kolla_docker.py\&quot;, line 571, in pull_image\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/api/image.py\&quot;, line 415, in pull\\n    self._raise_for_status(response)\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/api/client.py\&quot;, line 263, in _raise_for_status\\n    raise create_api_error_from_http_exception(e)\\n  File \&quot;/usr/lib/python2.7/site-packages/docker/errors.py\&quot;, line 31, in create_api_error_from_http_exception\\n    raise cls(e, response=response, explanation=explanation)\\nNotFound: 404 Client Error: Not Found (\&quot;manifest for kolla/centos-source-placement-api:rocky not found: manifest unknown: manifest unknown\&quot;)\\n&#x27;&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在Rocky版本中placement-api是nova组件的一部分，kolla-ansible版本过高导致的。</p>
+<p>原因</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /usr/share/kolla-ansible/ansible/roles/placement/defaults/main.yml</span></span><br><span class="line"></span><br><span class="line"> placement_api_image: <span class="string">&quot;&#123;&#123; docker_registry ~ &#x27;/&#x27; if docker_registry else &#x27;&#x27; &#125;&#125;&#123;&#123; docker_namespace &#125;&#125;/&#123;&#123; kolla_base_distro &#125;&#125;-&#123;&#123; placement_install_type &#125;&#125;-nova-  placement-api&quot;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="deploy出错"><a href="#deploy出错" class="headerlink" title="deploy出错"></a>deploy出错</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">TASK [mariadb : Writing hostname of host with existing cluster files to temp file] ****************************************************************************</span><br><span class="line">task path: /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml:22</span><br><span class="line">fatal: [localhost]: FAILED! =&gt; &#123;</span><br><span class="line">    <span class="string">&quot;msg&quot;</span>: <span class="string">&quot;The conditional check &#x27;not mariadb_volume | changed&#x27; failed. The error was: template error while templating string: no filter named &#x27;changed&#x27;. String: &#123;% if not mariadb_volume | changed %&#125; True &#123;% else %&#125; False &#123;% endif %&#125;\n\nThe error appears to be in &#x27;/opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml&#x27;: line 22, column 3, but may\nbe elsewhere in the file depending on the exact syntax problem.\n\nThe offending line appears to be:\n\n\n- name: Writing hostname of host with existing cluster files to temp file\n  ^ here\n&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>原因</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Since Ansible 2.5, the use of jinja tests as filters has been deprecated.</span><br></pre></td></tr></table></figure>
+<p>方案一：<br>安装ansbile时，需要指定版本2.4.0。</p>
+<p>方案二：<br>修改</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml</span></span><br><span class="line"> <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Writing</span> <span class="string">hostname</span> <span class="string">of</span> <span class="string">host</span> <span class="string">with</span> <span class="string">existing</span> <span class="string">cluster</span> <span class="string">files</span> <span class="string">to</span> <span class="string">temp</span> <span class="string">file</span></span><br><span class="line">   <span class="attr">local_action:</span> <span class="string">copy</span> <span class="string">content=&#123;&#123;</span> <span class="string">ansible_hostname</span> <span class="string">&#125;&#125;</span> <span class="string">dest=/tmp/kolla_mariadb_cluster</span> <span class="string">mode=0644</span></span><br><span class="line">   <span class="attr">changed_when:</span> <span class="literal">False</span></span><br><span class="line">   <span class="attr">check_mode:</span> <span class="literal">no</span></span><br><span class="line">   <span class="attr">when:</span> <span class="string">not</span> <span class="string">mariadb_volume</span> <span class="string">|</span> <span class="string">changed</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /opt/kolla-ansible/virtualenv/share/kolla-ansible/ansible/roles/mariadb/tasks/lookup_cluster.yml</span></span><br><span class="line"> <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Writing</span> <span class="string">hostname</span> <span class="string">of</span> <span class="string">host</span> <span class="string">with</span> <span class="string">existing</span> <span class="string">cluster</span> <span class="string">files</span> <span class="string">to</span> <span class="string">temp</span> <span class="string">file</span></span><br><span class="line">   <span class="attr">local_action:</span> <span class="string">copy</span> <span class="string">content=&#123;&#123;</span> <span class="string">ansible_hostname</span> <span class="string">&#125;&#125;</span> <span class="string">dest=/tmp/kolla_mariadb_cluster</span> <span class="string">mode=0644</span></span><br><span class="line">   <span class="attr">changed_when:</span> <span class="literal">False</span></span><br><span class="line">   <span class="attr">check_mode:</span> <span class="literal">no</span></span><br><span class="line">   <span class="attr">when:</span> <span class="string">mariadb_volume</span> <span class="string">is</span> <span class="string">not</span> <span class="string">changed</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="mariadb启动错误"><a href="#mariadb启动错误" class="headerlink" title="mariadb启动错误"></a>mariadb启动错误</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">InnoDB: Cannot allocate memory <span class="keyword">for</span> the buffer pool</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Kolla-ansible/" rel="tag">Kolla-ansible</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Rocky/" rel="tag">Rocky</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    data-tooltip="Neutron实现的网络虚拟化"
+                    aria-label="PREVIOUS: Neutron实现的网络虚拟化"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/08/21/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="Linux命令大全（三）文本处理工具"
+                    aria-label="NEXT: Linux命令大全（三）文本处理工具"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/&amp;title=Kolla-ansible部署Openstack Rocky"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/08/22/Kolla-ansible部署Openstack-Rocky/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    data-tooltip="Neutron实现的网络虚拟化"
+                    aria-label="PREVIOUS: Neutron实现的网络虚拟化"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/08/21/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="Linux命令大全（三）文本处理工具"
+                    aria-label="NEXT: Linux命令大全（三）文本处理工具"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/&amp;title=Kolla-ansible部署Openstack Rocky"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/&amp;title=Kolla-ansible部署Openstack Rocky"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

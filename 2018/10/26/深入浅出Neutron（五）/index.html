@@ -1,0 +1,865 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>深入浅出Neutron（五）二层网络服务实现原理 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Neutron二层网络服务实现原理\n\n\n\n\n二层网络基本原理二层网络是TCP/IP七层网络中的数据链路层，通过交换机设备进行帧转发。交换机在收到帧之后（二层网络叫帧，三层网络叫包）先解析出帧头的MAC地址，再在转发表中查找是否有对应MAC地址的端口，有的话就从相应的端口转发出去。没有，就洪泛（flood），即将帧转发到交换机的所有端口，每个端口上的计算机都检查帧头中的MAC地址是否与本机网卡的MAC地址一致，一致的话就接收数据帧，不一致就直接丢弃。而转发表是通过自学习自动建立的。\n混杂模式：默认情况下计算机只接收和本机MAC地址一致的数据帧，不一致就丢弃。如果要求计算机接收所有帧的话，就要设置网卡为混杂模式（ifconfig eth0 0.0.0.0 promisc up）。所以在虚拟网桥中，如果希望虚拟机和外部通信，必须打开桥接到虚拟网桥中物理网卡的混杂模式特性（对于flat、vlan网络适用，对于gre、vxlan等覆盖网络不适用）。\n\n\n广播风暴：ARP通过广播充当了二层控制平面的角色，实现通过IP找MAC地址的功能，但是ARP广播中的洪泛经常会在一个局域网内产生大量的广播，也就是所谓的广播风暴。\n\n\n虚拟局域网（VLAN）：VLAN（Virtual Local Area Network）。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。在基于VLAN的二层网络里，从以前的根据MAC地址接收帧改为同时根据VLAN号与MAC地址接收帧，避免了广播风暴。\n\n\nNeutron目前已经实现了FLAT、VLAN、GRE、VxLAN四种网络拓扑。结合VLAN号和MAC地址进行转发的是VLAN模式。只根据MAC地址进行转发的是FLAT模式。\n\n\nVLAN的缺点。\n\n要求穿越的所有物理交换机都配置允许带有某个VLAN号的数据帧通过，因为物理交换机通常只提供CLI命令，不提供远程接口可编程调用，所以都要手工配置，容易出错且工作量巨大，纯粹的体力劳动，影响了大规模部署。\nVLAN号的范围是0-4094，VLAN的数量遭到限制。\n\n为了克服VLAN的缺点，衍生出GRE、VxLan、VPN等隧道技术。这些技术的本质是重定制二层网络和三层网络的头部，通过三层网络或其他层的技术将数据传送到远端，在远端接收到这种定制的数据之后，再重新解包。这也就是覆盖网络（Overlay Network），它也是实现SDN的一个重要基础。因为使用隧道传输数据，所以无需再去配置隧道两端沿路的所有网络设备，这是SDN的好处（当然SDN还有一个好处是有控制器可以集中控制）\nGRE便是其中一种支持覆盖网络的隧道技术，它克服了VLAN需要人工去硬件交换机那里配置VLAN的缺点。但是GRE也有不足之处。第一体现在性能上，因为GRE在数据帧里添加上了自己的GRE帧头，这样可能造成整个数据帧长度大于硬件网卡的MTU值（一般默认设置为1500），于是需要将数据帧分片造成性能下降。同时，由于GRE隧道是点对点的，所以，如果有N个节点，就会有N*(N-1)条隧道，对于四层网络的端口资源也是一个浪费。这也是为什么GRE隧道使用UDP而不是TCP的原因，因为UDP用完后就可以释放，不会老占着端口又不用。\nVxLAN与GRE类似，但它定义了一种在二层网络定制数据帧头的标准格式，它也提供了多播在局域网中进一步缩小广播范围。\n大二层网络大二层多路径技术二层多路径技术可以解决二层的东西向流量问题。由于传统的二层网络没有控制平面，都是基于传统的生成树协议（STP）来构建网络，即按照传统的接入层、汇聚层、核心层的分级网络。相反的，大二层多路径技术的网络应该是网状的。在这种网状的结构里，需要将传统三层构建控制平面的思想引入到二层。Cisco的FabricPath便是这样一种技术，将三层基于IP的中间系统到中间系统的路由协议（IS-IS）技术引入到二层，基于交换机的ID来创建全网的交换机的网络拓扑结构。这样，传统三层的多路径技术也自然就是下沉到了二层。根据FabricPath创建的网络，不需要再像STP网络那样分层部署交换机，网络中交换机的地位是对等的：不需要再运行STP生成树协议：也不需要再执行MAC学习，因为它已经通过二层的中间系统的路由协议（IS-IS）交换了二层的全局拓扑信息，建立了二层的控制平面从而使得数据帧直接基于这个拓扑计算出的路径来转发，不再依赖于MAC地址。一句话，FabricPath技术是传统三层思想在二层的一个复制，是一个思维上的创新。\nFabricPath是Cisco的私有标准，而TRILL(Transparent Interconnection of Lots of Links，多链接半透明互联)则是IETF组织的公开标准。SPB（Shorest Path Bridging，最短桥接路径）是IEEE组织的公开标准。\n大二层互联技术覆盖网络技术是大二层互联技术的关键，它也是SDN技术的技术本质，即自定义二层帧，以各层传输技术将帧发送到远端，在远端再把自定义帧解释出来。\n覆盖网络传输虚拟化（OTV，Overlay Transport Virtualization）技术，其核心思想是通过“MAC in IP”的方式，即通过IP协议来传输OTV这个自定义的二层帧。OTV相较于VxLAN最大的特点是可以在广域网上进行地址学习，原因是OTV在大二层建立了控制平面，IS-IS动态路由协议可以在三层建立控制平面，而OTV仍然延用了传统的MAC地址的学习机制，自定义的二层帧会建立连接关系之后，通过广播或多播交换各自的MAC地址表，从而计算出一张具有全局网络拓扑状态的数据库。它有点类似MPLS通过不同的权重控制走不同的路径从而进行负载均衡。这样，OTV在发送第一个数据帧时就已经确定了路径，并对二层网关进行优化，同时具备内置的负载均衡（HSRP，Host Standby Router Protocol，热备份路由协议；Virtual Router Redundancy Protocol，虚拟路由冗余协议；GLBP，Gateway Load Balancing Protocol，网关负载均衡协议）。\n对于跨广域网数据中心之间的相同子网的互联，二层VPN或其他隧道技术都可以实现。但这里有个问题就是，用于创建隧道的隧道两端的公有地址肯定是不同的，如果一个虚拟机从一个数据中心迁移到另一个数据中心想要保持IP不变，它的网关也需要跟着移动。位置/身份分离协议（LISP，Locator/Identifier Separation Protocol）正是来解决这种网络资源移动性问题的。LISP除了实现移动前后IP不变的特性外，还在控制层面提出使用eBGP协议进行二层地址的学习。\n二层网络的实现——ML2插件Neutron中的代码结构分两类，一类是插件，一类是代理。插件负责和数据库打交道并对外提供北向API。ML2是一种插件结构，其中包含两种Driver：一种叫做Type Driver，定义了五种不同的二层网络类型，即LOCAL、FLAT、VLAN、GRE、VXLAN；另一种叫做Mechenism Driver，实现了对象Open vSwitch、Linux Bridge、Bigswitch SDN等二层网络设备的支持。\n二层网络在Linux中的实现Neutron二层网络提供了对十多种二层网络设备的支持，但其中比较常用的，也是经常拿来作为参考的，是Linux网桥和Open vSwitch两种。两种方式都采用了以下技术：\n\nTAP设备。比如vnet0，是虚拟化技术如KVM和Xen用来实现虚拟网卡的。当一个以太网帧发送给TAP设备时，这个以太网帧就会被虚拟机操作系统所接收。命名空间，用于隔离虚拟网络设备。\n\nveth配对设备（veth pair）或OVS配对端口（patch port），是一对直接相连的虚拟网络接口。当一个以太网帧被发送给一个veth配对设备的一端时，将会被此配对设备的另一端来接收，在虚拟网络技术中，经常使用veth配对设备作为虚拟配对线缆来连接两个虚拟网桥。\n\nLinux网桥，可以看做是一个简单的MAC地址学习的交换机，可以将多个（物理的或者虚拟的）网络接口设备连接到Linux网桥上。Linux网桥使用一个MAC地址缓存表来记录使用网桥上的哪个接口和链路上的主机通信。对于任何来自于连接在网桥上的网络接口的以太网帧，主机的MAC地址，以及在哪个端口上这个网帧被接收的，这个信息被记录在MAC缓存表中，并保留一段时间。当网桥需要转发一个网帧时，它会检查这个网帧的目的MAC地址是否记录在缓存表里。如果是，Linux网桥就将网帧只通过那个端口转发出去。否则，网帧会被广播到网桥上的所有网络端口，接收这个网帧的端口除外。Open vSwitch网桥，可以看做是一个虚拟交换机。网络接口设备连接到Open vSwitch网桥上的端口，并且这些端口可以像物理交换机的端口那样进行配置，比如配置VLAN。\n\n\nveth pair\n\n\n\n创建veth pair\n创建命名空间\n12ip netns add ns1ip netns add ns2\n\n创建两个veth类型的tap设备tap1和tap2，并设置它们为peer。\n1ip link add tap1 type veth peer name tap2\n\n设置tap1和tap2的命名空间。\n12ip link set tap1 netns ns1ip link set tap2 netns ns2\n\n启动tap1和tap2。\n12ip netns exec ns1 ip link set dev tap1 upip netns exec ns2 ip link set dev tap2 up\n\n\n\n验证veth pair\n列出命名空间\n1ip netns list\n\n查看命名空间中的tap设备信息。\n12ip netns exec ns1 ip addrip netns exec ns2 ip addr\n\n\n\n\n\n\n\nLinux网桥\n\n创建Linux网桥\n创建两个命名空间。\n12ip netns add ns1ip netns add ns2\n\n创建名为br-test的网桥。\n1brctl addbr br-test\n\n禁用网桥的STP。\n1brctl stp br-test off\n\n启用网桥。\n1ip link set dev br-test up\n\n创建两个veth类型的tap设备tap1和br-tap1，并设置它们为peer。\n1ip link add tap1 type veth peer name br-tap1\n\n将br-tap1加为网桥br-test上的接口。\n1brctl addif br-test br-tap1\n\n将tap1加入到命名空间ns1。\n1ip link set tap1 netns ns1\n\n启动tap1和br-tap1。\n12ip netns exec ns1 ip link set dev tap1 upip link set dev br-tap1 up\n重复类似步骤五~七创建tap2和br-tap2。\n12345ip link add tap2 type veth peer name br-tap2br-ctl addif br-test br-tap2ip link set tap2 netns ns2ip netns exec ns2 ip link set dev tap2 upip link set dev br-tap2 up\n\n\n\n验证Linux网桥\n列出命名空间\n1ip netns list\n\n查看命名空间中tap设备信息。\n12ip netns exec ns1 ip addrip netns exec ns2 ip addr\n\n\n\n\n\n查看网桥br-test，可以看到之前创建的两个接口。\n1brctl show br-test\n\n\n\n\n\n\nOpenvswitch中二层网络的实现Openvswitch是一个致力于提供产品质量、多层虚拟交换机的开源项目。\n网络节点\n\n计算节点\n\n在neutron的隧道中有两个网桥，br-int和br-tun，它们之间通过ovs的patch port级联。\n\ninbound，从gre_port或者vxlan_port进入br-tun的为入口流量，要转到表2&amp;3，匹配到隧道流量打上本地标签，转到表10学习隧道远端的MAC地址，然后输出到patch_int。\noutbound，从patch_int进入br-tun的为出口流量，转到表1，单播转表20，多播或组播转表21。在表20中的单播中，要记录学习发消息的虚拟机的MAC地址，同时去掉tag，打上隧道号，默认是转到21。\n\n\nNeutron L2-agent OVS流表\n\n核心思想就是，之前的做法是进出的广播均无限制，现在是进来的广播就不让了（因为已经通过MAC学习到了），出去的广播只允许本机有VLAN的流量到相应同类型（GRE或VxLAN）的端口。\n之前的做法，如果在一个OVS桥如br-tun里同时用了GRE和VxLAN这些隧道，且隧道端口也一样的话，就会出现安全隔离问题。在br-tun里使用normal作为action，接受来路不明的广播，这将引起安全问题。所以从安全上将，任何时候都不应该用normal作为action，对于从隧道端口（tunnel ports）接收到的包应该动态的从OVS的20号表中学习MAC地址创建流规则，这样对于不清楚的广播再重发送到表21。\n虚拟机部署与二层网络的绑定（Port Binding）当创建一个虚拟机时，虚拟机将通过绑定端口和二层网络绑定在一起。\n\n当在Neutron中创建一个新的网络时，会在Neutron的数据库中创建一条相应的记录。\n新创建的网络可以关联到租户的虚拟路由上。\n同时，网络节点上的l3-agent会周期扫描路由，如果发现有新的网络关联到路由上，就调用vif（通过l3_agent.ini中的interface_driver参数配置）为和它关联的子网创建该子网的内部网关，如果关联的是外网，也会创建外部网络相应的tap设备。\n当Nova创建虚拟机时，Nova会调用Neutron的接口来获取虚拟机的IP地址，并在数据库中记录虚拟机的网络信息。\n之后Nova会调用vif为虚拟机创建tap设备。\n在计算节点上的neutron-l2-agent会周期性扫描，当检测到新的物理tap设备时，会从数据库中检索次tap设备所关联的端口信息、网络信息和安全组信息，然后根据这些信息在计算节点上做相关的设置，将虚拟机通过tap设备绑定到二层网络的网桥上。\n在这个过程中，ml2_port_binding这张数据表记录了虚拟机和网络之间的端口绑定关系，包含端口ID、计算节点主机、虚拟接口类型、虚拟网卡类型和网络分段等信息。\n\n\n\nNova和Neutron进行信息交互。\n\n在通过**nova boot**命令创建虚拟机时，通过Nova本身的调度功能选定目标计算节点。\n计算节点上的nova-compute服务会把计算节点主机的信息传递给Neutron。Neutron首先会记录节点信息（binding_host）到ml2_port_bindings表中，然后循环调用各种mechanism_drivers的bind_port方法，每个mechanism_driver会调用PortContext类中的host_agent方法，根据自身的agent_type和binding_host找到对应的agent信息。\n\n123456# Rocky# neutron/plugins/ml2/driver_context.py:PortContextdef host_agents(self, agent_type):    return self._plugin.get_agents(self._plugin_context,                                    filters=&#123;&#x27;agent_type&#x27;: [agent_type],                                            &#x27;host&#x27;: [self._binding.host]&#125;)\n\n\n继续在ml2_port_bindings表记录segment以及vif_type信息。\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758# Rocky# neutron/plugins/ml2/drivers/openvswitch/mech_driver/mech_openvswitch.py:OpenvswitchMechanismDriverdef bind_port(self, context):    vnic_type = context.current.get(portbindings.VNIC_TYPE,                                    portbindings.VNIC_NORMAL)    profile = context.current.get(portbindings.PROFILE)    capabilities = []    if profile:        capabilities = profile.get(&#x27;capabilities&#x27;, [])    if (vnic_type == portbindings.VNIC_DIRECT and            &#x27;switchdev&#x27; not in capabilities):        LOG.debug(&quot;Refusing to bind due to unsupported vnic_type: %s with &quot;                    &quot;no switchdev capability&quot;, portbindings.VNIC_DIRECT)        return    super(OpenvswitchMechanismDriver, self).bind_port(context)# neutron/plugins/ml2/drivers/mech_agent.py:AgentMechanismDriverBasedef bind_port(self, context):    LOG.debug(&quot;Attempting to bind port %(port)s on &quot;                &quot;network %(network)s&quot;,                &#123;&#x27;port&#x27;: context.current[&#x27;id&#x27;],                &#x27;network&#x27;: context.network.current[&#x27;id&#x27;]&#125;)    vnic_type = context.current.get(portbindings.VNIC_TYPE,                                    portbindings.VNIC_NORMAL)    if vnic_type not in self.supported_vnic_types:        LOG.debug(&quot;Refusing to bind due to unsupported vnic_type: %s&quot;,                    vnic_type)        return    agents = context.host_agents(self.agent_type)    if not agents:        LOG.debug(&quot;Port %(pid)s on network %(network)s not bound, &quot;                    &quot;no agent of type %(at)s registered on host %(host)s&quot;,                    &#123;&#x27;pid&#x27;: context.current[&#x27;id&#x27;],                    &#x27;at&#x27;: self.agent_type,                    &#x27;network&#x27;: context.network.current[&#x27;id&#x27;],                    &#x27;host&#x27;: context.host&#125;)    for agent in agents:        LOG.debug(&quot;Checking agent: %s&quot;, agent)        if agent[&#x27;alive&#x27;]:            for segment in context.segments_to_bind:                if self.try_to_bind_segment_for_agent(context, segment,                                                        agent):                    LOG.debug(&quot;Bound using segment: %s&quot;, segment)                    return        else:            LOG.warning(&quot;Refusing to bind port %(pid)s to dead agent: &quot;                        &quot;%(agent)s&quot;,                        &#123;&#x27;pid&#x27;: context.current[&#x27;id&#x27;], &#x27;agent&#x27;: agent&#125;)# neutron/plugins/ml2/drivers/mech_agent.py:SimpleAgentMechanismDriverBasedef try_to_bind_segment_for_agent(self, context, segment, agent):    if self.check_segment_for_agent(segment, agent):        context.set_binding(segment[api.ID],                            self.get_vif_type(context, agent, segment),                            self.get_vif_details(context, agent, segment))        return True    else:        return False\n\n网络分段（segment）指的是网络里具有特定物理网络能力的部分，一个网络可以包含多个分段，所以，每个计算节点上的neutron-l2-agent所对应的网络分段也许是不同的，对应VLAN、隧道及外部物理网络的能力。每个neutron-l2-agent通过读取配置指定，并在汇报状态时上报给Neutron，这样Neutron里的mechanism_driver就可以知道哪个l2-agent能够提供什么能力了。\n12345678910111213141516171819202122232425# Rocky# neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py:OVSNeutronAgentself.agent_state = &#123;            &#x27;binary&#x27;: &#x27;neutron-openvswitch-agent&#x27;,            &#x27;host&#x27;: host,            &#x27;topic&#x27;: n_const.L2_AGENT_TOPIC,            &#x27;configurations&#x27;: &#123;&#x27;bridge_mappings&#x27;: self.bridge_mappings,                               &#x27;tunnel_types&#x27;: self.tunnel_types,                               &#x27;tunneling_ip&#x27;: self.local_ip,                               &#x27;l2_population&#x27;: self.l2_pop,                               &#x27;arp_responder_enabled&#x27;:                               self.arp_responder_enabled,                               &#x27;enable_distributed_routing&#x27;:                               self.enable_distributed_routing,                               &#x27;log_agent_heartbeats&#x27;:                               agent_conf.log_agent_heartbeats,                               &#x27;extensions&#x27;: self.ext_manager.names(),                               &#x27;datapath_type&#x27;: ovs_conf.datapath_type,                               &#x27;ovs_capabilities&#x27;: self.ovs.capabilities,                               &#x27;vhostuser_socket_dir&#x27;:                               ovs_conf.vhostuser_socket_dir,                               portbindings.OVS_HYBRID_PLUG: hybrid_plug&#125;,            &#x27;resource_versions&#x27;: resources.LOCAL_RESOURCE_VERSIONS,            &#x27;agent_type&#x27;: agent_conf.agent_type,            &#x27;start_flag&#x27;: True&#125;\n\n对于虚拟接口类型信息（vi_type)，Nova需要用到它去设置相关的网桥信息。\n1\n\n","dateCreated":"2018-10-26T11:04:20+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-10-26T11:04:20+08:00","description":"Neutron二层网络服务实现原理","headline":"深入浅出Neutron（五）二层网络服务实现原理","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron二层网络服务实现原理">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="深入浅出Neutron（五）二层网络服务实现原理">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron二层网络服务实现原理">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/veth_pair.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/ip_netns_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/ip_netns_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/linux_bridge.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/ip_netns_1_ip_a.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/ip_netns_2_ip_a.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/brctl_show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/network_node.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/compute_node.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/neutron_l2_agent_ovs.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/desc_ml2_port_bindings.png">
+<meta property="article:published_time" content="2018-10-26T03:04:20.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.327Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/veth_pair.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            深入浅出Neutron（五）二层网络服务实现原理
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-10-26T11:04:20+08:00">
+	
+		    Oct 26, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Neutron二层网络服务实现原理</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E5%9F%BA%E6%9C%AC%E5%8E%9F%E7%90%86"><span class="toc-text">二层网络基本原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%A7%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C"><span class="toc-text">大二层网络</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%A7%E4%BA%8C%E5%B1%82%E5%A4%9A%E8%B7%AF%E5%BE%84%E6%8A%80%E6%9C%AF"><span class="toc-text">大二层多路径技术</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%A7%E4%BA%8C%E5%B1%82%E4%BA%92%E8%81%94%E6%8A%80%E6%9C%AF"><span class="toc-text">大二层互联技术</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%9E%E7%8E%B0%E2%80%94%E2%80%94ML2%E6%8F%92%E4%BB%B6"><span class="toc-text">二层网络的实现——ML2插件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E5%9C%A8Linux%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">二层网络在Linux中的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#veth-pair"><span class="toc-text">veth pair</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAveth-pair"><span class="toc-text">创建veth pair</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81veth-pair"><span class="toc-text">验证veth pair</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Linux%E7%BD%91%E6%A1%A5"><span class="toc-text">Linux网桥</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%88%9B%E5%BB%BALinux%E7%BD%91%E6%A1%A5"><span class="toc-text">创建Linux网桥</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81Linux%E7%BD%91%E6%A1%A5"><span class="toc-text">验证Linux网桥</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Openvswitch%E4%B8%AD%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">Openvswitch中二层网络的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%83%A8%E7%BD%B2%E4%B8%8E%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E7%9A%84%E7%BB%91%E5%AE%9A%EF%BC%88Port-Binding%EF%BC%89"><span class="toc-text">虚拟机部署与二层网络的绑定（Port Binding）</span></a></li></ol>
+
+<h3 id="二层网络基本原理"><a href="#二层网络基本原理" class="headerlink" title="二层网络基本原理"></a>二层网络基本原理</h3><p>二层网络是TCP/IP七层网络中的数据链路层，通过交换机设备进行帧转发。交换机在收到帧之后（二层网络叫帧，三层网络叫包）先解析出帧头的MAC地址，再在转发表中查找是否有对应MAC地址的端口，有的话就从相应的端口转发出去。没有，就洪泛（flood），即将帧转发到交换机的所有端口，每个端口上的计算机都检查帧头中的MAC地址是否与本机网卡的MAC地址一致，一致的话就接收数据帧，不一致就直接丢弃。而转发表是通过自学习自动建立的。</p>
+<div class="alert danger no-icon"><p>混杂模式：默认情况下计算机只接收和本机MAC地址一致的数据帧，不一致就丢弃。如果要求计算机接收所有帧的话，就要设置网卡为混杂模式（ifconfig eth0 0.0.0.0 promisc up）。所以在虚拟网桥中，如果希望虚拟机和外部通信，必须打开桥接到虚拟网桥中物理网卡的混杂模式特性（对于flat、vlan网络适用，对于gre、vxlan等覆盖网络不适用）。</p>
+</div>
+
+<div class="alert danger no-icon"><p>广播风暴：ARP通过广播充当了二层控制平面的角色，实现通过IP找MAC地址的功能，但是ARP广播中的洪泛经常会在一个局域网内产生大量的广播，也就是所谓的广播风暴。</p>
+</div>
+
+<div class="alert danger no-icon"><p>虚拟局域网（VLAN）：VLAN（Virtual Local Area Network）。在计算机网络中，一个二层网络可以被划分为多个不同的广播域，一个广播域对应了一个特定的用户组，默认情况下这些不同的广播域是相互隔离的。不同的广播域之间想要通信，需要通过一个或多个路由器。这样的一个广播域就称为VLAN。在基于VLAN的二层网络里，从以前的根据MAC地址接收帧改为同时根据VLAN号与MAC地址接收帧，避免了广播风暴。</p>
+</div>
+
+<div class="alert warning no-icon"><p>Neutron目前已经实现了FLAT、VLAN、GRE、VxLAN四种网络拓扑。<br>结合VLAN号和MAC地址进行转发的是VLAN模式。<br>只根据MAC地址进行转发的是FLAT模式。</p>
+</div>
+
+<p>VLAN的缺点。</p>
+<ul>
+<li>要求穿越的所有物理交换机都配置允许带有某个VLAN号的数据帧通过，因为物理交换机通常只提供CLI命令，不提供远程接口可编程调用，所以都要手工配置，容易出错且工作量巨大，纯粹的体力劳动，影响了大规模部署。</li>
+<li>VLAN号的范围是0-4094，VLAN的数量遭到限制。</li>
+</ul>
+<p>为了克服VLAN的缺点，衍生出GRE、VxLan、VPN等隧道技术。这些技术的本质是重定制二层网络和三层网络的头部，通过三层网络或其他层的技术将数据传送到远端，在远端接收到这种定制的数据之后，再重新解包。这也就是覆盖网络（Overlay Network），它也是实现SDN的一个重要基础。因为使用隧道传输数据，所以无需再去配置隧道两端沿路的所有网络设备，这是SDN的好处（当然SDN还有一个好处是有控制器可以集中控制）</p>
+<p>GRE便是其中一种支持覆盖网络的隧道技术，它克服了VLAN需要人工去硬件交换机那里配置VLAN的缺点。但是GRE也有不足之处。<br>第一体现在性能上，因为GRE在数据帧里添加上了自己的GRE帧头，这样可能造成整个数据帧长度大于硬件网卡的MTU值（一般默认设置为1500），于是需要将数据帧分片造成性能下降。同时，由于GRE隧道是点对点的，所以，如果有N个节点，就会有N*(N-1)条隧道，对于四层网络的端口资源也是一个浪费。这也是为什么GRE隧道使用UDP而不是TCP的原因，因为UDP用完后就可以释放，不会老占着端口又不用。</p>
+<p>VxLAN与GRE类似，但它定义了一种在二层网络定制数据帧头的标准格式，它也提供了多播在局域网中进一步缩小广播范围。</p>
+<h3 id="大二层网络"><a href="#大二层网络" class="headerlink" title="大二层网络"></a>大二层网络</h3><h4 id="大二层多路径技术"><a href="#大二层多路径技术" class="headerlink" title="大二层多路径技术"></a>大二层多路径技术</h4><p>二层多路径技术可以解决二层的东西向流量问题。由于传统的二层网络没有控制平面，都是基于传统的生成树协议（STP）来构建网络，即按照传统的接入层、汇聚层、核心层的分级网络。相反的，大二层多路径技术的网络应该是网状的。在这种网状的结构里，需要将传统三层构建控制平面的思想引入到二层。Cisco的FabricPath便是这样一种技术，将三层基于IP的中间系统到中间系统的路由协议（IS-IS）技术引入到二层，基于交换机的ID来创建全网的交换机的网络拓扑结构。这样，传统三层的多路径技术也自然就是下沉到了二层。根据FabricPath创建的网络，不需要再像STP网络那样分层部署交换机，网络中交换机的地位是对等的：不需要再运行STP生成树协议：也不需要再执行MAC学习，因为它已经通过二层的中间系统的路由协议（IS-IS）交换了二层的全局拓扑信息，建立了二层的控制平面从而使得数据帧直接基于这个拓扑计算出的路径来转发，不再依赖于MAC地址。一句话，FabricPath技术是传统三层思想在二层的一个复制，是一个思维上的创新。</p>
+<p>FabricPath是Cisco的私有标准，而TRILL(Transparent Interconnection of Lots of Links，多链接半透明互联)则是IETF组织的公开标准。SPB（Shorest Path Bridging，最短桥接路径）是IEEE组织的公开标准。</p>
+<h4 id="大二层互联技术"><a href="#大二层互联技术" class="headerlink" title="大二层互联技术"></a>大二层互联技术</h4><p>覆盖网络技术是大二层互联技术的关键，它也是SDN技术的技术本质，即自定义二层帧，以各层传输技术将帧发送到远端，在远端再把自定义帧解释出来。</p>
+<p>覆盖网络传输虚拟化（OTV，Overlay Transport Virtualization）技术，其核心思想是通过“MAC in IP”的方式，即通过IP协议来传输OTV这个自定义的二层帧。OTV相较于VxLAN最大的特点是可以在广域网上进行地址学习，原因是OTV在大二层建立了控制平面，IS-IS动态路由协议可以在三层建立控制平面，而OTV仍然延用了传统的MAC地址的学习机制，自定义的二层帧会建立连接关系之后，通过广播或多播交换各自的MAC地址表，从而计算出一张具有全局网络拓扑状态的数据库。它有点类似MPLS通过不同的权重控制走不同的路径从而进行负载均衡。这样，OTV在发送第一个数据帧时就已经确定了路径，并对二层网关进行优化，同时具备内置的负载均衡（HSRP，Host Standby Router Protocol，热备份路由协议；Virtual Router Redundancy Protocol，虚拟路由冗余协议；GLBP，Gateway Load Balancing Protocol，网关负载均衡协议）。</p>
+<p>对于跨广域网数据中心之间的相同子网的互联，二层VPN或其他隧道技术都可以实现。但这里有个问题就是，用于创建隧道的隧道两端的公有地址肯定是不同的，如果一个虚拟机从一个数据中心迁移到另一个数据中心想要保持IP不变，它的网关也需要跟着移动。位置/身份分离协议（LISP，Locator/Identifier Separation Protocol）正是来解决这种网络资源移动性问题的。LISP除了实现移动前后IP不变的特性外，还在控制层面提出使用eBGP协议进行二层地址的学习。</p>
+<h3 id="二层网络的实现——ML2插件"><a href="#二层网络的实现——ML2插件" class="headerlink" title="二层网络的实现——ML2插件"></a>二层网络的实现——ML2插件</h3><p>Neutron中的代码结构分两类，一类是插件，一类是代理。插件负责和数据库打交道并对外提供北向API。ML2是一种插件结构，其中包含两种Driver：一种叫做Type Driver，定义了五种不同的二层网络类型，即LOCAL、FLAT、VLAN、GRE、VXLAN；另一种叫做Mechenism Driver，实现了对象Open vSwitch、Linux Bridge、Bigswitch SDN等二层网络设备的支持。</p>
+<h3 id="二层网络在Linux中的实现"><a href="#二层网络在Linux中的实现" class="headerlink" title="二层网络在Linux中的实现"></a>二层网络在Linux中的实现</h3><p>Neutron二层网络提供了对十多种二层网络设备的支持，但其中比较常用的，也是经常拿来作为参考的，是Linux网桥和Open vSwitch两种。两种方式都采用了以下技术：</p>
+<ul>
+<li><p>TAP设备。比如vnet0，是虚拟化技术如KVM和Xen用来实现虚拟网卡的。当一个以太网帧发送给TAP设备时，这个以太网帧就会被虚拟机操作系统所接收。命名空间，用于隔离虚拟网络设备。</p>
+</li>
+<li><p>veth配对设备（veth pair）或OVS配对端口（patch port），是一对直接相连的虚拟网络接口。当一个以太网帧被发送给一个veth配对设备的一端时，将会被此配对设备的另一端来接收，在虚拟网络技术中，经常使用veth配对设备作为虚拟配对线缆来连接两个虚拟网桥。</p>
+</li>
+<li><p>Linux网桥，可以看做是一个简单的MAC地址学习的交换机，可以将多个（物理的或者虚拟的）网络接口设备连接到Linux网桥上。Linux网桥使用一个MAC地址缓存表来记录使用网桥上的哪个接口和链路上的主机通信。对于任何来自于连接在网桥上的网络接口的以太网帧，主机的MAC地址，以及在哪个端口上这个网帧被接收的，这个信息被记录在MAC缓存表中，并保留一段时间。当网桥需要转发一个网帧时，它会检查这个网帧的目的MAC地址是否记录在缓存表里。如果是，Linux网桥就将网帧只通过那个端口转发出去。否则，网帧会被广播到网桥上的所有网络端口，接收这个网帧的端口除外。Open vSwitch网桥，可以看做是一个虚拟交换机。网络接口设备连接到Open vSwitch网桥上的端口，并且这些端口可以像物理交换机的端口那样进行配置，比如配置VLAN。</p>
+</li>
+</ul>
+<h4 id="veth-pair"><a href="#veth-pair" class="headerlink" title="veth pair"></a>veth pair</h4><br>
+<div class="figure " style="width:;"><img class="fig-img" src="images/veth_pair.png" alt=""></div>
+<br>
+
+<h5 id="创建veth-pair"><a href="#创建veth-pair" class="headerlink" title="创建veth pair"></a>创建veth pair</h5><ol>
+<li><p>创建命名空间</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns add ns1</span><br><span class="line">ip netns add ns2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建两个veth类型的tap设备tap1和tap2，并设置它们为peer。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> add tap1 <span class="built_in">type</span> veth peer name tap2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>设置tap1和tap2的命名空间。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> tap1 netns ns1</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> tap2 netns ns2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动tap1和tap2。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> ns1 ip <span class="built_in">link</span> <span class="built_in">set</span> dev tap1 up</span><br><span class="line">ip netns <span class="built_in">exec</span> ns2 ip <span class="built_in">link</span> <span class="built_in">set</span> dev tap2 up</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h5 id="验证veth-pair"><a href="#验证veth-pair" class="headerlink" title="验证veth pair"></a>验证veth pair</h5><ol>
+<li><p>列出命名空间</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns list</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看命名空间中的tap设备信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> ns1 ip addr</span><br><span class="line">ip netns <span class="built_in">exec</span> ns2 ip addr</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/ip_netns_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ip_netns_1.png" alt=""></a></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/ip_netns_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ip_netns_2.png" alt=""></a></div>
+<br>
+
+</li>
+</ol>
+<h4 id="Linux网桥"><a href="#Linux网桥" class="headerlink" title="Linux网桥"></a>Linux网桥</h4><div class="figure " style="width:;"><img class="fig-img" src="images/linux_bridge.png" alt=""></div>
+
+<h5 id="创建Linux网桥"><a href="#创建Linux网桥" class="headerlink" title="创建Linux网桥"></a>创建Linux网桥</h5><ol>
+<li><p>创建两个命名空间。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns add ns1</span><br><span class="line">ip netns add ns2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建名为br-test的网桥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl addbr br-test</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>禁用网桥的STP。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl stp br-test off</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启用网桥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> dev br-test up</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>创建两个veth类型的tap设备tap1和br-tap1，并设置它们为peer。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> add tap1 <span class="built_in">type</span> veth peer name br-tap1</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将br-tap1加为网桥br-test上的接口。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl addif br-test br-tap1</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将tap1加入到命名空间ns1。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> tap1 netns ns1</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动tap1和br-tap1。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> ns1 ip <span class="built_in">link</span> <span class="built_in">set</span> dev tap1 up</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> dev br-tap1 up</span><br></pre></td></tr></table></figure></li>
+<li><p>重复类似步骤五~七创建tap2和br-tap2。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ip <span class="built_in">link</span> add tap2 <span class="built_in">type</span> veth peer name br-tap2</span><br><span class="line">br-ctl addif br-test br-tap2</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> tap2 netns ns2</span><br><span class="line">ip netns <span class="built_in">exec</span> ns2 ip <span class="built_in">link</span> <span class="built_in">set</span> dev tap2 up</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> dev br-tap2 up</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h5 id="验证Linux网桥"><a href="#验证Linux网桥" class="headerlink" title="验证Linux网桥"></a>验证Linux网桥</h5><ol>
+<li><p>列出命名空间</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns list</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>查看命名空间中tap设备信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> ns1 ip addr</span><br><span class="line">ip netns <span class="built_in">exec</span> ns2 ip addr</span><br></pre></td></tr></table></figure>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/ip_netns_1_ip_a.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ip_netns_1_ip_a.png" alt=""></a></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/ip_netns_2_ip_a.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ip_netns_2_ip_a.png" alt=""></a></div>
+<br></li>
+<li><p>查看网桥br-test，可以看到之前创建的两个接口。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl show br-test</span><br></pre></td></tr></table></figure>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/brctl_show.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/brctl_show.png" alt=""></a></div>
+<br>
+
+</li>
+</ol>
+<h3 id="Openvswitch中二层网络的实现"><a href="#Openvswitch中二层网络的实现" class="headerlink" title="Openvswitch中二层网络的实现"></a>Openvswitch中二层网络的实现</h3><p>Openvswitch是一个致力于提供产品质量、多层虚拟交换机的开源项目。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network_node.png" title="网络节点" data-caption="网络节点" data-fancybox="default"><img class="fig-img" src="images/network_node.png" alt="网络节点"></a><span class="caption">网络节点</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/compute_node.png" title="计算节点" data-caption="计算节点" data-fancybox="default"><img class="fig-img" src="images/compute_node.png" alt="计算节点"></a><span class="caption">计算节点</span></div>
+
+<p>在neutron的隧道中有两个网桥，br-int和br-tun，它们之间通过ovs的patch port级联。</p>
+<ul>
+<li>inbound，从gre_port或者vxlan_port进入br-tun的为入口流量，要转到表2&amp;3，匹配到隧道流量打上本地标签，转到表10学习隧道远端的MAC地址，然后输出到patch_int。</li>
+<li>outbound，从patch_int进入br-tun的为出口流量，转到表1，单播转表20，多播或组播转表21。在表20中的单播中，要记录学习发消息的虚拟机的MAC地址，同时去掉tag，打上隧道号，默认是转到21。</li>
+</ul>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/neutron_l2_agent_ovs.png" title="Neutron L2-agent OVS流表" data-caption="Neutron L2-agent OVS流表" data-fancybox="default"><img class="fig-img" src="images/neutron_l2_agent_ovs.png" alt="Neutron L2-agent OVS流表"></a><span class="caption">Neutron L2-agent OVS流表</span></div>
+
+<p>核心思想就是，之前的做法是进出的广播均无限制，现在是进来的广播就不让了（因为已经通过MAC学习到了），出去的广播只允许本机有VLAN的流量到相应同类型（GRE或VxLAN）的端口。</p>
+<p>之前的做法，如果在一个OVS桥如br-tun里同时用了GRE和VxLAN这些隧道，且隧道端口也一样的话，就会出现安全隔离问题。在br-tun里使用normal作为action，接受来路不明的广播，这将引起安全问题。所以从安全上将，任何时候都不应该用normal作为action，对于从隧道端口（tunnel ports）接收到的包应该动态的从OVS的20号表中学习MAC地址创建流规则，这样对于不清楚的广播再重发送到表21。</p>
+<h3 id="虚拟机部署与二层网络的绑定（Port-Binding）"><a href="#虚拟机部署与二层网络的绑定（Port-Binding）" class="headerlink" title="虚拟机部署与二层网络的绑定（Port Binding）"></a>虚拟机部署与二层网络的绑定（Port Binding）</h3><p>当创建一个虚拟机时，虚拟机将通过绑定端口和二层网络绑定在一起。</p>
+<ol>
+<li>当在Neutron中创建一个新的网络时，会在Neutron的数据库中创建一条相应的记录。</li>
+<li>新创建的网络可以关联到租户的虚拟路由上。</li>
+<li>同时，网络节点上的l3-agent会周期扫描路由，如果发现有新的网络关联到路由上，就调用vif（通过l3_agent.ini中的interface_driver参数配置）为和它关联的子网创建该子网的内部网关，如果关联的是外网，也会创建外部网络相应的tap设备。</li>
+<li>当Nova创建虚拟机时，Nova会调用Neutron的接口来获取虚拟机的IP地址，并在数据库中记录虚拟机的网络信息。</li>
+<li>之后Nova会调用vif为虚拟机创建tap设备。</li>
+<li>在计算节点上的neutron-l2-agent会周期性扫描，当检测到新的物理tap设备时，会从数据库中检索次tap设备所关联的端口信息、网络信息和安全组信息，然后根据这些信息在计算节点上做相关的设置，将虚拟机通过tap设备绑定到二层网络的网桥上。</li>
+<li>在这个过程中，ml2_port_binding这张数据表记录了虚拟机和网络之间的端口绑定关系，包含端口ID、计算节点主机、虚拟接口类型、虚拟网卡类型和网络分段等信息。</li>
+</ol>
+<div class="figure " style="width:;"><a class="fancybox" href="images/desc_ml2_port_bindings.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/desc_ml2_port_bindings.png" alt=""></a></div>
+
+<p>Nova和Neutron进行信息交互。</p>
+<ol>
+<li>在通过**<em>nova boot**</em>命令创建虚拟机时，通过Nova本身的调度功能选定目标计算节点。</li>
+<li>计算节点上的nova-compute服务会把计算节点主机的信息传递给Neutron。Neutron首先会记录节点信息（binding_host）到ml2_port_bindings表中，然后循环调用各种mechanism_drivers的bind_port方法，每个mechanism_driver会调用PortContext类中的host_agent方法，根据自身的agent_type和binding_host找到对应的agent信息。</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Rocky</span></span><br><span class="line"><span class="comment"># neutron/plugins/ml2/driver_context.py:PortContext</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">host_agents</span>(<span class="params">self, agent_type</span>):</span><br><span class="line">    <span class="keyword">return</span> self._plugin.get_agents(self._plugin_context,</span><br><span class="line">                                    filters=&#123;<span class="string">&#x27;agent_type&#x27;</span>: [agent_type],</span><br><span class="line">                                            <span class="string">&#x27;host&#x27;</span>: [self._binding.host]&#125;)</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><p>继续在ml2_port_bindings表记录segment以及vif_type信息。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Rocky</span></span><br><span class="line"><span class="comment"># neutron/plugins/ml2/drivers/openvswitch/mech_driver/mech_openvswitch.py:OpenvswitchMechanismDriver</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bind_port</span>(<span class="params">self, context</span>):</span><br><span class="line">    vnic_type = context.current.get(portbindings.VNIC_TYPE,</span><br><span class="line">                                    portbindings.VNIC_NORMAL)</span><br><span class="line">    profile = context.current.get(portbindings.PROFILE)</span><br><span class="line">    capabilities = []</span><br><span class="line">    <span class="keyword">if</span> profile:</span><br><span class="line">        capabilities = profile.get(<span class="string">&#x27;capabilities&#x27;</span>, [])</span><br><span class="line">    <span class="keyword">if</span> (vnic_type == portbindings.VNIC_DIRECT <span class="keyword">and</span></span><br><span class="line">            <span class="string">&#x27;switchdev&#x27;</span> <span class="keyword">not</span> <span class="keyword">in</span> capabilities):</span><br><span class="line">        LOG.debug(<span class="string">&quot;Refusing to bind due to unsupported vnic_type: %s with &quot;</span></span><br><span class="line">                    <span class="string">&quot;no switchdev capability&quot;</span>, portbindings.VNIC_DIRECT)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    <span class="built_in">super</span>(OpenvswitchMechanismDriver, self).bind_port(context)</span><br><span class="line"></span><br><span class="line"><span class="comment"># neutron/plugins/ml2/drivers/mech_agent.py:AgentMechanismDriverBase</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">bind_port</span>(<span class="params">self, context</span>):</span><br><span class="line">    LOG.debug(<span class="string">&quot;Attempting to bind port %(port)s on &quot;</span></span><br><span class="line">                <span class="string">&quot;network %(network)s&quot;</span>,</span><br><span class="line">                &#123;<span class="string">&#x27;port&#x27;</span>: context.current[<span class="string">&#x27;id&#x27;</span>],</span><br><span class="line">                <span class="string">&#x27;network&#x27;</span>: context.network.current[<span class="string">&#x27;id&#x27;</span>]&#125;)</span><br><span class="line">    vnic_type = context.current.get(portbindings.VNIC_TYPE,</span><br><span class="line">                                    portbindings.VNIC_NORMAL)</span><br><span class="line">    <span class="keyword">if</span> vnic_type <span class="keyword">not</span> <span class="keyword">in</span> self.supported_vnic_types:</span><br><span class="line">        LOG.debug(<span class="string">&quot;Refusing to bind due to unsupported vnic_type: %s&quot;</span>,</span><br><span class="line">                    vnic_type)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    agents = context.host_agents(self.agent_type)</span><br><span class="line">    <span class="keyword">if</span> <span class="keyword">not</span> agents:</span><br><span class="line">        LOG.debug(<span class="string">&quot;Port %(pid)s on network %(network)s not bound, &quot;</span></span><br><span class="line">                    <span class="string">&quot;no agent of type %(at)s registered on host %(host)s&quot;</span>,</span><br><span class="line">                    &#123;<span class="string">&#x27;pid&#x27;</span>: context.current[<span class="string">&#x27;id&#x27;</span>],</span><br><span class="line">                    <span class="string">&#x27;at&#x27;</span>: self.agent_type,</span><br><span class="line">                    <span class="string">&#x27;network&#x27;</span>: context.network.current[<span class="string">&#x27;id&#x27;</span>],</span><br><span class="line">                    <span class="string">&#x27;host&#x27;</span>: context.host&#125;)</span><br><span class="line">    <span class="keyword">for</span> agent <span class="keyword">in</span> agents:</span><br><span class="line">        LOG.debug(<span class="string">&quot;Checking agent: %s&quot;</span>, agent)</span><br><span class="line">        <span class="keyword">if</span> agent[<span class="string">&#x27;alive&#x27;</span>]:</span><br><span class="line">            <span class="keyword">for</span> segment <span class="keyword">in</span> context.segments_to_bind:</span><br><span class="line">                <span class="keyword">if</span> self.try_to_bind_segment_for_agent(context, segment,</span><br><span class="line">                                                        agent):</span><br><span class="line">                    LOG.debug(<span class="string">&quot;Bound using segment: %s&quot;</span>, segment)</span><br><span class="line">                    <span class="keyword">return</span></span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            LOG.warning(<span class="string">&quot;Refusing to bind port %(pid)s to dead agent: &quot;</span></span><br><span class="line">                        <span class="string">&quot;%(agent)s&quot;</span>,</span><br><span class="line">                        &#123;<span class="string">&#x27;pid&#x27;</span>: context.current[<span class="string">&#x27;id&#x27;</span>], <span class="string">&#x27;agent&#x27;</span>: agent&#125;)</span><br><span class="line"></span><br><span class="line"><span class="comment"># neutron/plugins/ml2/drivers/mech_agent.py:SimpleAgentMechanismDriverBase</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">try_to_bind_segment_for_agent</span>(<span class="params">self, context, segment, agent</span>):</span><br><span class="line">    <span class="keyword">if</span> self.check_segment_for_agent(segment, agent):</span><br><span class="line">        context.set_binding(segment[api.ID],</span><br><span class="line">                            self.get_vif_type(context, agent, segment),</span><br><span class="line">                            self.get_vif_details(context, agent, segment))</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">True</span></span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">False</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>网络分段（segment）指的是网络里具有特定物理网络能力的部分，一个网络可以包含多个分段，所以，每个计算节点上的neutron-l2-agent所对应的网络分段也许是不同的，对应VLAN、隧道及外部物理网络的能力。每个neutron-l2-agent通过读取配置指定，并在汇报状态时上报给Neutron，这样Neutron里的mechanism_driver就可以知道哪个l2-agent能够提供什么能力了。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Rocky</span></span><br><span class="line"><span class="comment"># neutron/plugins/ml2/drivers/openvswitch/agent/ovs_neutron_agent.py:OVSNeutronAgent</span></span><br><span class="line">self.agent_state = &#123;</span><br><span class="line">            <span class="string">&#x27;binary&#x27;</span>: <span class="string">&#x27;neutron-openvswitch-agent&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;host&#x27;</span>: host,</span><br><span class="line">            <span class="string">&#x27;topic&#x27;</span>: n_const.L2_AGENT_TOPIC,</span><br><span class="line">            <span class="string">&#x27;configurations&#x27;</span>: &#123;<span class="string">&#x27;bridge_mappings&#x27;</span>: self.bridge_mappings,</span><br><span class="line">                               <span class="string">&#x27;tunnel_types&#x27;</span>: self.tunnel_types,</span><br><span class="line">                               <span class="string">&#x27;tunneling_ip&#x27;</span>: self.local_ip,</span><br><span class="line">                               <span class="string">&#x27;l2_population&#x27;</span>: self.l2_pop,</span><br><span class="line">                               <span class="string">&#x27;arp_responder_enabled&#x27;</span>:</span><br><span class="line">                               self.arp_responder_enabled,</span><br><span class="line">                               <span class="string">&#x27;enable_distributed_routing&#x27;</span>:</span><br><span class="line">                               self.enable_distributed_routing,</span><br><span class="line">                               <span class="string">&#x27;log_agent_heartbeats&#x27;</span>:</span><br><span class="line">                               agent_conf.log_agent_heartbeats,</span><br><span class="line">                               <span class="string">&#x27;extensions&#x27;</span>: self.ext_manager.names(),</span><br><span class="line">                               <span class="string">&#x27;datapath_type&#x27;</span>: ovs_conf.datapath_type,</span><br><span class="line">                               <span class="string">&#x27;ovs_capabilities&#x27;</span>: self.ovs.capabilities,</span><br><span class="line">                               <span class="string">&#x27;vhostuser_socket_dir&#x27;</span>:</span><br><span class="line">                               ovs_conf.vhostuser_socket_dir,</span><br><span class="line">                               portbindings.OVS_HYBRID_PLUG: hybrid_plug&#125;,</span><br><span class="line">            <span class="string">&#x27;resource_versions&#x27;</span>: resources.LOCAL_RESOURCE_VERSIONS,</span><br><span class="line">            <span class="string">&#x27;agent_type&#x27;</span>: agent_conf.agent_type,</span><br><span class="line">            <span class="string">&#x27;start_flag&#x27;</span>: <span class="literal">True</span>&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>对于虚拟接口类型信息（vi_type)，Nova需要用到它去设置相关的网桥信息。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure></li>
+</ol>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Understand Neutron（二）"
+                    aria-label="PREVIOUS: Understand Neutron（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（四）爱上Neutron"
+                    aria-label="NEXT: 深入浅出Neutron（四）爱上Neutron"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/&amp;title=深入浅出Neutron（五）二层网络服务实现原理"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/10/26/深入浅出Neutron（五）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Understand Neutron（二）"
+                    aria-label="PREVIOUS: Understand Neutron（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（四）爱上Neutron"
+                    aria-label="NEXT: 深入浅出Neutron（四）爱上Neutron"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/&amp;title=深入浅出Neutron（五）二层网络服务实现原理"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/&amp;title=深入浅出Neutron（五）二层网络服务实现原理"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

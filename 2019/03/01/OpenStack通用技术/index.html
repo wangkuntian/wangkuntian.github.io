@@ -1,0 +1,1028 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack通用技术 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n消息总线概述OpenStack遵循这样的设计原则：项目之间通过RESTful API进行通信；项目内部，不同服务进程之间通过消息总线进行通信。\noslo.messaging库通过以下两种方式来完成项目各个服务进程之间的通信。\n\n远程过程调用（Remote Procedure Call，RPC）通过远程过程调用，一个服务进程可以调用其他远程服务进程的方法，并且有两种方法：call和cast。通过call的方式调用，远程方法会被同步执行，调用者会被阻塞直到结果返回；通过cast的方式调用，远程方法会被异步执行，结果不会立即返回，调用者也不会被阻塞，但是调用者需要用其他方式查询这次远程调用的结果。\n\n事件通知（Event Notification）某个服务进程可以把事件通知发送到消息总线上，该消息总线上所有对此类事件感兴趣的服务进程，都可以获得此事件通知并进行进一步的处理，处理的结果并不会发送给事件发送者。这种通信方式，不但可以在同一个项目内部的各个服务进程之间发送通知，还可以实现跨项目之间的通知发送。Ceilometer就通过这种方式大量获取其他OpenStack项目的事件通知，从而进行计量和监控。\n\n\n通过不同的配置项，远程过程调用进而事件通知可以使用不同的消息总线后端（backend），比如RPC使用RabbitMQ，事件通知使用Kafka，以满足不同环境下的特定应用需求，极大地增加灵活性。\n\n\nAMQPOpenstack所支持的消息队列类型中，大部分都是基于AMQP（Advanced Message Queuing Protocol，高级消息队列协议）。\nAMQP是一个异步消息传递所使用的开放的应用层协议规范，主要包括消息的导向、队列、路由、可靠性和安全性。oslo.messaging中支持的AMQP主要包括两版本，AMQP 0.9.1和AMQP 1.0，这两个版本有很大的差别。\nAMQP架构。\n对与一个实现了AMQP的中间件服务（Server/Broker）来说，当不同的消息由生产者（Producer）发送到Server时，它会根据不同的条件把消息传递给不同的消费者（Consumer）。如果消费者无法接收消息或者接收消息不够快时，它会把消息缓存在内存或者磁盘上。\nAMQP模型中，上述操作分别由Exchange（消息交换）和Queue（消息队列）来实现。此处的虚拟主机（Virtual Host）指的是Exchange和Queue的集合。\n\n\n生产者将消息发送给Exchange，由Exchange来决定消息的路由，即决定将消息发送到那个Queue，然后消费者从Queue中取出消息，进行处理。\nExchange本身不会保存消息，它接收由生产者发送来的消息，然后根据不同的条件将消息转发到不同的Queue。这里的条件又被成为绑定（Binding）。\n接收到消息时，Exchange会查看消息的属性、消息头和消息体，从中提取相关的信息，然后用此信息再根据绑定表把消息转发给不同的Queue或者其他Exchange。\n绝大情况下，这个用来查询绑定表的信息是一个单一的键值，称为routing key。每一个发送的消息都有一个routing key。同样，每一个Queue也有一个binding key，Exchange在进行消息路由时，会查询每一个Queue。如果某个Queue的binding key与某个消息的routing key匹配，这个消息会被转发到那个Queue。\nExchange消息交换类型。\n\n\n\n类型\n说明\n\n\n\nDirect\nbinding key和routing key必须完全一致，不支持通配符。\n\n\nTopic\n同Direct类型，但支持通配符。‘*’，匹配一个单字。‘#’，匹配零个或者多个单字。单字之间是由’.’来分割的。\n\n\nFanout\n忽略binding key和routing key，消息会被传递到所有绑定的队列上。\n\n\nDirect是需要满足单一条件的路由，在Exchange判断要消息发送给哪个Queue时，判断的依据只能是一个条件。\n\n\nFanout是指广播式的路由，将消息发送给所有的Queue。\n\n\nTopic是需要满足多个条件的路由，转发消息需要依据多个条件。\n\n\n基于AMQP实现RPC基于AMQP实现远程调用RPC的过程。\n\n\n* 客户端发送一个请求消息给Exchange，指定routing key为“op_queue”，同时指明一个消息队列名用来获取响应，图中为“res_queue”。\n* Exchange把消息转发到消息队列op_queue。\n* 消息队列op_queue把消息推送给服务器，服务端执行此RPC调用的对应的任务。执行结束后，服务端把响应结果发送给消息队列，指明routing key为“res_queue”s。\n* Exchange把此消息转发到消息队列res_queue。\n* 客户端从消息队列res_queue获取响应。\n\n常见消息总线实现RabbitMQRabbitMQ是一个实现了AMQP的消息中间件服务。它包括Server/Broker，支持多种协议的网关（HTTP、STOMP、MQTT等），支持多种语言（Erlang、Java、.NET \bFramework等）的客户端开发库，支持用户自定义插件开发的框架以及多种插件。\nRabbitMQ的Server/Broker使用Erlang语言编写，使用Mozilla Public License（MPL）许可证发行。\noslo.messaging底层实现了两种不同的driver来支持RabbitMQ，分别是kombu和pika。它们的主要区别在于使用了不同的Python library。\nAMQP 1.0支持实现了AMQP 1.0协议的消息总线应用，相比AMQP 0.9协议，AMQP 1.0更加灵活和复杂。\n除了常见的AMQP broker模式，AMQP 1.0还实现了一种消息路由模式，位于调用者和服务器之间的不再是单节点的broker，而是有一群互相连接的消息路由组成的路由网，路由不具备队列（queue），没有储存信息的能力，它们的作用就是单纯地传递消息，路由节点之间通过TCP链接进行通信，调用者通过TCP链接连接到路由网中的某个路由，从而接入路由网。\n当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。\nØMQ（ZeroMQ）ZeroMQ是一个开源的高性能异步消息库，和实现了AMQP的RabbitMQ和Qpid不同，ZeroMQ系统可以在没有Server/Broker的情况下工作，消息的发送者需要负责消息路由以找到正确的消息目的地，消息接收者需要负责消息的入队/出对等操作。\n由于没有了集中式的Broker，ZeroMQ可以实现一般AMQP Broker所达不到的很低的延迟和较大的带宽，特别适合消息数量特别巨大的应用场景。\nZeroMQ使用自己的通信协议ZMTP（ZeroMQ Message Transfer Protocol）来进行通信。ZeroMQ的库使用C++编写，使用LGPL许可证发行。\nKafkaKafka是一个分布式的系统，有着较好的扩展能力，可以为发布和订阅提高吞吐量，被广泛应用于收集日志等海量消息应用场景中。\nSQLAlchemy和数据库架构SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。\nSQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。\nSQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。\nSQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。\nSQLAlchemy架构。\n示例users表。\n\n\n\nid\nname\nfullname\npassword\n\n\n\n1\nw\nwang\n123\n\n\n2\nk\nkun\nabc\n\n\n3\nt\ntian\nxyz\n\n\naddresses表。\n\n\n\nid\nuser_id\nemail_address\n\n\n\n1\n1\n&#x77;&#97;&#x6e;&#103;&#x40;&#113;&#113;&#46;&#99;&#x6f;&#x6d;\n\n\n2\n2\n&#107;&#x75;&#x6e;&#x40;&#113;&#x71;&#x2e;&#x63;&#111;&#109;\n\n\n3\n3\n&#x74;&#x69;&#x61;&#x6e;&#x40;&#113;&#113;&#46;&#99;&#111;&#109;\n\n\nSQL语句。\n123456789101112131415CREATE TABLE users (    id INTEGER NOT NULL,    name VARCHAR,    fullname VARCHAR,    password VARCHAR,    PRIMARY KEY (id));CREATE TABLE addresses (    id INTEGER NOT NULL,    email_address VARCHAR NOT NULL,    user_id INTEGER,    PRIMARY KEY (id),    FOREIGN KEY (user_id) REFERENCES users(id));\n\n1234567891011121314151617181920212223242526272829303132333435from sqlalchemy.ext.declarative import declarative_basefrom sqlalchemy import Column, Integer, String, ForeignKey, create_enginefrom sqlalchemy.orm import relationship, backref, sessionmakerBase = declarative_base()class User(Base):    def __init__(self):        pass    __tablename__ = &#x27;users&#x27;    id = Column(Integer, primary_key=True)    name = Column(String)    fullname = Column(String)    password = Column(String)class Address(Base):    def __init__(self):        pass    __tablename__ = &#x27;addresses&#x27;    id = Column(Integer, primary_key=True)    user_id = Column(Integer, ForeignKey(&#x27;users.id&#x27;))    user = relationship(&#x27;User&#x27;, backref=backref(&#x27;addresses&#x27;, order_by=id))engine = create_engine(&#x27;mysql+mysqlconnector://root:19941221@localhost:3306/test&#x27;)Session = sessionmaker(bind=engine)session = Session()for u, a in session.query(User, Address).filter(User.id == 1).filter(User.id == Address.user_id).all():    print u, a\n\nRESTful API和WSGIOpenStack项目都是通过RESTful API向外提供服务，这使得OpenStack的接口在性能、可扩展性、可移植性、易用性等方面达到比较好的平衡。\nRESTfulRESTful是目前流行的一种互联网软件架构，是一种架构风格、设计风格，而不是标准，只是提供了一组设计原则。REST（Representational State Transfer，表述性状态转移）一次最早是由Roy Thomas Feilding在他2000年的论文中提出，定义了他对互联网软件的架构原则，如果一个架构符合REST原则，就称它为RESTful架构。\n资源与URIREST全称是表述性状态转移，那究竟指的是什么的表述? 其实指的就是资源。任何事物，只要有被引用到的必要，它就是一个资源。资源可以是实体(例如手机号码)，也可以只是一个抽象概念(例如价值) 。\n要让一个资源可以被识别，需要有个唯一标识，在Web中这个唯一标识就是URI，统一资源标识符(Uniform Resource Identifier)。\nURI既可以看成是资源的地址，也可以看成是资源的名称。如果某些信息没有使用URI来表示，那它就不能算是一个资源， 只能算是资源的一些信息而已。URI的设计应该遵循可寻址性原则，具有自描述性，需要在形式上给人以直觉上的关联。例如：\n1234567https://github.com/githttps://github.com/git/githttps://github.com/git/git/blob/master/block-sha1/sha1.hhttps://github.com/git/git/commit/e3af72cdafab5993d18fae056f87e1d675913d08https://github.com/git/git/pullshttps://github.com/git/git/pulls?state=closedhttps://github.com/git/git/compare/master…next\n\n使用_或-来让URI可读性更好。使用/来表示资源的层级关系。\n\n\n统一资源接口RESTful架构应该遵循统一接口原则，统一接口包含了一组受限的预定义操作，不论什么样的资源，都是通过使用相同的接口进行资源的访问。\n接口应该使用标准的HTTP方法如GET，PUT和POST，并遵循这些方法的语义。\nGET和HEAD请求都是安全的，无论请求多少次，都不会改变服务器状态。GET、HEAD、PUT和DELETE请求都是幂等的，无论资源操作多少次，结果总是一样的，后面请求并不会产生比第一次更多的影响。\n\n\nGET\n安全且幂等\n表示获取\n变更时获取表示（缓存）\n200（OK）- 表示已在响应中发出\n204（无内容）- 资源有空表示\n301（Moved Permanently）- 资源的URI已被更新\n303（See Other）- 其他\n304（Not Modified）- 资源未更改（缓存）\n400（Bad Request）- 坏请求（如：参数错误）\n404（Not Found）- 资源不存在\n406（Not Acceptable）- 服务端不支持所需表示\n500（Internal Server Error）- 通用错误响应\n503（Service Unavailable）- 服务端当前无法处理请求\n\nPOST\n不安全且不幂等\n使用服务端管理的（自动产生）的实例号创建资源\n创建子资源\n部分更新资源\n200（OK）- 现有资源被更改\n201（Create）- 新资源被创建\n202（Accepted）- 已接受处理请求但尚未完成（异步处理）\n301（Moved Permanently）- 资源的URI已被更新\n303（See Other）- 其他\n400（Bad Request）- 坏请求（如：参数错误）\n404（Not Found）- 资源不存在\n406（Not Acceptable）- 服务端不支持所需表示\n409（Confilct）- 通用冲突\n412（Precondition Failed）- 前置条件失败（如：执行条件更新时的冲突）\n415（Unsupported Media Type）- 接收到的表示不支持\n500（Internal Server Error）- 通用错误响应\n503（Service Unavailable）- 服务端当前无法处理请求\n\nPUT\n不安全但幂等\n用客户端管理的实例号创建一个资源\n通过替换的方式更新资源\n200（OK）- 已存在资源被修改\n201（Create）- 新资源被创建\n301（Moved Permanently）- 资源的URI已被更新\n303（See Other）- 其他\n400（Bad Request）- 坏请求（如：参数错误）\n404（Not Found）- 资源不存在\n406（Not Acceptable）- 服务端不支持所需表示\n409（Confilct）- 通用冲突\n412（Precondition Failed）- 前置条件失败（如：执行条件更新时的冲突）\n415（Unsupported Media Type）- 接收到的表示不支持\n500（Internal Server Error）- 通用错误响应\n503（Service Unavailable）- 服务端当前无法处理请求\n\nDELETE\n不安全但幂等\n删除资源\n200（OK）- 资源被删除\n301（Moved Permanently）- 资源的URI已被更新\n303（See Other）- 其他\n400（Bad Request）- 坏请求（如：参数错误）\n404（Not Found）- 资源不存在\n409（Confilct）- 通用冲突\n500（Internal Server Error）- 通用错误响应\n503（Service Unavailable）- 服务端当前无法处理请求\n\n资源的表述JSON和XML\nRESTful路由OpenStack各个项目都提供了RESTful架构的API作为对外提供的接口，而RESTful架构的核心是资源与资源上的操作。OpenStack中所用的路由模块Routes源自于对Rails路由系统的重新实现。Rails（Ruby on Rails）是Ruby语言的Web开发框架，采用MVC（Model-View-Controller）模式，收到浏览器发出的HTTP请求后，Rails路由系统会将这个请求指派到对应的Controller。\n1234567891011121314from routes import Mappermapper = Mapper()mapper.connect(None, &#x27;/error/&#123;action&#125;/&#123;id&#125;&#x27;, controller=&#x27;error&#x27;)mapper.connect(&#x27;home&#x27;, &#x27;/&#x27;, controller=&#x27;main&#x27;, action=&#x27;index&#x27;)result = mapper.match(&#x27;/error/test/1&#x27;)print resultresult = mapper.match(&#x27;/&#x27;)print result&#123;&#x27;action&#x27;: u&#x27;test&#x27;, &#x27;controller&#x27;: u&#x27;error&#x27;, &#x27;id&#x27;: u&#x27;1&#x27;&#125;&#123;&#x27;action&#x27;: u&#x27;index&#x27;, &#x27;controller&#x27;: u&#x27;main&#x27;&#125;\n\nWSGIWSGI（Web Server Gateway Interface，Web服务器网关接口）是Python语言中定义的Web服务器和Web应用程序或框架之间的通用接口标准。当处理一个WSGI请求时，服务端为应用端提供上下文信息和一个回调函数，应用端处理完请求后，使用服务端所提供的回调函数返回相对应请求的响应。\n作为一个桥梁，WSGI将Web组件分成3类：\n\nWeb服务器（WSGI Server）\nWeb中间件（WSGI Middleware）\nWeb应用程序（WSGI Application）。\n\nWSGI Server接收HTTP请求，封装一系列环境变量，按照WSGI接口标准调用注册的WSGI Application，最后将响应返回给客户端。\nWSGI Application是一个可被调用的（Callable）的Python对象，它接收两个参数，通常为environ和start_response。\n123def application(environ, start_response):    start_response(&#x27;200 OK&#x27;, [(&#x27;Content-Type&#x27;, &#x27;text/plain&#x27;)])    yield &#x27;Hello World \\n&#x27;\n参数environ指向一个Python字典，要求里面至少包含一些在CGI（通用网关接口规范）中定义的环境变量，如：\n\nAUTH-TYPE\nCONTENT_LENGTH：HTTP请求中Content-Length的部分。\nCONTENT_TYPE：HTTP请求中Content-Type的部分。\nGATEWAY_INTERFACE\nHTTP_*：包含一系列变量，如HTTP_HOST、HTTP_ACCEPT等。\nPATH_INFO：浏览器用GET方式发送数据时的附加路径。\nPATH_TRANSLATED\nQUERY_STRING：表单输入的数据，URL中问号后的内容。\nREMOTE_ADDR\nREMOTE_HOST\nREMOTE_IDENT\nREMOTE_USER\nRESQUST_METHOD：请求方法（POST、GET）\nSCRIPT_NAME：CGI程序的路径名。\nSERVER_NAME\nSERVER_PORT\nSERVER_PROTOCOL：客户端的请求协议（HTTP/1.1 HTTP/1.0）\nSERVER_SOFTWARE\n\n除此之外，environ里面还至少要包含其他7个WSGI所定义的环境变量，如：\n\nwsgi.version：值形式为(1,0)表示WSGI版本1.0\nwsgi.url_scheme：表示url的模式，如：http或者https。\nwsgi.input：输入流，HTTP请求的body部分可以从这里读取。\nwsgi.errors：输入流，如果出现错误，可以写在这里。\nwsgi.multithread：如果应用程序对象可以被同一进程的另一线程同时调用，这个值为True。\nwsgi.multiprocess：如果应用程序对象可以同时被另一个进程调用，这个值为True。\nwsgi.run_once：如果服务器希望应用程序对象包含它的进程中只被调用一次，这个值为True。\n\n\n\n参数start_response指向一个回调函数，形如：\n1start_response(status, response_headers, exc_info=None)\nstatus参数是一个形如“200 OK”的表示响应状态的字符串。response_headers参数是一个包含了(header_name,header_value)元组的列表，分别表示HTTP响应中的HTTP头及内容。exec_info 一般会在出现错误时使用，用来让浏览器显示相关错误信息。\n\n\n参数start_response所指向的这个回调函数需要返回类似write(body_data)的可被调用对象。\n有请求到来时，WSGI Server会准备好environ和start_response参数，然后调用WSGI Application获得对应请求的响应。\n1234567891011121314151617def call_application(app, environ):    body = []    status_headers = [None, None]    # 定义start_response回调函数    def start_response(status, headers):        status_headers[:] = [status, headers]        return body.append(status_headers)    app_iter = app(environ, start_response)    try:        for item in app_iter:            body.append(item)    finally:        if hasattr(app_iter, &#x27;close&#x27;):            app_iter.close()    return status_headers[0], status_headers[1], &#x27;&#x27;.join(body)\n\nWSGI中间件同时实现了服务端和应用端的API，因此可以在两端之间起协调作用。从服务器端看，中间件就是一个WSGI应用；从应用端方面看，中间件是一个WSGI服务器。\nWSGI中间件可以将客户端的HTTP请求，路由给不同的应用对象，然后将应用处理后的结果返回给客户端。\nPasteOpenStack使用Paste的Deploy组件来完成WSGI服务器和应用的构建，每个项目源码的etc目录下都有一个Paste配置文件，比如Nova中的etc/nova/api-paste.ini，部署时，这些配置文件会被复制到系统/etc/[project]/目录下。Paste Deploy的工作便是基于这些配置文件。\n123456789101112131415161718192021222324[composite:main]use = egg:Paste#urlmap/ = home/blog = blog/wiki = wiki/cms = config:cms.ini[app:home]use = egg:Paste#staticdocument_root = %(here)s/htdocs[filter-app:blog]use = egg:Authentication#authnext = blogapproles = adminhtpasswd = /home/me/users.htpasswd[app:blogapp]use = egg:BlogAppdatabase = sqlite:/home/me/blog.db[app:wiki]use = call:mywiki.main:applicationdatabase = sqlite:/home/me/wiki.db\nPaste配置文件分为多个section。每个section以type:name的格式命名。\n\ntype = composite这个类型的section会把URL请求分发到对应的Application，use表明具体的分发方式，比如：”egg:Paste#urlmap“表示使用Paste包中的urlmap模块，这个section里的其他形如”key = value“的行是使用urlmap进行分发时的参数。\n\ntype = app一个app就是一个具体的WSGI Application，这个app对应的Python代码则由use来指定。共有两种方法。\n\n\n\n第一种\n123456789101112131415[app:myapp]# 从另外一个config.ini文件中寻找appuse = config:another_config_file.ini#app_name[app:myotherapp]# 从Python EGG中寻找use = egg:MyApp[app:mythirdapp]# 直接调用另外一个模块的MyAppuse = call:my.project:MyApp[app:mylastapp]# 从另外一个section中use = myotherapp\n另一种指定方法是明确指明对应的Python代码，这时必须给出代码所应该符合的格式，比如paste.app_factory。\n123[app:myapp]# myapp.modulename将被加载，并从中获取app_factory对象paste.app_factory = myapp.modulename:app_factory\n\n  app_factory格式。\n  12def factory(loader, global_config, **local_conf):    return wsgi_app\n\n\n\ntype = filter-app收到一个请求后，会首先调用filter-app中的use所指定的app进行过滤，如果这个请求没有被过滤，就会被转发到next指定的app进行下一步的处理。\n\ntype = filter与filter-app类型类似，只是没有next。\n\ntype = pipelinepipeline由一系列的filter组成，这个filter链条末尾就是一个app。pipeline类型主要是对filter-app进行了简化，否则，如果有多个filter，就会需要写多个filter-app，然后使用next进行连接。\n12345[pipeline:main]pipeline = filter1 filter2 filter3 app[filter:filter1]...\n\n\n\n使用Paste Deploy的主要目的就是从配置文件中生成一个WSGI Application，有了配置文件之后，只需要使用下面的调用方式。\n12from paste.deploy import loadappwsgi_app = loadeapp(&#x27;config:/path/to/config.ini&#x27;)\n\n对于OpenStack，这里以Nova为例。\n1234567891011121314151617181920212223242526272829303132333435363738# nova/wsig.pyclass Loader(object):    &quot;&quot;&quot;Used to load WSGI applications from paste configurations.&quot;&quot;&quot;    def __init__(self, config_path=None):        &quot;&quot;&quot;Initialize the loader, and attempt to find the config.        :param config_path: Full or relative path to the paste config.        :returns: None        &quot;&quot;&quot;        self.config_path = None        config_path = config_path or CONF.wsgi.api_paste_config        if not os.path.isabs(config_path):            self.config_path = CONF.find_file(config_path)        elif os.path.exists(config_path):            self.config_path = config_path        if not self.config_path:            raise exception.ConfigNotFound(path=config_path)    def load_app(self, name):        &quot;&quot;&quot;Return the paste URLMap wrapped WSGI application.        :param name: Name of the application to load.        :returns: Paste URLMap object wrapping the requested application.        :raises: `nova.exception.PasteAppNotFound`        &quot;&quot;&quot;        try:            LOG.debug(&quot;Loading app %(name)s from %(path)s&quot;,                      &#123;&#x27;name&#x27;: name, &#x27;path&#x27;: self.config_path&#125;)            return deploy.loadapp(&quot;config:%s&quot; % self.config_path, name=name)        except LookupError:            LOG.exception(_LE(&quot;Couldn&#x27;t lookup app: %s&quot;), name)            raise exception.PasteAppNotFound(name=name, path=self.config_path)\n\nWebOb除了Routes与Paste Deploy外，OpenStack中另一个与WSGI密切相关的是WebOb。WebOb通过对WSGI的请求与响应进行封装，来简化WSGI应用的编写。\nWebOb中两个最重要的对象，一是webob.Request，对WSGI请求的environ参数进行封装；一是webob.Response，包含了标准WSGI响应的所有要素。此外，还有一个webob.exc对象，针对HTTP错误代码进行封装。\n除了这三个对象，WebOb还提供了一个修饰符（decorator），即webob.dec.wsgify，以便可以不使用原始的WSGI参数和返回格式，而全部使用WebOb替代。\n123@wsgifydef myfunc(req):    return webob.Response(&#x27;Hello world!&#x27;)\n调用的时候可以有两种选择。\n1app_iter = myfunc(environ, start_response)\n或\n1resp = myfunc(req)\n第一种是最原始最标准的WSGI格式，第二种是WebOb封装过后的格式。\n用户也可以使用参数对wsgify修饰符进行定制，比如使用webob.Request的子类，对真正的Request做一些判断或者过滤。\n1234567891011class MyRequest(webob.Request):    @property    def is_local(self):        return self.remote_addr == &#x27;127.0.0.1&#x27;@wsgify(RequestClass=MyRequest)def myfunc(req):    if req.is_local:        return Response(&#x27;Hello world!&#x27;)    else:        raise webob.exc.HTTPForbidden\n以Nova为例。\n12345678910111213141516171819202122232425262728293031# nova/wsgi.pyimport webob.decimport webob.excclass Request(webob.Request):    def __init__(self, environ, *args, **kwargs):        if CONF.wsgi.secure_proxy_ssl_header:            scheme = environ.get(CONF.wsgi.secure_proxy_ssl_header)            if scheme:                environ[&#x27;wsgi.url_scheme&#x27;] = scheme        super(Request, self).__init__(environ, *args, **kwargs)class Middleware(Application):    &quot;&quot;&quot;Base WSGI middleware.    These classes require an application to be    initialized that will be called next.  By default the middleware will    simply call its wrapped app, or you can override __call__ to customize its    behavior.        &quot;&quot;&quot;    @webob.dec.wsgify(RequestClass=Request)    def __call__(self, req):        response = self.process_request(req)        if response:            return response        response = req.get_response(self.application)        return self.process_response(response)\n\nPecan随着OpenStack项目的发展，Paste组合框架的Restful API代码的弊端也渐渐显现，代码过于臃肿，导致项目的可维护性变差。为了解决这个问题，一些新项目选了Pecan框架来实现Restful API。\nPecan是一个轻量级的WSGI网络框架，其设计并不想解决Web世界的所有问题，而是主要集中在对象路由和Restful支持上，并不提供对话（session）和数据库支持，用户可以选择其他模块与之组合。\nPecan的配置对位于config.py文件内，以neutron项目为例。\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071CONF = cfg.CONFCONF.import_opt(&#x27;bind_host&#x27;, &#x27;neutron.common.config&#x27;)CONF.import_opt(&#x27;bind_port&#x27;, &#x27;neutron.common.config&#x27;)def setup_app(*args, **kwargs):    config = &#123;        &#x27;server&#x27;: &#123;            &#x27;port&#x27;: CONF.bind_port,            &#x27;host&#x27;: CONF.bind_host        &#125;,        &#x27;app&#x27;: &#123;            &#x27;root&#x27;: &#x27;neutron.pecan_wsgi.controllers.root.RootController&#x27;,            &#x27;modules&#x27;: [&#x27;neutron.pecan_wsgi&#x27;],        &#125;        #TODO(kevinbenton): error templates    &#125;    pecan_config = pecan.configuration.conf_from_dict(config)    app_hooks = [        hooks.ExceptionTranslationHook(),  # priority 100        hooks.ContextHook(),  # priority 95        hooks.BodyValidationHook(),  # priority 120        hooks.OwnershipValidationHook(),  # priority 125        hooks.QuotaEnforcementHook(),  # priority 130        hooks.NotifierHook(),  # priority 135        hooks.PolicyHook(),  # priority 140    ]    app = pecan.make_app(        pecan_config.app.root,        debug=False,        wrap_app=_wrap_app,        force_canonical=False,        hooks=app_hooks,        guess_content_type_from_ext=True    )    startup.initialize_all()    return appdef _wrap_app(app):    app = request_id.RequestId(app)    if cfg.CONF.auth_strategy == &#x27;noauth&#x27;:        pass    elif cfg.CONF.auth_strategy == &#x27;keystone&#x27;:        app = auth_token.AuthProtocol(app, &#123;&#125;)    else:        raise n_exc.InvalidConfigurationOption(            opt_name=&#x27;auth_strategy&#x27;, opt_value=cfg.CONF.auth_strategy)    # version can be unauthenticated so it goes outside of auth    app = versions.Versions(app)    # This should be the last middleware in the list (which results in    # it being the first in the middleware chain). This is to ensure    # that any errors thrown by other middleware, such as an auth    # middleware - are annotated with CORS headers, and thus accessible    # by the browser.    app = cors.CORS(app, cfg.CONF)    app.set_latent(        allow_headers=[&#x27;X-Auth-Token&#x27;, &#x27;X-Identity-Status&#x27;, &#x27;X-Roles&#x27;,                       &#x27;X-Service-Catalog&#x27;, &#x27;X-User-Id&#x27;, &#x27;X-Tenant-Id&#x27;,                       &#x27;X-OpenStack-Request-ID&#x27;],        allow_methods=[&#x27;GET&#x27;, &#x27;PUT&#x27;, &#x27;POST&#x27;, &#x27;DELETE&#x27;, &#x27;PATCH&#x27;],        expose_headers=[&#x27;X-Auth-Token&#x27;, &#x27;X-Subject-Token&#x27;, &#x27;X-Service-Token&#x27;,                        &#x27;X-OpenStack-Request-ID&#x27;]    )    return app\n\nPecan的配置文件使用的也是Python，每个配置项都是一个Python字典，其中server指定了WSGI应用运行的主机和端口，app指定了WSGI app有关的一些配置。\nmodules项是一个Python模块列表，Pecan会在modules里寻找WSGI应用。Pecan使用了对象路由的方式把一个HTTP请求映射到Controller的方法上。具体来说，当用户访问某个URL的时候，Pecan会将路径分割成许多部分，从根控制器（Root Controller）开始，沿着对象路径寻找到要执行的函数，root项指定了根控制器的位置。\nEventletEventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。\n123456789import eventletdef output(a):    print agt = eventlet.spawn(output, &#x27;Hello world&#x27;)gt.wait()\n\neventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。\n协程目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。\n与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。\n使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。\n协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。","dateCreated":"2019-03-01T13:55:40+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2019-03-01T13:55:40+08:00","description":"OpenStack通用技术","headline":"OpenStack通用技术","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/","keywords":"OpenStack","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="OpenStack通用技术">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack通用技术">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack通用技术">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/amqp.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/amqp-rpc.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/amqp-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/sqlalchemy.png">
+<meta property="article:published_time" content="2019-03-01T05:55:40.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.063Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/amqp.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack通用技术
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-03-01T13:55:40+08:00">
+	
+		    Mar 01, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B6%88%E6%81%AF%E6%80%BB%E7%BA%BF"><span class="toc-text">消息总线</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AMQP"><span class="toc-text">AMQP</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EAMQP%E5%AE%9E%E7%8E%B0RPC"><span class="toc-text">基于AMQP实现RPC</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B8%B8%E8%A7%81%E6%B6%88%E6%81%AF%E6%80%BB%E7%BA%BF%E5%AE%9E%E7%8E%B0"><span class="toc-text">常见消息总线实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#RabbitMQ"><span class="toc-text">RabbitMQ</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AMQP-1-0"><span class="toc-text">AMQP 1.0</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#OMQ%EF%BC%88ZeroMQ%EF%BC%89"><span class="toc-text">ØMQ（ZeroMQ）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Kafka"><span class="toc-text">Kafka</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#SQLAlchemy%E5%92%8C%E6%95%B0%E6%8D%AE%E5%BA%93"><span class="toc-text">SQLAlchemy和数据库</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84"><span class="toc-text">架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#RESTful-API%E5%92%8CWSGI"><span class="toc-text">RESTful API和WSGI</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#RESTful"><span class="toc-text">RESTful</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E4%B8%8EURI"><span class="toc-text">资源与URI</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%9F%E4%B8%80%E8%B5%84%E6%BA%90%E6%8E%A5%E5%8F%A3"><span class="toc-text">统一资源接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#GET"><span class="toc-text">GET</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#POST"><span class="toc-text">POST</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PUT"><span class="toc-text">PUT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DELETE"><span class="toc-text">DELETE</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E7%9A%84%E8%A1%A8%E8%BF%B0"><span class="toc-text">资源的表述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RESTful%E8%B7%AF%E7%94%B1"><span class="toc-text">RESTful路由</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#WSGI"><span class="toc-text">WSGI</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Paste"><span class="toc-text">Paste</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#WebOb"><span class="toc-text">WebOb</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Pecan"><span class="toc-text">Pecan</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Eventlet"><span class="toc-text">Eventlet</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%8F%E7%A8%8B"><span class="toc-text">协程</span></a></li></ol></li></ol>
+
+<h1 id="消息总线"><a href="#消息总线" class="headerlink" title="消息总线"></a>消息总线</h1><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>OpenStack遵循这样的设计原则：项目之间通过RESTful API进行通信；项目内部，不同服务进程之间通过消息总线进行通信。</p>
+<p>oslo.messaging库通过以下两种方式来完成项目各个服务进程之间的通信。</p>
+<ol>
+<li><p>远程过程调用（Remote Procedure Call，RPC）<br>通过远程过程调用，一个服务进程可以调用其他远程服务进程的方法，并且有两种方法：call和cast。通过call的方式调用，远程方法会被同步执行，调用者会被阻塞直到结果返回；通过cast的方式调用，远程方法会被异步执行，结果不会立即返回，调用者也不会被阻塞，但是调用者需要用其他方式查询这次远程调用的结果。</p>
+</li>
+<li><p>事件通知（Event Notification）<br>某个服务进程可以把事件通知发送到消息总线上，该消息总线上所有对此类事件感兴趣的服务进程，都可以获得此事件通知并进行进一步的处理，处理的结果并不会发送给事件发送者。这种通信方式，不但可以在同一个项目内部的各个服务进程之间发送通知，还可以实现跨项目之间的通知发送。Ceilometer就通过这种方式大量获取其他OpenStack项目的事件通知，从而进行计量和监控。</p>
+</li>
+</ol>
+<div class="alert info no-icon"><p>通过不同的配置项，远程过程调用进而事件通知可以使用不同的消息总线后端（backend），比如RPC使用RabbitMQ，事件通知使用Kafka，以满足不同环境下的特定应用需求，极大地增加灵活性。</p>
+</div>
+
+<h2 id="AMQP"><a href="#AMQP" class="headerlink" title="AMQP"></a>AMQP</h2><p>Openstack所支持的消息队列类型中，大部分都是基于AMQP（Advanced Message Queuing Protocol，高级消息队列协议）。</p>
+<p>AMQP是一个异步消息传递所使用的开放的应用层协议规范，主要包括消息的导向、队列、路由、可靠性和安全性。oslo.messaging中支持的AMQP主要包括两版本，AMQP 0.9.1和AMQP 1.0，这两个版本有很大的差别。</p>
+<p>AMQP架构。<br><img src="images/amqp.png" alt="AMQP"></p>
+<p>对与一个实现了AMQP的中间件服务（Server/Broker）来说，当不同的消息由生产者（Producer）发送到Server时，它会根据不同的条件把消息传递给不同的消费者（Consumer）。如果消费者无法接收消息或者接收消息不够快时，它会把消息缓存在内存或者磁盘上。</p>
+<div class="alert info no-icon"><p>AMQP模型中，上述操作分别由Exchange（消息交换）和Queue（消息队列）来实现。<br>此处的虚拟主机（Virtual Host）指的是Exchange和Queue的集合。</p>
+</div>
+
+<p>生产者将消息发送给Exchange，由Exchange来决定消息的路由，即决定将消息发送到那个Queue，然后消费者从Queue中取出消息，进行处理。</p>
+<p>Exchange本身不会保存消息，它接收由生产者发送来的消息，然后根据不同的条件将消息转发到不同的Queue。这里的条件又被成为绑定（Binding）。</p>
+<p>接收到消息时，Exchange会查看消息的属性、消息头和消息体，从中提取相关的信息，然后用此信息再根据绑定表把消息转发给不同的Queue或者其他Exchange。</p>
+<p>绝大情况下，这个用来查询绑定表的信息是一个单一的键值，称为routing key。每一个发送的消息都有一个routing key。同样，每一个Queue也有一个binding key，Exchange在进行消息路由时，会查询每一个Queue。如果某个Queue的binding key与某个消息的routing key匹配，这个消息会被转发到那个Queue。</p>
+<p>Exchange消息交换类型。</p>
+<table>
+<thead>
+<tr>
+<th align="left">类型</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Direct</td>
+<td align="left">binding key和routing key必须完全一致，不支持通配符。</td>
+</tr>
+<tr>
+<td align="left">Topic</td>
+<td align="left">同Direct类型，但支持通配符。<br>‘*’，匹配一个单字。<br>‘#’，匹配零个或者多个单字。<br>单字之间是由’.’来分割的。</td>
+</tr>
+<tr>
+<td align="left">Fanout</td>
+<td align="left">忽略binding key和routing key，消息会被传递到所有绑定的队列上。</td>
+</tr>
+</tbody></table>
+<div class="alert info no-icon"><p>Direct是需要满足单一条件的路由，在Exchange判断要消息发送给哪个Queue时，判断的依据只能是一个条件。</p>
+</div>
+
+<div class="alert info no-icon"><p>Fanout是指广播式的路由，将消息发送给所有的Queue。</p>
+</div>
+
+<div class="alert info no-icon"><p>Topic是需要满足多个条件的路由，转发消息需要依据多个条件。</p>
+</div>
+
+<h2 id="基于AMQP实现RPC"><a href="#基于AMQP实现RPC" class="headerlink" title="基于AMQP实现RPC"></a>基于AMQP实现RPC</h2><p>基于AMQP实现远程调用RPC的过程。</p>
+<p><img src="images/amqp-rpc.png" alt="amqp-rpc"></p>
+<br>
+* 客户端发送一个请求消息给Exchange，指定routing key为“op_queue”，同时指明一个消息队列名用来获取响应，图中为“res_queue”。
+* Exchange把消息转发到消息队列op_queue。
+* 消息队列op_queue把消息推送给服务器，服务端执行此RPC调用的对应的任务。执行结束后，服务端把响应结果发送给消息队列，指明routing key为“res_queue”s。
+* Exchange把此消息转发到消息队列res_queue。
+* 客户端从消息队列res_queue获取响应。
+
+<h2 id="常见消息总线实现"><a href="#常见消息总线实现" class="headerlink" title="常见消息总线实现"></a>常见消息总线实现</h2><h3 id="RabbitMQ"><a href="#RabbitMQ" class="headerlink" title="RabbitMQ"></a>RabbitMQ</h3><p>RabbitMQ是一个实现了AMQP的消息中间件服务。它包括Server/Broker，支持多种协议的网关（HTTP、STOMP、MQTT等），支持多种语言（Erlang、Java、.NET Framework等）的客户端开发库，支持用户自定义插件开发的框架以及多种插件。</p>
+<p>RabbitMQ的Server/Broker使用Erlang语言编写，使用Mozilla Public License（MPL）许可证发行。</p>
+<p>oslo.messaging底层实现了两种不同的driver来支持RabbitMQ，分别是kombu和pika。它们的主要区别在于使用了不同的Python library。</p>
+<h3 id="AMQP-1-0"><a href="#AMQP-1-0" class="headerlink" title="AMQP 1.0"></a>AMQP 1.0</h3><p>支持实现了AMQP 1.0协议的消息总线应用，相比AMQP 0.9协议，AMQP 1.0更加灵活和复杂。</p>
+<p>除了常见的AMQP broker模式，AMQP 1.0还实现了一种消息路由模式，位于调用者和服务器之间的不再是单节点的broker，而是有一群互相连接的消息路由组成的路由网，路由不具备队列（queue），没有储存信息的能力，它们的作用就是单纯地传递消息，路由节点之间通过TCP链接进行通信，调用者通过TCP链接连接到路由网中的某个路由，从而接入路由网。</p>
+<p><img src="images/amqp-1.png" alt="AMQP"><br>当RPC Caller1远程调用RPC Server2上的某个方法时，消息会根据最短路径算法经过RouterB和RouterD，最后到达RPC Server2。</p>
+<h3 id="OMQ（ZeroMQ）"><a href="#OMQ（ZeroMQ）" class="headerlink" title="ØMQ（ZeroMQ）"></a>ØMQ（ZeroMQ）</h3><p>ZeroMQ是一个开源的高性能异步消息库，和实现了AMQP的RabbitMQ和Qpid不同，ZeroMQ系统可以在没有Server/Broker的情况下工作，消息的发送者需要负责消息路由以找到正确的消息目的地，消息接收者需要负责消息的入队/出对等操作。</p>
+<p>由于没有了集中式的Broker，ZeroMQ可以实现一般AMQP Broker所达不到的很低的延迟和较大的带宽，特别适合消息数量特别巨大的应用场景。</p>
+<p>ZeroMQ使用自己的通信协议ZMTP（ZeroMQ Message Transfer Protocol）来进行通信。ZeroMQ的库使用C++编写，使用LGPL许可证发行。</p>
+<h3 id="Kafka"><a href="#Kafka" class="headerlink" title="Kafka"></a>Kafka</h3><p>Kafka是一个分布式的系统，有着较好的扩展能力，可以为发布和订阅提高吞吐量，被广泛应用于收集日志等海量消息应用场景中。</p>
+<h1 id="SQLAlchemy和数据库"><a href="#SQLAlchemy和数据库" class="headerlink" title="SQLAlchemy和数据库"></a>SQLAlchemy和数据库</h1><h2 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h2><p>SQLAlchemy提供了SQL工具包以及对象关系映射器（Object Relational Mapper，ORM），这样SQLAlchemy能让Python开发人员灵活地运用SQL操作后台数据库。</p>
+<p>SQLAlchemy主要分成两个部分：SQLAlchemy Core（SQLAlchemy核心）和SQLAlchemy ORM（SQLAlchemy对象关系映射）。</p>
+<p>SQLAlchemy Core包括SQL语言表达式、数据引擎、连接池等，所有的这些实现，都是为了连接不同类型的数据库、提交查询和更新SQL请去后台执行、定义数据库数据类型和定义Schema等目的。</p>
+<p>SQLAlchemy ORM提供数据映射模式，即把程序语言的对象数据映射成数据库中的关系数据，或把关系数据映射成对象数据。</p>
+<p>SQLAlchemy架构。<br><img src="images/sqlalchemy.png" alt="sqlalchemy"></p>
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><p>users表。</p>
+<table>
+<thead>
+<tr>
+<th align="center">id</th>
+<th align="center">name</th>
+<th align="center">fullname</th>
+<th align="center">password</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">w</td>
+<td align="center">wang</td>
+<td align="center">123</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">k</td>
+<td align="center">kun</td>
+<td align="center">abc</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">t</td>
+<td align="center">tian</td>
+<td align="center">xyz</td>
+</tr>
+</tbody></table>
+<p>addresses表。</p>
+<table>
+<thead>
+<tr>
+<th align="center">id</th>
+<th align="center">user_id</th>
+<th align="center">email_address</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="center">1</td>
+<td align="center"><a href="mailto:&#x77;&#97;&#x6e;&#103;&#x40;&#113;&#113;&#46;&#99;&#x6f;&#x6d;">&#x77;&#97;&#x6e;&#103;&#x40;&#113;&#113;&#46;&#99;&#x6f;&#x6d;</a></td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="center">2</td>
+<td align="center"><a href="mailto:&#107;&#x75;&#x6e;&#x40;&#113;&#x71;&#x2e;&#x63;&#111;&#109;">&#107;&#x75;&#x6e;&#x40;&#113;&#x71;&#x2e;&#x63;&#111;&#109;</a></td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="center">3</td>
+<td align="center"><a href="mailto:&#x74;&#x69;&#x61;&#x6e;&#x40;&#113;&#113;&#46;&#99;&#111;&#109;">&#x74;&#x69;&#x61;&#x6e;&#x40;&#113;&#113;&#46;&#99;&#111;&#109;</a></td>
+</tr>
+</tbody></table>
+<p>SQL语句。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> users (</span><br><span class="line">    id <span class="type">INTEGER</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">    name <span class="type">VARCHAR</span>,</span><br><span class="line">    fullname <span class="type">VARCHAR</span>,</span><br><span class="line">    password <span class="type">VARCHAR</span>,</span><br><span class="line">    <span class="keyword">PRIMARY</span> KEY (id)</span><br><span class="line">);</span><br><span class="line"></span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> addresses (</span><br><span class="line">    id <span class="type">INTEGER</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">    email_address <span class="type">VARCHAR</span> <span class="keyword">NOT</span> <span class="keyword">NULL</span>,</span><br><span class="line">    user_id <span class="type">INTEGER</span>,</span><br><span class="line">    <span class="keyword">PRIMARY</span> KEY (id),</span><br><span class="line">    <span class="keyword">FOREIGN</span> KEY (user_id) <span class="keyword">REFERENCES</span> users(id)</span><br><span class="line">);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> sqlalchemy.ext.declarative <span class="keyword">import</span> declarative_base</span><br><span class="line"><span class="keyword">from</span> sqlalchemy <span class="keyword">import</span> Column, Integer, String, ForeignKey, create_engine</span><br><span class="line"><span class="keyword">from</span> sqlalchemy.orm <span class="keyword">import</span> relationship, backref, sessionmaker</span><br><span class="line"></span><br><span class="line">Base = declarative_base()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">User</span>(<span class="title class_ inherited__">Base</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">    __tablename__ = <span class="string">&#x27;users&#x27;</span></span><br><span class="line">    <span class="built_in">id</span> = Column(Integer, primary_key=<span class="literal">True</span>)</span><br><span class="line">    name = Column(String)</span><br><span class="line">    fullname = Column(String)</span><br><span class="line">    password = Column(String)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Address</span>(<span class="title class_ inherited__">Base</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">    __tablename__ = <span class="string">&#x27;addresses&#x27;</span></span><br><span class="line">    <span class="built_in">id</span> = Column(Integer, primary_key=<span class="literal">True</span>)</span><br><span class="line">    user_id = Column(Integer, ForeignKey(<span class="string">&#x27;users.id&#x27;</span>))</span><br><span class="line">    user = relationship(<span class="string">&#x27;User&#x27;</span>, backref=backref(<span class="string">&#x27;addresses&#x27;</span>, order_by=<span class="built_in">id</span>))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">engine = create_engine(<span class="string">&#x27;mysql+mysqlconnector://root:19941221@localhost:3306/test&#x27;</span>)</span><br><span class="line">Session = sessionmaker(bind=engine)</span><br><span class="line"></span><br><span class="line">session = Session()</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> u, a <span class="keyword">in</span> session.query(User, Address).<span class="built_in">filter</span>(User.<span class="built_in">id</span> == <span class="number">1</span>).<span class="built_in">filter</span>(User.<span class="built_in">id</span> == Address.user_id).<span class="built_in">all</span>():</span><br><span class="line">    <span class="built_in">print</span> u, a</span><br></pre></td></tr></table></figure>
+
+<h1 id="RESTful-API和WSGI"><a href="#RESTful-API和WSGI" class="headerlink" title="RESTful API和WSGI"></a>RESTful API和WSGI</h1><p>OpenStack项目都是通过RESTful API向外提供服务，这使得OpenStack的接口在性能、可扩展性、可移植性、易用性等方面达到比较好的平衡。</p>
+<h2 id="RESTful"><a href="#RESTful" class="headerlink" title="RESTful"></a>RESTful</h2><p>RESTful是目前流行的一种互联网软件架构，是一种架构风格、设计风格，而不是标准，只是提供了一组设计原则。REST（Representational State Transfer，表述性状态转移）一次最早是由Roy Thomas Feilding在他2000年的论文中提出，定义了他对互联网软件的架构原则，如果一个架构符合REST原则，就称它为RESTful架构。</p>
+<h2 id="资源与URI"><a href="#资源与URI" class="headerlink" title="资源与URI"></a>资源与URI</h2><p>REST全称是表述性状态转移，那究竟指的是什么的表述? 其实指的就是资源。任何事物，只要有被引用到的必要，它就是一个资源。资源可以是实体(例如手机号码)，也可以只是一个抽象概念(例如价值) 。</p>
+<p>要让一个资源可以被识别，需要有个唯一标识，在Web中这个唯一标识就是URI，统一资源标识符(Uniform Resource Identifier)。</p>
+<p>URI既可以看成是资源的地址，也可以看成是资源的名称。如果某些信息没有使用URI来表示，那它就不能算是一个资源， 只能算是资源的一些信息而已。URI的设计应该遵循可寻址性原则，具有自描述性，需要在形式上给人以直觉上的关联。例如：</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git/blob/master/block-sha1/sha1.h</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git/commit/e3af72cdafab5993d18fae056f87e1d675913d08</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git/pulls</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git/pulls?state=closed</span></span><br><span class="line"><span class="attr">https</span>:<span class="comment">//github.com/git/git/compare/master…next</span></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>使用_或-来让URI可读性更好。<br>使用/来表示资源的层级关系。</p>
+</div>
+
+<h2 id="统一资源接口"><a href="#统一资源接口" class="headerlink" title="统一资源接口"></a>统一资源接口</h2><p>RESTful架构应该遵循统一接口原则，统一接口包含了一组受限的预定义操作，不论什么样的资源，都是通过使用相同的接口进行资源的访问。</p>
+<p>接口应该使用标准的HTTP方法如GET，PUT和POST，并遵循这些方法的语义。</p>
+<div class="alert info no-icon"><p>GET和HEAD请求都是安全的，无论请求多少次，都不会改变服务器状态。<br>GET、HEAD、PUT和DELETE请求都是幂等的，无论资源操作多少次，结果总是一样的，后面请求并不会产生比第一次更多的影响。</p>
+</div>
+
+<h3 id="GET"><a href="#GET" class="headerlink" title="GET"></a>GET</h3><ul>
+<li>安全且幂等</li>
+<li>表示获取</li>
+<li>变更时获取表示（缓存）</li>
+<li>200（OK）- 表示已在响应中发出</li>
+<li>204（无内容）- 资源有空表示</li>
+<li>301（Moved Permanently）- 资源的URI已被更新</li>
+<li>303（See Other）- 其他</li>
+<li>304（Not Modified）- 资源未更改（缓存）</li>
+<li>400（Bad Request）- 坏请求（如：参数错误）</li>
+<li>404（Not Found）- 资源不存在</li>
+<li>406（Not Acceptable）- 服务端不支持所需表示</li>
+<li>500（Internal Server Error）- 通用错误响应</li>
+<li>503（Service Unavailable）- 服务端当前无法处理请求</li>
+</ul>
+<h3 id="POST"><a href="#POST" class="headerlink" title="POST"></a>POST</h3><ul>
+<li>不安全且不幂等</li>
+<li>使用服务端管理的（自动产生）的实例号创建资源</li>
+<li>创建子资源</li>
+<li>部分更新资源</li>
+<li>200（OK）- 现有资源被更改</li>
+<li>201（Create）- 新资源被创建</li>
+<li>202（Accepted）- 已接受处理请求但尚未完成（异步处理）</li>
+<li>301（Moved Permanently）- 资源的URI已被更新</li>
+<li>303（See Other）- 其他</li>
+<li>400（Bad Request）- 坏请求（如：参数错误）</li>
+<li>404（Not Found）- 资源不存在</li>
+<li>406（Not Acceptable）- 服务端不支持所需表示</li>
+<li>409（Confilct）- 通用冲突</li>
+<li>412（Precondition Failed）- 前置条件失败（如：执行条件更新时的冲突）</li>
+<li>415（Unsupported Media Type）- 接收到的表示不支持</li>
+<li>500（Internal Server Error）- 通用错误响应</li>
+<li>503（Service Unavailable）- 服务端当前无法处理请求</li>
+</ul>
+<h3 id="PUT"><a href="#PUT" class="headerlink" title="PUT"></a>PUT</h3><ul>
+<li>不安全但幂等</li>
+<li>用客户端管理的实例号创建一个资源</li>
+<li>通过替换的方式更新资源</li>
+<li>200（OK）- 已存在资源被修改</li>
+<li>201（Create）- 新资源被创建</li>
+<li>301（Moved Permanently）- 资源的URI已被更新</li>
+<li>303（See Other）- 其他</li>
+<li>400（Bad Request）- 坏请求（如：参数错误）</li>
+<li>404（Not Found）- 资源不存在</li>
+<li>406（Not Acceptable）- 服务端不支持所需表示</li>
+<li>409（Confilct）- 通用冲突</li>
+<li>412（Precondition Failed）- 前置条件失败（如：执行条件更新时的冲突）</li>
+<li>415（Unsupported Media Type）- 接收到的表示不支持</li>
+<li>500（Internal Server Error）- 通用错误响应</li>
+<li>503（Service Unavailable）- 服务端当前无法处理请求</li>
+</ul>
+<h3 id="DELETE"><a href="#DELETE" class="headerlink" title="DELETE"></a>DELETE</h3><ul>
+<li>不安全但幂等</li>
+<li>删除资源</li>
+<li>200（OK）- 资源被删除</li>
+<li>301（Moved Permanently）- 资源的URI已被更新</li>
+<li>303（See Other）- 其他</li>
+<li>400（Bad Request）- 坏请求（如：参数错误）</li>
+<li>404（Not Found）- 资源不存在</li>
+<li>409（Confilct）- 通用冲突</li>
+<li>500（Internal Server Error）- 通用错误响应</li>
+<li>503（Service Unavailable）- 服务端当前无法处理请求</li>
+</ul>
+<h2 id="资源的表述"><a href="#资源的表述" class="headerlink" title="资源的表述"></a>资源的表述</h2><p>JSON和XML</p>
+<h2 id="RESTful路由"><a href="#RESTful路由" class="headerlink" title="RESTful路由"></a>RESTful路由</h2><p>OpenStack各个项目都提供了RESTful架构的API作为对外提供的接口，而RESTful架构的核心是资源与资源上的操作。<br>OpenStack中所用的路由模块<a target="_blank" rel="noopener" href="http://routes.readthedocs.org/">Routes</a>源自于对Rails路由系统的重新实现。Rails（Ruby on Rails）是Ruby语言的Web开发框架，采用MVC（Model-View-Controller）模式，收到浏览器发出的HTTP请求后，Rails路由系统会将这个请求指派到对应的Controller。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> routes <span class="keyword">import</span> Mapper</span><br><span class="line"></span><br><span class="line">mapper = Mapper()</span><br><span class="line">mapper.connect(<span class="literal">None</span>, <span class="string">&#x27;/error/&#123;action&#125;/&#123;id&#125;&#x27;</span>, controller=<span class="string">&#x27;error&#x27;</span>)</span><br><span class="line">mapper.connect(<span class="string">&#x27;home&#x27;</span>, <span class="string">&#x27;/&#x27;</span>, controller=<span class="string">&#x27;main&#x27;</span>, action=<span class="string">&#x27;index&#x27;</span>)</span><br><span class="line"></span><br><span class="line">result = mapper.<span class="keyword">match</span>(<span class="string">&#x27;/error/test/1&#x27;</span>)</span><br><span class="line"><span class="built_in">print</span> result</span><br><span class="line"></span><br><span class="line">result = mapper.<span class="keyword">match</span>(<span class="string">&#x27;/&#x27;</span>)</span><br><span class="line"><span class="built_in">print</span> result</span><br><span class="line"></span><br><span class="line">&#123;<span class="string">&#x27;action&#x27;</span>: <span class="string">u&#x27;test&#x27;</span>, <span class="string">&#x27;controller&#x27;</span>: <span class="string">u&#x27;error&#x27;</span>, <span class="string">&#x27;id&#x27;</span>: <span class="string">u&#x27;1&#x27;</span>&#125;</span><br><span class="line">&#123;<span class="string">&#x27;action&#x27;</span>: <span class="string">u&#x27;index&#x27;</span>, <span class="string">&#x27;controller&#x27;</span>: <span class="string">u&#x27;main&#x27;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="WSGI"><a href="#WSGI" class="headerlink" title="WSGI"></a>WSGI</h2><p>WSGI（Web Server Gateway Interface，Web服务器网关接口）是Python语言中定义的Web服务器和Web应用程序或框架之间的通用接口标准。当处理一个WSGI请求时，服务端为应用端提供上下文信息和一个回调函数，应用端处理完请求后，使用服务端所提供的回调函数返回相对应请求的响应。</p>
+<p>作为一个桥梁，WSGI将Web组件分成3类：</p>
+<ul>
+<li>Web服务器（WSGI Server）</li>
+<li>Web中间件（WSGI Middleware）</li>
+<li>Web应用程序（WSGI Application）。</li>
+</ul>
+<p>WSGI Server接收HTTP请求，封装一系列环境变量，按照WSGI接口标准调用注册的WSGI Application，最后将响应返回给客户端。</p>
+<p>WSGI Application是一个可被调用的（Callable）的Python对象，它接收两个参数，通常为environ和start_response。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">application</span>(<span class="params">environ, start_response</span>):</span><br><span class="line">    start_response(<span class="string">&#x27;200 OK&#x27;</span>, [(<span class="string">&#x27;Content-Type&#x27;</span>, <span class="string">&#x27;text/plain&#x27;</span>)])</span><br><span class="line">    <span class="keyword">yield</span> <span class="string">&#x27;Hello World \n&#x27;</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>参数environ指向一个Python字典，要求里面至少包含一些在CGI（通用网关接口规范）中定义的环境变量，如：</p>
+<ul>
+<li>AUTH-TYPE</li>
+<li>CONTENT_LENGTH：HTTP请求中Content-Length的部分。</li>
+<li>CONTENT_TYPE：HTTP请求中Content-Type的部分。</li>
+<li>GATEWAY_INTERFACE</li>
+<li>HTTP_*：包含一系列变量，如HTTP_HOST、HTTP_ACCEPT等。</li>
+<li>PATH_INFO：浏览器用GET方式发送数据时的附加路径。</li>
+<li>PATH_TRANSLATED</li>
+<li>QUERY_STRING：表单输入的数据，URL中问号后的内容。</li>
+<li>REMOTE_ADDR</li>
+<li>REMOTE_HOST</li>
+<li>REMOTE_IDENT</li>
+<li>REMOTE_USER</li>
+<li>RESQUST_METHOD：请求方法（POST、GET）</li>
+<li>SCRIPT_NAME：CGI程序的路径名。</li>
+<li>SERVER_NAME</li>
+<li>SERVER_PORT</li>
+<li>SERVER_PROTOCOL：客户端的请求协议（HTTP/1.1 HTTP/1.0）</li>
+<li>SERVER_SOFTWARE</li>
+</ul>
+<p>除此之外，environ里面还至少要包含其他7个WSGI所定义的环境变量，如：</p>
+<ul>
+<li>wsgi.version：值形式为(1,0)表示WSGI版本1.0</li>
+<li>wsgi.url_scheme：表示url的模式，如：http或者https。</li>
+<li>wsgi.input：输入流，HTTP请求的body部分可以从这里读取。</li>
+<li>wsgi.errors：输入流，如果出现错误，可以写在这里。</li>
+<li>wsgi.multithread：如果应用程序对象可以被同一进程的另一线程同时调用，这个值为True。</li>
+<li>wsgi.multiprocess：如果应用程序对象可以同时被另一个进程调用，这个值为True。</li>
+<li>wsgi.run_once：如果服务器希望应用程序对象包含它的进程中只被调用一次，这个值为True。</li>
+</ul>
+</div>
+
+<p>参数start_response指向一个回调函数，形如：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">start_response(status, response_headers, exc_info=<span class="literal">None</span>)</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>status参数是一个形如“200 OK”的表示响应状态的字符串。<br>response_headers参数是一个包含了(header_name,header_value)元组的列表，分别表示HTTP响应中的HTTP头及内容。<br>exec_info 一般会在出现错误时使用，用来让浏览器显示相关错误信息。</p>
+</div>
+
+<p>参数start_response所指向的这个回调函数需要返回类似write(body_data)的可被调用对象。</p>
+<p>有请求到来时，WSGI Server会准备好environ和start_response参数，然后调用WSGI Application获得对应请求的响应。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">call_application</span>(<span class="params">app, environ</span>):</span><br><span class="line">    body = []</span><br><span class="line">    status_headers = [<span class="literal">None</span>, <span class="literal">None</span>]</span><br><span class="line"></span><br><span class="line">    <span class="comment"># 定义start_response回调函数</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">start_response</span>(<span class="params">status, headers</span>):</span><br><span class="line">        status_headers[:] = [status, headers]</span><br><span class="line">        <span class="keyword">return</span> body.append(status_headers)</span><br><span class="line"></span><br><span class="line">    app_iter = app(environ, start_response)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="keyword">for</span> item <span class="keyword">in</span> app_iter:</span><br><span class="line">            body.append(item)</span><br><span class="line">    <span class="keyword">finally</span>:</span><br><span class="line">        <span class="keyword">if</span> <span class="built_in">hasattr</span>(app_iter, <span class="string">&#x27;close&#x27;</span>):</span><br><span class="line">            app_iter.close()</span><br><span class="line">    <span class="keyword">return</span> status_headers[<span class="number">0</span>], status_headers[<span class="number">1</span>], <span class="string">&#x27;&#x27;</span>.join(body)</span><br></pre></td></tr></table></figure>
+
+<p>WSGI中间件同时实现了服务端和应用端的API，因此可以在两端之间起协调作用。从服务器端看，中间件就是一个WSGI应用；从应用端方面看，中间件是一个WSGI服务器。</p>
+<p>WSGI中间件可以将客户端的HTTP请求，路由给不同的应用对象，然后将应用处理后的结果返回给客户端。</p>
+<h3 id="Paste"><a href="#Paste" class="headerlink" title="Paste"></a>Paste</h3><p>OpenStack使用Paste的<a target="_blank" rel="noopener" href="https://pastedeploy.readthedocs.io/en/latest/index.html">Deploy</a>组件来完成WSGI服务器和应用的构建，每个项目源码的etc目录下都有一个Paste配置文件，比如Nova中的etc/nova/api-paste.ini，部署时，这些配置文件会被复制到系统/etc/[project]/目录下。Paste Deploy的工作便是基于这些配置文件。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">[composite:main]</span><br><span class="line">use = egg:Paste#urlmap</span><br><span class="line">/ = home</span><br><span class="line">/blog = blog</span><br><span class="line">/wiki = wiki</span><br><span class="line">/cms = config:cms.ini</span><br><span class="line"></span><br><span class="line">[app:home]</span><br><span class="line">use = egg:Paste#static</span><br><span class="line">document_root = %(here)s/htdocs</span><br><span class="line"></span><br><span class="line">[filter-app:blog]</span><br><span class="line">use = egg:Authentication#auth</span><br><span class="line">next = blogapp</span><br><span class="line">roles = admin</span><br><span class="line">htpasswd = /home/me/users.htpasswd</span><br><span class="line"></span><br><span class="line">[app:blogapp]</span><br><span class="line">use = egg:BlogApp</span><br><span class="line">database = sqlite:/home/me/blog.db</span><br><span class="line"></span><br><span class="line">[app:wiki]</span><br><span class="line">use = call:mywiki.main:application</span><br><span class="line">database = sqlite:/home/me/wiki.db</span><br></pre></td></tr></table></figure>
+<p>Paste配置文件分为多个section。每个section以type:name的格式命名。</p>
+<ol>
+<li><p>type = composite<br>这个类型的section会把URL请求分发到对应的Application，use表明具体的分发方式，比如：”egg:Paste#urlmap“表示使用Paste包中的urlmap模块，这个section里的其他形如”key = value“的行是使用urlmap进行分发时的参数。</p>
+</li>
+<li><p>type = app<br>一个app就是一个具体的WSGI Application，这个app对应的Python代码则由use来指定。共有两种方法。</p>
+</li>
+</ol>
+<ul>
+<li><p>第一种</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[app:myapp]</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">从另外一个config.ini文件中寻找app</span></span><br><span class="line">use = config:another_config_file.ini#app_name</span><br><span class="line"></span><br><span class="line">[app:myotherapp]</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">从Python EGG中寻找</span></span><br><span class="line">use = egg:MyApp</span><br><span class="line"></span><br><span class="line">[app:mythirdapp]</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">直接调用另外一个模块的MyApp</span></span><br><span class="line">use = call:my.project:MyApp</span><br><span class="line"></span><br><span class="line">[app:mylastapp]</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">从另外一个section中</span></span><br><span class="line">use = myotherapp</span><br></pre></td></tr></table></figure></li>
+<li><p>另一种指定方法是明确指明对应的Python代码，这时必须给出代码所应该符合的格式，比如paste.app_factory。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[app:myapp]</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">myapp.modulename将被加载，并从中获取app_factory对象</span></span><br><span class="line">paste.app_factory = myapp.modulename:app_factory</span><br></pre></td></tr></table></figure>
+
+<p>  app_factory格式。</p>
+  <figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">factory</span>(<span class="params">loader, global_config, **local_conf</span>):</span><br><span class="line">    <span class="keyword">return</span> wsgi_app</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<ol start="3">
+<li><p>type = filter-app<br>收到一个请求后，会首先调用filter-app中的use所指定的app进行过滤，如果这个请求没有被过滤，就会被转发到next指定的app进行下一步的处理。</p>
+</li>
+<li><p>type = filter<br>与filter-app类型类似，只是没有next。</p>
+</li>
+<li><p>type = pipeline<br>pipeline由一系列的filter组成，这个filter链条末尾就是一个app。pipeline类型主要是对filter-app进行了简化，否则，如果有多个filter，就会需要写多个filter-app，然后使用next进行连接。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[pipeline:main]</span><br><span class="line">pipeline = filter1 filter2 filter3 app</span><br><span class="line"></span><br><span class="line">[filter:filter1]</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>使用Paste Deploy的主要目的就是从配置文件中生成一个WSGI Application，有了配置文件之后，只需要使用下面的调用方式。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> paste.deploy <span class="keyword">import</span> loadapp</span><br><span class="line">wsgi_app = loadeapp(<span class="string">&#x27;config:/path/to/config.ini&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>对于OpenStack，这里以Nova为例。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># nova/wsig.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Loader</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;Used to load WSGI applications from paste configurations.&quot;&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, config_path=<span class="literal">None</span></span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Initialize the loader, and attempt to find the config.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        :param config_path: Full or relative path to the paste config.</span></span><br><span class="line"><span class="string">        :returns: None</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        &quot;&quot;&quot;</span></span><br><span class="line">        self.config_path = <span class="literal">None</span></span><br><span class="line"></span><br><span class="line">        config_path = config_path <span class="keyword">or</span> CONF.wsgi.api_paste_config</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> os.path.isabs(config_path):</span><br><span class="line">            self.config_path = CONF.find_file(config_path)</span><br><span class="line">        <span class="keyword">elif</span> os.path.exists(config_path):</span><br><span class="line">            self.config_path = config_path</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> self.config_path:</span><br><span class="line">            <span class="keyword">raise</span> exception.ConfigNotFound(path=config_path)</span><br><span class="line"></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">load_app</span>(<span class="params">self, name</span>):</span><br><span class="line">        <span class="string">&quot;&quot;&quot;Return the paste URLMap wrapped WSGI application.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        :param name: Name of the application to load.</span></span><br><span class="line"><span class="string">        :returns: Paste URLMap object wrapping the requested application.</span></span><br><span class="line"><span class="string">        :raises: `nova.exception.PasteAppNotFound`</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">        &quot;&quot;&quot;</span></span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            LOG.debug(<span class="string">&quot;Loading app %(name)s from %(path)s&quot;</span>,</span><br><span class="line">                      &#123;<span class="string">&#x27;name&#x27;</span>: name, <span class="string">&#x27;path&#x27;</span>: self.config_path&#125;)</span><br><span class="line">            <span class="keyword">return</span> deploy.loadapp(<span class="string">&quot;config:%s&quot;</span> % self.config_path, name=name)</span><br><span class="line">        <span class="keyword">except</span> LookupError:</span><br><span class="line">            LOG.exception(_LE(<span class="string">&quot;Couldn&#x27;t lookup app: %s&quot;</span>), name)</span><br><span class="line">            <span class="keyword">raise</span> exception.PasteAppNotFound(name=name, path=self.config_path)</span><br></pre></td></tr></table></figure>
+
+<h3 id="WebOb"><a href="#WebOb" class="headerlink" title="WebOb"></a>WebOb</h3><p>除了Routes与Paste Deploy外，OpenStack中另一个与WSGI密切相关的是<a target="_blank" rel="noopener" href="https://webob.org/">WebOb</a>。WebOb通过对WSGI的请求与响应进行封装，来简化WSGI应用的编写。</p>
+<p>WebOb中两个最重要的对象，一是webob.Request，对WSGI请求的environ参数进行封装；一是webob.Response，包含了标准WSGI响应的所有要素。此外，还有一个webob.exc对象，针对HTTP错误代码进行封装。</p>
+<p>除了这三个对象，WebOb还提供了一个修饰符（decorator），即webob.dec.wsgify，以便可以不使用原始的WSGI参数和返回格式，而全部使用WebOb替代。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@wsgify</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">myfunc</span>(<span class="params">req</span>):</span><br><span class="line">    <span class="keyword">return</span> webob.Response(<span class="string">&#x27;Hello world!&#x27;</span>)</span><br></pre></td></tr></table></figure>
+<p>调用的时候可以有两种选择。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">app_iter = myfunc(environ, start_response)</span><br></pre></td></tr></table></figure>
+<p>或</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">resp = myfunc(req)</span><br></pre></td></tr></table></figure>
+<p>第一种是最原始最标准的WSGI格式，第二种是WebOb封装过后的格式。</p>
+<p>用户也可以使用参数对wsgify修饰符进行定制，比如使用webob.Request的子类，对真正的Request做一些判断或者过滤。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">MyRequest</span>(webob.Request):</span><br><span class="line"><span class="meta">    @property</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">is_local</span>(<span class="params">self</span>):</span><br><span class="line">        <span class="keyword">return</span> self.remote_addr == <span class="string">&#x27;127.0.0.1&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@wsgify(<span class="params">RequestClass=MyRequest</span>)</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">myfunc</span>(<span class="params">req</span>):</span><br><span class="line">    <span class="keyword">if</span> req.is_local:</span><br><span class="line">        <span class="keyword">return</span> Response(<span class="string">&#x27;Hello world!&#x27;</span>)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">raise</span> webob.exc.HTTPForbidden</span><br></pre></td></tr></table></figure>
+<p>以Nova为例。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># nova/wsgi.py</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> webob.dec</span><br><span class="line"><span class="keyword">import</span> webob.exc</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Request</span>(webob.Request):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, environ, *args, **kwargs</span>):</span><br><span class="line">        <span class="keyword">if</span> CONF.wsgi.secure_proxy_ssl_header:</span><br><span class="line">            scheme = environ.get(CONF.wsgi.secure_proxy_ssl_header)</span><br><span class="line">            <span class="keyword">if</span> scheme:</span><br><span class="line">                environ[<span class="string">&#x27;wsgi.url_scheme&#x27;</span>] = scheme</span><br><span class="line">        <span class="built_in">super</span>(Request, self).__init__(environ, *args, **kwargs)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Middleware</span>(<span class="title class_ inherited__">Application</span>):</span><br><span class="line">    <span class="string">&quot;&quot;&quot;Base WSGI middleware.</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    These classes require an application to be</span></span><br><span class="line"><span class="string">    initialized that will be called next.  By default the middleware will</span></span><br><span class="line"><span class="string">    simply call its wrapped app, or you can override __call__ to customize its</span></span><br><span class="line"><span class="string">    behavior.</span></span><br><span class="line"><span class="string">    </span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line"><span class="meta">    @webob.dec.wsgify(<span class="params">RequestClass=Request</span>)</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__call__</span>(<span class="params">self, req</span>):</span><br><span class="line">        response = self.process_request(req)</span><br><span class="line">        <span class="keyword">if</span> response:</span><br><span class="line">            <span class="keyword">return</span> response</span><br><span class="line">        response = req.get_response(self.application)</span><br><span class="line">        <span class="keyword">return</span> self.process_response(response)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="Pecan"><a href="#Pecan" class="headerlink" title="Pecan"></a>Pecan</h3><p>随着OpenStack项目的发展，Paste组合框架的Restful API代码的弊端也渐渐显现，代码过于臃肿，导致项目的可维护性变差。为了解决这个问题，一些新项目选了Pecan框架来实现Restful API。</p>
+<p><a target="_blank" rel="noopener" href="https://pecan.readthedocs.io/en/latest/index.html">Pecan</a>是一个轻量级的WSGI网络框架，其设计并不想解决Web世界的所有问题，而是主要集中在对象路由和Restful支持上，并不提供对话（session）和数据库支持，用户可以选择其他模块与之组合。</p>
+<p>Pecan的配置对位于config.py文件内，以neutron项目为例。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">CONF = cfg.CONF</span><br><span class="line">CONF.import_opt(<span class="string">&#x27;bind_host&#x27;</span>, <span class="string">&#x27;neutron.common.config&#x27;</span>)</span><br><span class="line">CONF.import_opt(<span class="string">&#x27;bind_port&#x27;</span>, <span class="string">&#x27;neutron.common.config&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">setup_app</span>(<span class="params">*args, **kwargs</span>):</span><br><span class="line">    config = &#123;</span><br><span class="line">        <span class="string">&#x27;server&#x27;</span>: &#123;</span><br><span class="line">            <span class="string">&#x27;port&#x27;</span>: CONF.bind_port,</span><br><span class="line">            <span class="string">&#x27;host&#x27;</span>: CONF.bind_host</span><br><span class="line">        &#125;,</span><br><span class="line">        <span class="string">&#x27;app&#x27;</span>: &#123;</span><br><span class="line">            <span class="string">&#x27;root&#x27;</span>: <span class="string">&#x27;neutron.pecan_wsgi.controllers.root.RootController&#x27;</span>,</span><br><span class="line">            <span class="string">&#x27;modules&#x27;</span>: [<span class="string">&#x27;neutron.pecan_wsgi&#x27;</span>],</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">#TODO(kevinbenton): error templates</span></span><br><span class="line">    &#125;</span><br><span class="line">    pecan_config = pecan.configuration.conf_from_dict(config)</span><br><span class="line"></span><br><span class="line">    app_hooks = [</span><br><span class="line">        hooks.ExceptionTranslationHook(),  <span class="comment"># priority 100</span></span><br><span class="line">        hooks.ContextHook(),  <span class="comment"># priority 95</span></span><br><span class="line">        hooks.BodyValidationHook(),  <span class="comment"># priority 120</span></span><br><span class="line">        hooks.OwnershipValidationHook(),  <span class="comment"># priority 125</span></span><br><span class="line">        hooks.QuotaEnforcementHook(),  <span class="comment"># priority 130</span></span><br><span class="line">        hooks.NotifierHook(),  <span class="comment"># priority 135</span></span><br><span class="line">        hooks.PolicyHook(),  <span class="comment"># priority 140</span></span><br><span class="line">    ]</span><br><span class="line"></span><br><span class="line">    app = pecan.make_app(</span><br><span class="line">        pecan_config.app.root,</span><br><span class="line">        debug=<span class="literal">False</span>,</span><br><span class="line">        wrap_app=_wrap_app,</span><br><span class="line">        force_canonical=<span class="literal">False</span>,</span><br><span class="line">        hooks=app_hooks,</span><br><span class="line">        guess_content_type_from_ext=<span class="literal">True</span></span><br><span class="line">    )</span><br><span class="line">    startup.initialize_all()</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> app</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">_wrap_app</span>(<span class="params">app</span>):</span><br><span class="line">    app = request_id.RequestId(app)</span><br><span class="line">    <span class="keyword">if</span> cfg.CONF.auth_strategy == <span class="string">&#x27;noauth&#x27;</span>:</span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line">    <span class="keyword">elif</span> cfg.CONF.auth_strategy == <span class="string">&#x27;keystone&#x27;</span>:</span><br><span class="line">        app = auth_token.AuthProtocol(app, &#123;&#125;)</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">raise</span> n_exc.InvalidConfigurationOption(</span><br><span class="line">            opt_name=<span class="string">&#x27;auth_strategy&#x27;</span>, opt_value=cfg.CONF.auth_strategy)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># version can be unauthenticated so it goes outside of auth</span></span><br><span class="line">    app = versions.Versions(app)</span><br><span class="line"></span><br><span class="line">    <span class="comment"># This should be the last middleware in the list (which results in</span></span><br><span class="line">    <span class="comment"># it being the first in the middleware chain). This is to ensure</span></span><br><span class="line">    <span class="comment"># that any errors thrown by other middleware, such as an auth</span></span><br><span class="line">    <span class="comment"># middleware - are annotated with CORS headers, and thus accessible</span></span><br><span class="line">    <span class="comment"># by the browser.</span></span><br><span class="line">    app = cors.CORS(app, cfg.CONF)</span><br><span class="line">    app.set_latent(</span><br><span class="line">        allow_headers=[<span class="string">&#x27;X-Auth-Token&#x27;</span>, <span class="string">&#x27;X-Identity-Status&#x27;</span>, <span class="string">&#x27;X-Roles&#x27;</span>,</span><br><span class="line">                       <span class="string">&#x27;X-Service-Catalog&#x27;</span>, <span class="string">&#x27;X-User-Id&#x27;</span>, <span class="string">&#x27;X-Tenant-Id&#x27;</span>,</span><br><span class="line">                       <span class="string">&#x27;X-OpenStack-Request-ID&#x27;</span>],</span><br><span class="line">        allow_methods=[<span class="string">&#x27;GET&#x27;</span>, <span class="string">&#x27;PUT&#x27;</span>, <span class="string">&#x27;POST&#x27;</span>, <span class="string">&#x27;DELETE&#x27;</span>, <span class="string">&#x27;PATCH&#x27;</span>],</span><br><span class="line">        expose_headers=[<span class="string">&#x27;X-Auth-Token&#x27;</span>, <span class="string">&#x27;X-Subject-Token&#x27;</span>, <span class="string">&#x27;X-Service-Token&#x27;</span>,</span><br><span class="line">                        <span class="string">&#x27;X-OpenStack-Request-ID&#x27;</span>]</span><br><span class="line">    )</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> app</span><br></pre></td></tr></table></figure>
+
+<p>Pecan的配置文件使用的也是Python，每个配置项都是一个Python字典，其中server指定了WSGI应用运行的主机和端口，app指定了WSGI app有关的一些配置。</p>
+<p>modules项是一个Python模块列表，Pecan会在modules里寻找WSGI应用。Pecan使用了对象路由的方式把一个HTTP请求映射到Controller的方法上。具体来说，当用户访问某个URL的时候，Pecan会将路径分割成许多部分，从根控制器（Root Controller）开始，沿着对象路径寻找到要执行的函数，root项指定了根控制器的位置。</p>
+<h1 id="Eventlet"><a href="#Eventlet" class="headerlink" title="Eventlet"></a>Eventlet</h1><p>Eventlet将协程又称为GreenThread（绿色线程）。所谓并发，就是创建多个GreenThread，并对其进行管理。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> eventlet</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">output</span>(<span class="params">a</span>):</span><br><span class="line">    <span class="built_in">print</span> a</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">gt = eventlet.spawn(output, <span class="string">&#x27;Hello world&#x27;</span>)</span><br><span class="line"></span><br><span class="line">gt.wait()</span><br></pre></td></tr></table></figure>
+
+<p>eventlet.spawn会新建一个GreenThread来运行my_func函数。由于GreenThread不会进行抢占式调度，所以此时这个新建的GreenThread只是标记为可调度，并不会立即调度执行。只有当主程序执行到gt.wait()时，这个GreenThread才有机会被调度去执行output()函数。</p>
+<h2 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h2><p>目前，OpenStack中的绝大部分项目都采用所谓的协程（coroutine）模型。从操作系统的角度来看，一个OpenStack服务只会运行在一个进程中，但是在这个进程中，OpenStack利用Python库Eventlet可以产生出许多个协程。这些个协程之间只有在调用到某些特殊的Eventlet库函数的时候（比如睡眠sleep，I/O调用等）才会发生切换。</p>
+<p>与线程类似，协程也是一个执行序列，拥有自己的独立的栈与局部变量，同时又其他协程共享全局变量。协程与线程的主要区别是，多个线程可以同时运行，而同一时间内只能有一个协程在运行，无须考虑很多锁的问题，因此开发和调试也更加简单方便。</p>
+<p>使用协程时，线程的执行完全由操作系统控制，进程的调度会决定什么时候哪个线程应该占用CPU。而使用协程时，协程的执行顺序与时间完全由程序自己决定。如果某个工作比较消耗时间或需要等待某些资源，协程可以自己主动让出CPU休息，其他的协程工作一段时间后同样会主动把CPU让出，这样一来，我们可以控制各个任务的执行顺序，从而最大可能地利用CPU性能。</p>
+<p>协程的实现主要是在协程休息时把当前的寄存器保存起来，然后重新工作时再将其恢复，可以简单地理解为，在单个线程内部有多个栈去保存切换时的线程上下文，因此，协程可以理解为一个线程内的伪并发方式。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
+                    data-tooltip="Python内置函数"
+                    aria-label="PREVIOUS: Python内置函数"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/28/%E6%88%91%E6%98%AFVim/"
+                    data-tooltip="我是Vim"
+                    aria-label="NEXT: 我是Vim"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/&amp;title=OpenStack通用技术"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/03/01/OpenStack通用技术/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/04/02/Python%E5%86%85%E7%BD%AE%E5%87%BD%E6%95%B0/"
+                    data-tooltip="Python内置函数"
+                    aria-label="PREVIOUS: Python内置函数"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/28/%E6%88%91%E6%98%AFVim/"
+                    data-tooltip="我是Vim"
+                    aria-label="NEXT: 我是Vim"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/&amp;title=OpenStack通用技术"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/&amp;title=OpenStack通用技术"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/03/01/OpenStack%E9%80%9A%E7%94%A8%E6%8A%80%E6%9C%AF/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

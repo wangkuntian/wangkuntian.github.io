@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>深入浅出Neutron（四）爱上Neutron - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"爱上Neutron的理由\n\n\n北向API，框架结构与微内核随着OpenStack市场占有率的提高，OpenStack已经成为事实上的IaaS标准，提供和Neutron兼容的北向API至关重要。北向方面，Neutron提供了核心API，抽象了一个网络核心数据模型（网络、子网、端口、路由），也提供了扩展API去为其他非核心数据结构提供统一的对外API。这些标准的北向API接口，不仅可以使其他数据中心网络与OpenStack网络互联互通，而且提供了标准的虚拟网络开放系统，可以用于多种集成场景中。\nOpenStack的另外一个优点是它提供了一个非常好的框架结构，插件与代理之间通过消息通信解耦，如AMQP，从而让OpenStack中的每一个进程都可以运行在任何节点上以支持大规模部署。Neutron也不例外，它的这种框架结构让你可以将精力集中在业务部分。作为精通OpenStack的专业人员可以从Neutron众多的插件和驱动中挑选合适自己部署架构的功能。如果它与你的部署架构不符，或者缺少相应的插件或驱动，则可以在Neutron框架结构下扩展插件或者驱动即可，从而节省大量定制开发的成本。\n目前VPN即服务，负载均衡即服务，防火墙即服务的代码已经从Neutron主代码库中分离出来到单独的代码库中了。今后ML2层的各个插件也会从Neutron主代码库中挪出来。所以，Neutron将像Linux一样成为真正的微内核，各个供应商围绕Neutron提供的北向API适配自己的驱动即可。微内核随着一些和数据库事物相关的缺陷的逐步修复已经变得足够稳定。\n虽然Neutron是OpenStack中的组件，但Neutron也是可以单独拿出来作为虚拟化网络管理的产品的。\n大规模高性能，L2的控制平面L2 population（L2pop）Neutron通过L2pop特性解决了L2层无控制平面的问题，从而让Neutron具备更高的性能，适应更大规模的部署。\n一台计算机上的应用程序通过IP地址和其他计算机通信时，需要先通过IP地址找到MAC地址，但是传统的网络L2层没有控制平面，不像L3层还可以通过路由协议学习到路由，二层没有标签的学习机制，它只能通过ARP广播来为IP找MAC。广播就很容易产生广播风暴，尤其是对于这种云环境，每个计算节点上都有大量的虚拟就或者容器，相当于是一个大二层，更容易产生广播风暴，所以在云环境中广播绝对是需要禁用的。\nGRE隧道使用广播，Vxlan在GRE的基础上使用多播在局域网里减小广播的范围，L2pop更进一步完全禁用广播，因为Neutron的数据库里都是有IP和MAC的映射数据的，L2pop会通过ebtables截获ARP请求将从数据库中查找到对应IP的MAC地址直接返回给虚拟机。\n\n拦截ARP请求，并进行应答。Open vSwitch已经具备ARP Responser的特性。\n地址学习，在网桥中单播和广播流添加流转发规则。\n\n大规模高性能，改善东西南北向流量之分布式虚拟路由（DVR）在Neutron的Juno版本之前，所有的三层网络虚拟路由功能都由网络节点来承载，并且没有高可用性的支持。在大规模部署的情况下，网络节点成为一个瓶颈。为此，从Juno版本开始，Neutron项目实现了分布式虚拟路由即DVR的功能。DVR是指在每个计算节点上都部署一个三层网络的虚拟路由器，这样该计算节点之间各个虚拟机的东西流量（即同一个租户之下的相同子网中虚拟机的通信）避免了走集中化的网络节点。同时，每个计算节点也会支持DNAT服务，支持虚拟机的浮动IP的访问，从而使得访问虚拟机的南北流量DNAT避免走集中式的网络节点。\n这里面最重要的设计问题就是：不同的计算节点上可能会有相同子网的虚拟机，那么不同的计算节点上可能会出现相同子网的网关。我们知道，在路由与协议中，IP地址是不能重复的。Nova-network的多主机部署，Neutron中的DVR都可以改善东西南北流量，但是它们的区别在于：\n\nNova-network的多主机部署，为不同计算节点上相同子网（如10.0.1.0/8）的网关分配不同的网关IP（如一个计算节点的网关是10.0.1.1，另外一个计算节点的网关可能就是10.0.1.2），这样避免了网关重复问题，但管理复杂，且浪费IP。\n\nNeutron的DVR，每个计算节点上的内部网关通过流规则设置为局部可见，这样不同计算节点上可以为相同的子网使用相同的网关（如10.0.1.1），节省了IP。另一方面，计算节点生成唯一的DVR MAC地址，流表负责它的进出计算节点时的替换工作，这样计算节点之间相同网关的东西向流量也能保证。\n\nkubernetes则是假如每台主机使用不重复唯一的子网，这样就永远不会出现计算节点可能会有相同子网虚拟机的问题，通过这种假设避开了上述设计问题。\n\n\n\n\n大规模高性能，L3高可用VRRP（Virtual Router Redundancy Protocol）同样在Juno版本之前，Neutron是不支持高可用的，或者只支持Active/Passive模式的高可用，在Active的节点不可用之后，通过某种方式将三层服务迁移到Passive节点上去。这种方式不可避免地会引起服务的中断。\n在Juno版本中，Neutron项目基于VRRP协议实现了虚拟路由服务的高可用，相当于是Active/Active集群。VRRP协议在电信行业中应用非常广泛，很多网络路由器的冗余设计都是基于这个协议实现的。其主要特点如下：\n\nslave收不到master的广播包时就认为它已不可用，会快速抢占为master。\nconntrackd用来同步tcp session，确保在切换后不需要丢包重发。\n针对Active/Active集群采用keepalived对内部网关、外部网关、浮动IP三类VIP在节点间进行飘移，且keepalived支持命名空间。\n\n","dateCreated":"2018-10-25T17:45:44+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-10-25T17:45:44+08:00","description":"爱上Neutron的理由","headline":"深入浅出Neutron（四）爱上Neutron","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="爱上Neutron的理由">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="深入浅出Neutron（四）爱上Neutron">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="爱上Neutron的理由">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-10-25T09:45:44.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.331Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            深入浅出Neutron（四）爱上Neutron
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-10-25T17:45:44+08:00">
+	
+		    Oct 25, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>爱上Neutron的理由</p>
+<span id="more"></span>
+
+<h3 id="北向API，框架结构与微内核"><a href="#北向API，框架结构与微内核" class="headerlink" title="北向API，框架结构与微内核"></a>北向API，框架结构与微内核</h3><p>随着OpenStack市场占有率的提高，OpenStack已经成为事实上的IaaS标准，提供和Neutron兼容的北向API至关重要。北向方面，Neutron提供了核心API，抽象了一个网络核心数据模型（网络、子网、端口、路由），也提供了扩展API去为其他非核心数据结构提供统一的对外API。这些标准的北向API接口，不仅可以使其他数据中心网络与OpenStack网络互联互通，而且提供了标准的虚拟网络开放系统，可以用于多种集成场景中。</p>
+<p>OpenStack的另外一个优点是它提供了一个非常好的框架结构，插件与代理之间通过消息通信解耦，如AMQP，从而让OpenStack中的每一个进程都可以运行在任何节点上以支持大规模部署。Neutron也不例外，它的这种框架结构让你可以将精力集中在业务部分。作为精通OpenStack的专业人员可以从Neutron众多的插件和驱动中挑选合适自己部署架构的功能。如果它与你的部署架构不符，或者缺少相应的插件或驱动，则可以在Neutron框架结构下扩展插件或者驱动即可，从而节省大量定制开发的成本。</p>
+<p>目前VPN即服务，负载均衡即服务，防火墙即服务的代码已经从Neutron主代码库中分离出来到单独的代码库中了。今后ML2层的各个插件也会从Neutron主代码库中挪出来。所以，Neutron将像Linux一样成为真正的微内核，各个供应商围绕Neutron提供的北向API适配自己的驱动即可。微内核随着一些和数据库事物相关的缺陷的逐步修复已经变得足够稳定。</p>
+<p>虽然Neutron是OpenStack中的组件，但Neutron也是可以单独拿出来作为虚拟化网络管理的产品的。</p>
+<h3 id="大规模高性能，L2的控制平面L2-population（L2pop）"><a href="#大规模高性能，L2的控制平面L2-population（L2pop）" class="headerlink" title="大规模高性能，L2的控制平面L2 population（L2pop）"></a>大规模高性能，L2的控制平面L2 population（L2pop）</h3><p>Neutron通过L2pop特性解决了L2层无控制平面的问题，从而让Neutron具备更高的性能，适应更大规模的部署。</p>
+<p>一台计算机上的应用程序通过IP地址和其他计算机通信时，需要先通过IP地址找到MAC地址，但是传统的网络L2层没有控制平面，不像L3层还可以通过路由协议学习到路由，二层没有标签的学习机制，它只能通过ARP广播来为IP找MAC。广播就很容易产生广播风暴，尤其是对于这种云环境，每个计算节点上都有大量的虚拟就或者容器，相当于是一个大二层，更容易产生广播风暴，所以在云环境中广播绝对是需要禁用的。</p>
+<p>GRE隧道使用广播，Vxlan在GRE的基础上使用多播在局域网里减小广播的范围，L2pop更进一步完全禁用广播，因为Neutron的数据库里都是有IP和MAC的映射数据的，L2pop会通过ebtables截获ARP请求将从数据库中查找到对应IP的MAC地址直接返回给虚拟机。</p>
+<ul>
+<li>拦截ARP请求，并进行应答。Open vSwitch已经具备ARP Responser的特性。</li>
+<li>地址学习，在网桥中单播和广播流添加流转发规则。</li>
+</ul>
+<h3 id="大规模高性能，改善东西南北向流量之分布式虚拟路由（DVR）"><a href="#大规模高性能，改善东西南北向流量之分布式虚拟路由（DVR）" class="headerlink" title="大规模高性能，改善东西南北向流量之分布式虚拟路由（DVR）"></a>大规模高性能，改善东西南北向流量之分布式虚拟路由（DVR）</h3><p>在Neutron的Juno版本之前，所有的三层网络虚拟路由功能都由网络节点来承载，并且没有高可用性的支持。在大规模部署的情况下，网络节点成为一个瓶颈。为此，从Juno版本开始，Neutron项目实现了分布式虚拟路由即DVR的功能。DVR是指在每个计算节点上都部署一个三层网络的虚拟路由器，这样该计算节点之间各个虚拟机的东西流量（即同一个租户之下的相同子网中虚拟机的通信）避免了走集中化的网络节点。同时，每个计算节点也会支持DNAT服务，支持虚拟机的浮动IP的访问，从而使得访问虚拟机的南北流量DNAT避免走集中式的网络节点。</p>
+<p>这里面最重要的设计问题就是：不同的计算节点上可能会有相同子网的虚拟机，那么不同的计算节点上可能会出现相同子网的网关。我们知道，在路由与协议中，IP地址是不能重复的。Nova-network的多主机部署，Neutron中的DVR都可以改善东西南北流量，但是它们的区别在于：</p>
+<div class="alert info no-icon"><ul>
+<li><p>Nova-network的多主机部署，为不同计算节点上相同子网（如10.0.1.0/8）的网关分配不同的网关IP（如一个计算节点的网关是10.0.1.1，另外一个计算节点的网关可能就是10.0.1.2），这样避免了网关重复问题，但管理复杂，且浪费IP。</p>
+</li>
+<li><p>Neutron的DVR，每个计算节点上的内部网关通过流规则设置为局部可见，这样不同计算节点上可以为相同的子网使用相同的网关（如10.0.1.1），节省了IP。另一方面，计算节点生成唯一的DVR MAC地址，流表负责它的进出计算节点时的替换工作，这样计算节点之间相同网关的东西向流量也能保证。</p>
+</li>
+<li><p>kubernetes则是假如每台主机使用不重复唯一的子网，这样就永远不会出现计算节点可能会有相同子网虚拟机的问题，通过这种假设避开了上述设计问题。</p>
+</li>
+</ul>
+</div>
+
+<h3 id="大规模高性能，L3高可用VRRP（Virtual-Router-Redundancy-Protocol）"><a href="#大规模高性能，L3高可用VRRP（Virtual-Router-Redundancy-Protocol）" class="headerlink" title="大规模高性能，L3高可用VRRP（Virtual Router Redundancy Protocol）"></a>大规模高性能，L3高可用VRRP（Virtual Router Redundancy Protocol）</h3><p>同样在Juno版本之前，Neutron是不支持高可用的，或者只支持Active/Passive模式的高可用，在Active的节点不可用之后，通过某种方式将三层服务迁移到Passive节点上去。这种方式不可避免地会引起服务的中断。</p>
+<p>在Juno版本中，Neutron项目基于VRRP协议实现了虚拟路由服务的高可用，相当于是Active/Active集群。VRRP协议在电信行业中应用非常广泛，很多网络路由器的冗余设计都是基于这个协议实现的。其主要特点如下：</p>
+<ul>
+<li>slave收不到master的广播包时就认为它已不可用，会快速抢占为master。</li>
+<li>conntrackd用来同步tcp session，确保在切换后不需要丢包重发。</li>
+<li>针对Active/Active集群采用keepalived对内部网关、外部网关、浮动IP三类VIP在节点间进行飘移，且keepalived支持命名空间。</li>
+</ul>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（五）二层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（五）二层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（三）Neutron支持的部署拓扑"
+                    aria-label="NEXT: 深入浅出Neutron（三）Neutron支持的部署拓扑"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=深入浅出Neutron（四）爱上Neutron"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/10/25/深入浅出Neutron（四）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（五）二层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（五）二层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（三）Neutron支持的部署拓扑"
+                    aria-label="NEXT: 深入浅出Neutron（三）Neutron支持的部署拓扑"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=深入浅出Neutron（四）爱上Neutron"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/&amp;title=深入浅出Neutron（四）爱上Neutron"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%9B%9B%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

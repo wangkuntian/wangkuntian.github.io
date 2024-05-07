@@ -1,0 +1,746 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Ceilometer和Gnocchi - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Ceilometer,Gnocchi">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\ngnocchi部署节点运行。\n1ansible-playbook -i inventory/cloude_nodes gnocchi_setup.yml\n\ngnocchi_setup.yml12345678910111213---- name: Setup gnocchi  hosts:    - controller  vars_files:    - vars/common.yml    - vars/deploy.yml    - vars/astute.yaml    - vars/globals.yaml  vars:    action: deploy  roles:    - role: gnocchi\n\n配置文件gnocchi-api的配置文件wsgi-gnocchi.conf，位于/etc/oceanstack/gnocchi/gnocchi-api，映射到名为gnocchi_api的Docker容器的/etc/apache2/sites-enabled/的路径下，改名为gnocchi-api.conf。\n12345678910111213141516Listen 2.3.3.54:8041TraceEnable off&lt;VirtualHost *:8041&gt;  ErrorLog &quot;/var/log/kolla/gnocchi/gnocchi-api-error.log&quot;  LogFormat &quot;%&#123;X-Forwarded-For&#125;i %l %u %t \\&quot;%r\\&quot; %&gt;s %b %D \\&quot;%&#123;Referer&#125;i\\&quot; \\&quot;%&#123;User-Agent&#125;i\\&quot;&quot; logformat  CustomLog &quot;/var/log/kolla/gnocchi/gnocchi-api-access.log&quot; logformat  WSGIApplicationGroup %&#123;GLOBAL&#125;  WSGIDaemonProcess gnocchi group=gnocchi processes=8 threads=1 user=gnocchi  WSGIProcessGroup gnocchi  WSGIScriptAlias / &quot;/usr/bin/gnocchi-api&quot;  &lt;Directory &quot;/usr/bin&quot;&gt;        Require all granted  &lt;/Directory&gt;&lt;/VirtualHost&gt;\n\nceilometer部署节点运行。\n1ansible-playbook -i inventory/cloude_nodes ceilometer_gnocchi_integration.yml\n\nceilometer_gnocchi_integration.yml12345678---- name: ceilometer_gnocchi_integration  hosts:    - node  vars:    action: integrate  roles:    - role: ceilometer\n\nintegrate.yml12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273---- name: modify ceilometer.conf meter_dispatchers  lineinfile:    path: /etc/ceilometer/ceilometer.conf    regexp: &#x27;^meter_dispatchers&#x27;    line: &#x27;meter_dispatchers = gnocchi&#x27;- name: modify ceilometer.conf event_dispatchers  lineinfile:    path: /etc/ceilometer/ceilometer.conf    regexp: &#x27;^event_dispatchers&#x27;    line: &#x27;event_dispatchers = gnocchi&#x27;- name: add ceilometer.conf filter_service_activity  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: &#x27;^#filter_service_activity&#x27;    line: &#x27;filter_service_activity = False&#x27;- name: add ceilometer.conf resources_definition_file  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: &#x27;^#resources_definition_file&#x27;    line: &#x27;resources_definition_file = gnocchi_resources.yaml&#x27;- name: add ceilometer.conf archive_policy  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: &#x27;^#archive_policy&#x27;    line: &#x27;archive_policy = lancer&#x27;- name: add ceilometer.conf url  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: &#x27;^#url = &lt;None&gt;&#x27;    line: &#x27;url = http://2.3.3.52:8041&#x27;- name: add ceilometer.conf filter_project  lineinfile:    path: /etc/ceilometer/ceilometer.conf    insertafter: &#x27;^#filter_project&#x27;    line: &#x27;filter_project = services&#x27;- name: restart ceilometer-agent-central  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:    name: ceilometer-agent-central    state: restarted  - name: restart ceilometer-agent-notification  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:    name: ceilometer-agent-notification    state: restarted- name: restart ceilometer-api  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:    name: ceilometer-api    state: restarted- name: restart ceilometer-collector  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:    name: ceilometer-collector    state: restarted- name: restart ceilometer-polling  service:    name: ceilometer-polling    state: restarted\n\n新建archive-policy新建名为lancer的archive-policy。\n12345678gnocchi archive-policy create \\-d granularity:1m,points:10080 \\-d granularity:5m,points:8640 \\-d granularity:15m,points:2880 \\-d granularity:30m,points:1440 \\-d granularity:60m,points:8760 \\-d granularity:360m,points:21600 \\lancer\n\n删除archive-policy-rule删除名为default的archive-policy-rule。\n1gnocchi archive-policy-rule delete default\n新建名为lancer的archive-policy-rule。\n1gnocchi archive-policy-rule create -a lancer -m * lancer\n\n-a，–archive-policy-name，archive-policy的名字。-m，–metric-pattern，要匹配的指标名称。*为全部匹配。\n\n\nupgrade进入每一个控制节点上的gnocchi_api容器，执行。\n1gnocchi-upgrade \n\n进入每一个控制节点上的ceilometer_notification容器，执行。\n1ceilometer-upgrade --noskip-gnocchi-resource-types\n\n验证Resource1gnocchi resource list\n\nResource types1gnocchi resource list-types\n\nMetric1gnocchi metric list\n\nMeasures123456gnocchi measures show \\--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\--start 2019-02-14T01:00 \\--stop 2019-02-14T02:00 \\--granularity 300 \\cpu_util\n\n12345gnocchi measures show \\--start 2019-04-09T02:20 \\--granularity 60 \\--resource-id f4545548-c353-49dc-92a0-516057f6a265 \\network_in_rate\n\n遇到的问题资源类型只为instance或instance_diskGnocchi部署完成后，资源类型成功创建。\n但是，创建的资源的类型只有instance和instance_disk两种\n在gnocchi_api容器内执行gnocchi-upgrade，在ceilometer_notification容器内执行ceilometer-upgrade，结果均未发生变换。\n相关服务。","dateCreated":"2019-02-14T14:50:43+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2019-02-14T14:50:43+08:00","description":"Ceilometer和Gnocchi的集成","headline":"Ceilometer和Gnocchi","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/","keywords":"Ceilometer, Gnocchi","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Ceilometer和Gnocchi的集成">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Ceilometer和Gnocchi">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Ceilometer和Gnocchi的集成">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource-types.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/metric-list.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/measures-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource-types.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource-list-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource-list-2.png">
+<meta property="article:published_time" content="2019-02-14T06:50:43.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.935Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Ceilometer">
+<meta property="article:tag" content="Gnocchi">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/images/resource.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Ceilometer和Gnocchi
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-02-14T14:50:43+08:00">
+	
+		    Feb 14, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#gnocchi"><span class="toc-text">gnocchi</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#gnocchi-setup-yml"><span class="toc-text">gnocchi_setup.yml</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-text">配置文件</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ceilometer"><span class="toc-text">ceilometer</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#ceilometer-gnocchi-integration-yml"><span class="toc-text">ceilometer_gnocchi_integration.yml</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#integrate-yml"><span class="toc-text">integrate.yml</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B0%E5%BB%BAarchive-policy"><span class="toc-text">新建archive-policy</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A0%E9%99%A4archive-policy-rule"><span class="toc-text">删除archive-policy-rule</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#upgrade"><span class="toc-text">upgrade</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81"><span class="toc-text">验证</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Resource"><span class="toc-text">Resource</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Resource-types"><span class="toc-text">Resource types</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Metric"><span class="toc-text">Metric</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Measures"><span class="toc-text">Measures</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%81%87%E5%88%B0%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-text">遇到的问题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B5%84%E6%BA%90%E7%B1%BB%E5%9E%8B%E5%8F%AA%E4%B8%BAinstance%E6%88%96instance-disk"><span class="toc-text">资源类型只为instance或instance_disk</span></a></li></ol></li></ol>
+
+<h3 id="gnocchi"><a href="#gnocchi" class="headerlink" title="gnocchi"></a>gnocchi</h3><p>部署节点运行。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook -i inventory/cloude_nodes gnocchi_setup.yml</span><br></pre></td></tr></table></figure>
+
+<h4 id="gnocchi-setup-yml"><a href="#gnocchi-setup-yml" class="headerlink" title="gnocchi_setup.yml"></a>gnocchi_setup.yml</h4><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Setup</span> <span class="string">gnocchi</span></span><br><span class="line">  <span class="attr">hosts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">controller</span></span><br><span class="line">  <span class="attr">vars_files:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">vars/common.yml</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">vars/deploy.yml</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">vars/astute.yaml</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">vars/globals.yaml</span></span><br><span class="line">  <span class="attr">vars:</span></span><br><span class="line">    <span class="attr">action:</span> <span class="string">deploy</span></span><br><span class="line">  <span class="attr">roles:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">role:</span> <span class="string">gnocchi</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="配置文件"><a href="#配置文件" class="headerlink" title="配置文件"></a>配置文件</h4><p>gnocchi-api的配置文件wsgi-gnocchi.conf，位于/etc/oceanstack/gnocchi/gnocchi-api，映射到名为gnocchi_api的Docker容器的/etc/apache2/sites-enabled/的路径下，改名为gnocchi-api.conf。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">Listen 2.3.3.54:8041</span><br><span class="line">TraceEnable off</span><br><span class="line"></span><br><span class="line">&lt;VirtualHost *:8041&gt;</span><br><span class="line">  ErrorLog &quot;/var/log/kolla/gnocchi/gnocchi-api-error.log&quot;</span><br><span class="line">  LogFormat &quot;%&#123;X-Forwarded-For&#125;i %l %u %t \&quot;%r\&quot; %&gt;s %b %D \&quot;%&#123;Referer&#125;i\&quot; \&quot;%&#123;User-Agent&#125;i\&quot;&quot; logformat</span><br><span class="line">  CustomLog &quot;/var/log/kolla/gnocchi/gnocchi-api-access.log&quot; logformat</span><br><span class="line">  WSGIApplicationGroup %&#123;GLOBAL&#125;</span><br><span class="line">  WSGIDaemonProcess gnocchi group=gnocchi processes=8 threads=1 user=gnocchi</span><br><span class="line">  WSGIProcessGroup gnocchi</span><br><span class="line">  WSGIScriptAlias / &quot;/usr/bin/gnocchi-api&quot;</span><br><span class="line"></span><br><span class="line">  &lt;Directory &quot;/usr/bin&quot;&gt;</span><br><span class="line">        Require all granted</span><br><span class="line">  &lt;/Directory&gt;</span><br><span class="line">&lt;/VirtualHost&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="ceilometer"><a href="#ceilometer" class="headerlink" title="ceilometer"></a>ceilometer</h3><p>部署节点运行。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook -i inventory/cloude_nodes ceilometer_gnocchi_integration.yml</span><br></pre></td></tr></table></figure>
+
+<h4 id="ceilometer-gnocchi-integration-yml"><a href="#ceilometer-gnocchi-integration-yml" class="headerlink" title="ceilometer_gnocchi_integration.yml"></a>ceilometer_gnocchi_integration.yml</h4><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">ceilometer_gnocchi_integration</span></span><br><span class="line">  <span class="attr">hosts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">node</span></span><br><span class="line">  <span class="attr">vars:</span></span><br><span class="line">    <span class="attr">action:</span> <span class="string">integrate</span></span><br><span class="line">  <span class="attr">roles:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">role:</span> <span class="string">ceilometer</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="integrate-yml"><a href="#integrate-yml" class="headerlink" title="integrate.yml"></a>integrate.yml</h4><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">modify</span> <span class="string">ceilometer.conf</span> <span class="string">meter_dispatchers</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^meter_dispatchers&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;meter_dispatchers = gnocchi&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">modify</span> <span class="string">ceilometer.conf</span> <span class="string">event_dispatchers</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^event_dispatchers&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;event_dispatchers = gnocchi&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">add</span> <span class="string">ceilometer.conf</span> <span class="string">filter_service_activity</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">insertafter:</span> <span class="string">&#x27;^#filter_service_activity&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;filter_service_activity = False&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">add</span> <span class="string">ceilometer.conf</span> <span class="string">resources_definition_file</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">insertafter:</span> <span class="string">&#x27;^#resources_definition_file&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;resources_definition_file = gnocchi_resources.yaml&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">add</span> <span class="string">ceilometer.conf</span> <span class="string">archive_policy</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">insertafter:</span> <span class="string">&#x27;^#archive_policy&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;archive_policy = lancer&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">add</span> <span class="string">ceilometer.conf</span> <span class="string">url</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">insertafter:</span> <span class="string">&#x27;^#url = &lt;None&gt;&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;url = http://2.3.3.52:8041&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">add</span> <span class="string">ceilometer.conf</span> <span class="string">filter_project</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">path:</span> <span class="string">/etc/ceilometer/ceilometer.conf</span></span><br><span class="line">    <span class="attr">insertafter:</span> <span class="string">&#x27;^#filter_project&#x27;</span></span><br><span class="line">    <span class="attr">line:</span> <span class="string">&#x27;filter_project = services&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">restart</span> <span class="string">ceilometer-agent-central</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">ceilometer-agent-central</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line">  </span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">restart</span> <span class="string">ceilometer-agent-notification</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">ceilometer-agent-notification</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">restart</span> <span class="string">ceilometer-api</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">ceilometer-api</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">restart</span> <span class="string">ceilometer-collector</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">ceilometer-collector</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">restart</span> <span class="string">ceilometer-polling</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">ceilometer-polling</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="新建archive-policy"><a href="#新建archive-policy" class="headerlink" title="新建archive-policy"></a>新建archive-policy</h3><p>新建名为lancer的archive-policy。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">gnocchi archive-policy create \</span><br><span class="line">-d granularity:1m,points:10080 \</span><br><span class="line">-d granularity:5m,points:8640 \</span><br><span class="line">-d granularity:15m,points:2880 \</span><br><span class="line">-d granularity:30m,points:1440 \</span><br><span class="line">-d granularity:60m,points:8760 \</span><br><span class="line">-d granularity:360m,points:21600 \</span><br><span class="line">lancer</span><br></pre></td></tr></table></figure>
+
+<h3 id="删除archive-policy-rule"><a href="#删除archive-policy-rule" class="headerlink" title="删除archive-policy-rule"></a>删除archive-policy-rule</h3><p>删除名为default的archive-policy-rule。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi archive-policy-rule delete default</span><br></pre></td></tr></table></figure>
+<p>新建名为lancer的archive-policy-rule。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi archive-policy-rule create -a lancer -m * lancer</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>-a，–archive-policy-name，archive-policy的名字。<br>-m，–metric-pattern，要匹配的指标名称。*为全部匹配。</p>
+</div>
+
+<h3 id="upgrade"><a href="#upgrade" class="headerlink" title="upgrade"></a>upgrade</h3><p>进入每一个控制节点上的gnocchi_api容器，执行。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi-upgrade </span><br></pre></td></tr></table></figure>
+
+<p>进入每一个控制节点上的ceilometer_notification容器，执行。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ceilometer-upgrade --noskip-gnocchi-resource-types</span><br></pre></td></tr></table></figure>
+
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><h4 id="Resource"><a href="#Resource" class="headerlink" title="Resource"></a>Resource</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list</span><br></pre></td></tr></table></figure>
+<p><img src="images/resource.png" alt="resource"></p>
+<h4 id="Resource-types"><a href="#Resource-types" class="headerlink" title="Resource types"></a>Resource types</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list-types</span><br></pre></td></tr></table></figure>
+<p><img src="images/resource-types.png" alt="resource-types"></p>
+<h4 id="Metric"><a href="#Metric" class="headerlink" title="Metric"></a>Metric</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric list</span><br></pre></td></tr></table></figure>
+<p><img src="images/metric-list.png" alt="metric-list"></p>
+<h4 id="Measures"><a href="#Measures" class="headerlink" title="Measures"></a>Measures</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">gnocchi measures show \</span><br><span class="line">--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \</span><br><span class="line">--start 2019-02-14T01:00 \</span><br><span class="line">--stop 2019-02-14T02:00 \</span><br><span class="line">--granularity 300 \</span><br><span class="line">cpu_util</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">gnocchi measures show \</span><br><span class="line">--start 2019-04-09T02:20 \</span><br><span class="line">--granularity 60 \</span><br><span class="line">--resource-id f4545548-c353-49dc-92a0-516057f6a265 \</span><br><span class="line">network_in_rate</span><br></pre></td></tr></table></figure>
+<p><img src="images/measures-show.png" alt="measures-show"></p>
+<h3 id="遇到的问题"><a href="#遇到的问题" class="headerlink" title="遇到的问题"></a>遇到的问题</h3><h4 id="资源类型只为instance或instance-disk"><a href="#资源类型只为instance或instance-disk" class="headerlink" title="资源类型只为instance或instance_disk"></a>资源类型只为instance或instance_disk</h4><p>Gnocchi部署完成后，资源类型成功创建。<br><img src="images/resource-types.png" alt="resource-types"></p>
+<p>但是，创建的资源的类型只有instance和instance_disk两种<br><img src="images/resource-list-1.png" alt="resource-list"><br><img src="images/resource-list-2.png" alt="resource-list"></p>
+<p>在gnocchi_api容器内执行gnocchi-upgrade，在ceilometer_notification容器内执行ceilometer-upgrade，结果均未发生变换。</p>
+<p>相关服务。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Ceilometer/" rel="tag">Ceilometer</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Gnocchi/" rel="tag">Gnocchi</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/19/Aodh%EF%BC%8C%E6%88%91%E6%83%B3%E5%91%8A%E8%AF%89%E4%BD%A0/"
+                    data-tooltip="Aodh，我想告诉你"
+                    aria-label="PREVIOUS: Aodh，我想告诉你"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    data-tooltip="舌尖上的Gnocchi"
+                    aria-label="NEXT: 舌尖上的Gnocchi"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/&amp;title=Ceilometer和Gnocchi"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/02/14/Ceilometer和Gnocchi/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/19/Aodh%EF%BC%8C%E6%88%91%E6%83%B3%E5%91%8A%E8%AF%89%E4%BD%A0/"
+                    data-tooltip="Aodh，我想告诉你"
+                    aria-label="PREVIOUS: Aodh，我想告诉你"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    data-tooltip="舌尖上的Gnocchi"
+                    aria-label="NEXT: 舌尖上的Gnocchi"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/&amp;title=Ceilometer和Gnocchi"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/&amp;title=Ceilometer和Gnocchi"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

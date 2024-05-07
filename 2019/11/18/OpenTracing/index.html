@@ -1,0 +1,847 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenTracing - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenTracing">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n概述微服务提供了强大的架构，但并非没有挑战，尤其是在调试和观察复杂网络中的分布式事务方面–仅仅是因为没有内存中的调用或堆栈追踪可以这样做。\n这就是为什么会出现分布式追踪。分布式追踪为描述和分析跨进程事务提供了一种解决方案。分布式追踪的一些使用案例包括异常检测，诊断状态问题，分布式分析，资源归因和微服务工作负载建模。\n分布式追踪模型\n\n\n1. Trace（追踪）：事务在分布式系统中移动时的描述。\n2. Span（跨度）：一种命名的定时操作，代表一部分工作流程。Span接受key:value标记以及附加到特定Span实例的细粒度，带时间戳的结构化日志。\n3. Span context（跨度上下文）：追踪伴随分布式事务的信息，包括它何时通过网络或通过消息总线将服务传递给服务。范围上下文包含追踪标识符，范围标识符以及追踪系统需要传播到下游服务的任何其他数据。\n\n四个方面从应用程序层分布式追踪系统的角度来看，现代软件系统如下图所示：\n\n\n现代软件系统中的组件可以分为三类： \n\n应用程序和业务逻辑：您的代码。 \n广泛共享的库：其他人的代码。 \n广泛共享的服务：其他人的基础架构。\n\n这三个组件具有不同的要求，并驱动着负责监视应用程序的分布式追踪系统的设计。最终的设计产生四个重要方面：\n\n追踪工具API：装饰应用程序代码的内容。 \n有线协议：在RPC请求中与应用程序数据一起发送的内容。\n数据协议：异步（带外）发送到您的分析系统的内容。 \n分析系统：用于处理追踪数据的数据库和交互式UI。\n\n分布式追踪分布式追踪（也称为分布式请求追踪）是一种用于对应用程序进行概要分析和监视的方法，尤其是使用微服务架构构建的应用程序。分布式追踪有助于查明哪里发生故障以及什么原因导致性能下降。\n使用者IT和DevOps团队可以使用分布式追踪来监视应用程序。分布式追踪特别适合调试和监视现代分布式软件体系结构，例如微服务。\n开发人员可以使用分布式追踪来帮助调试和优化他们的代码。\nOpenTracing\nOpenTracing不是程序。分布式追踪要求软件开发人员将规范添加到应用程序的代码或应用程序中使用的框架。\nOpenTracing不是标准。Cloud Native Computing Foundation（CNCF）不是官方标准机构。OpenTracing API项目正在努力为分布式追踪创建更多标准化的API和工具。\n\nOpenTracing由API规范，已实现该规范的框架和库以及该项目的文档组成。OpenTracing允许开发人员使用不会将其锁定到任何一种特定产品或供应商的API来向其应用程序代码中添加工具。\nSpan介绍Span是分布式追踪的主要构建块，代表分布式系统中完成的单个工作单元。\n分布式系统的每个组件都有一个Span–代表工作流一部分命名的定时操作。\nSpan可以包含对其他Span的引用，从而可以将多个Span组合成一个完整的追踪-可视化请求在分布式系统中移动时的生命周期。\n每个Span根据OpenTracing规范封装以下状态：\n\n操作名称\n开始时间戳和结束时间戳\n一组key:value Span标签\n一组key:value Span日志\nSpanContex\n\nTagsTags（标签）是key:value键值对，可启用用户定义的Span注释，以查询、过滤和理解追踪数据。Span Tags应该应用于整个跨度。在semantic_conventions.md上有一个列表，列出了常见场景的Span Tags。\nTags包括，例如db.instance来标识数据库主机；http.status_code代表HTTP响应代码；error，如果Span表示的操作失败，则可以将其设置为True。\nLogsLogs(日志)是key:value键值对，可用于捕获特定的Span的日志消息以及来自应用程序本身的其他调试或信息输出。Logs记录跨度内的特定时刻或事件（与应该应用于整个Span的Tags相反）。\nSpanContextSpanContext跨进程边界承载数据。具体来说，它具有两个主要组成部分：\n\n依赖于实现的状态来引用追踪中的不同范围，即实现Tracer对spanID和traceID的定义。\n一些Baggage Items\n这些是跨流程边界的key:value键值对。\n使某些数据可用于整个追踪访问。\n\n\n\n例子t=0            operation name: db_query               t=x\n\n +-----------------------------------------------------+\n | · · · · · · · · · ·    Span     · · · · · · · · · · |\n +-----------------------------------------------------+\n\nTags:\n- db.instance:&quot;jdbc:mysql://127.0.0.1:3306/customers\n- db.statement: &quot;SELECT * FROM mytable WHERE foo=&#39;bar&#39;;&quot;\n\nLogs:\n- message:&quot;Can&#39;t connect to mysql server on &#39;127.0.0.1&#39;(10061)&quot;\n\nSpanContext:\n- trace_id:&quot;abc123&quot;\n- span_id:&quot;xyz789&quot;\n- Baggage Items:\n- special_id:&quot;vsid1738&quot;\n\nScopes and Threading介绍在任何给定线程中，都有一个“active”范围，主要负责由周围的应用程序代码（称为ActiveSpan）完成的工作。OpenTracing API允许线程中的一个Span在任何时间点都处于活动状态。这是使用Scope管理的，该范围正式确定了Span的启用和停用。\n同一线程所涉及的其他Span将满足以下条件之一：\n\nStarted\nNot finished\nNot “active”\n\n同一线程上可以有多个Span，Span需要满足以下条件：\n\nWaiting for I/O\nBlocked on a child Span\nOff of the critical path\n\n请注意，如果开发人员创建新的Span时存在Scope（作用域），则它将充当其父对象，除非程序员在buildSpan()时调用ignoreActiveSpan()或显式指定父上下文。\n\n\n访问当前Active Span由于在功能之间手动传递Active Span不方便，因此OpenTracing要求每个Tracer都包含一个ScopeManager。ScopeManager API通过Scope授予对Active Span的访问。这意味着开发人员可以通过Scope访问任何Active Span。\n在线程之间移动Span使用ScopeManager API，开发人员可以在不同线程之间传输Span。 Span的生命周期可能始于一个线程，而结束于另一个线程。ScopeManager API允许将Span传输到另一个线程或回调。不支持将Scope传递给另一个线程或回调。\nTracers介绍OpenTracing提供了一个开放的，与供应商无关的标准API，用于描述分布式事务，尤其是因果关系，语义和时间安排。它提供了一个通用的分布式上下文传播框架，该框架由以下API原语组成：\n\n在过程中传递元数据上下文\n编码和解码元数据上下文，以便通过网络传输它以进行进程间通信\n因果关系追踪：父子，分叉，联接\n\nOpenTracing消除了众多追踪器实现之间的差异。这意味着无论开发人员使用哪种追踪系统，仪器显示都将保持不变。为了使用OpenTracing规范对应用程序进行检测，必须部署兼容的OpenTracing追踪器。\nTracer InterfaceTracer界面创建Span，并了解如何跨进程边界Inject注入（序列化）和Extract提取（反序列化）其元数据。它具有以下功能：\n\nStart a new Span\nInject a SpanContext into a carrier\nExtract a SpanContext from a carrier\n\nSetting up a TracerTracer将记录跨度并将其发布到某个地方。应用程序如何处理实际的Tracer取决于开发人员：直接在整个应用程序中使用它，还是将其存储在GlobalTracer中，以便更轻松地用于已检测框架。\n不同的Tracer实现在初始化时接收方式和接收参数的方式有所不同，例如：\n\nComponent name for this application’s traces.\nTracing endpoint.\nTracing credentials.\nSampling strategy.\n\n获取Tracer实例后，就可以使用它来手动创建Span，或将其传递给框架和库的现有工具。\n为了不强迫用户始终围绕Tracer，io.opentracing.util实现包括io.opentracing.Tracer接口的帮助程序GlobalTracer类。顾名思义，GlobalTracer类，它是可以在任何地方使用的全局实例。它通过将所有操作转发到另一个基础的Tracer进行工作，该追踪器将在将来的某个时间进行注册。\n默认情况下，基础Tracer是no-nop实现。\nStarting a new Trace每当创建新的Span而不引用父Span时，就会开始新的追踪。创建新的Span时，需要指定一个“操作名称”，它是一种自由格式的字符串，可用于帮助您识别该Span所涉及的代码。我们新追踪中的下一个Span可能是子Span，可以看作是在主Span内执行的子程序的表示。因此，此子Span与父级具有ChildOf关系。另一种关系类型是FollowsFrom，在特殊情况下使用，新的Span独立于父Span，例如在异步过程中。\nAccessing the Active Span追踪器可用于启用对ActiveSpan的访问。还可以通过scopeManager以某些语言访问ActiveSpans。\nPropagating a Trace with Inject/Extract为了跨分布式系统中的进程边界进行追踪，服务需要能够继续由发送每个请求的客户端注入的trace。OpenTracing通过提供注入和提取方法来实现此目标，该方法将Span的上下文编码为载体。Inject方法允许将SpanContext传递给载体。例如，将追踪信息传递到客户的请求中，以便您将其发送到的服务器可以继续追踪。Extract方法完全相反，它从载体中提取SpanContext。例如，如果客户端存在活动请求，则开发人员必须使用io.opentracing.Tracer.extract方法提取SpanContext。\n\n\nTracing Systems下表列出了所有当前已知的OpenTracing追踪器：\n\n\n\nTracing System\nSupported Languages\n\n\n\nCNCF Jaeger\nJava, Go, Python, Node.js, C++, C#\n\n\nDatadog\nGo\n\n\ninspectIT\nJava\n\n\nInstana\nCrystal, Go, Java, Node.js, Python, Ruby\n\n\nLightStep\nGo, Python, JavaScript, Objective-C, Java, PHP, Ruby, C++\n\n\nstagemonitor\nJava\n\n","dateCreated":"2019-11-18T17:59:22+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2019-11-18T17:59:22+08:00","description":"分布式追踪","headline":"OpenTracing","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/11/18/OpenTracing/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/11/18/OpenTracing/","keywords":"OpenTracing","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="分布式追踪">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenTracing">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="分布式追踪">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/extract.png">
+<meta property="article:published_time" content="2019-11-18T09:59:22.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.067Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenTracing">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/tracing_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/11/18/OpenTracing/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenTracing
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-11-18T17:59:22+08:00">
+	
+		    Nov 18, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E8%BF%BD%E8%B8%AA%E6%A8%A1%E5%9E%8B"><span class="toc-text">分布式追踪模型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9B%E4%B8%AA%E6%96%B9%E9%9D%A2"><span class="toc-text">四个方面</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E5%B8%83%E5%BC%8F%E8%BF%BD%E8%B8%AA"><span class="toc-text">分布式追踪</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E8%80%85"><span class="toc-text">使用者</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#OpenTracing"><span class="toc-text">OpenTracing</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Span"><span class="toc-text">Span</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tags"><span class="toc-text">Tags</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Logs"><span class="toc-text">Logs</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SpanContext"><span class="toc-text">SpanContext</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BE%8B%E5%AD%90"><span class="toc-text">例子</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Scopes-and-Threading"><span class="toc-text">Scopes and Threading</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D-1"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%BF%E9%97%AE%E5%BD%93%E5%89%8DActive-Span"><span class="toc-text">访问当前Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9C%A8%E7%BA%BF%E7%A8%8B%E4%B9%8B%E9%97%B4%E7%A7%BB%E5%8A%A8Span"><span class="toc-text">在线程之间移动Span</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Tracers"><span class="toc-text">Tracers</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BB%8B%E7%BB%8D-2"><span class="toc-text">介绍</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracer-Interface"><span class="toc-text">Tracer Interface</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Setting-up-a-Tracer"><span class="toc-text">Setting up a Tracer</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Starting-a-new-Trace"><span class="toc-text">Starting a new Trace</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Accessing-the-Active-Span"><span class="toc-text">Accessing the Active Span</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Propagating-a-Trace-with-Inject-Extract"><span class="toc-text">Propagating a Trace with Inject&#x2F;Extract</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Tracing-Systems"><span class="toc-text">Tracing Systems</span></a></li></ol></li></ol>
+
+<h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>微服务提供了强大的架构，但并非没有挑战，尤其是在调试和观察复杂网络中的分布式事务方面–仅仅是因为没有内存中的调用或堆栈追踪可以这样做。</p>
+<p>这就是为什么会出现分布式追踪。分布式追踪为描述和分析跨进程事务提供了一种解决方案。分布式追踪的一些使用案例包括异常检测，诊断状态问题，分布式分析，资源归因和微服务工作负载建模。</p>
+<h3 id="分布式追踪模型"><a href="#分布式追踪模型" class="headerlink" title="分布式追踪模型"></a>分布式追踪模型</h3><br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/tracing_1.png" alt=""></a></div>
+<br>
+1. Trace（追踪）：事务在分布式系统中移动时的描述。
+2. Span（跨度）：一种命名的定时操作，代表一部分工作流程。Span接受key:value标记以及附加到特定Span实例的细粒度，带时间戳的结构化日志。
+3. Span context（跨度上下文）：追踪伴随分布式事务的信息，包括它何时通过网络或通过消息总线将服务传递给服务。范围上下文包含追踪标识符，范围标识符以及追踪系统需要传播到下游服务的任何其他数据。
+
+<h3 id="四个方面"><a href="#四个方面" class="headerlink" title="四个方面"></a>四个方面</h3><p>从应用程序层分布式追踪系统的角度来看，现代软件系统如下图所示：<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/tracing_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/tracing_2.png" alt=""></a></div>
+
+<p>现代软件系统中的组件可以分为三类： </p>
+<ul>
+<li>应用程序和业务逻辑：您的代码。 </li>
+<li>广泛共享的库：其他人的代码。 </li>
+<li>广泛共享的服务：其他人的基础架构。</li>
+</ul>
+<p>这三个组件具有不同的要求，并驱动着负责监视应用程序的分布式追踪系统的设计。最终的设计产生四个重要方面：</p>
+<ul>
+<li>追踪工具API：装饰应用程序代码的内容。 </li>
+<li>有线协议：在RPC请求中与应用程序数据一起发送的内容。</li>
+<li>数据协议：异步（带外）发送到您的分析系统的内容。 </li>
+<li>分析系统：用于处理追踪数据的数据库和交互式UI。</li>
+</ul>
+<h3 id="分布式追踪"><a href="#分布式追踪" class="headerlink" title="分布式追踪"></a>分布式追踪</h3><p>分布式追踪（也称为分布式请求追踪）是一种用于对应用程序进行概要分析和监视的方法，尤其是使用微服务架构构建的应用程序。分布式追踪有助于查明哪里发生故障以及什么原因导致性能下降。</p>
+<h4 id="使用者"><a href="#使用者" class="headerlink" title="使用者"></a>使用者</h4><p>IT和DevOps团队可以使用分布式追踪来监视应用程序。分布式追踪特别适合调试和监视现代分布式软件体系结构，例如微服务。</p>
+<p>开发人员可以使用分布式追踪来帮助调试和优化他们的代码。</p>
+<h4 id="OpenTracing"><a href="#OpenTracing" class="headerlink" title="OpenTracing"></a>OpenTracing</h4><ul>
+<li>OpenTracing不是程序。分布式追踪要求软件开发人员将规范添加到应用程序的代码或应用程序中使用的框架。</li>
+<li>OpenTracing不是标准。Cloud Native Computing Foundation（CNCF）不是官方标准机构。OpenTracing API项目正在努力为分布式追踪创建更多标准化的API和工具。</li>
+</ul>
+<p>OpenTracing由API规范，已实现该规范的框架和库以及该项目的文档组成。OpenTracing允许开发人员使用不会将其锁定到任何一种特定产品或供应商的API来向其应用程序代码中添加工具。</p>
+<h3 id="Span"><a href="#Span" class="headerlink" title="Span"></a>Span</h3><h4 id="介绍"><a href="#介绍" class="headerlink" title="介绍"></a>介绍</h4><p>Span是分布式追踪的主要构建块，代表分布式系统中完成的单个工作单元。</p>
+<p>分布式系统的每个组件都有一个Span–代表工作流一部分命名的定时操作。</p>
+<p>Span可以包含对其他Span的引用，从而可以将多个Span组合成一个完整的追踪-可视化请求在分布式系统中移动时的生命周期。</p>
+<p>每个Span根据OpenTracing规范封装以下状态：</p>
+<ul>
+<li>操作名称</li>
+<li>开始时间戳和结束时间戳</li>
+<li>一组key:value Span标签</li>
+<li>一组key:value Span日志</li>
+<li>SpanContex</li>
+</ul>
+<h4 id="Tags"><a href="#Tags" class="headerlink" title="Tags"></a>Tags</h4><p>Tags（标签）是key:value键值对，可启用用户定义的Span注释，以查询、过滤和理解追踪数据。Span Tags应该应用于整个跨度。在<a target="_blank" rel="noopener" href="https://github.com/opentracing/specification/blob/master/semantic_conventions.md">semantic_conventions.md</a>上有一个列表，列出了常见场景的Span Tags。</p>
+<p>Tags包括，例如db.instance来标识数据库主机；http.status_code代表HTTP响应代码；error，如果Span表示的操作失败，则可以将其设置为True。</p>
+<h4 id="Logs"><a href="#Logs" class="headerlink" title="Logs"></a>Logs</h4><p>Logs(日志)是key:value键值对，可用于捕获特定的Span的日志消息以及来自应用程序本身的其他调试或信息输出。Logs记录跨度内的特定时刻或事件（与应该应用于整个Span的Tags相反）。</p>
+<h4 id="SpanContext"><a href="#SpanContext" class="headerlink" title="SpanContext"></a>SpanContext</h4><p>SpanContext跨进程边界承载数据。具体来说，它具有两个主要组成部分：</p>
+<ul>
+<li>依赖于实现的状态来引用追踪中的不同范围，即实现Tracer对spanID和traceID的定义。</li>
+<li>一些Baggage Items<ul>
+<li>这些是跨流程边界的key:value键值对。</li>
+<li>使某些数据可用于整个追踪访问。</li>
+</ul>
+</li>
+</ul>
+<h4 id="例子"><a href="#例子" class="headerlink" title="例子"></a>例子</h4><pre><code>t=0            operation name: db_query               t=x
+
+ +-----------------------------------------------------+
+ | · · · · · · · · · ·    Span     · · · · · · · · · · |
+ +-----------------------------------------------------+
+
+Tags:
+- db.instance:&quot;jdbc:mysql://127.0.0.1:3306/customers
+- db.statement: &quot;SELECT * FROM mytable WHERE foo=&#39;bar&#39;;&quot;
+
+Logs:
+- message:&quot;Can&#39;t connect to mysql server on &#39;127.0.0.1&#39;(10061)&quot;
+
+SpanContext:
+- trace_id:&quot;abc123&quot;
+- span_id:&quot;xyz789&quot;
+- Baggage Items:
+- special_id:&quot;vsid1738&quot;
+</code></pre>
+<h3 id="Scopes-and-Threading"><a href="#Scopes-and-Threading" class="headerlink" title="Scopes and Threading"></a>Scopes and Threading</h3><h4 id="介绍-1"><a href="#介绍-1" class="headerlink" title="介绍"></a>介绍</h4><p>在任何给定线程中，都有一个“active”范围，主要负责由周围的应用程序代码（称为ActiveSpan）完成的工作。OpenTracing API允许线程中的一个Span在任何时间点都处于活动状态。这是使用Scope管理的，该范围正式确定了Span的启用和停用。</p>
+<p>同一线程所涉及的其他Span将满足以下条件之一：</p>
+<ul>
+<li>Started</li>
+<li>Not finished</li>
+<li>Not “active”</li>
+</ul>
+<p>同一线程上可以有多个Span，Span需要满足以下条件：</p>
+<ul>
+<li>Waiting for I/O</li>
+<li>Blocked on a child Span</li>
+<li>Off of the critical path</li>
+</ul>
+<div class="alert info no-icon"><p>请注意，如果开发人员创建新的Span时存在Scope（作用域），则它将充当其父对象，除非程序员在buildSpan()时调用ignoreActiveSpan()或显式指定父上下文。</p>
+</div>
+
+<h4 id="访问当前Active-Span"><a href="#访问当前Active-Span" class="headerlink" title="访问当前Active Span"></a>访问当前Active Span</h4><p>由于在功能之间手动传递Active Span不方便，因此OpenTracing要求每个Tracer都包含一个ScopeManager。ScopeManager API通过Scope授予对Active Span的访问。这意味着开发人员可以通过Scope访问任何Active Span。</p>
+<h4 id="在线程之间移动Span"><a href="#在线程之间移动Span" class="headerlink" title="在线程之间移动Span"></a>在线程之间移动Span</h4><p>使用ScopeManager API，开发人员可以在不同线程之间传输Span。 Span的生命周期可能始于一个线程，而结束于另一个线程。ScopeManager API允许将Span传输到另一个线程或回调。不支持将Scope传递给另一个线程或回调。</p>
+<h3 id="Tracers"><a href="#Tracers" class="headerlink" title="Tracers"></a>Tracers</h3><h4 id="介绍-2"><a href="#介绍-2" class="headerlink" title="介绍"></a>介绍</h4><p>OpenTracing提供了一个开放的，与供应商无关的标准API，用于描述分布式事务，尤其是因果关系，语义和时间安排。它提供了一个通用的分布式上下文传播框架，该框架由以下API原语组成：</p>
+<ul>
+<li>在过程中传递元数据上下文</li>
+<li>编码和解码元数据上下文，以便通过网络传输它以进行进程间通信</li>
+<li>因果关系追踪：父子，分叉，联接</li>
+</ul>
+<p>OpenTracing消除了众多追踪器实现之间的差异。这意味着无论开发人员使用哪种追踪系统，仪器显示都将保持不变。为了使用OpenTracing规范对应用程序进行检测，必须部署兼容的OpenTracing追踪器。</p>
+<h4 id="Tracer-Interface"><a href="#Tracer-Interface" class="headerlink" title="Tracer Interface"></a>Tracer Interface</h4><p>Tracer界面创建Span，并了解如何跨进程边界Inject注入（序列化）和Extract提取（反序列化）其元数据。它具有以下功能：</p>
+<ul>
+<li>Start a new Span</li>
+<li>Inject a SpanContext into a carrier</li>
+<li>Extract a SpanContext from a carrier</li>
+</ul>
+<h4 id="Setting-up-a-Tracer"><a href="#Setting-up-a-Tracer" class="headerlink" title="Setting up a Tracer"></a>Setting up a Tracer</h4><p>Tracer将记录跨度并将其发布到某个地方。应用程序如何处理实际的Tracer取决于开发人员：直接在整个应用程序中使用它，还是将其存储在GlobalTracer中，以便更轻松地用于已检测框架。</p>
+<p>不同的Tracer实现在初始化时接收方式和接收参数的方式有所不同，例如：</p>
+<ul>
+<li>Component name for this application’s traces.</li>
+<li>Tracing endpoint.</li>
+<li>Tracing credentials.</li>
+<li>Sampling strategy.</li>
+</ul>
+<p>获取Tracer实例后，就可以使用它来手动创建Span，或将其传递给框架和库的现有工具。</p>
+<p>为了不强迫用户始终围绕Tracer，io.opentracing.util实现包括io.opentracing.Tracer接口的帮助程序GlobalTracer类。顾名思义，GlobalTracer类，它是可以在任何地方使用的全局实例。它通过将所有操作转发到另一个基础的Tracer进行工作，该追踪器将在将来的某个时间进行注册。</p>
+<p>默认情况下，基础Tracer是no-nop实现。</p>
+<h4 id="Starting-a-new-Trace"><a href="#Starting-a-new-Trace" class="headerlink" title="Starting a new Trace"></a>Starting a new Trace</h4><p>每当创建新的Span而不引用父Span时，就会开始新的追踪。创建新的Span时，需要指定一个“操作名称”，它是一种自由格式的字符串，可用于帮助您识别该Span所涉及的代码。我们新追踪中的下一个Span可能是子Span，可以看作是在主Span内执行的子程序的表示。因此，此子Span与父级具有ChildOf关系。另一种关系类型是FollowsFrom，在特殊情况下使用，新的Span独立于父Span，例如在异步过程中。</p>
+<h4 id="Accessing-the-Active-Span"><a href="#Accessing-the-Active-Span" class="headerlink" title="Accessing the Active Span"></a>Accessing the Active Span</h4><p>追踪器可用于启用对ActiveSpan的访问。还可以通过scopeManager以某些语言访问ActiveSpans。</p>
+<h4 id="Propagating-a-Trace-with-Inject-Extract"><a href="#Propagating-a-Trace-with-Inject-Extract" class="headerlink" title="Propagating a Trace with Inject/Extract"></a>Propagating a Trace with Inject/Extract</h4><p>为了跨分布式系统中的进程边界进行追踪，服务需要能够继续由发送每个请求的客户端注入的trace。OpenTracing通过提供注入和提取方法来实现此目标，该方法将Span的上下文编码为载体。Inject方法允许将SpanContext传递给载体。例如，将追踪信息传递到客户的请求中，以便您将其发送到的服务器可以继续追踪。Extract方法完全相反，它从载体中提取SpanContext。例如，如果客户端存在活动请求，则开发人员必须使用io.opentracing.Tracer.extract方法提取SpanContext。<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/extract.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/extract.png" alt=""></a></div>
+
+<h4 id="Tracing-Systems"><a href="#Tracing-Systems" class="headerlink" title="Tracing Systems"></a>Tracing Systems</h4><p>下表列出了所有当前已知的OpenTracing追踪器：</p>
+<table>
+<thead>
+<tr>
+<th align="left">Tracing System</th>
+<th align="left">Supported Languages</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">CNCF Jaeger</td>
+<td align="left">Java, Go, Python, Node.js, C++, C#</td>
+</tr>
+<tr>
+<td align="left">Datadog</td>
+<td align="left">Go</td>
+</tr>
+<tr>
+<td align="left">inspectIT</td>
+<td align="left">Java</td>
+</tr>
+<tr>
+<td align="left">Instana</td>
+<td align="left">Crystal, Go, Java, Node.js, Python, Ruby</td>
+</tr>
+<tr>
+<td align="left">LightStep</td>
+<td align="left">Go, Python, JavaScript, Objective-C, Java, PHP, Ruby, C++</td>
+</tr>
+<tr>
+<td align="left">stagemonitor</td>
+<td align="left">Java</td>
+</tr>
+</tbody></table>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenTracing/" rel="tag">OpenTracing</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    data-tooltip="Python面试问题汇总"
+                    aria-label="PREVIOUS: Python面试问题汇总"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Metering-Agent源码分析"
+                    aria-label="NEXT: Neutron-Metering-Agent源码分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/&amp;title=OpenTracing"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/11/18/OpenTracing/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    data-tooltip="Python面试问题汇总"
+                    aria-label="PREVIOUS: Python面试问题汇总"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/17/Neutron-Metering-Agent%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Metering-Agent源码分析"
+                    aria-label="NEXT: Neutron-Metering-Agent源码分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/&amp;title=OpenTracing"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/&amp;title=OpenTracing"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/11/18/OpenTracing/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

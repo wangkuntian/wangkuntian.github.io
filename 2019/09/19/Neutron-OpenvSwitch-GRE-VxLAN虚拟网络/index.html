@@ -1,0 +1,882 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Neutron OpenvSwitch + GRE/VxLAN虚拟网络 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\nOverlay网络Overlay技术概述Overlay在网络技术领域，指的是一种网络架构上叠加的虚拟化技术模式，其大体框架是对基础网络不进行大规模修改的条件下，实现应用在网络上的承载，并能与其他网络业务分离，并且以基于IP的基础网络技术为主。Overlay技术是在现有的物理网络之上构建一个虚拟网络，上层应用只与虚拟网络相关。\n一个Overlay网络主要由三部分组成。\n\n边缘设备：是指与虚拟机直接相连接的设备。\n控制平面：主要负责虚拟隧道的建立维护以及主机可达性信息的通告。\n转发平面：承载Overlay报文的物理网络。\n\n当前主流的Overlay技术主要有VxLAN，GRE/NVGRE和STT。这三种二层Overlay技术，大体思路均是将以太网报文承载到某种隧道层面，差异性在于选择和构建的隧道的不同，而底层均是IP转发。\n\n\nGRE技术GRE（Generic Routeing Encapsulation，通用路由协议封装）协议，是一种IP-over-IP的隧道，由Cisco和Net-smiths等公司与1994年提交给IETF，它对部分网络层协议（IP）的数据报进行封装，使这些被封装的数据报能够在IPv4/IPv6网络中传输。其协议格式见RFC2784。简单的说，GRE是一种协议封装的格式，它规定了如何用一种网络协议去封装另一种网络协议，很多网络设备都支持该协议。说直白点，就是GRE将普通的包（如IP包）封装了，又按照普通的IP包的路由方式进行路由，相当于IP包外面再封装一层GRE包。在本例子中，在GRE包外围实际上又有一层公网的IP包。\nGRE使用Tunnel（隧道）技术，数据抱在Tunnel的两端封装，并在这个通路上传输，到另一端的时候解封装。可以认为Tunnel是一个虚拟的点对点的连接。（实际Point To Point连接之后，加上路由协议及NAT技术，就可以吧两个隔绝及局域网连接在一起，就实现了Net To Net的互联）。一般GRE Tunnel是在多个网络设备（一般为路由器）之间建立。因为Linux服务具有路由转发的功能，当缺少专业的路由设备时，可以使用Linux服务器实现GRE Tunnel的建立。\n应用场景办公网（LAN 192.168.1.0/24，并通过固定的公网IP上网）IDC（LAN 10.1.1.0/24，并有多个公网IP，两者通过公网IP互联）\n这两个局域网相互隔离。但是在日常运维和研发过程中，需要在办公网络访问IDC网络。如果通过公网IP绕，既不方便，又不安全；拉专线是最稳定可靠的办法，但是成本高。\n配置GRE如果公司有多余的固定的公网IP或者路由器本身支持GRE，建议使用GRE方案。\n办公网络路由器（Linux服务器实现）：局域网IP：192.168.1.254，公网IP：180.1.1.1。\n123456789101112131415161718cat /usr/local/admin/gre.sh # 并把脚本加入开机启动#! /bin/bashmodprobe ip_gre # 加载gre模块ip tunnel add office mode gre mode 110.2.2.2 local 180.1.1.1 ttl 255 # 使用公网IP建立Tunnel，名字叫 ‘office’的device，使用gre mode。# 指定远端的IP是110.2.2.2，本地IP是180.1.1.1。# 这里为了提高安全性，你可以配置iptables，公网IP只接受来自110.2.2.2的包，其他都drip掉。ip link set office up # 启动device officeip link set office up mtu 1500 # 设置mtu为1500ip addr add 192.912.192.2/24 dev office #为office添加IP：192.192.192.2。echo 1 &gt; /proc/sys/net/ipv4/ip_forward #让服务器支持转发ip route add 10.1.1.0/24 dev office #添加路由，含义是：到10.1.1.0/24的包，由office设备负责转发。iptables -t nat -A POSTROUTING -d 10.1.1.0/24 -j SNAT --to 192.192.192.2 # 否则192.168.1.x等机器访问10.1.1.x网段不通。\n\nIDC路由器（Linux服务器实现）：局域网IP：10.1.1.1，公网IP：110.2.2.2。\n12345678910111213141516cat /usr/local/admin/gre.sh # 并把脚本加入开机启动# !/bin/bashmodprobe ip_gre # 加载gre模块ip tunnel add office mode gre remote 180.1.1.1 local 110.2.2.2 ttl 255ip link set office upip link set office up mtu 1500ip addr add 192.192.192.1/24 dev office # 为office添加IP：192.192.192.1echo 1 &gt; /proc/sys/net/ipv4/ip_forwardip route add 10.1.1.0/24 dev officeiptables -t nat -A POSTROUTING -s 192.192.192.2 -d 10.1.0.0/16 -j SNAT --to 10.1.1.1# 否则192.168.1.x等机器访问10.1.1.x网段不通。iptables -A FORWARD -s 192.192.192.2 -m state --state NEW -m tcp -p tcp --dport 3306 -j drop# 禁止直接访问线上的3306，防止内网被破坏。\n\n过程\nGRE Tunnel的打通：这个过程就是双方建立Tunnel的过程。\n局域网路由å\n主机A发送一个源地址为192.168.1.2，目的地址为10.1.1.2的包。\n封装过程\n根据内网路由规则，可能是你的默认路由网关将之路由至192.168.1.254。\n192.168.1.254第一次封装包，增加GRE包头，说明包的目的地址192.192.192.1和源地址192.192.192.2。\n192.168.1.254第二次封装包，增加公网的包头（否则在公网上无法路由），说明包的目的地址110.2.2.2和180.1.1.1。\n192.168.1.254把所有到10.1.1.0/24的包，源地址都转换为从192.192.192.2出（SNAT）。\n\n\n\n\n公网路由过程：经过N个路由设备，最终路由到110.2.2.2。\n拆包过程\nB端的路由器检查是到达自己的IP，就开始拆包。\n拆包之后发现有GRE协议，就进一步拆包。\n拆包之后发现目的地址不是自己的内网IP，同时发现自己本地做了SNAT，就将源IP地址替换为10.1.1.1。\n\n\n局域网路由\n实际上从10.1.1.1出发的，到达目的为10.1.1.2的包，无需路由，直接在局域网内广播。10.1.1.2的机器确定是发送给自己的包，就接收。然后进一步处理。\n\n\n\nGRE特点\nGRE的特点\n\n跨不同网络实现二次IP通信\nL3上面包装L3\n封装在IP报文中\n点对点隧道\n\n\nGRE的优点\n\n不用变更底层网络架构重建L2、L3通信\n实现不同Host之间网络Guest互通\n方便Guest迁移\n支持网络数量扩大\n\n\nGRE的缺点\n\nTunnel数量问题GRE是一种点对点（Point To Point）标准。Neutron中，所有计算节点和网络节点之间都会建立GRE Tunnel。当节点不多的时候，这种组网没什么问题，但是，当数据中心有大量的节点的时候，就会占用大量资源。使用标准GRE的话，将会有7亿8千万个Tunnel。\n扩大的广播组GRE不支持组播，因此一个网络（同一个GRE Tunnel ID）中的一个虚机发出一个广播帧后，GRE会将其广播到所有与该节点有隧道连接的节点。\n增加了GRE表头会导致本应由交换机硬件来分片的变成由软件来分片（STT技术可以弥补这一点）。\n\nVxLAN技术VxLAN技术主要用于封装、转发二层报文。VxLAN全称Virtual Extensible Local Area Network，简单来说就是扩充了的VLAN，其使得多个三层连接的网络可以表现的和直接通过一台一台物理交换机连接配置而成的网络一样处在一个LAN中。\n\n\n它的实现机制是，将二层报文加上个VxLAN Header，封装在一个UDP包中进行传输。VxLAN Header会包括一个24位的ID（成为VNI），类似于VLAN ID或者GRE的Tunnel ID。GRE一般是通过路由器来进行GRE协议的封装和解封的，在VxLAN中这类封装和解封的组件有个专有的名字叫VTEP。相比起VLAN来说，好处在于其突破了VLAN只有4000+子网的限制，同时架设在UDP协议上后其扩展性提高了不少（因为UDP是高层协议，屏蔽了底层差异，屏蔽了二层差异）。\nVxLAN主要的网络设备VxLAN网络设备主要有三种角色，分别是：\n\nVTEP（VxLAN Tunnel End Point）直接与终端设备比如虚机连接设备，负责原始以太报文的VxLAN封装和解封装，形态可以是虚拟交换机比如Open vSwitch，也可以是物理交换机。\n\nVxLAN GW（VxLAN Gateway/二层网关）用于终结VxLAN，将VxLAN报文转换成对应的传统二层网络送到传统以太网络，适用于VxLAN网络内的服务器与远端终端或远端服务器的二层互联。如在不同网络中做虚拟机迁移时，当业务需要传统网络中服务器与VxLAN网络中服务器在同一个二层中，此时需要使用VxLAN二层网关打通VxLAN网络和二层网络。\n\n\nVxLAN 10网络中的服务器要和IP网络中VLAN 100的业务二层相通，此时就需要通过VxLAN的二层网关进行互联。VxLAN 10的报文进入IP网络的流量，剥掉VxLAN的报文头，根据VxLAN的标签查询对应的VxLAN网络（此处对应的是VLAN 100），并据此在二层报文中加入  VLAN的802.1Q报文送入IP网络；相反VLAN 100的业务流量进入VxLAN也需要根据VxLAN获知对应的VxLAN网络编号，根据目的MAC地址获知远端VTEP的IP地址，基于以上信息进行VxLAN封装后送入对应的VxLAN网络。可见，它除了具备VTEP的功能外，还负责VLAN报文与VxLAN报文之间的映射和转发，主要以物理交换机为主。\n\nVxLAN IP GW（VxLAN IP Gateway/三层网关）用于终结VxLAN网络，将VxLAN报文转换成传统三层报文送至IP网络，适用于VxLAN网络内服务器与远端终端之间的三层互访；同时也用作不同VxLAN网络互通。\n\n当服务器访问外部网络时，VxLAN三层网关剥离对应VxLAN报文封装，送入IP网络；当外部终端访问VxLAN内的服务器时，VxLAN根据目的IP地址确定所属VxLAN及所属的VTEP，加上对应的VxLAN报文头封装进入VxLAN网络。VxLAN之间的互访流量于此类似，VxLAN网关剥离VxLAN报文头，并基于目的IP地址确定所属VxLAN及所属的VTEP，重新封装后送入另外的VxLAN网络。可见，具有VxLAN GW的所有功能，此外，还负责处理不同VxLAN之间的报文通信，同时也是数据中心内部服务去往发布业务的出口，主要以高性能物理交换机为主。\n可见，无论是二层还是三层网关，均涉及到查表转发、VxLAN报文的解封和封装操作。从转发效率和执行性能来看，都只能在物理网络设备上实现，并且传统设备无法支持，必须通过新的硬件形式来实现。以上设备均是物理网络的边缘设备，而由三种边缘设备构成了VxLAN Overlay网络，对于应用系统来说，只与这三种设备有关，而与底层物理网络无关。\n\n\nVxLAN主要的组网方案Overlay网络架构就纯大二层的实现来说，可分为网络Overlay、主机Overlay以及两种方式同时部署的混合Overlay。Overlay网络与外部网络数据连通也有多种实现模式，并且对于关键网络部件有不同的技术要求。\n\n网络Overlay方案：使用物理交换机做VxLAN网络设备所有的物理接入交换机支持VxLAN，物理服务器支持SR-IOV功能，使虚拟机通过SR-IOV技术直接与物理交换机相连，虚拟机的流量在接入交换机上进行VxLAN报文的封装和卸载，对于非虚拟化服务器，直接连接支持VxLAN的接入交换机，服务器流量在接入交换机上进行VxLAN报文封装和卸载；当VxLAN网络需要与VLAN网络通信时，采用物理交换机做VxLAN GW，实现VxLAN网络主机与VLAN网络主机与VLAN网络主机的通信；采用高端交换机做VxLAN IP GW，实现VxLAN网络与WAN以及Internet的互联。\n\n主机Overlay方案：使用服务器上的软件实现VxLAN网络设备在主机Overlay方案中，VTEP、VxLAN GW、VxLAN IP GW均通过安装在服务器上的软件实现。\n\n\n\nvSwitch实现VTEP功能，完成VxLAN报文的封装和解封装。\nvFW等实现VxLAN GW功能，实现VxLAN网络与VLAN网络、物理服务器的互通。\nvRouter作为VxLAN IP GW，实现VxLAN网络与Internet和WAN的互联。在本组网中，由于所有VxLAN报文的封装卸载都通过软件实现，会占用部分服务器资源，当访问量大时，vRouter会成为系统瓶颈。\n\n\n混合Overlay组网方案上述两种组网方案中，网络Overlay方案与虚拟机相连，需要通过一些特殊的要求或技术实现虚拟机与VTEP的对接，组网不够灵活，但是主机Overlay方案与传统网络互通时，连接也比较复杂，且通过软件实现VxLAN IP GW也会成为整个网络的瓶颈，所以最理想的组网方案应该是一个结合了网络Overlay与主机Overlay两种方案优势的混合Overlay方案。\n\n通过vSwitch实现虚拟机的VTEP，通过物理交换机实现物理服务器的VTEP，通过物理交换机实现VxLAN GW和VxLAN IP GW；混合式Overlay组网方案对虚拟机和物理服务器都能很好的兼容，同时通过专业的硬件交换机实现VxLAN IP GW从而承载超大规模的流量转发，是目前应用比较广泛的组网方案。VxLAN网络中，虚机之间的三种互访方式：\n\n相同VxLAN内VM之间互访：\n单播报文在VTEP处查找目的MAC地址，确定对应的VTEP主机IP地址。\n根据目的和源VTEP主机IP地址封装VxLAN报头后发送给IP核心网。\nIP核心内部根据路由转发该UDP报文给目的VTEP。\n目的VTEP解封装VxLAN报文头后按照目的MAC转发报文给目的VM。\n\n\n不同VxLAN内VM之间需要互访经过VxLAN IP GW完成。\n在VxLAN IP GW上匹配VxLAN Mapping表项进行转发，报文封装模式同同一VxLAN内VM一致。\n\n\nVxLAN VM与VLAN VM之间互访，通过VxLAN GW来完成。\nVxLAN报文先通过VxLAN内部转发模式对报文进行封装，目的IP为VxLAN GW。\n在VxLAN GW把VxLAN报文解封装后，匹配二层转发表项进行转发，VLAN到VxLAN的访问流程正好相反。\n\n\n\nVxLAN的实现VxLAN将二层数据帧封装为UDP包特点：\n\nVNID：24-bits，最大16777216。每个不同的24-bits VNI代表一个VxLAN网段。只有同一个网段中的虚机才能互相通信。\nVxLAN Port：目的UDP端口，默认使用4789端口。可以自行配置。\n两个VTEP之间的VxLAN Tunnels是无状态的。\nVTEP可以在虚拟交换机上，物理交换机或者物理服务器上通过软件或者硬件实现。\n使用多播来传送未知目的的广播或者多播帧。\nVTEP不可以对VxLAN包分段。\n\nVTEP寻址一个VTEP可以管理多个VxLAN隧道，每个隧道通向不同的目标。那VTEP接收到一个二层帧后，它怎么根据二层帧中的目的MAC地址找到对应的VxLAN隧道呢？VxLAN利用了多播和MAC地址学习技术。如果它收到的帧是广播帧比如ARP帧，也会经过同样的过程。\n每个VTEP包含两个VxLAN隧道。VTEP-1收到二层ARP帧1（A要查找B的MAC地址）后，发出一个目的IP地址为VTEP多播组239.1.1.1的VxLAN封装UDP包。该包会到达VTEP-2和VTEP-3。VTEP-3收到后，因为目的IP地址不在它的范围内，丢弃该包，但是学习到一条路径：MAC-A, VNI 10, VTEP-1-IP，它知道到达A需要经过VTEP-1了。VTEP-2收到后，发现目的IP地址时机器B，交给B，同时添加学习到的规则：MAC-A, VNI 10, VTEP-1-IP。B发回响应帧后，VTEP-2直接使用VTEP-1的IP直接将它封装成三层包，通过物理网络直接到达VTEP-1，再由它交给A。VTEP-1也学习到了一条规则：MAC-B, VNI 10, VTEP-2-IP。\nVxLAN组网\n逻辑VxLAN Tunnel：建立在物理的VxLAN网络之上，向虚机提供虚拟的二层网络，以VNI做区分。\nVTEP（VxLAN Tunnel End）：对虚机的二层包封装和解封。\n\n数据流向发送端\n\n计算目的地址：Linux内核在发送之前会检查数据帧的目的MAC地址，需要选择目的VTEP。\n如果是广播或者多播地址，则使用其VNI对应的VxLAN Group组播地址，该多播组内所有的VTEP将收到该多播包。\n如果是单播地址，如果Linux的MAC表中包含该MAC地址对应的目的VTEP地址，则使用它。\n如果是单播地址，但是Linux的MAC表中不包含该MAC地址对应的目的VTEP地址，那么使用该VNI对应的组播地址。\n\n\n添加Headers：依次添加VxLAN Header，UDP Header，IP Header。\n\n接收端\n\nUDP监听：因为VxLAN利用了UDP，所以它在接收的时候势要有一个UDP Server在监听某个端口，这个VxLAN初始化的时候完成的。\nIP剥离：一层一层剥离出原始的数据帧，交给TCP/IP栈，由它交给虚机。\n\n负载均衡组成VxLAN隧道的三层路由器在有多条ECMP（Equal-cost Multi-path Routing）路径通往目的VTEP时往往会使用基于每个包（per-package）的负载均衡（Load Balancing）。因为两个VTEP之间的所有数据包具有相同的Outer Source and Destination IP Address和UDP Destination Port，因此ECMP只能使用Source UDP Port。VTEP往往将其设置为原始数据帧的一些参数的Hash值，这样ECMP就可以使用该Hash值，来区分Tunnel之间的网络流量了。\n技术对比VLAN和VxLAN的对比GRE和VxLAN的对比Neutron通过OVS对GRE和VxLAN的支持因为OVS对两种协议的实现机制，Neutron对两个协议的支持的代码和配置几乎完全一致的，除了一些细小差别，比如名称，以及个别配置比如VxLAN的UDP端口等。OVS在计算或者网络节点上的br-tun上建立多个Tunnel Port，和别的节点上的Tunnel Port之间建立点对点的GRE/VxLAN Tunnel。Neutron GRE/VxLAN Network使用segmentation_id（VNI或者GRE Tunnel ID）作为其网络标识，类似于VLAN ID，来实现不同网络内网络流量之间的隔离。\nOpen vSwitch实现的VxLAN VTEPVTEP不止实现包的封装和解封，还包括：\n\nARP解析：需要尽量高效的方式响应本地虚机的ARP请求。\n目的VTEP地址搜索：根据目的虚机的MAC地址，找到它所在机器的VTEP的IP地址。\n\n通常的实现方式包括：\n\n使用L3多播。\n使用SDN控制器（Controller）来提供集中式的MAC/IP对照表。\n在VTEP本地运行一个代理（Agent），接收（MAC，IP，VTEP IP）数据，并提供给VTEP。\n\nOpen Vswitch如何实现这些功能需求。\n\n在没有启用l2 population的情况下，配置了多播就使用多播，没有的话就使用广播。\n在启用l2 population的情况下，在虚机boot后，通过MQ向用于同网络虚机的节点时的l2 population driver发送两种数据，再将数据加入到OVS流表。\nFDB（Forwarding Database）：目的地址-所在VTEP IP地址的对照表，用于查找目的虚机所在的VTEP的IP地址。\n虚机IP地址-MAC地址对照表，用于响应本地虚机的ARP请求。\n\n\n\n隧道接口（Tunnel Port）10.0.1.31 Hypervisor上的br-tun上分别有两个GRE Tunnel端口和两个VxLAN Tunnel端口，分别连接目标Hypervisor 10.0.1.39和21。\n12345678910111213141516171819202122232425Bridge br-tun        fail_mode: secure        Port br-tun            Interface br-tun                type: internal        Port patch-int            Interface patch-int                type: patch                options: &#123;peer=patch-tun&#125;        Port &quot;vxlan-0a000127&quot;            Interface &quot;vxlan-0a000127&quot;                type: vxlan                options: &#123;df_default=&quot;true&quot;, in_key=flow, local_ip=&quot;10.0.1.31&quot;, out_key=flow, remote_ip=&quot;10.0.1.39&quot;&#125;        Port &quot;vxlan-0a000115&quot;            Interface &quot;vxlan-0a000115&quot;                type: vxlan                options: &#123;df_default=&quot;true&quot;, in_key=flow, local_ip=&quot;10.0.1.31&quot;, out_key=flow, remote_ip=&quot;10.0.1.21&quot;&#125;        Port &quot;gre-0a000127&quot;            Interface &quot;gre-0a000127&quot;                type: gre                options: &#123;df_default=&quot;true&quot;, in_key=flow, local_ip=&quot;10.0.1.31&quot;, out_key=flow, remote_ip=&quot;10.0.1.39&quot;&#125;        Port &quot;gre-0a000115&quot;            Interface &quot;gre-0a000115&quot;                type: gre                options: &#123;df_default=&quot;true&quot;, in_key=flow, local_ip=&quot;10.0.1.31&quot;, out_key=flow, remote_ip=&quot;10.0.1.21&quot;&#125;\n\n当有多个节点时，Neutron会建立一个Tunnel网。\n不使用l2 population建立隧道要使用GRE和VxLAN，管理员需要在ml2配置文件中配置local_ip（比如物理服务器的公网IP），并使用配置项tunnel_types指定要使用的隧道类型，即GRE或者VxLAN。当enable_tunneling = true时，Neutron ML2 Agent在启动时会建立Tunnel Bridge，默认为br-tun。接着，ML2 Agent会在br-tun上建立Tunnel Ports，作为GRE/VxLAN Tunnel的一端。\nOVS默认使用4789作为VxLAN Port。Neutron节点在该端口上监听来自所有源的UDP包。\n1234ss -lnupState      Recv-Q Send-Q        Local Address:Port          Peer Address:PortUNCONN     0      0                         *:4789                     *:*UNCONN     0      0                        :::4789                    :::*\n\nNeutron Tunnel数据流向Neutron中的数据流向是受Neutron添加在Integration Bridge和Tunnel Bridge中的OpenFlow Rules控制的，而且和l2 population直接相关。\nMTU问题VxLAN模式下虚机中mtu最大值为1450，也就是只能小于1450，大于这个值会导致Open vSwitch传输分片，进而导致虚机中数据包数据重传，从而导致网络性能下降。GRE模式下虚机mtu最大值为1462。\n计算方法如下：\n\nVxLAN mtu = 1500 - 20（IP头）- 8（UDP头）- 8（VxLAN头）- 14（以太网头）= 1450\nGRE mtu = 1500 - 20（IP头）- 8（GRE头）- 14（以太网头）= 1458\n\n可以配置Neutron DHCP组件，让虚拟机自动配置mtu。\n123456#/etc/neutron/dhcp_agent.ini[DEFAULT]dnsmasq_config_file = /etc/neutron/dnsmasq-neutron.conf#/etc/neutron/dnsmasq-neutron.confdhcp-option-force=26,1450或1458\n重启DHCP Agent，让虚拟机重新获取IP，然后使用ifconfig查看是否正确配置mtu。","dateCreated":"2019-09-19T17:04:53+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2019-09-19T17:04:53+08:00","description":"Neutron OpenvSwitch + GRE/VxLAN虚拟网络","headline":"Neutron OpenvSwitch + GRE/VxLAN虚拟网络","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron OpenvSwitch + GRE&#x2F;VxLAN虚拟网络">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Neutron OpenvSwitch + GRE&#x2F;VxLAN虚拟网络">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron OpenvSwitch + GRE&#x2F;VxLAN虚拟网络">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/images/overlay.png">
+<meta property="article:published_time" content="2019-09-19T09:04:53.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.963Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/images/overlay.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Neutron OpenvSwitch + GRE/VxLAN虚拟网络
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-09-19T17:04:53+08:00">
+	
+		    Sep 19, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Overlay%E7%BD%91%E7%BB%9C"><span class="toc-text">Overlay网络</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Overlay%E6%8A%80%E6%9C%AF%E6%A6%82%E8%BF%B0"><span class="toc-text">Overlay技术概述</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#GRE%E6%8A%80%E6%9C%AF"><span class="toc-text">GRE技术</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-text">应用场景</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%85%8D%E7%BD%AEGRE"><span class="toc-text">配置GRE</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%BF%87%E7%A8%8B"><span class="toc-text">过程</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#GRE%E7%89%B9%E7%82%B9"><span class="toc-text">GRE特点</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VxLAN%E6%8A%80%E6%9C%AF"><span class="toc-text">VxLAN技术</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#VxLAN%E4%B8%BB%E8%A6%81%E7%9A%84%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87"><span class="toc-text">VxLAN主要的网络设备</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#VxLAN%E4%B8%BB%E8%A6%81%E7%9A%84%E7%BB%84%E7%BD%91%E6%96%B9%E6%A1%88"><span class="toc-text">VxLAN主要的组网方案</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#VxLAN%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">VxLAN的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#VxLAN%E5%B0%86%E4%BA%8C%E5%B1%82%E6%95%B0%E6%8D%AE%E5%B8%A7%E5%B0%81%E8%A3%85%E4%B8%BAUDP%E5%8C%85"><span class="toc-text">VxLAN将二层数据帧封装为UDP包</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#VTEP%E5%AF%BB%E5%9D%80"><span class="toc-text">VTEP寻址</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#VxLAN%E7%BB%84%E7%BD%91"><span class="toc-text">VxLAN组网</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%B5%81%E5%90%91"><span class="toc-text">数据流向</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1"><span class="toc-text">负载均衡</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8A%80%E6%9C%AF%E5%AF%B9%E6%AF%94"><span class="toc-text">技术对比</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#VLAN%E5%92%8CVxLAN%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="toc-text">VLAN和VxLAN的对比</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#GRE%E5%92%8CVxLAN%E7%9A%84%E5%AF%B9%E6%AF%94"><span class="toc-text">GRE和VxLAN的对比</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E9%80%9A%E8%BF%87OVS%E5%AF%B9GRE%E5%92%8CVxLAN%E7%9A%84%E6%94%AF%E6%8C%81"><span class="toc-text">Neutron通过OVS对GRE和VxLAN的支持</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Open-vSwitch%E5%AE%9E%E7%8E%B0%E7%9A%84VxLAN-VTEP"><span class="toc-text">Open vSwitch实现的VxLAN VTEP</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%9A%A7%E9%81%93%E6%8E%A5%E5%8F%A3%EF%BC%88Tunnel-Port%EF%BC%89"><span class="toc-text">隧道接口（Tunnel Port）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%8D%E4%BD%BF%E7%94%A8l2-population%E5%BB%BA%E7%AB%8B%E9%9A%A7%E9%81%93"><span class="toc-text">不使用l2 population建立隧道</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron-Tunnel%E6%95%B0%E6%8D%AE%E6%B5%81%E5%90%91"><span class="toc-text">Neutron Tunnel数据流向</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#MTU%E9%97%AE%E9%A2%98"><span class="toc-text">MTU问题</span></a></li></ol></li></ol>
+
+<h3 id="Overlay网络"><a href="#Overlay网络" class="headerlink" title="Overlay网络"></a>Overlay网络</h3><h4 id="Overlay技术概述"><a href="#Overlay技术概述" class="headerlink" title="Overlay技术概述"></a>Overlay技术概述</h4><p>Overlay在网络技术领域，指的是一种网络架构上叠加的虚拟化技术模式，其大体框架是对基础网络不进行大规模修改的条件下，实现应用在网络上的承载，并能与其他网络业务分离，并且以基于IP的基础网络技术为主。Overlay技术是在现有的物理网络之上构建一个虚拟网络，上层应用只与虚拟网络相关。</p>
+<p>一个Overlay网络主要由三部分组成。</p>
+<ul>
+<li>边缘设备：是指与虚拟机直接相连接的设备。</li>
+<li>控制平面：主要负责虚拟隧道的建立维护以及主机可达性信息的通告。</li>
+<li>转发平面：承载Overlay报文的物理网络。</li>
+</ul>
+<p>当前主流的Overlay技术主要有VxLAN，GRE/NVGRE和STT。这三种二层Overlay技术，大体思路均是将以太网报文承载到某种隧道层面，差异性在于选择和构建的隧道的不同，而底层均是IP转发。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/overlay.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/overlay.png" alt=""></a></div>
+
+<h4 id="GRE技术"><a href="#GRE技术" class="headerlink" title="GRE技术"></a>GRE技术</h4><p>GRE（Generic Routeing Encapsulation，通用路由协议封装）协议，是一种IP-over-IP的隧道，由Cisco和Net-smiths等公司与1994年提交给IETF，它对部分网络层协议（IP）的数据报进行封装，使这些被封装的数据报能够在IPv4/IPv6网络中传输。其协议格式见<a target="_blank" rel="noopener" href="https://tools.ietf.org/html/rfc2784">RFC2784</a>。简单的说，GRE是一种协议封装的格式，它规定了如何用一种网络协议去封装另一种网络协议，很多网络设备都支持该协议。说直白点，就是GRE将普通的包（如IP包）封装了，又按照普通的IP包的路由方式进行路由，相当于IP包外面再封装一层GRE包。在本例子中，在GRE包外围实际上又有一层公网的IP包。</p>
+<p>GRE使用Tunnel（隧道）技术，数据抱在Tunnel的两端封装，并在这个通路上传输，到另一端的时候解封装。可以认为Tunnel是一个虚拟的点对点的连接。（实际Point To Point连接之后，加上路由协议及NAT技术，就可以吧两个隔绝及局域网连接在一起，就实现了Net To Net的互联）。一般GRE Tunnel是在多个网络设备（一般为路由器）之间建立。因为Linux服务具有路由转发的功能，当缺少专业的路由设备时，可以使用Linux服务器实现GRE Tunnel的建立。</p>
+<h5 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h5><p>办公网（LAN 192.168.1.0/24，并通过固定的公网IP上网）<br>IDC（LAN 10.1.1.0/24，并有多个公网IP，两者通过公网IP互联）</p>
+<p>这两个局域网相互隔离。但是在日常运维和研发过程中，需要在办公网络访问IDC网络。如果通过公网IP绕，既不方便，又不安全；拉专线是最稳定可靠的办法，但是成本高。</p>
+<h5 id="配置GRE"><a href="#配置GRE" class="headerlink" title="配置GRE"></a>配置GRE</h5><p>如果公司有多余的固定的公网IP或者路由器本身支持GRE，建议使用GRE方案。</p>
+<p>办公网络路由器（Linux服务器实现）：局域网IP：192.168.1.254，公网IP：180.1.1.1。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /usr/local/admin/gre.sh <span class="comment"># 并把脚本加入开机启动</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#! /bin/bash</span></span><br><span class="line">modprobe ip_gre <span class="comment"># 加载gre模块</span></span><br><span class="line"></span><br><span class="line">ip tunnel add office mode gre mode 110.2.2.2 <span class="built_in">local</span> 180.1.1.1 ttl 255 </span><br><span class="line"><span class="comment"># 使用公网IP建立Tunnel，名字叫 ‘office’的device，使用gre mode。</span></span><br><span class="line"><span class="comment"># 指定远端的IP是110.2.2.2，本地IP是180.1.1.1。</span></span><br><span class="line"><span class="comment"># 这里为了提高安全性，你可以配置iptables，公网IP只接受来自110.2.2.2的包，其他都drip掉。</span></span><br><span class="line"></span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> office up <span class="comment"># 启动device office</span></span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> office up mtu 1500 <span class="comment"># 设置mtu为1500</span></span><br><span class="line">ip addr add 192.912.192.2/24 dev office <span class="comment">#为office添加IP：192.192.192.2。</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/net/ipv4/ip_forward <span class="comment">#让服务器支持转发</span></span><br><span class="line">ip route add 10.1.1.0/24 dev office <span class="comment">#添加路由，含义是：到10.1.1.0/24的包，由office设备负责转发。</span></span><br><span class="line"></span><br><span class="line">iptables -t nat -A POSTROUTING -d 10.1.1.0/24 -j SNAT --to 192.192.192.2 </span><br><span class="line"><span class="comment"># 否则192.168.1.x等机器访问10.1.1.x网段不通。</span></span><br></pre></td></tr></table></figure>
+
+<p>IDC路由器（Linux服务器实现）：局域网IP：10.1.1.1，公网IP：110.2.2.2。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /usr/local/admin/gre.sh <span class="comment"># 并把脚本加入开机启动</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># !/bin/bash</span></span><br><span class="line">modprobe ip_gre <span class="comment"># 加载gre模块</span></span><br><span class="line"></span><br><span class="line">ip tunnel add office mode gre remote 180.1.1.1 <span class="built_in">local</span> 110.2.2.2 ttl 255</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> office up</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> office up mtu 1500</span><br><span class="line">ip addr add 192.192.192.1/24 dev office <span class="comment"># 为office添加IP：192.192.192.1</span></span><br><span class="line"><span class="built_in">echo</span> 1 &gt; /proc/sys/net/ipv4/ip_forward</span><br><span class="line">ip route add 10.1.1.0/24 dev office</span><br><span class="line"></span><br><span class="line">iptables -t nat -A POSTROUTING -s 192.192.192.2 -d 10.1.0.0/16 -j SNAT --to 10.1.1.1</span><br><span class="line"><span class="comment"># 否则192.168.1.x等机器访问10.1.1.x网段不通。</span></span><br><span class="line">iptables -A FORWARD -s 192.192.192.2 -m state --state NEW -m tcp -p tcp --dport 3306 -j drop</span><br><span class="line"><span class="comment"># 禁止直接访问线上的3306，防止内网被破坏。</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="过程"><a href="#过程" class="headerlink" title="过程"></a>过程</h5><ol>
+<li>GRE Tunnel的打通：这个过程就是双方建立Tunnel的过程。</li>
+<li>局域网路由å<ol>
+<li>主机A发送一个源地址为192.168.1.2，目的地址为10.1.1.2的包。</li>
+<li>封装过程<ol>
+<li>根据内网路由规则，可能是你的默认路由网关将之路由至192.168.1.254。</li>
+<li>192.168.1.254第一次封装包，增加GRE包头，说明包的目的地址192.192.192.1和源地址192.192.192.2。</li>
+<li>192.168.1.254第二次封装包，增加公网的包头（否则在公网上无法路由），说明包的目的地址110.2.2.2和180.1.1.1。</li>
+<li>192.168.1.254把所有到10.1.1.0/24的包，源地址都转换为从192.192.192.2出（SNAT）。</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>公网路由过程：经过N个路由设备，最终路由到110.2.2.2。</li>
+<li>拆包过程<ol>
+<li>B端的路由器检查是到达自己的IP，就开始拆包。</li>
+<li>拆包之后发现有GRE协议，就进一步拆包。</li>
+<li>拆包之后发现目的地址不是自己的内网IP，同时发现自己本地做了SNAT，就将源IP地址替换为10.1.1.1。</li>
+</ol>
+</li>
+<li>局域网路由<ol>
+<li>实际上从10.1.1.1出发的，到达目的为10.1.1.2的包，无需路由，直接在局域网内广播。10.1.1.2的机器确定是发送给自己的包，就接收。然后进一步处理。</li>
+</ol>
+</li>
+</ol>
+<h5 id="GRE特点"><a href="#GRE特点" class="headerlink" title="GRE特点"></a>GRE特点</h5><ul>
+<li><p>GRE的特点</p>
+<ul>
+<li>跨不同网络实现二次IP通信</li>
+<li>L3上面包装L3</li>
+<li>封装在IP报文中</li>
+<li>点对点隧道</li>
+</ul>
+</li>
+<li><p>GRE的优点</p>
+<ul>
+<li>不用变更底层网络架构重建L2、L3通信</li>
+<li>实现不同Host之间网络Guest互通</li>
+<li>方便Guest迁移</li>
+<li>支持网络数量扩大</li>
+</ul>
+</li>
+<li><p>GRE的缺点</p>
+<ul>
+<li>Tunnel数量问题<br>GRE是一种点对点（Point To Point）标准。Neutron中，所有计算节点和网络节点之间都会建立GRE Tunnel。当节点不多的时候，这种组网没什么问题，但是，当数据中心有大量的节点的时候，就会占用大量资源。使用标准GRE的话，将会有7亿8千万个Tunnel。</li>
+<li>扩大的广播组<br>GRE不支持组播，因此一个网络（同一个GRE Tunnel ID）中的一个虚机发出一个广播帧后，GRE会将其广播到所有与该节点有隧道连接的节点。</li>
+<li>增加了GRE表头会导致本应由交换机硬件来分片的变成由软件来分片（STT技术可以弥补这一点）。</li>
+</ul>
+<h4 id="VxLAN技术"><a href="#VxLAN技术" class="headerlink" title="VxLAN技术"></a>VxLAN技术</h4><p>VxLAN技术主要用于封装、转发二层报文。VxLAN全称Virtual Extensible Local Area Network，简单来说就是扩充了的VLAN，其使得多个三层连接的网络可以表现的和直接通过一台一台物理交换机连接配置而成的网络一样处在一个LAN中。</p>
+</li>
+</ul>
+<p>它的实现机制是，将二层报文加上个VxLAN Header，封装在一个UDP包中进行传输。VxLAN Header会包括一个24位的ID（成为VNI），类似于VLAN ID或者GRE的Tunnel ID。GRE一般是通过路由器来进行GRE协议的封装和解封的，在VxLAN中这类封装和解封的组件有个专有的名字叫VTEP。相比起VLAN来说，好处在于其突破了VLAN只有4000+子网的限制，同时架设在UDP协议上后其扩展性提高了不少（因为UDP是高层协议，屏蔽了底层差异，屏蔽了二层差异）。</p>
+<h5 id="VxLAN主要的网络设备"><a href="#VxLAN主要的网络设备" class="headerlink" title="VxLAN主要的网络设备"></a>VxLAN主要的网络设备</h5><p>VxLAN网络设备主要有三种角色，分别是：</p>
+<ol>
+<li><p>VTEP（VxLAN Tunnel End Point）<br>直接与终端设备比如虚机连接设备，负责原始以太报文的VxLAN封装和解封装，形态可以是虚拟交换机比如Open vSwitch，也可以是物理交换机。</p>
+</li>
+<li><p>VxLAN GW（VxLAN Gateway/二层网关）<br>用于终结VxLAN，将VxLAN报文转换成对应的传统二层网络送到传统以太网络，适用于VxLAN网络内的服务器与远端终端或远端服务器的二层互联。如在不同网络中做虚拟机迁移时，当业务需要传统网络中服务器与VxLAN网络中服务器在同一个二层中，此时需要使用VxLAN二层网关打通VxLAN网络和二层网络。</p>
+</li>
+</ol>
+<p>VxLAN 10网络中的服务器要和IP网络中VLAN 100的业务二层相通，此时就需要通过VxLAN的二层网关进行互联。VxLAN 10的报文进入IP网络的流量，剥掉VxLAN的报文头，根据VxLAN的标签查询对应的VxLAN网络（此处对应的是VLAN 100），并据此在二层报文中加入  VLAN的802.1Q报文送入IP网络；相反VLAN 100的业务流量进入VxLAN也需要根据VxLAN获知对应的VxLAN网络编号，根据目的MAC地址获知远端VTEP的IP地址，基于以上信息进行VxLAN封装后送入对应的VxLAN网络。可见，它除了具备VTEP的功能外，还负责VLAN报文与VxLAN报文之间的映射和转发，主要以物理交换机为主。</p>
+<ol start="3">
+<li>VxLAN IP GW（VxLAN IP Gateway/三层网关）<br>用于终结VxLAN网络，将VxLAN报文转换成传统三层报文送至IP网络，适用于VxLAN网络内服务器与远端终端之间的三层互访；同时也用作不同VxLAN网络互通。</li>
+</ol>
+<p>当服务器访问外部网络时，VxLAN三层网关剥离对应VxLAN报文封装，送入IP网络；当外部终端访问VxLAN内的服务器时，VxLAN根据目的IP地址确定所属VxLAN及所属的VTEP，加上对应的VxLAN报文头封装进入VxLAN网络。VxLAN之间的互访流量于此类似，VxLAN网关剥离VxLAN报文头，并基于目的IP地址确定所属VxLAN及所属的VTEP，重新封装后送入另外的VxLAN网络。可见，具有VxLAN GW的所有功能，此外，还负责处理不同VxLAN之间的报文通信，同时也是数据中心内部服务去往发布业务的出口，主要以高性能物理交换机为主。</p>
+<div class="alert info no-icon"><p>可见，无论是二层还是三层网关，均涉及到查表转发、VxLAN报文的解封和封装操作。从转发效率和执行性能来看，都只能在物理网络设备上实现，并且传统设备无法支持，必须通过新的硬件形式来实现。以上设备均是物理网络的边缘设备，而由三种边缘设备构成了VxLAN Overlay网络，对于应用系统来说，只与这三种设备有关，而与底层物理网络无关。</p>
+</div>
+
+<h5 id="VxLAN主要的组网方案"><a href="#VxLAN主要的组网方案" class="headerlink" title="VxLAN主要的组网方案"></a>VxLAN主要的组网方案</h5><p>Overlay网络架构就纯大二层的实现来说，可分为网络Overlay、主机Overlay以及两种方式同时部署的混合Overlay。Overlay网络与外部网络数据连通也有多种实现模式，并且对于关键网络部件有不同的技术要求。</p>
+<ol>
+<li><p>网络Overlay方案：使用物理交换机做VxLAN网络设备<br>所有的物理接入交换机支持VxLAN，物理服务器支持SR-IOV功能，使虚拟机通过SR-IOV技术直接与物理交换机相连，虚拟机的流量在接入交换机上进行VxLAN报文的封装和卸载，对于非虚拟化服务器，直接连接支持VxLAN的接入交换机，服务器流量在接入交换机上进行VxLAN报文封装和卸载；当VxLAN网络需要与VLAN网络通信时，采用物理交换机做VxLAN GW，实现VxLAN网络主机与VLAN网络主机与VLAN网络主机的通信；采用高端交换机做VxLAN IP GW，实现VxLAN网络与WAN以及Internet的互联。</p>
+</li>
+<li><p>主机Overlay方案：使用服务器上的软件实现VxLAN网络设备<br>在主机Overlay方案中，VTEP、VxLAN GW、VxLAN IP GW均通过安装在服务器上的软件实现。</p>
+</li>
+</ol>
+<ul>
+<li>vSwitch实现VTEP功能，完成VxLAN报文的封装和解封装。</li>
+<li>vFW等实现VxLAN GW功能，实现VxLAN网络与VLAN网络、物理服务器的互通。</li>
+<li>vRouter作为VxLAN IP GW，实现VxLAN网络与Internet和WAN的互联。<br>在本组网中，由于所有VxLAN报文的封装卸载都通过软件实现，会占用部分服务器资源，当访问量大时，vRouter会成为系统瓶颈。</li>
+</ul>
+<ol start="3">
+<li>混合Overlay组网方案<br>上述两种组网方案中，网络Overlay方案与虚拟机相连，需要通过一些特殊的要求或技术实现虚拟机与VTEP的对接，组网不够灵活，但是主机Overlay方案与传统网络互通时，连接也比较复杂，且通过软件实现VxLAN IP GW也会成为整个网络的瓶颈，所以最理想的组网方案应该是一个结合了网络Overlay与主机Overlay两种方案优势的混合Overlay方案。</li>
+</ol>
+<p>通过vSwitch实现虚拟机的VTEP，通过物理交换机实现物理服务器的VTEP，通过物理交换机实现VxLAN GW和VxLAN IP GW；混合式Overlay组网方案对虚拟机和物理服务器都能很好的兼容，同时通过专业的硬件交换机实现VxLAN IP GW从而承载超大规模的流量转发，是目前应用比较广泛的组网方案。<br>VxLAN网络中，虚机之间的三种互访方式：</p>
+<ol>
+<li>相同VxLAN内VM之间互访：<ol>
+<li>单播报文在VTEP处查找目的MAC地址，确定对应的VTEP主机IP地址。</li>
+<li>根据目的和源VTEP主机IP地址封装VxLAN报头后发送给IP核心网。</li>
+<li>IP核心内部根据路由转发该UDP报文给目的VTEP。</li>
+<li>目的VTEP解封装VxLAN报文头后按照目的MAC转发报文给目的VM。</li>
+</ol>
+</li>
+<li>不同VxLAN内VM之间需要互访经过VxLAN IP GW完成。<ol>
+<li>在VxLAN IP GW上匹配VxLAN Mapping表项进行转发，报文封装模式同同一VxLAN内VM一致。</li>
+</ol>
+</li>
+<li>VxLAN VM与VLAN VM之间互访，通过VxLAN GW来完成。<ol>
+<li>VxLAN报文先通过VxLAN内部转发模式对报文进行封装，目的IP为VxLAN GW。</li>
+<li>在VxLAN GW把VxLAN报文解封装后，匹配二层转发表项进行转发，VLAN到VxLAN的访问流程正好相反。</li>
+</ol>
+</li>
+</ol>
+<h5 id="VxLAN的实现"><a href="#VxLAN的实现" class="headerlink" title="VxLAN的实现"></a>VxLAN的实现</h5><h6 id="VxLAN将二层数据帧封装为UDP包"><a href="#VxLAN将二层数据帧封装为UDP包" class="headerlink" title="VxLAN将二层数据帧封装为UDP包"></a>VxLAN将二层数据帧封装为UDP包</h6><p>特点：</p>
+<ul>
+<li>VNID：24-bits，最大16777216。每个不同的24-bits VNI代表一个VxLAN网段。只有同一个网段中的虚机才能互相通信。</li>
+<li>VxLAN Port：目的UDP端口，默认使用4789端口。可以自行配置。</li>
+<li>两个VTEP之间的VxLAN Tunnels是无状态的。</li>
+<li>VTEP可以在虚拟交换机上，物理交换机或者物理服务器上通过软件或者硬件实现。</li>
+<li>使用多播来传送未知目的的广播或者多播帧。</li>
+<li>VTEP不可以对VxLAN包分段。</li>
+</ul>
+<h6 id="VTEP寻址"><a href="#VTEP寻址" class="headerlink" title="VTEP寻址"></a>VTEP寻址</h6><p>一个VTEP可以管理多个VxLAN隧道，每个隧道通向不同的目标。那VTEP接收到一个二层帧后，它怎么根据二层帧中的目的MAC地址找到对应的VxLAN隧道呢？VxLAN利用了多播和MAC地址学习技术。如果它收到的帧是广播帧比如ARP帧，也会经过同样的过程。</p>
+<p>每个VTEP包含两个VxLAN隧道。VTEP-1收到二层ARP帧1（A要查找B的MAC地址）后，发出一个目的IP地址为VTEP多播组239.1.1.1的VxLAN封装UDP包。该包会到达VTEP-2和VTEP-3。VTEP-3收到后，因为目的IP地址不在它的范围内，丢弃该包，但是学习到一条路径：MAC-A, VNI 10, VTEP-1-IP，它知道到达A需要经过VTEP-1了。VTEP-2收到后，发现目的IP地址时机器B，交给B，同时添加学习到的规则：MAC-A, VNI 10, VTEP-1-IP。B发回响应帧后，VTEP-2直接使用VTEP-1的IP直接将它封装成三层包，通过物理网络直接到达VTEP-1，再由它交给A。VTEP-1也学习到了一条规则：MAC-B, VNI 10, VTEP-2-IP。</p>
+<h6 id="VxLAN组网"><a href="#VxLAN组网" class="headerlink" title="VxLAN组网"></a>VxLAN组网</h6><ul>
+<li>逻辑VxLAN Tunnel：建立在物理的VxLAN网络之上，向虚机提供虚拟的二层网络，以VNI做区分。</li>
+<li>VTEP（VxLAN Tunnel End）：对虚机的二层包封装和解封。</li>
+</ul>
+<h6 id="数据流向"><a href="#数据流向" class="headerlink" title="数据流向"></a>数据流向</h6><p>发送端</p>
+<ol>
+<li>计算目的地址：Linux内核在发送之前会检查数据帧的目的MAC地址，需要选择目的VTEP。<ol>
+<li>如果是广播或者多播地址，则使用其VNI对应的VxLAN Group组播地址，该多播组内所有的VTEP将收到该多播包。</li>
+<li>如果是单播地址，如果Linux的MAC表中包含该MAC地址对应的目的VTEP地址，则使用它。</li>
+<li>如果是单播地址，但是Linux的MAC表中不包含该MAC地址对应的目的VTEP地址，那么使用该VNI对应的组播地址。</li>
+</ol>
+</li>
+<li>添加Headers：依次添加VxLAN Header，UDP Header，IP Header。</li>
+</ol>
+<p>接收端</p>
+<ol>
+<li>UDP监听：因为VxLAN利用了UDP，所以它在接收的时候势要有一个UDP Server在监听某个端口，这个VxLAN初始化的时候完成的。</li>
+<li>IP剥离：一层一层剥离出原始的数据帧，交给TCP/IP栈，由它交给虚机。</li>
+</ol>
+<h6 id="负载均衡"><a href="#负载均衡" class="headerlink" title="负载均衡"></a>负载均衡</h6><p>组成VxLAN隧道的三层路由器在有多条ECMP（Equal-cost Multi-path Routing）路径通往目的VTEP时往往会使用基于每个包（per-package）的负载均衡（Load Balancing）。因为两个VTEP之间的所有数据包具有相同的Outer Source and Destination IP Address和UDP Destination Port，因此ECMP只能使用Source UDP Port。VTEP往往将其设置为原始数据帧的一些参数的Hash值，这样ECMP就可以使用该Hash值，来区分Tunnel之间的网络流量了。</p>
+<h4 id="技术对比"><a href="#技术对比" class="headerlink" title="技术对比"></a>技术对比</h4><h5 id="VLAN和VxLAN的对比"><a href="#VLAN和VxLAN的对比" class="headerlink" title="VLAN和VxLAN的对比"></a>VLAN和VxLAN的对比</h5><h5 id="GRE和VxLAN的对比"><a href="#GRE和VxLAN的对比" class="headerlink" title="GRE和VxLAN的对比"></a>GRE和VxLAN的对比</h5><h3 id="Neutron通过OVS对GRE和VxLAN的支持"><a href="#Neutron通过OVS对GRE和VxLAN的支持" class="headerlink" title="Neutron通过OVS对GRE和VxLAN的支持"></a>Neutron通过OVS对GRE和VxLAN的支持</h3><p>因为OVS对两种协议的实现机制，Neutron对两个协议的支持的代码和配置几乎完全一致的，除了一些细小差别，比如名称，以及个别配置比如VxLAN的UDP端口等。OVS在计算或者网络节点上的br-tun上建立多个Tunnel Port，和别的节点上的Tunnel Port之间建立点对点的GRE/VxLAN Tunnel。Neutron GRE/VxLAN Network使用segmentation_id（VNI或者GRE Tunnel ID）作为其网络标识，类似于VLAN ID，来实现不同网络内网络流量之间的隔离。</p>
+<h4 id="Open-vSwitch实现的VxLAN-VTEP"><a href="#Open-vSwitch实现的VxLAN-VTEP" class="headerlink" title="Open vSwitch实现的VxLAN VTEP"></a>Open vSwitch实现的VxLAN VTEP</h4><p>VTEP不止实现包的封装和解封，还包括：</p>
+<ol>
+<li>ARP解析：需要尽量高效的方式响应本地虚机的ARP请求。</li>
+<li>目的VTEP地址搜索：根据目的虚机的MAC地址，找到它所在机器的VTEP的IP地址。</li>
+</ol>
+<p>通常的实现方式包括：</p>
+<ol>
+<li>使用L3多播。</li>
+<li>使用SDN控制器（Controller）来提供集中式的MAC/IP对照表。</li>
+<li>在VTEP本地运行一个代理（Agent），接收（MAC，IP，VTEP IP）数据，并提供给VTEP。</li>
+</ol>
+<p>Open Vswitch如何实现这些功能需求。</p>
+<ol>
+<li>在没有启用l2 population的情况下，配置了多播就使用多播，没有的话就使用广播。</li>
+<li>在启用l2 population的情况下，在虚机boot后，通过MQ向用于同网络虚机的节点时的l2 population driver发送两种数据，再将数据加入到OVS流表。<ol>
+<li>FDB（Forwarding Database）：目的地址-所在VTEP IP地址的对照表，用于查找目的虚机所在的VTEP的IP地址。</li>
+<li>虚机IP地址-MAC地址对照表，用于响应本地虚机的ARP请求。</li>
+</ol>
+</li>
+</ol>
+<h4 id="隧道接口（Tunnel-Port）"><a href="#隧道接口（Tunnel-Port）" class="headerlink" title="隧道接口（Tunnel Port）"></a>隧道接口（Tunnel Port）</h4><p>10.0.1.31 Hypervisor上的br-tun上分别有两个GRE Tunnel端口和两个VxLAN Tunnel端口，分别连接目标Hypervisor 10.0.1.39和21。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">Bridge</span> <span class="string">br-tun</span></span><br><span class="line">        <span class="attr">fail_mode:</span> <span class="string">secure</span></span><br><span class="line">        <span class="string">Port</span> <span class="string">br-tun</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">br-tun</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">internal</span></span><br><span class="line">        <span class="string">Port</span> <span class="string">patch-int</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">patch-int</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">patch</span></span><br><span class="line">                <span class="attr">options:</span> &#123;<span class="string">peer=patch-tun</span>&#125;</span><br><span class="line">        <span class="string">Port</span> <span class="string">&quot;vxlan-0a000127&quot;</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">&quot;vxlan-0a000127&quot;</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">vxlan</span></span><br><span class="line">                <span class="attr">options:</span> &#123;<span class="string">df_default=&quot;true&quot;</span>, <span class="string">in_key=flow</span>, <span class="string">local_ip=&quot;10.0.1.31&quot;</span>, <span class="string">out_key=flow</span>, <span class="string">remote_ip=&quot;10.0.1.39&quot;</span>&#125;</span><br><span class="line">        <span class="string">Port</span> <span class="string">&quot;vxlan-0a000115&quot;</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">&quot;vxlan-0a000115&quot;</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">vxlan</span></span><br><span class="line">                <span class="attr">options:</span> &#123;<span class="string">df_default=&quot;true&quot;</span>, <span class="string">in_key=flow</span>, <span class="string">local_ip=&quot;10.0.1.31&quot;</span>, <span class="string">out_key=flow</span>, <span class="string">remote_ip=&quot;10.0.1.21&quot;</span>&#125;</span><br><span class="line">        <span class="string">Port</span> <span class="string">&quot;gre-0a000127&quot;</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">&quot;gre-0a000127&quot;</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">gre</span></span><br><span class="line">                <span class="attr">options:</span> &#123;<span class="string">df_default=&quot;true&quot;</span>, <span class="string">in_key=flow</span>, <span class="string">local_ip=&quot;10.0.1.31&quot;</span>, <span class="string">out_key=flow</span>, <span class="string">remote_ip=&quot;10.0.1.39&quot;</span>&#125;</span><br><span class="line">        <span class="string">Port</span> <span class="string">&quot;gre-0a000115&quot;</span></span><br><span class="line">            <span class="string">Interface</span> <span class="string">&quot;gre-0a000115&quot;</span></span><br><span class="line">                <span class="attr">type:</span> <span class="string">gre</span></span><br><span class="line">                <span class="attr">options:</span> &#123;<span class="string">df_default=&quot;true&quot;</span>, <span class="string">in_key=flow</span>, <span class="string">local_ip=&quot;10.0.1.31&quot;</span>, <span class="string">out_key=flow</span>, <span class="string">remote_ip=&quot;10.0.1.21&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当有多个节点时，Neutron会建立一个Tunnel网。</p>
+<h4 id="不使用l2-population建立隧道"><a href="#不使用l2-population建立隧道" class="headerlink" title="不使用l2 population建立隧道"></a>不使用l2 population建立隧道</h4><p>要使用GRE和VxLAN，管理员需要在ml2配置文件中配置local_ip（比如物理服务器的公网IP），并使用配置项tunnel_types指定要使用的隧道类型，即GRE或者VxLAN。当enable_tunneling = true时，Neutron ML2 Agent在启动时会建立Tunnel Bridge，默认为br-tun。接着，ML2 Agent会在br-tun上建立Tunnel Ports，作为GRE/VxLAN Tunnel的一端。</p>
+<p>OVS默认使用4789作为VxLAN Port。Neutron节点在该端口上监听来自所有源的UDP包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ss -lnup</span><br><span class="line">State      Recv-Q Send-Q        Local Address:Port          Peer Address:Port</span><br><span class="line">UNCONN     0      0                         *:4789                     *:*</span><br><span class="line">UNCONN     0      0                        :::4789                    :::*</span><br></pre></td></tr></table></figure>
+
+<h4 id="Neutron-Tunnel数据流向"><a href="#Neutron-Tunnel数据流向" class="headerlink" title="Neutron Tunnel数据流向"></a>Neutron Tunnel数据流向</h4><p>Neutron中的数据流向是受Neutron添加在Integration Bridge和Tunnel Bridge中的OpenFlow Rules控制的，而且和l2 population直接相关。</p>
+<h4 id="MTU问题"><a href="#MTU问题" class="headerlink" title="MTU问题"></a>MTU问题</h4><p>VxLAN模式下虚机中mtu最大值为1450，也就是只能小于1450，大于这个值会导致Open vSwitch传输分片，进而导致虚机中数据包数据重传，从而导致网络性能下降。GRE模式下虚机mtu最大值为1462。</p>
+<p>计算方法如下：</p>
+<ul>
+<li>VxLAN mtu = 1500 - 20（IP头）- 8（UDP头）- 8（VxLAN头）- 14（以太网头）= 1450</li>
+<li>GRE mtu = 1500 - 20（IP头）- 8（GRE头）- 14（以太网头）= 1458</li>
+</ul>
+<p>可以配置Neutron DHCP组件，让虚拟机自动配置mtu。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#/etc/neutron/dhcp_agent.ini</span></span><br><span class="line">[DEFAULT]</span><br><span class="line">dnsmasq_config_file = /etc/neutron/dnsmasq-neutron.conf</span><br><span class="line"></span><br><span class="line"><span class="comment">#/etc/neutron/dnsmasq-neutron.conf</span></span><br><span class="line">dhcp-option-force=26,1450或1458</span><br></pre></td></tr></table></figure>
+<p>重启DHCP Agent，让虚拟机重新获取IP，然后使用ifconfig查看是否正确配置mtu。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/25/OpenStack-Senlin%E9%9B%86%E7%BE%A4%E5%8D%B3%E6%9C%8D%E5%8A%A1/"
+                    data-tooltip="OpenStack Senlin集群即服务"
+                    aria-label="PREVIOUS: OpenStack Senlin集群即服务"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/18/Neutron-OpenvSwitch-VLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络"
+                    aria-label="NEXT: Neutron OpenvSwitch + VLAN 虚拟网络"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN虚拟网络/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/25/OpenStack-Senlin%E9%9B%86%E7%BE%A4%E5%8D%B3%E6%9C%8D%E5%8A%A1/"
+                    data-tooltip="OpenStack Senlin集群即服务"
+                    aria-label="PREVIOUS: OpenStack Senlin集群即服务"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/18/Neutron-OpenvSwitch-VLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络"
+                    aria-label="NEXT: Neutron OpenvSwitch + VLAN 虚拟网络"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/&amp;title=Neutron OpenvSwitch + GRE/VxLAN虚拟网络"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/19/Neutron-OpenvSwitch-GRE-VxLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

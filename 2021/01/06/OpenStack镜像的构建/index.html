@@ -1,0 +1,881 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack镜像的构建 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Trove,镜像">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"OpenStack镜像的构建\n\n\n\n\n概述OpenStack镜像的构建有许多种方法，可以直接利用别人构建好的镜像，也可以手动构建，也可以使用镜像构建工具实现镜像构建的自动化，这里主要讲后面两种。\n获取镜像关于如何获取镜像，OpenStack官网上已经说的足够清楚了，这里就不赘述了，可以直接去官网查看。\n手动构建镜像这里以构建centos 7的镜像为例子，我的环境也是centos7。\n1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162636465666768697071yum -y install qemu-kvm libvirt virt-install bridge-utilsmodprobe kvm# make sure modules are loadedlsmod | grep kvmsystemctl start libvirtdsystemctl enable libvirtdvirt-install \\--name centos7 \\--ram 1024 \\--disk path=/var/kvm/images/centos7.img,size=30 \\--vcpus 1 \\--os-type linux \\--os-variant centos7.0 \\--network bridge=br0 \\--graphics none \\--console pty,target_type=serial \\--location &#x27;https://mirrors.huaweicloud.com/centos/7/os/x86_64/&#x27; \\--extra-args &#x27;console=ttyS0,115200n8 serial&#x27;dracut-initqueue[744]: Warning: dracut-initqueue timeout - starting timeout scriptsvirt-install \\--name centos7 \\--ram 1024 \\--disk path=/var/kvm/images/centos7.img,format=qcow2\\--vcpus 1 \\--os-type linux \\--os-variant rhel7 \\--network bridge=br0 \\--graphics none \\--console pty,target_type=serial \\--location &#x27;https://mirrors.huaweicloud.com/centos/7/os/x86_64/&#x27; \\--extra-args &#x27;console=ttyS0,115200n8 serial&#x27;virt-install \\--name centos7 \\--ram 1024 \\--disk path=/var/kvm/images/centos7.img,size=30 \\--vcpus 1 \\--os-type linux \\--os-variant rhel7 \\--network bridge=br0 \\--graphics none \\--console pty,target_type=serial \\--location &#x27;http://ftp.iij.ad.jp/pub/linux/centos/7/os/x86_64/&#x27; \\--extra-args &#x27;console=ttyS0,115200n8 serial&#x27;virt-install \\--name centos7 \\--ram 1024 \\--disk path=/var/kvm/images/centos7.img,format=qcow2 \\--vcpus 1 \\--os-type linux \\--os-variant rhel7 \\--graphics none \\--console pty,target_type=serial \\--location=/var/kvm/images/CentOS-7-x86_64-NetInstall-2009.iso \\--extra-args &#x27;console=ttyS0,115200n8 serial&#x27;virt-install --virt-type kvm --name centos --ram 1024 \\  --disk /var/kvm/images/centos.qcow2,format=qcow2 \\  --vcpus 1 \\  --network network=default \\  --graphics vnc,listen=0.0.0.0 --noautoconsole \\  --os-type=linux --os-variant=centos7.0 \\  --location=/var/kvm/images/CentOS-7-x86_64-NetInstall-2009.iso\n\ndiskimage-builder（简称为DIB）是一个用于自动构建自定义的操作系统镜像的工具，以便在云和其他环境中使用。\n构建docker容器利用docker容器来搭建镜像的环境，这里选择centos镜像，同时将本地目录和容器内的文件目录做一个映射。\n1docker run -itd --privileged=true --name centos -v $PWD:/root centos:7 /sbin/init\n\n\n安装依赖环境进入容器内安装DIB的依赖环境。\n12345docker exec -it centos bashyum updateyum install -y epel-release yum install -y python3 git sudo        # DIB需要Python3支持pip3 install -U pip setuptools wheel\n\n安装qemu-img和kpartx。\n12apt-get install qemu-utils kpartx squashfs-tools e4fsprogs # ubuntuyum install -y qemu-img kpartx squashfs-tools e4fsprogs  # centos\n\nDIB从github将DIB下载下来。\n1git clone https://github.com/openstack/diskimage-builder.git\n\n\n切换到最近的tag上，我这里是3.7.0。\n12cd diskimge-buildergit checkout -b v3.7.0 3.7.0\n\n\n设置虚环境\n12pip install virtualenvmkdir venv &amp;&amp; cd venv &amp;&amp; virtualenv -p /usr/bin/python3 diskimage-builder\n\n\n安装diskimage-builder。\n1cd /root/diskimage-builder &amp;&amp; /root/venv/diskimage-builder/bin/pip install -e .\n\n测试1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859606162[root@centos-linux ~]# disk-image-create -hUsage: disk-image-create [OPTION]... [ELEMENT]...Options:    -a i386|amd64|armhf|arm64 -- set the architecture of the image(default amd64)    -o imagename -- set the imagename of the output image file(default image)    -t qcow2,tar,tgz,squashfs,vhd,docker,aci,raw -- set the image types of the output image files (default qcow2)       File types should be comma separated. VHD outputting requires the vhd-util       executable be in your PATH. ACI outputting requires the ACI_MANIFEST       environment variable be a path to a manifest file.    -x -- turn on tracing (use -x -x for very detailed tracing).    -u -- uncompressed; do not compress the image - larger but faster    -c -- clear environment before starting work    --logfile -- save run output to given logfile (implies DIB_QUIET=1)    --checksum -- generate MD5 and SHA256 checksum files for the created image    --image-size size -- image size in GB for the created image    --image-extra-size size -- extra image size in GB for the created image    --image-cache directory -- location for cached images(default ~/.cache/image-create)    --max-online-resize size -- max number of filesystem blocks to support when resizing.       Useful if you want a really large root partition when the image is deployed.       Using a very large value may run into a known bug in resize2fs.       Setting the value to 274877906944 will get you a 1PB root file system.       Making this value unnecessarily large will consume extra disk space       on the root partition with extra file system inodes.    --min-tmpfs size -- minimum size in GB needed in tmpfs to build the image    --mkfs-journal-size -- filesystem journal size in MB to pass to mkfs.    --mkfs-options -- option flags to be passed directly to mkfs.       Options should be passed as a single string value.    --no-tmpfs -- do not use tmpfs to speed image build    --offline -- do not update cached resources    --qemu-img-options -- option flags to be passed directly to qemu-img.       Options need to be comma separated, and follow the key=value pattern.    --root-label label -- label for the root filesystem.  Defaults to &#x27;cloudimg-rootfs&#x27;.    --ramdisk-element -- specify the main element to be used for building ramdisks.       Defaults to &#x27;ramdisk&#x27;.  Should be set to &#x27;dracut-ramdisk&#x27; for platforms such       as RHEL and CentOS that do not package busybox.    --install-type -- specify the default installation type. Defaults to &#x27;source&#x27;. Set to &#x27;package&#x27; to use package based installations by default.    --docker-target -- specify the repo and tag to use if the output type is docker. Defaults to the value of output imagename    -n skip the default inclusion of the &#x27;base&#x27; element    -p package[,p2...] [-p p3] -- extra packages to install in the image.  Runs once, after &#x27;install.d&#x27; phase.  Can be specified multiple times    -h|--help -- display this help and exit    --version -- display version and exitEnvironment Variables:  (this is not a complete list)  * ELEMENTS_PATH: specify external locations for the elements.  As for $PATH  * DIB_NO_TIMESTAMP: no timestamp prefix on output.  Useful if capturing output  * DIB_QUIET: 1=do not output log output to stdout; 0=always ouptut to stdout.  See --logfileNOTE: At least one distribution root element must be specified.NOTE: If using the VHD output format you need to have a patched version of vhd-util installed for the image      to be bootable. The patch is available here: https://github.com/emonty/vhd-util/blob/master/debian/patches/citrix      and a PPA with the patched tool is available here: https://launchpad.net/~openstack-ci-core/+archive/ubuntu/vhd-utilExamples:    disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu    export ELEMENTS_PATH=~/source/tripleo-image-elements/elements    disk-image-create -a amd64 -o fedora-amd64-heat-cfntools vm fedora heat-cfntools\n\n创建ubuntu镜像。\n1/root/venv/diskimage-builder/bin/disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu\n\n高级ElementsDIB中的elements\nDIB中有大量的元件。DIB的元件在diskimage-builder项目中的/diskimage_builder/elements的目录下。\n自定义elements可以自行编写elements来满足构建镜像的要求。\n12345678910111213#!/bin/bashset -eset -o xtracesource $_LIB/die[ -n &quot;$TMP_HOOKS_PATH&quot; ] || die &quot;Temp hook path not set&quot;[ -n &quot;$HOST_USERNAME&quot; ] || die &quot;HOST_USERNAME not set&quot;cp -r $&#123;PATH_TROVE&#125; $&#123;TMP_HOOKS_PATH&#125;/REQUIREMENTS_FILE=$&#123;TROVESTACK_SCRIPTS&#125;/files/requirements/centos-requirements.txtsudo -Hiu $&#123;HOST_USERNAME&#125; dd if=$&#123;REQUIREMENTS_FILE&#125; of=$&#123;TMP_HOOKS_PATH&#125;/requirements.txt\n\n\nTrove中的elements\n\n除了DIB提供的元件，Trove也提供自己所支持的数据库的元件。可以在trove项目下的integration/scripts/files/elements中找到trove的相关元件。\nTrove镜像构建下载Trove从github上将trove项目下载到本地，位置和DIB存放的一致，都在/root下。\n1git clone https://git.openstack.org/openstack/trove.git\n\n设置变量123456789101112131415161718192021222324252627282930313233343536373839404142434445464748#!/bin/shexport DIB_DISTRIBUTION_MIRROR=http://mirrors.huaweicloud.com/centosexport DIB_CLOUD_IMAGES=http://mirrors.nju.edu.cn/centos-cloud/centos/7/imagesexport DIB_RELEASE=7export DIB_YUM_REPO_CONF=/home/wkt/projects/CentOS-Base.repoexport DIB_EPEL_MIRROR=https://mirrors.huaweicloud.com/epel/export HOST_USERNAME=rootexport TMP_HOOKS_PATH=export HOST_SCP_USERNAMEexport GUEST_USERNAMEexport CONTROLLER_IPexport TROVESTACK_SCRIPTS=/home/wkt/projects/boncloud-trove/integration/scriptsexport SERVICE_TYPE=redisexport PATH_TROVE=/home/wkt/projects/boncloud-troveexport ESCAPED_PATH_TROVEexport SSH_DIRexport GUEST_LOGDIRexport ESCAPED_GUEST_LOGDIRexport DATASTORE_PKG_LOCATIONexport BRANCH_OVERRIDEexport DIB_CLOUD_INIT_DATASOURCES=&quot;ConfigDrive, OpenStack&quot;export PATH_DISKIMAGEBUILDER=/home/wkt/projects/diskimage-builder/diskimage_builderexport PATH_TRIPLEO_ELEMENTS=/home/wkt/projects/tripleo-image-elementsexport ELEMENTS_PATH=$TROVESTACK_SCRIPTS/files/elementsexport ELEMENTS_PATH+=:$PATH_DISKIMAGEBUILDER/elementsexport ELEMENTS_PATH+=:$PATH_TRIPLEO_ELEMENTS/elementsexport DIB_APT_CONF_DIR=/etc/apt/apt.conf.dexport DIB_CLOUD_INIT_ETC_HOSTS=trueexport DIB_DEV_USER_USERNAME=export DIB_DEV_USER_PASSWORD=export DIB_DEV_USER_PWDLESS_SUDOexport DIB_CLOUD_INIT_ALLOW_SSH_PWAUTH=trueexport DIB_ROOT_PASSWORD=199412QEMU_IMG_OPTIONS=&quot;--qemu-img-options compat=1.1&quot;VM=centos-amd64-redis-5-0-10DISTRO=centosSERVICE_TYPE=redissource /root/venv/diskimage-builder/bin/activatedisk-image-create -a amd64 -o &quot;$&#123;VM&#125;&quot; -x $&#123;QEMU_IMG_OPTIONS&#125; $&#123;DISTRO&#125; base vm \\    cloud-init cloud-init-datasources epel $&#123;DISTRO&#125;-guest $&#123;DISTRO&#125;-$&#123;SERVICE_TYPE&#125;\n\n设置变量123456789101112131415161718192021#!/bin/shexport HOST_USERNAME=rootexport HOST_SCP_USERNAME=rootexport GUEST_USERNAME=rootexport CONTROLLER_IP=10.0.0.1export TROVESTACK_SCRIPTS=/opt/stack/trove/integration/scriptsexport PATH_TROVE=/opt/stack/troveexport ESCAPED_PATH_TROVE=&#x27;\\/opt\\/stack\\/trove&#x27;export SSH_DIR=~/.ssh/export GUEST_LOGDIR=/var/log/trove/export ESCAPED_GUEST_LOGDIR=&#x27;\\/var\\/log\\/trove\\/&#x27;export DIB_CLOUD_INIT_DATASOURCES=&quot;ConfigDrive&quot;export DATASTORE_PKG_LOCATION=&quot;&quot;export RELEASE=xenialexport PATH_DISKIMAGEBUILDER=/opt/stack/diskimage-builder/diskimage_builderexport ELEMENTS_PATH=$TROVESTACK_SCRIPTS/files/elementsexport ELEMENTS_PATH+=:$PATH_DISKIMAGEBUILDER/elementsexport DIB_APT_CONF_DIR=/etc/apt/apt.conf.dexport DIB_CLOUD_INIT_ETC_HOSTS=true\n\n说明\n\n\nHOST_USERNAME\n\nHOST_USERNAME is the name of the user on the Trove host machine. It is used to identify the location of the authorized_keys, id_rsa, and id_rsa_pub files that are to be in guest image creation.\n\nHOST_SCP_USERNAME\n\nHOST_SCP_USERNAME is the name of the user on the Trove host machine used to connect from the guest while copying the guest agent code during the upstart process.\n\nGUEST_USERNAME\n\nGUEST_USERNAME is the name of the user on the Trove guest who will run the guest agent and perform a number of other jobs. This user is created during the image build process if it does not exist.\n\nCONTROLLER_IP\n\nCONTROLLER_IP\n\nTROVESTACK_SCRIPTS\n\nTROVESTACK_SCRIPTS is the pointer to files in the trove project.\n\nSERVICE_TYPE\n\nSERVICE_TYPE\n\nPATH_TROVE\n\nPATH_TROVE is the path to the Trove source code and this is used in the rsync of code to the guest.\n\nESCAPED_PATH_TROVE\n\nESCAPED_PATH_TROVE is the escaped version of PATH_TROVE and is used for much the same purpose as PATH_TROVE.\n\nSSH_DIR\n\nSSH_DIR is a path to the .ssh directory for the user on the host and is used in the image creation process to obtain the authorized_keys, id_rsa and id_rsa_pub files.\n\nGUEST_LOGDIR\n\nGUEST_LOGDIR is the location on the guest where the Trove log file is to be stored.\n\nESCAPED_GUEST_LOGDIR\n\nESCAPED_GUEST_LOGDIR is the escaped version of GUEST_LOGDIR.\n\nDIB_CLOUD_INIT_DATASOURCES\n\nDIB_CLOUD_INIT_DATASOURCES . The DIB element cloud-init-datasources uses this value to determine the data sources that must be queried during first boot to obtain instance metadata.\n\nDATASTORE_PKG_LOCATION\n\nDATASTORE_PKG_LOCATION is not used in the creation of the Mysql instance but is used by some databases (currently DB2 and Vertica) to identify the location of a downloaded package containing the database. Other databases merely obtain this using apt-get or appropriate package management command. This variable is used for databases that do not allow this, and for example, require the user to click on a license agreement in order to obtain the database software.\n\nBRANCH_OVERRIDE\n\nBRANCH_OVERRIDE\n\nRELEASE\n\nRELEASE是我自己后加入的，不加的话会有报错，后面会提到。\n构建镜像构建镜像使用的命令是disk-image-create。\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758(diskimage-builder) wkt@controller-1:~$ disk-image-create --helpUsage: disk-image-create [OPTION]... [ELEMENT]...Options:    -a i386|amd64|armhf|arm64 -- set the architecture of the image(default amd64)    -o imagename -- set the imagename of the output image file(default image)    -t qcow2,tar,tgz,squashfs,vhd,docker,aci,raw -- set the image types of the output image files (default qcow2)       File types should be comma separated. VHD outputting requires the vhd-util       executable be in your PATH. ACI outputting requires the ACI_MANIFEST       environment variable be a path to a manifest file.    -x -- turn on tracing (use -x -x for very detailed tracing).    -u -- uncompressed; do not compress the image - larger but faster    -c -- clear environment before starting work    --logfile -- save run output to given logfile    --checksum -- generate MD5 and SHA256 checksum files for the created image    --image-size size -- image size in GB for the created image    --image-cache directory -- location for cached images(default ~/.cache/image-create)    --max-online-resize size -- max number of filesystem blocks to support when resizing.       Useful if you want a really large root partition when the image is deployed.       Using a very large value may run into a known bug in resize2fs.       Setting the value to 274877906944 will get you a 1PB root file system.       Making this value unnecessarily large will consume extra disk space       on the root partition with extra file system inodes.    --min-tmpfs size -- minimum size in GB needed in tmpfs to build the image    --mkfs-options -- option flags to be passed directly to mkfs.       Options should be passed as a single string value.    --no-tmpfs -- do not use tmpfs to speed image build    --offline -- do not update cached resources    --qemu-img-options -- option flags to be passed directly to qemu-img.       Options need to be comma separated, and follow the key=value pattern.    --root-label label -- label for the root filesystem.  Defaults to &#x27;cloudimg-rootfs&#x27;.    --ramdisk-element -- specify the main element to be used for building ramdisks.       Defaults to &#x27;ramdisk&#x27;.  Should be set to &#x27;dracut-ramdisk&#x27; for platforms such       as RHEL and CentOS that do not package busybox.    --install-type -- specify the default installation type. Defaults to &#x27;source&#x27;. Set to &#x27;package&#x27; to use package based installations by default.    --docker-target -- specify the repo and tag to use if the output type is docker. Defaults to the value of output imagename    -n skip the default inclusion of the &#x27;base&#x27; element    -p package[,p2...] [-p p3] -- extra packages to install in the image.  Runs once, after &#x27;install.d&#x27; phase.  Can be specified mulitple times    -h|--help -- display this help and exit    --version -- display version and exitEnvironment Variables:  (this is not a complete list)  * ELEMENTS_PATH: specify external locations for the elements.  As for $PATH  * DIB_NO_TIMESTAMP: no timestamp prefix on output.  Useful if capturing output  * DIB_QUIET: do not output log output to stdout.  See --logfileNOTE: At least one distribution root element must be specified.NOTE: If using the VHD output format you need to have a patched version of vhd-util installed for the image      to be bootable. The patch is available here: https://github.com/emonty/vhd-util/blob/master/debian/patches/citrix      and a PPA with the patched tool is available here: https://launchpad.net/~openstack-ci-core/+archive/ubuntu/vhd-utilExamples:    disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu    export ELEMENTS_PATH=~/source/tripleo-image-elements/elements    disk-image-create -a amd64 -o fedora-amd64-heat-cfntools vm fedora heat-cfntools\n一旦设置好前面的变量可以用下面的命令创建Mysql数据库的Trove Guest镜像。\n1disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql\n这会默认生成qcow2格式的镜像，并储存在当前路径下。\n出错的话，可以查看出现问题。\n\n\n注册镜像构建了镜像就需要在Glance和Trove中注册。首先，在Glance注册一个Guest镜像。获得镜像的id\n1openstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public --property image_type=distribution --property image_label=Test --property expected_size=10 --property hw_qemu_guest_agent=&#x27;yes’\n\n进入到trove-api的Docker中。\n12root@controller-1:~# docker ps | grep troveroot@controller-1:~# docker exec -it trove_api bash\n\n注册新的数据库类型\n1trove-manage --config-file=/etc/trove/trove.conf datastore_update mysql &#x27;&#x27;\n已经存在数据库类型可跳过此步。\n\n\n更新mysql数据库的版本信息\n1trove-manage --config-file=/etc/trove/trove.conf datastore_version_update mysql &lt;版本&gt; mysql &lt;镜像id&gt; &#x27;&#x27; 1\n\n\n第一个参数指的是数据库的类型\n\n第二个参数指的是数据库的版本号\n\n第三个参数指的是数据库管理类的名字,可以根据类名关联到Trove guest agent内的特定数据库类型。对Mysql而言，其对应的管理类就是trove.guestagent.datastore.mysql.manager.Manager。Trove支持的每一个数据库都有相应的Manage类，其类名可以在各种Trove配置文件中通过参数进行配置。\n\n第四个参数指的是镜像的id。此id是之前的openstack image create命令输出中提供的。\n\n第五个参数是传递到guest agent的prepare()信息中的安装包名称列表，通常用于guest agent安装最新的软件包或更新软件包到最新版本。这里为空。\n\n第六个参数将数据库版本标记为活跃。\n\n\n\n可以通过执行trove-manage datastore_version_update -h命令获取所有的帮助信息。\n\n出现问题command not found\n执行代码1disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql\n出错日志122018-09-11 02:34:15.980 | + die &#x27;RELEASE must be set to a valid Ubuntu release (e.g. trusty)&#x27;2018-09-11 02:34:15.999 | /tmp/in_target.d/pre-install.d/10-percona-apt-key: line 10: die: command not found\n  在/opt/stack/trove/integration/scripts/files/elements/ubuntu-mysql/pre-install.d找到10-percona-apt-key文件出错代码  110 [ -n &quot;$&#123;RELEASE&#125;&quot; ] || die &quot;RELEASE must be set to a valid Ubuntu release (e.g. trusty)&quot;\n解决问题在设置变量时添加RELEASE=xenial\n\napt-update失败\n执行代码\n1disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql\n出错日志\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849502018-09-11 02:40:15.989 | dib-run-parts Running /tmp/in_target.d/pre-install.d/10-percona-apt-key2018-09-11 02:40:15.996 | + &#x27;[&#x27; -n root &#x27;]&#x27;2018-09-11 02:40:15.997 | + &#x27;[&#x27; -n xenial &#x27;]&#x27;2018-09-11 02:40:15.997 | + mkdir -p /home/root/.gnupg2018-09-11 02:40:15.998 | + get_key_robust 1C4CBDCDCD2EFD2A2018-09-11 02:40:15.998 | + KEY=1C4CBDCDCD2EFD2A2018-09-11 02:40:15.998 | + set +e2018-09-11 02:40:15.998 | + apt-key adv --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A2018-09-11 02:40:16.121 | Executing: /tmp/tmp.qhaS3an1yi/gpg.1.sh --keyserver2018-09-11 02:40:16.121 | hkp://keys.gnupg.net2018-09-11 02:40:16.121 | --recv-keys2018-09-11 02:40:16.121 | 1C4CBDCDCD2EFD2A2018-09-11 02:40:16.127 | gpg: requesting key CD2EFD2A from hkp server keys.gnupg.net2018-09-11 02:40:20.249 | gpg: key CD2EFD2A: public key &quot;Percona MySQL Development Team &lt;mysql-dev@percona.com&gt;&quot; imported2018-09-11 02:40:20.249 | gpg: Total number processed: 12018-09-11 02:40:20.249 | gpg:               imported: 12018-09-11 02:40:20.375 | + &#x27;[&#x27; 0 -ne 0 &#x27;]&#x27;2018-09-11 02:40:20.375 | + set -e2018-09-11 02:40:20.375 | + get_key_robust 9334A25F8507EFA52018-09-11 02:40:20.375 | + KEY=9334A25F8507EFA52018-09-11 02:40:20.375 | + set +e2018-09-11 02:40:20.375 | + apt-key adv --keyserver hkp://keys.gnupg.net --recv-keys 9334A25F8507EFA52018-09-11 02:40:20.469 | Executing: /tmp/tmp.NgGbibfTaA/gpg.1.sh --keyserver2018-09-11 02:40:20.469 | hkp://keys.gnupg.net2018-09-11 02:40:20.469 | --recv-keys2018-09-11 02:40:20.469 | 9334A25F8507EFA52018-09-11 02:40:20.472 | gpg: requesting key 8507EFA5 from hkp server keys.gnupg.net2018-09-11 02:40:21.076 | gpg: key 8507EFA5: public key &quot;Percona MySQL Development Team (Packaging key) &lt;mysql-dev@percona.com&gt;&quot; imported2018-09-11 02:40:21.076 | gpg: Total number processed: 12018-09-11 02:40:21.076 | gpg:               imported: 1  (RSA: 1)2018-09-11 02:40:21.191 | + &#x27;[&#x27; 0 -ne 0 &#x27;]&#x27;2018-09-11 02:40:21.191 | + set -e2018-09-11 02:40:21.191 | + cat2018-09-11 02:40:21.192 | + apt-get update2018-09-11 02:40:21.712 | Hit:1 http://security.ubuntu.com/ubuntu xenial-security InRelease2018-09-11 02:40:22.429 | Hit:2 http://archive.ubuntu.com/ubuntu xenial InRelease2018-09-11 02:40:22.700 | Hit:3 http://archive.ubuntu.com/ubuntu xenial-updates InRelease2018-09-11 02:40:22.733 | Get:4 http://repo.percona.com/apt xenial InRelease [16.0 kB]2018-09-11 02:40:22.968 | Hit:5 http://archive.ubuntu.com/ubuntu xenial-backports InRelease2018-09-11 02:40:23.683 | Get:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources [6942 B]2018-09-11 02:40:23.684 | Ign:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources2018-09-11 02:40:24.022 | Get:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages [21.1 kB]2018-09-11 02:40:24.023 | Ign:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages2018-09-11 02:40:24.189 | Err:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources2018-09-11 02:40:24.189 |   Writing more data than expected (8870 &gt; 6942)2018-09-11 02:40:24.452 | Get:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages [115 kB]2018-09-11 02:40:25.250 | Fetched 131 kB in 4s (32.5 kB/s)2018-09-11 02:40:26.762 | Reading package lists...2018-09-11 02:40:26.797 | E: Failed to fetch http://repo.percona.com/apt/dists/xenial/main/source/Sources  Writing more data than expected (8870 &gt; 6942)2018-09-11 02:40:26.797 | E: Some index files failed to download. They have been ignored, or old ones used instead.\n解决问题将trove/integration/scripts/files/elements/ubuntu-mysql/pre-install.d/10-percona-apt-key中的\n123456789get_key_robust 1C4CBDCDCD2EFD2Aget_key_robust 9334A25F8507EFA5# Add Percona repo# Creates the percona sources listcat &lt;&lt;EOL &gt; /etc/apt/sources.list.d/percona.listdeb http://repo.percona.com/apt $RELEASE maindeb-src http://repo.percona.com/apt $RELEASE mainEOL\n\n  改为\n  1234567891011get_key_robust 1C4CBDCDCD2EFD2Aget_key_robust 9334A25F8507EFA5apt-get install -y apt-transport-https# Add Percona repo# Creates the percona sources listcat &lt;&lt;EOL &gt; /etc/apt/sources.list.d/percona.listdeb https://repo.percona.com/apt $RELEASE maindeb-src https://repo.percona.com/apt $RELEASE mainEOL\n\n\n\n其他错误12345678910111213141516171819Device or resource busyInappropriate ioctl for device2020-12-28 07:33:21.807 | SyntaxError: invalid syntax2020-12-28 07:33:21.835 | *** /tmp/dib_build.PoO5ok68/mnt is not a directory```bash### 其他#### 官网安装教程[官网安装教程](https://docs.openstack.org/trove/pike/admin/building_guest_images.html)#### 代码``` bashdisk-image-create -a amd64 -o ubuntu-xenial-redis -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-xenial-guest ubuntu-xenial-redisdisk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysqlopenstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public --property image_type=distribution --property image_label=Test --property expected_size=10 --property hw_qemu_guest_agent=yesopenstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public\n123456789101112131415161718192021222324252627282930313233#!/bin/bashset -xset -esource /root/xieyy-openrc.shopenstack image delete redis5openstack image create \\--file /home/wkt/centos-amd64-redis-5-0-10.qcow2 \\--disk-format qcow2 redis5 \\--property hw_qemu_guest_agent=&#x27;yes&#x27; \\--property hw_disk_bus=&#x27;scsi&#x27; \\--property hw_scsi_model=&#x27;virtio-scsi&#x27; \\--property os_require_quiesce=&#x27;yes&#x27;image_id=$(openstack image show redis5 -c id | grep id | awk -F &#x27;|&#x27; &#x27;&#123;print $3&#125;&#x27; | sed s/[[:space:]]//g)docker exec trove_taskmanager trove-manage --config-file=/etc/trove/trove-taskmanager.conf \\datastore_version_update redis 5.0.10 redis $&#123;image_id&#125; &quot;&quot; 1openstack volume delete Redis_baseopenstack volume create --image $&#123;image_id&#125; --property &#x27;base_clone&#x27;=&#x27;True&#x27; --type ceph --size 50 Redis_baseopenstack volume show Redis_basebase_volume_id=$(openstack volume show -c id Redis_base | grep id | awk -F &#x27;|&#x27; &#x27;&#123;print $3&#125;&#x27; | sed s/[[:space:]]//g)url=$(openstack image show -f json $&#123;image_id&#125; | grep url | awk -F &#x27;&quot;&#x27; &#x27;&#123;print $4&#125;&#x27;)metadata=$(printf &#x27;&#123;&quot;base_volume&quot;: &quot;%s&quot;&#125;&#x27; $&#123;base_volume_id&#125;)glance location-update --url $&#123;url&#125; --metadata &quot;$&#123;metadata&#125;&quot; $&#123;image_id&#125;\n\n1 + 2 + 1 = 4 \ndocker run -itd –name trove_monitor -v /project/boncloud-trove/:/root/trove:rw -v /etc/kolla/trove-monitor:/etc/trove/:rw 172.16.58.14:4000/bonc/centos-source-trove-api:7.0.1 bash\n","dateCreated":"2021-01-06T15:58:39+08:00","dateModified":"2023-09-22T10:53:59+08:00","datePublished":"2021-01-06T15:58:39+08:00","description":"OpenStack镜像的构建","headline":"OpenStack镜像的构建","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/","keywords":"OpenStack, 镜像, Trove","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="OpenStack镜像的构建">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack镜像的构建">
+<meta property="og:url" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack镜像的构建">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/docker-run.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/git-clone.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/git-status.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/virtualenv.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/docker-ps.png">
+<meta property="article:published_time" content="2021-01-06T07:58:39.000Z">
+<meta property="article:modified_time" content="2023-09-22T02:53:59.818Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="镜像">
+<meta property="article:tag" content="Trove">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/images/docker-run.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack镜像的构建
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-01-06T15:58:39+08:00">
+	
+		    Jan 06, 2021
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>OpenStack镜像的构建</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%8E%B7%E5%8F%96%E9%95%9C%E5%83%8F"><span class="toc-text">获取镜像</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%89%8B%E5%8A%A8%E6%9E%84%E5%BB%BA%E9%95%9C%E5%83%8F"><span class="toc-text">手动构建镜像</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9E%84%E5%BB%BAdocker%E5%AE%B9%E5%99%A8"><span class="toc-text">构建docker容器</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%89%E8%A3%85"><span class="toc-text">安装</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E7%8E%AF%E5%A2%83"><span class="toc-text">依赖环境</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#DIB"><span class="toc-text">DIB</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95"><span class="toc-text">测试</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%AB%98%E7%BA%A7"><span class="toc-text">高级</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Elements"><span class="toc-text">Elements</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89elements"><span class="toc-text">自定义elements</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Trove%E9%95%9C%E5%83%8F%E6%9E%84%E5%BB%BA"><span class="toc-text">Trove镜像构建</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8B%E8%BD%BDTrove"><span class="toc-text">下载Trove</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AE%E5%8F%98%E9%87%8F"><span class="toc-text">设置变量</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-text"></span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AE%E5%8F%98%E9%87%8F-1"><span class="toc-text">设置变量</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9E%84%E5%BB%BA%E9%95%9C%E5%83%8F"><span class="toc-text">构建镜像</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E5%86%8C%E9%95%9C%E5%83%8F"><span class="toc-text">注册镜像</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%87%BA%E7%8E%B0%E9%97%AE%E9%A2%98"><span class="toc-text">出现问题</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#command-not-found"><span class="toc-text">command not found</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#apt-update%E5%A4%B1%E8%B4%A5"><span class="toc-text">apt-update失败</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%B6%E4%BB%96%E9%94%99%E8%AF%AF"><span class="toc-text">其他错误</span></a></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>OpenStack镜像的构建有许多种方法，可以直接利用别人构建好的镜像，也可以手动构建，也可以使用镜像构建工具实现镜像构建的自动化，这里主要讲后面两种。</p>
+<h1 id="获取镜像"><a href="#获取镜像" class="headerlink" title="获取镜像"></a>获取镜像</h1><p>关于如何获取镜像，OpenStack官网上已经说的足够清楚了，这里就不赘述了，可以直接去<a target="_blank" rel="noopener" href="https://docs.openstack.org/image-guide/obtain-images.html">官网</a>查看。</p>
+<h1 id="手动构建镜像"><a href="#手动构建镜像" class="headerlink" title="手动构建镜像"></a>手动构建镜像</h1><p>这里以构建centos 7的镜像为例子，我的环境也是centos7。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">yum -y install qemu-kvm libvirt virt-install bridge-utils</span><br><span class="line">modprobe kvm</span><br><span class="line"><span class="comment"># make sure modules are loaded</span></span><br><span class="line">lsmod | grep kvm</span><br><span class="line">systemctl start libvirtd</span><br><span class="line">systemctl <span class="built_in">enable</span> libvirtd</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">virt-install \</span><br><span class="line">--name centos7 \</span><br><span class="line">--ram 1024 \</span><br><span class="line">--disk path=/var/kvm/images/centos7.img,size=30 \</span><br><span class="line">--vcpus 1 \</span><br><span class="line">--os-type linux \</span><br><span class="line">--os-variant centos7.0 \</span><br><span class="line">--network bridge=br0 \</span><br><span class="line">--graphics none \</span><br><span class="line">--console pty,target_type=serial \</span><br><span class="line">--location <span class="string">&#x27;https://mirrors.huaweicloud.com/centos/7/os/x86_64/&#x27;</span> \</span><br><span class="line">--extra-args <span class="string">&#x27;console=ttyS0,115200n8 serial&#x27;</span></span><br><span class="line"></span><br><span class="line">dracut-initqueue[744]: Warning: dracut-initqueue <span class="built_in">timeout</span> - starting <span class="built_in">timeout</span> scripts</span><br><span class="line"></span><br><span class="line">virt-install \</span><br><span class="line">--name centos7 \</span><br><span class="line">--ram 1024 \</span><br><span class="line">--disk path=/var/kvm/images/centos7.img,format=qcow2\</span><br><span class="line">--vcpus 1 \</span><br><span class="line">--os-type linux \</span><br><span class="line">--os-variant rhel7 \</span><br><span class="line">--network bridge=br0 \</span><br><span class="line">--graphics none \</span><br><span class="line">--console pty,target_type=serial \</span><br><span class="line">--location <span class="string">&#x27;https://mirrors.huaweicloud.com/centos/7/os/x86_64/&#x27;</span> \</span><br><span class="line">--extra-args <span class="string">&#x27;console=ttyS0,115200n8 serial&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">virt-install \</span><br><span class="line">--name centos7 \</span><br><span class="line">--ram 1024 \</span><br><span class="line">--disk path=/var/kvm/images/centos7.img,size=30 \</span><br><span class="line">--vcpus 1 \</span><br><span class="line">--os-type linux \</span><br><span class="line">--os-variant rhel7 \</span><br><span class="line">--network bridge=br0 \</span><br><span class="line">--graphics none \</span><br><span class="line">--console pty,target_type=serial \</span><br><span class="line">--location <span class="string">&#x27;http://ftp.iij.ad.jp/pub/linux/centos/7/os/x86_64/&#x27;</span> \</span><br><span class="line">--extra-args <span class="string">&#x27;console=ttyS0,115200n8 serial&#x27;</span></span><br><span class="line"></span><br><span class="line">virt-install \</span><br><span class="line">--name centos7 \</span><br><span class="line">--ram 1024 \</span><br><span class="line">--disk path=/var/kvm/images/centos7.img,format=qcow2 \</span><br><span class="line">--vcpus 1 \</span><br><span class="line">--os-type linux \</span><br><span class="line">--os-variant rhel7 \</span><br><span class="line">--graphics none \</span><br><span class="line">--console pty,target_type=serial \</span><br><span class="line">--location=/var/kvm/images/CentOS-7-x86_64-NetInstall-2009.iso \</span><br><span class="line">--extra-args <span class="string">&#x27;console=ttyS0,115200n8 serial&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">virt-install --virt-type kvm --name centos --ram 1024 \</span><br><span class="line">  --disk /var/kvm/images/centos.qcow2,format=qcow2 \</span><br><span class="line">  --vcpus 1 \</span><br><span class="line">  --network network=default \</span><br><span class="line">  --graphics vnc,listen=0.0.0.0 --noautoconsole \</span><br><span class="line">  --os-type=linux --os-variant=centos7.0 \</span><br><span class="line">  --location=/var/kvm/images/CentOS-7-x86_64-NetInstall-2009.iso</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p><a target="_blank" rel="noopener" href="https://docs.openstack.org/diskimage-builder/latest/">diskimage-builder</a>（简称为DIB）是一个用于自动构建自定义的操作系统镜像的工具，以便在云和其他环境中使用。</p>
+<h1 id="构建docker容器"><a href="#构建docker容器" class="headerlink" title="构建docker容器"></a>构建docker容器</h1><p>利用docker容器来搭建镜像的环境，这里选择centos镜像，同时将本地目录和容器内的文件目录做一个映射。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -itd --privileged=<span class="literal">true</span> --name centos -v <span class="variable">$PWD</span>:/root centos:7 /sbin/init</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/docker-run.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run.png" alt=""></a></div>
+
+<h1 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h1><h2 id="依赖环境"><a href="#依赖环境" class="headerlink" title="依赖环境"></a>依赖环境</h2><p>进入容器内安装DIB的依赖环境。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker <span class="built_in">exec</span> -it centos bash</span><br><span class="line">yum update</span><br><span class="line">yum install -y epel-release </span><br><span class="line">yum install -y python3 git sudo        <span class="comment"># DIB需要Python3支持</span></span><br><span class="line">pip3 install -U pip setuptools wheel</span><br></pre></td></tr></table></figure>
+
+<p>安装qemu-img和kpartx。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">apt-get install qemu-utils kpartx squashfs-tools e4fsprogs <span class="comment"># ubuntu</span></span><br><span class="line">yum install -y qemu-img kpartx squashfs-tools e4fsprogs  <span class="comment"># centos</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="DIB"><a href="#DIB" class="headerlink" title="DIB"></a>DIB</h2><p>从github将DIB下载下来。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/openstack/diskimage-builder.git</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/git-clone.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/git-clone.png" alt=""></a></div>
+
+<p>切换到最近的tag上，我这里是3.7.0。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> diskimge-builder</span><br><span class="line">git checkout -b v3.7.0 3.7.0</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/git-status.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/git-status.png" alt=""></a></div>
+
+<p>设置虚环境</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pip install virtualenv</span><br><span class="line"><span class="built_in">mkdir</span> venv &amp;&amp; <span class="built_in">cd</span> venv &amp;&amp; virtualenv -p /usr/bin/python3 diskimage-builder</span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/virtualenv.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/virtualenv.png" alt=""></a></div>
+
+<p>安装diskimage-builder。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /root/diskimage-builder &amp;&amp; /root/venv/diskimage-builder/bin/pip install -e .</span><br></pre></td></tr></table></figure>
+
+<h1 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">[root@centos-linux ~]<span class="comment"># disk-image-create -h</span></span><br><span class="line">Usage: disk-image-create [OPTION]... [ELEMENT]...</span><br><span class="line"></span><br><span class="line">Options:</span><br><span class="line">    -a i386|amd64|armhf|arm64 -- <span class="built_in">set</span> the architecture of the image(default amd64)</span><br><span class="line">    -o imagename -- <span class="built_in">set</span> the imagename of the output image file(default image)</span><br><span class="line">    -t qcow2,tar,tgz,squashfs,vhd,docker,aci,raw -- <span class="built_in">set</span> the image types of the output image files (default qcow2)</span><br><span class="line">       File types should be comma separated. VHD outputting requires the vhd-util</span><br><span class="line">       executable be <span class="keyword">in</span> your PATH. ACI outputting requires the ACI_MANIFEST</span><br><span class="line">       environment variable be a path to a manifest file.</span><br><span class="line">    -x -- turn on tracing (use -x -x <span class="keyword">for</span> very detailed tracing).</span><br><span class="line">    -u -- uncompressed; <span class="keyword">do</span> not compress the image - larger but faster</span><br><span class="line">    -c -- clear environment before starting work</span><br><span class="line">    --logfile -- save run output to given logfile (implies DIB_QUIET=1)</span><br><span class="line">    --checksum -- generate MD5 and SHA256 checksum files <span class="keyword">for</span> the created image</span><br><span class="line">    --image-size size -- image size <span class="keyword">in</span> GB <span class="keyword">for</span> the created image</span><br><span class="line">    --image-extra-size size -- extra image size <span class="keyword">in</span> GB <span class="keyword">for</span> the created image</span><br><span class="line">    --image-cache directory -- location <span class="keyword">for</span> cached images(default ~/.cache/image-create)</span><br><span class="line">    --max-online-resize size -- max number of filesystem blocks to support when resizing.</span><br><span class="line">       Useful <span class="keyword">if</span> you want a really large root partition when the image is deployed.</span><br><span class="line">       Using a very large value may run into a known bug <span class="keyword">in</span> resize2fs.</span><br><span class="line">       Setting the value to 274877906944 will get you a 1PB root file system.</span><br><span class="line">       Making this value unnecessarily large will consume extra disk space</span><br><span class="line">       on the root partition with extra file system inodes.</span><br><span class="line">    --min-tmpfs size -- minimum size <span class="keyword">in</span> GB needed <span class="keyword">in</span> tmpfs to build the image</span><br><span class="line">    --mkfs-journal-size -- filesystem journal size <span class="keyword">in</span> MB to pass to mkfs.</span><br><span class="line">    --mkfs-options -- option flags to be passed directly to mkfs.</span><br><span class="line">       Options should be passed as a single string value.</span><br><span class="line">    --no-tmpfs -- <span class="keyword">do</span> not use tmpfs to speed image build</span><br><span class="line">    --offline -- <span class="keyword">do</span> not update cached resources</span><br><span class="line">    --qemu-img-options -- option flags to be passed directly to qemu-img.</span><br><span class="line">       Options need to be comma separated, and follow the key=value pattern.</span><br><span class="line">    --root-label label -- label <span class="keyword">for</span> the root filesystem.  Defaults to <span class="string">&#x27;cloudimg-rootfs&#x27;</span>.</span><br><span class="line">    --ramdisk-element -- specify the main element to be used <span class="keyword">for</span> building ramdisks.</span><br><span class="line">       Defaults to <span class="string">&#x27;ramdisk&#x27;</span>.  Should be <span class="built_in">set</span> to <span class="string">&#x27;dracut-ramdisk&#x27;</span> <span class="keyword">for</span> platforms such</span><br><span class="line">       as RHEL and CentOS that <span class="keyword">do</span> not package busybox.</span><br><span class="line">    --install-type -- specify the default installation <span class="built_in">type</span>. Defaults to <span class="string">&#x27;source&#x27;</span>. Set to <span class="string">&#x27;package&#x27;</span> to use package based installations by default.</span><br><span class="line">    --docker-target -- specify the repo and tag to use <span class="keyword">if</span> the output <span class="built_in">type</span> is docker. Defaults to the value of output imagename</span><br><span class="line">    -n skip the default inclusion of the <span class="string">&#x27;base&#x27;</span> element</span><br><span class="line">    -p package[,p2...] [-p p3] -- extra packages to install <span class="keyword">in</span> the image.  Runs once, after <span class="string">&#x27;install.d&#x27;</span> phase.  Can be specified multiple <span class="built_in">times</span></span><br><span class="line">    -h|--<span class="built_in">help</span> -- display this <span class="built_in">help</span> and <span class="built_in">exit</span></span><br><span class="line">    --version -- display version and <span class="built_in">exit</span></span><br><span class="line"></span><br><span class="line">Environment Variables:</span><br><span class="line">  (this is not a complete list)</span><br><span class="line"></span><br><span class="line">  * ELEMENTS_PATH: specify external locations <span class="keyword">for</span> the elements.  As <span class="keyword">for</span> <span class="variable">$PATH</span></span><br><span class="line">  * DIB_NO_TIMESTAMP: no timestamp prefix on output.  Useful <span class="keyword">if</span> capturing output</span><br><span class="line">  * DIB_QUIET: 1=<span class="keyword">do</span> not output <span class="built_in">log</span> output to stdout; 0=always ouptut to stdout.  See --logfile</span><br><span class="line"></span><br><span class="line">NOTE: At least one distribution root element must be specified.</span><br><span class="line"></span><br><span class="line">NOTE: If using the VHD output format you need to have a patched version of vhd-util installed <span class="keyword">for</span> the image</span><br><span class="line">      to be bootable. The patch is available here: https://github.com/emonty/vhd-util/blob/master/debian/patches/citrix</span><br><span class="line">      and a PPA with the patched tool is available here: https://launchpad.net/~openstack-ci-core/+archive/ubuntu/vhd-util</span><br><span class="line"></span><br><span class="line">Examples:</span><br><span class="line">    disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu</span><br><span class="line">    <span class="built_in">export</span> ELEMENTS_PATH=~/source/tripleo-image-elements/elements</span><br><span class="line">    disk-image-create -a amd64 -o fedora-amd64-heat-cfntools vm fedora heat-cfntools</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>创建ubuntu镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/root/venv/diskimage-builder/bin/disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu</span><br></pre></td></tr></table></figure>
+
+<h1 id="高级"><a href="#高级" class="headerlink" title="高级"></a>高级</h1><h2 id="Elements"><a href="#Elements" class="headerlink" title="Elements"></a>Elements</h2><p>DIB中的elements</p>
+<p>DIB中有大量的元件。DIB的元件在diskimage-builder项目中的/diskimage_builder/elements的目录下。</p>
+<h2 id="自定义elements"><a href="#自定义elements" class="headerlink" title="自定义elements"></a>自定义elements</h2><p>可以自行编写elements来满足构建镜像的要求。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">set</span> -e</span><br><span class="line"><span class="built_in">set</span> -o xtrace</span><br><span class="line"></span><br><span class="line"><span class="built_in">source</span> <span class="variable">$_LIB</span>/die</span><br><span class="line"></span><br><span class="line">[ -n <span class="string">&quot;<span class="variable">$TMP_HOOKS_PATH</span>&quot;</span> ] || die <span class="string">&quot;Temp hook path not set&quot;</span></span><br><span class="line">[ -n <span class="string">&quot;<span class="variable">$HOST_USERNAME</span>&quot;</span> ] || die <span class="string">&quot;HOST_USERNAME not set&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">cp</span> -r <span class="variable">$&#123;PATH_TROVE&#125;</span> <span class="variable">$&#123;TMP_HOOKS_PATH&#125;</span>/</span><br><span class="line">REQUIREMENTS_FILE=<span class="variable">$&#123;TROVESTACK_SCRIPTS&#125;</span>/files/requirements/centos-requirements.txt</span><br><span class="line">sudo -Hiu <span class="variable">$&#123;HOST_USERNAME&#125;</span> <span class="built_in">dd</span> <span class="keyword">if</span>=<span class="variable">$&#123;REQUIREMENTS_FILE&#125;</span> of=<span class="variable">$&#123;TMP_HOOKS_PATH&#125;</span>/requirements.txt</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>Trove中的elements</li>
+</ol>
+<p>除了DIB提供的元件，Trove也提供自己所支持的数据库的元件。可以在trove项目下的integration/scripts/files/elements中找到trove的相关元件。</p>
+<h1 id="Trove镜像构建"><a href="#Trove镜像构建" class="headerlink" title="Trove镜像构建"></a>Trove镜像构建</h1><h2 id="下载Trove"><a href="#下载Trove" class="headerlink" title="下载Trove"></a>下载Trove</h2><p>从github上将trove项目下载到本地，位置和DIB存放的一致，都在/root下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://git.openstack.org/openstack/trove.git</span><br></pre></td></tr></table></figure>
+
+<h2 id="设置变量"><a href="#设置变量" class="headerlink" title="设置变量"></a>设置变量</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/sh</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> DIB_DISTRIBUTION_MIRROR=http://mirrors.huaweicloud.com/centos</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_IMAGES=http://mirrors.nju.edu.cn/centos-cloud/centos/7/images</span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> DIB_RELEASE=7</span><br><span class="line"><span class="built_in">export</span> DIB_YUM_REPO_CONF=/home/wkt/projects/CentOS-Base.repo</span><br><span class="line"><span class="built_in">export</span> DIB_EPEL_MIRROR=https://mirrors.huaweicloud.com/epel/</span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> HOST_USERNAME=root</span><br><span class="line"><span class="built_in">export</span> TMP_HOOKS_PATH=</span><br><span class="line"><span class="built_in">export</span> HOST_SCP_USERNAME</span><br><span class="line"><span class="built_in">export</span> GUEST_USERNAME</span><br><span class="line"><span class="built_in">export</span> CONTROLLER_IP</span><br><span class="line"><span class="built_in">export</span> TROVESTACK_SCRIPTS=/home/wkt/projects/boncloud-trove/integration/scripts</span><br><span class="line"><span class="built_in">export</span> SERVICE_TYPE=redis</span><br><span class="line"><span class="built_in">export</span> PATH_TROVE=/home/wkt/projects/boncloud-trove</span><br><span class="line"><span class="built_in">export</span> ESCAPED_PATH_TROVE</span><br><span class="line"><span class="built_in">export</span> SSH_DIR</span><br><span class="line"><span class="built_in">export</span> GUEST_LOGDIR</span><br><span class="line"><span class="built_in">export</span> ESCAPED_GUEST_LOGDIR</span><br><span class="line"><span class="built_in">export</span> DATASTORE_PKG_LOCATION</span><br><span class="line"><span class="built_in">export</span> BRANCH_OVERRIDE</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_DATASOURCES=<span class="string">&quot;ConfigDrive, OpenStack&quot;</span></span><br><span class="line"><span class="built_in">export</span> PATH_DISKIMAGEBUILDER=/home/wkt/projects/diskimage-builder/diskimage_builder</span><br><span class="line"><span class="built_in">export</span> PATH_TRIPLEO_ELEMENTS=/home/wkt/projects/tripleo-image-elements</span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH=<span class="variable">$TROVESTACK_SCRIPTS</span>/files/elements</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH+=:<span class="variable">$PATH_DISKIMAGEBUILDER</span>/elements</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH+=:<span class="variable">$PATH_TRIPLEO_ELEMENTS</span>/elements</span><br><span class="line"><span class="built_in">export</span> DIB_APT_CONF_DIR=/etc/apt/apt.conf.d</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_ETC_HOSTS=<span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> DIB_DEV_USER_USERNAME=</span><br><span class="line"><span class="built_in">export</span> DIB_DEV_USER_PASSWORD=</span><br><span class="line"><span class="built_in">export</span> DIB_DEV_USER_PWDLESS_SUDO</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_ALLOW_SSH_PWAUTH=<span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> DIB_ROOT_PASSWORD=199412</span><br><span class="line">QEMU_IMG_OPTIONS=<span class="string">&quot;--qemu-img-options compat=1.1&quot;</span></span><br><span class="line">VM=centos-amd64-redis-5-0-10</span><br><span class="line">DISTRO=centos</span><br><span class="line">SERVICE_TYPE=redis</span><br><span class="line"></span><br><span class="line"><span class="built_in">source</span> /root/venv/diskimage-builder/bin/activate</span><br><span class="line"></span><br><span class="line">disk-image-create -a amd64 -o <span class="string">&quot;<span class="variable">$&#123;VM&#125;</span>&quot;</span> -x <span class="variable">$&#123;QEMU_IMG_OPTIONS&#125;</span> <span class="variable">$&#123;DISTRO&#125;</span> base vm \</span><br><span class="line">    cloud-init cloud-init-datasources epel <span class="variable">$&#123;DISTRO&#125;</span>-guest <span class="variable">$&#123;DISTRO&#125;</span>-<span class="variable">$&#123;SERVICE_TYPE&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id=""><a href="#" class="headerlink" title=""></a></h2><h4 id="设置变量-1"><a href="#设置变量-1" class="headerlink" title="设置变量"></a>设置变量</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/sh</span></span><br><span class="line"><span class="built_in">export</span> HOST_USERNAME=root</span><br><span class="line"><span class="built_in">export</span> HOST_SCP_USERNAME=root</span><br><span class="line"><span class="built_in">export</span> GUEST_USERNAME=root</span><br><span class="line"><span class="built_in">export</span> CONTROLLER_IP=10.0.0.1</span><br><span class="line"><span class="built_in">export</span> TROVESTACK_SCRIPTS=/opt/stack/trove/integration/scripts</span><br><span class="line"><span class="built_in">export</span> PATH_TROVE=/opt/stack/trove</span><br><span class="line"><span class="built_in">export</span> ESCAPED_PATH_TROVE=<span class="string">&#x27;\/opt\/stack\/trove&#x27;</span></span><br><span class="line"><span class="built_in">export</span> SSH_DIR=~/.ssh/</span><br><span class="line"><span class="built_in">export</span> GUEST_LOGDIR=/var/log/trove/</span><br><span class="line"><span class="built_in">export</span> ESCAPED_GUEST_LOGDIR=<span class="string">&#x27;\/var\/log\/trove\/&#x27;</span></span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_DATASOURCES=<span class="string">&quot;ConfigDrive&quot;</span></span><br><span class="line"><span class="built_in">export</span> DATASTORE_PKG_LOCATION=<span class="string">&quot;&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> RELEASE=xenial</span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> PATH_DISKIMAGEBUILDER=/opt/stack/diskimage-builder/diskimage_builder</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH=<span class="variable">$TROVESTACK_SCRIPTS</span>/files/elements</span><br><span class="line"><span class="built_in">export</span> ELEMENTS_PATH+=:<span class="variable">$PATH_DISKIMAGEBUILDER</span>/elements</span><br><span class="line"><span class="built_in">export</span> DIB_APT_CONF_DIR=/etc/apt/apt.conf.d</span><br><span class="line"><span class="built_in">export</span> DIB_CLOUD_INIT_ETC_HOSTS=<span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>说明</li>
+</ul>
+<ol>
+<li><strong>HOST_USERNAME</strong></li>
+</ol>
+<p><strong>HOST_USERNAME</strong> is the name of the user on the Trove host machine. It is used to identify the location of the authorized_keys, id_rsa, and id_rsa_pub files that are to be in guest image creation.</p>
+<ol start="2">
+<li><strong>HOST_SCP_USERNAME</strong></li>
+</ol>
+<p><strong>HOST_SCP_USERNAME</strong> is the name of the user on the Trove host machine used to connect from the guest while copying the guest agent code during the upstart process.</p>
+<ol start="3">
+<li><strong>GUEST_USERNAME</strong></li>
+</ol>
+<p><strong>GUEST_USERNAME</strong> is the name of the user on the Trove guest who will run the guest agent and perform a number of other jobs. This user is created during the image build process if it does not exist.</p>
+<ol start="4">
+<li><strong>CONTROLLER_IP</strong></li>
+</ol>
+<p><strong>CONTROLLER_IP</strong></p>
+<ol start="5">
+<li><strong>TROVESTACK_SCRIPTS</strong></li>
+</ol>
+<p><strong>TROVESTACK_SCRIPTS</strong> is the pointer to files in the trove project.</p>
+<ol start="6">
+<li><strong>SERVICE_TYPE</strong></li>
+</ol>
+<p><strong>SERVICE_TYPE</strong></p>
+<ol start="7">
+<li><strong>PATH_TROVE</strong></li>
+</ol>
+<p><strong>PATH_TROVE</strong> is the path to the Trove source code and this is used in the rsync of code to the guest.</p>
+<ol start="8">
+<li><strong>ESCAPED_PATH_TROVE</strong></li>
+</ol>
+<p><strong>ESCAPED_PATH_TROVE</strong> is the escaped version of PATH_TROVE and is used for much the same purpose as PATH_TROVE.</p>
+<ol start="9">
+<li><strong>SSH_DIR</strong></li>
+</ol>
+<p><strong>SSH_DIR</strong> is a path to the .ssh directory for the user on the host and is used in the image creation process to obtain the authorized_keys, id_rsa and id_rsa_pub files.</p>
+<ol start="10">
+<li><strong>GUEST_LOGDIR</strong></li>
+</ol>
+<p><strong>GUEST_LOGDIR</strong> is the location on the guest where the Trove log file is to be stored.</p>
+<ol start="11">
+<li><strong>ESCAPED_GUEST_LOGDIR</strong></li>
+</ol>
+<p><strong>ESCAPED_GUEST_LOGDIR</strong> is the escaped version of GUEST_LOGDIR.</p>
+<ol start="12">
+<li><strong>DIB_CLOUD_INIT_DATASOURCES</strong></li>
+</ol>
+<p><strong>DIB_CLOUD_INIT_DATASOURCES</strong> . The DIB element cloud-init-datasources uses this value to determine the data sources that must be queried during first boot to obtain instance metadata.</p>
+<ol start="13">
+<li><strong>DATASTORE_PKG_LOCATION</strong></li>
+</ol>
+<p><strong>DATASTORE_PKG_LOCATION</strong> is not used in the creation of the Mysql instance but is used by some databases (currently DB2 and Vertica) to identify the location of a downloaded package containing the database. Other databases merely obtain this using apt-get or appropriate package management command. This variable is used for databases that do not allow this, and for example, require the user to click on a license agreement in order to obtain the database software.</p>
+<ol start="14">
+<li><strong>BRANCH_OVERRIDE</strong></li>
+</ol>
+<p><strong>BRANCH_OVERRIDE</strong></p>
+<ol start="15">
+<li><strong>RELEASE</strong></li>
+</ol>
+<p><strong>RELEASE</strong>是我自己后加入的，不加的话会有报错，后面会提到。</p>
+<h4 id="构建镜像"><a href="#构建镜像" class="headerlink" title="构建镜像"></a>构建镜像</h4><p>构建镜像使用的命令是disk-image-create。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">(diskimage-builder) wkt@controller-1:~$ disk-image-create --<span class="built_in">help</span></span><br><span class="line">Usage: disk-image-create [OPTION]... [ELEMENT]...</span><br><span class="line"></span><br><span class="line">Options:</span><br><span class="line">    -a i386|amd64|armhf|arm64 -- <span class="built_in">set</span> the architecture of the image(default amd64)</span><br><span class="line">    -o imagename -- <span class="built_in">set</span> the imagename of the output image file(default image)</span><br><span class="line">    -t qcow2,tar,tgz,squashfs,vhd,docker,aci,raw -- <span class="built_in">set</span> the image types of the output image files (default qcow2)</span><br><span class="line">       File types should be comma separated. VHD outputting requires the vhd-util</span><br><span class="line">       executable be <span class="keyword">in</span> your PATH. ACI outputting requires the ACI_MANIFEST</span><br><span class="line">       environment variable be a path to a manifest file.</span><br><span class="line">    -x -- turn on tracing (use -x -x <span class="keyword">for</span> very detailed tracing).</span><br><span class="line">    -u -- uncompressed; <span class="keyword">do</span> not compress the image - larger but faster</span><br><span class="line">    -c -- clear environment before starting work</span><br><span class="line">    --logfile -- save run output to given logfile</span><br><span class="line">    --checksum -- generate MD5 and SHA256 checksum files <span class="keyword">for</span> the created image</span><br><span class="line">    --image-size size -- image size <span class="keyword">in</span> GB <span class="keyword">for</span> the created image</span><br><span class="line">    --image-cache directory -- location <span class="keyword">for</span> cached images(default ~/.cache/image-create)</span><br><span class="line">    --max-online-resize size -- max number of filesystem blocks to support when resizing.</span><br><span class="line">       Useful <span class="keyword">if</span> you want a really large root partition when the image is deployed.</span><br><span class="line">       Using a very large value may run into a known bug <span class="keyword">in</span> resize2fs.</span><br><span class="line">       Setting the value to 274877906944 will get you a 1PB root file system.</span><br><span class="line">       Making this value unnecessarily large will consume extra disk space</span><br><span class="line">       on the root partition with extra file system inodes.</span><br><span class="line">    --min-tmpfs size -- minimum size <span class="keyword">in</span> GB needed <span class="keyword">in</span> tmpfs to build the image</span><br><span class="line">    --mkfs-options -- option flags to be passed directly to mkfs.</span><br><span class="line">       Options should be passed as a single string value.</span><br><span class="line">    --no-tmpfs -- <span class="keyword">do</span> not use tmpfs to speed image build</span><br><span class="line">    --offline -- <span class="keyword">do</span> not update cached resources</span><br><span class="line">    --qemu-img-options -- option flags to be passed directly to qemu-img.</span><br><span class="line">       Options need to be comma separated, and follow the key=value pattern.</span><br><span class="line">    --root-label label -- label <span class="keyword">for</span> the root filesystem.  Defaults to <span class="string">&#x27;cloudimg-rootfs&#x27;</span>.</span><br><span class="line">    --ramdisk-element -- specify the main element to be used <span class="keyword">for</span> building ramdisks.</span><br><span class="line">       Defaults to <span class="string">&#x27;ramdisk&#x27;</span>.  Should be <span class="built_in">set</span> to <span class="string">&#x27;dracut-ramdisk&#x27;</span> <span class="keyword">for</span> platforms such</span><br><span class="line">       as RHEL and CentOS that <span class="keyword">do</span> not package busybox.</span><br><span class="line">    --install-type -- specify the default installation <span class="built_in">type</span>. Defaults to <span class="string">&#x27;source&#x27;</span>. Set to <span class="string">&#x27;package&#x27;</span> to use package based installations by default.</span><br><span class="line">    --docker-target -- specify the repo and tag to use <span class="keyword">if</span> the output <span class="built_in">type</span> is docker. Defaults to the value of output imagename</span><br><span class="line">    -n skip the default inclusion of the <span class="string">&#x27;base&#x27;</span> element</span><br><span class="line">    -p package[,p2...] [-p p3] -- extra packages to install <span class="keyword">in</span> the image.  Runs once, after <span class="string">&#x27;install.d&#x27;</span> phase.  Can be specified mulitple <span class="built_in">times</span></span><br><span class="line">    -h|--<span class="built_in">help</span> -- display this <span class="built_in">help</span> and <span class="built_in">exit</span></span><br><span class="line">    --version -- display version and <span class="built_in">exit</span></span><br><span class="line"></span><br><span class="line">Environment Variables:</span><br><span class="line">  (this is not a complete list)</span><br><span class="line"></span><br><span class="line">  * ELEMENTS_PATH: specify external locations <span class="keyword">for</span> the elements.  As <span class="keyword">for</span> <span class="variable">$PATH</span></span><br><span class="line">  * DIB_NO_TIMESTAMP: no timestamp prefix on output.  Useful <span class="keyword">if</span> capturing output</span><br><span class="line">  * DIB_QUIET: <span class="keyword">do</span> not output <span class="built_in">log</span> output to stdout.  See --logfile</span><br><span class="line"></span><br><span class="line">NOTE: At least one distribution root element must be specified.</span><br><span class="line"></span><br><span class="line">NOTE: If using the VHD output format you need to have a patched version of vhd-util installed <span class="keyword">for</span> the image</span><br><span class="line">      to be bootable. The patch is available here: https://github.com/emonty/vhd-util/blob/master/debian/patches/citrix</span><br><span class="line">      and a PPA with the patched tool is available here: https://launchpad.net/~openstack-ci-core/+archive/ubuntu/vhd-util</span><br><span class="line"></span><br><span class="line">Examples:</span><br><span class="line">    disk-image-create -a amd64 -o ubuntu-amd64 vm ubuntu</span><br><span class="line">    <span class="built_in">export</span> ELEMENTS_PATH=~/source/tripleo-image-elements/elements</span><br><span class="line">    disk-image-create -a amd64 -o fedora-amd64-heat-cfntools vm fedora heat-cfntools</span><br></pre></td></tr></table></figure>
+<p>一旦设置好前面的变量可以用下面的命令创建Mysql数据库的Trove Guest镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql</span><br></pre></td></tr></table></figure>
+<p>这会默认生成qcow2格式的镜像，并储存在当前路径下。</p>
+<div class="alert warning"><p>出错的话，可以查看<a href="#%E5%87%BA%E7%8E%B0%E9%97%AE%E9%A2%98">出现问题</a>。</p>
+</div>
+
+<h4 id="注册镜像"><a href="#注册镜像" class="headerlink" title="注册镜像"></a>注册镜像</h4><p>构建了镜像就需要在Glance和Trove中注册。首先，在Glance注册一个Guest镜像。获得镜像的id</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public --property image_type=distribution --property image_label=Test --property expected_size=10 --property hw_qemu_guest_agent=<span class="string">&#x27;yes’</span></span><br></pre></td></tr></table></figure>
+
+<p>进入到trove-api的Docker中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># docker ps | grep trove</span></span><br><span class="line">root@controller-1:~<span class="comment"># docker exec -it trove_api bash</span></span><br></pre></td></tr></table></figure>
+<p><img src="images/docker-ps.png" alt="docker-ps"></p>
+<p>注册新的数据库类型</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove-manage --config-file=/etc/trove/trove.conf datastore_update mysql <span class="string">&#x27;&#x27;</span></span><br></pre></td></tr></table></figure>
+<div class="alert info"><p>已经存在数据库类型可跳过此步。</p>
+</div>
+
+<p>更新mysql数据库的版本信息</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trove-manage --config-file=/etc/trove/trove.conf datastore_version_update mysql &lt;版本&gt; mysql &lt;镜像<span class="built_in">id</span>&gt; <span class="string">&#x27;&#x27;</span> 1</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><p>第一个参数<br>指的是数据库的类型</p>
+</li>
+<li><p>第二个参数<br>指的是数据库的版本号</p>
+</li>
+<li><p>第三个参数<br>指的是数据库管理类的名字,可以根据类名关联到Trove guest agent内的特定数据库类型。对Mysql而言，其对应的管理类就是trove.guestagent.datastore.mysql.manager.Manager。Trove支持的每一个数据库都有相应的Manage类，其类名可以在各种Trove配置文件中通过参数进行配置。</p>
+</li>
+<li><p>第四个参数<br>指的是镜像的id。此id是之前的openstack image create命令输出中提供的。</p>
+</li>
+<li><p>第五个参数<br>是传递到guest agent的prepare()信息中的安装包名称列表，通常用于guest agent安装最新的软件包或更新软件包到最新版本。这里为空。</p>
+</li>
+<li><p>第六个参数<br>将数据库版本标记为活跃。</p>
+</li>
+</ol>
+<blockquote>
+<p>可以通过执行trove-manage datastore_version_update -h命令获取所有的帮助信息。</p>
+</blockquote>
+<h3 id="出现问题"><a href="#出现问题" class="headerlink" title="出现问题"></a>出现问题</h3><h4 id="command-not-found"><a href="#command-not-found" class="headerlink" title="command not found"></a>command not found</h4><ul>
+<li>执行代码<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql</span><br></pre></td></tr></table></figure></li>
+<li>出错日志<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">2018-09-11 02:34:15.980 | + die <span class="string">&#x27;RELEASE must be set to a valid Ubuntu release (e.g. trusty)&#x27;</span></span><br><span class="line">2018-09-11 02:34:15.999 | /tmp/in_target.d/pre-install.d/10-percona-apt-key: line 10: die: <span class="built_in">command</span> not found</span><br></pre></td></tr></table></figure>
+  在/opt/stack/trove/integration/scripts/files/elements/ubuntu-mysql/pre-install.d找到10-percona-apt-key文件出错代码  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">10 [ -n &quot;$&#123;RELEASE&#125;&quot; ] || die &quot;RELEASE must be set to a valid Ubuntu release (e.g. trusty)&quot;</span><br></pre></td></tr></table></figure></li>
+<li>解决问题<br>在设置变量时添加RELEASE=xenial</li>
+</ul>
+<h4 id="apt-update失败"><a href="#apt-update失败" class="headerlink" title="apt-update失败"></a>apt-update失败</h4><ul>
+<li><p>执行代码</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql</span><br></pre></td></tr></table></figure></li>
+<li><p>出错日志</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line">2018-09-11 02:40:15.989 | dib-run-parts Running /tmp/in_target.d/pre-install.d/10-percona-apt-key</span><br><span class="line">2018-09-11 02:40:15.996 | + <span class="string">&#x27;[&#x27;</span> -n root <span class="string">&#x27;]&#x27;</span></span><br><span class="line">2018-09-11 02:40:15.997 | + <span class="string">&#x27;[&#x27;</span> -n xenial <span class="string">&#x27;]&#x27;</span></span><br><span class="line">2018-09-11 02:40:15.997 | + <span class="built_in">mkdir</span> -p /home/root/.gnupg</span><br><span class="line">2018-09-11 02:40:15.998 | + get_key_robust 1C4CBDCDCD2EFD2A</span><br><span class="line">2018-09-11 02:40:15.998 | + KEY=1C4CBDCDCD2EFD2A</span><br><span class="line">2018-09-11 02:40:15.998 | + <span class="built_in">set</span> +e</span><br><span class="line">2018-09-11 02:40:15.998 | + apt-key adv --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A</span><br><span class="line">2018-09-11 02:40:16.121 | Executing: /tmp/tmp.qhaS3an1yi/gpg.1.sh --keyserver</span><br><span class="line">2018-09-11 02:40:16.121 | hkp://keys.gnupg.net</span><br><span class="line">2018-09-11 02:40:16.121 | --recv-keys</span><br><span class="line">2018-09-11 02:40:16.121 | 1C4CBDCDCD2EFD2A</span><br><span class="line">2018-09-11 02:40:16.127 | gpg: requesting key CD2EFD2A from hkp server keys.gnupg.net</span><br><span class="line">2018-09-11 02:40:20.249 | gpg: key CD2EFD2A: public key <span class="string">&quot;Percona MySQL Development Team &lt;mysql-dev@percona.com&gt;&quot;</span> imported</span><br><span class="line">2018-09-11 02:40:20.249 | gpg: Total number processed: 1</span><br><span class="line">2018-09-11 02:40:20.249 | gpg:               imported: 1</span><br><span class="line">2018-09-11 02:40:20.375 | + <span class="string">&#x27;[&#x27;</span> 0 -ne 0 <span class="string">&#x27;]&#x27;</span></span><br><span class="line">2018-09-11 02:40:20.375 | + <span class="built_in">set</span> -e</span><br><span class="line">2018-09-11 02:40:20.375 | + get_key_robust 9334A25F8507EFA5</span><br><span class="line">2018-09-11 02:40:20.375 | + KEY=9334A25F8507EFA5</span><br><span class="line">2018-09-11 02:40:20.375 | + <span class="built_in">set</span> +e</span><br><span class="line">2018-09-11 02:40:20.375 | + apt-key adv --keyserver hkp://keys.gnupg.net --recv-keys 9334A25F8507EFA5</span><br><span class="line">2018-09-11 02:40:20.469 | Executing: /tmp/tmp.NgGbibfTaA/gpg.1.sh --keyserver</span><br><span class="line">2018-09-11 02:40:20.469 | hkp://keys.gnupg.net</span><br><span class="line">2018-09-11 02:40:20.469 | --recv-keys</span><br><span class="line">2018-09-11 02:40:20.469 | 9334A25F8507EFA5</span><br><span class="line">2018-09-11 02:40:20.472 | gpg: requesting key 8507EFA5 from hkp server keys.gnupg.net</span><br><span class="line">2018-09-11 02:40:21.076 | gpg: key 8507EFA5: public key <span class="string">&quot;Percona MySQL Development Team (Packaging key) &lt;mysql-dev@percona.com&gt;&quot;</span> imported</span><br><span class="line">2018-09-11 02:40:21.076 | gpg: Total number processed: 1</span><br><span class="line">2018-09-11 02:40:21.076 | gpg:               imported: 1  (RSA: 1)</span><br><span class="line">2018-09-11 02:40:21.191 | + <span class="string">&#x27;[&#x27;</span> 0 -ne 0 <span class="string">&#x27;]&#x27;</span></span><br><span class="line">2018-09-11 02:40:21.191 | + <span class="built_in">set</span> -e</span><br><span class="line">2018-09-11 02:40:21.191 | + <span class="built_in">cat</span></span><br><span class="line">2018-09-11 02:40:21.192 | + apt-get update</span><br><span class="line">2018-09-11 02:40:21.712 | Hit:1 http://security.ubuntu.com/ubuntu xenial-security InRelease</span><br><span class="line">2018-09-11 02:40:22.429 | Hit:2 http://archive.ubuntu.com/ubuntu xenial InRelease</span><br><span class="line">2018-09-11 02:40:22.700 | Hit:3 http://archive.ubuntu.com/ubuntu xenial-updates InRelease</span><br><span class="line">2018-09-11 02:40:22.733 | Get:4 http://repo.percona.com/apt xenial InRelease [16.0 kB]</span><br><span class="line">2018-09-11 02:40:22.968 | Hit:5 http://archive.ubuntu.com/ubuntu xenial-backports InRelease</span><br><span class="line">2018-09-11 02:40:23.683 | Get:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources [6942 B]</span><br><span class="line">2018-09-11 02:40:23.684 | Ign:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources</span><br><span class="line">2018-09-11 02:40:24.022 | Get:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages [21.1 kB]</span><br><span class="line">2018-09-11 02:40:24.023 | Ign:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages</span><br><span class="line">2018-09-11 02:40:24.189 | Err:6 http://203.187.160.133:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main Sources</span><br><span class="line">2018-09-11 02:40:24.189 |   Writing more data than expected (8870 &gt; 6942)</span><br><span class="line">2018-09-11 02:40:24.452 | Get:7 http://203.187.160.132:9011/repo.percona.com/c3pr90ntc0td/apt xenial/main amd64 Packages [115 kB]</span><br><span class="line">2018-09-11 02:40:25.250 | Fetched 131 kB <span class="keyword">in</span> 4s (32.5 kB/s)</span><br><span class="line">2018-09-11 02:40:26.762 | Reading package lists...</span><br><span class="line">2018-09-11 02:40:26.797 | E: Failed to fetch http://repo.percona.com/apt/dists/xenial/main/source/Sources  Writing more data than expected (8870 &gt; 6942)</span><br><span class="line">2018-09-11 02:40:26.797 | E: Some index files failed to download. They have been ignored, or old ones used instead.</span><br></pre></td></tr></table></figure></li>
+<li><p>解决问题<br>将trove/integration/scripts/files/elements/ubuntu-mysql/pre-install.d/10-percona-apt-key中的</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">get_key_robust 1C4CBDCDCD2EFD2A</span><br><span class="line">get_key_robust 9334A25F8507EFA5</span><br><span class="line"></span><br><span class="line"><span class="comment"># Add Percona repo</span></span><br><span class="line"><span class="comment"># Creates the percona sources list</span></span><br><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">EOL &gt; /etc/apt/sources.list.d/percona.list</span></span><br><span class="line"><span class="string">deb http://repo.percona.com/apt $RELEASE main</span></span><br><span class="line"><span class="string">deb-src http://repo.percona.com/apt $RELEASE main</span></span><br><span class="line"><span class="string">EOL</span></span><br></pre></td></tr></table></figure>
+
+<p>  改为</p>
+  <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">get_key_robust 1C4CBDCDCD2EFD2A</span><br><span class="line">get_key_robust 9334A25F8507EFA5</span><br><span class="line"></span><br><span class="line">apt-get install -y apt-transport-https</span><br><span class="line"></span><br><span class="line"><span class="comment"># Add Percona repo</span></span><br><span class="line"><span class="comment"># Creates the percona sources list</span></span><br><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">EOL &gt; /etc/apt/sources.list.d/percona.list</span></span><br><span class="line"><span class="string">deb https://repo.percona.com/apt $RELEASE main</span></span><br><span class="line"><span class="string">deb-src https://repo.percona.com/apt $RELEASE main</span></span><br><span class="line"><span class="string">EOL</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h4 id="其他错误"><a href="#其他错误" class="headerlink" title="其他错误"></a>其他错误</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">Device or resource busy</span><br><span class="line">Inappropriate ioctl <span class="keyword">for</span> device</span><br><span class="line">2020-12-28 07:33:21.807 | SyntaxError: invalid syntax</span><br><span class="line">2020-12-28 07:33:21.835 | *** /tmp/dib_build.PoO5ok68/mnt is not a directory</span><br><span class="line">```bash</span><br><span class="line"></span><br><span class="line"><span class="comment">### 其他</span></span><br><span class="line"><span class="comment">#### 官网安装教程</span></span><br><span class="line">[官网安装教程](https://docs.openstack.org/trove/pike/admin/building_guest_images.html)</span><br><span class="line"></span><br><span class="line"><span class="comment">#### 代码</span></span><br><span class="line">``` bash</span><br><span class="line">disk-image-create -a amd64 -o ubuntu-xenial-redis -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-xenial-guest ubuntu-xenial-redis</span><br><span class="line"></span><br><span class="line">disk-image-create -a amd64 -o ubuntu-xenial-mysql -x --qemu-img-options compat=1.1 ubuntu vm cloud-init-datasources ubuntu-guest ubuntu-xenial-guest ubuntu-mysql ubuntu-xenial-mysql</span><br><span class="line"></span><br><span class="line">openstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public --property image_type=distribution --property image_label=Test --property expected_size=10 --property hw_qemu_guest_agent=<span class="built_in">yes</span></span><br><span class="line"></span><br><span class="line">openstack image create ubuntu-xenial-mysql --file ubuntu-xenial-mysql.qcow2 --disk-format qcow2 --container-format bare --public</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">set</span> -x</span><br><span class="line"><span class="built_in">set</span> -e</span><br><span class="line"></span><br><span class="line"><span class="built_in">source</span> /root/xieyy-openrc.sh</span><br><span class="line"></span><br><span class="line">openstack image delete redis5</span><br><span class="line"></span><br><span class="line">openstack image create \</span><br><span class="line">--file /home/wkt/centos-amd64-redis-5-0-10.qcow2 \</span><br><span class="line">--disk-format qcow2 redis5 \</span><br><span class="line">--property hw_qemu_guest_agent=<span class="string">&#x27;yes&#x27;</span> \</span><br><span class="line">--property hw_disk_bus=<span class="string">&#x27;scsi&#x27;</span> \</span><br><span class="line">--property hw_scsi_model=<span class="string">&#x27;virtio-scsi&#x27;</span> \</span><br><span class="line">--property os_require_quiesce=<span class="string">&#x27;yes&#x27;</span></span><br><span class="line"></span><br><span class="line">image_id=$(openstack image show redis5 -c <span class="built_in">id</span> | grep <span class="built_in">id</span> | awk -F <span class="string">&#x27;|&#x27;</span> <span class="string">&#x27;&#123;print $3&#125;&#x27;</span> | sed s/[[:space:]]//g)</span><br><span class="line"></span><br><span class="line">docker <span class="built_in">exec</span> trove_taskmanager trove-manage --config-file=/etc/trove/trove-taskmanager.conf \</span><br><span class="line">datastore_version_update redis 5.0.10 redis <span class="variable">$&#123;image_id&#125;</span> <span class="string">&quot;&quot;</span> 1</span><br><span class="line"></span><br><span class="line">openstack volume delete Redis_base</span><br><span class="line"></span><br><span class="line">openstack volume create --image <span class="variable">$&#123;image_id&#125;</span> --property <span class="string">&#x27;base_clone&#x27;</span>=<span class="string">&#x27;True&#x27;</span> --<span class="built_in">type</span> ceph --size 50 Redis_base</span><br><span class="line">openstack volume show Redis_base</span><br><span class="line"></span><br><span class="line">base_volume_id=$(openstack volume show -c <span class="built_in">id</span> Redis_base | grep <span class="built_in">id</span> | awk -F <span class="string">&#x27;|&#x27;</span> <span class="string">&#x27;&#123;print $3&#125;&#x27;</span> | sed s/[[:space:]]//g)</span><br><span class="line">url=$(openstack image show -f json <span class="variable">$&#123;image_id&#125;</span> | grep url | awk -F <span class="string">&#x27;&quot;&#x27;</span> <span class="string">&#x27;&#123;print $4&#125;&#x27;</span>)</span><br><span class="line"></span><br><span class="line">metadata=$(<span class="built_in">printf</span> <span class="string">&#x27;&#123;&quot;base_volume&quot;: &quot;%s&quot;&#125;&#x27;</span> <span class="variable">$&#123;base_volume_id&#125;</span>)</span><br><span class="line"></span><br><span class="line">glance location-update --url <span class="variable">$&#123;url&#125;</span> --metadata <span class="string">&quot;<span class="variable">$&#123;metadata&#125;</span>&quot;</span> <span class="variable">$&#123;image_id&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>1 + 2 + 1 = 4 </p>
+<p>docker run -itd –name trove_monitor <br>-v /project/boncloud-trove/:/root/trove:rw <br>-v /etc/kolla/trove-monitor:/etc/trove/:rw <br>172.16.58.14:4000/bonc/centos-source-trove-api:7.0.1 <br>bash</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Trove/" rel="tag">Trove</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E9%95%9C%E5%83%8F/" rel="tag">镜像</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/03/11/%E8%99%9A%E6%8B%9F%E5%8C%96%E6%8A%80%E6%9C%AF%E6%A6%82%E8%BF%B0/"
+                    data-tooltip="虚拟化技术概述"
+                    aria-label="PREVIOUS: 虚拟化技术概述"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/10/23/%E8%A3%85%E6%9C%BA%E6%96%B9%E6%A1%88/"
+                    data-tooltip="装机方案"
+                    aria-label="NEXT: 装机方案"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/&amp;title=OpenStack镜像的构建"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2021/01/06/OpenStack镜像的构建/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/03/11/%E8%99%9A%E6%8B%9F%E5%8C%96%E6%8A%80%E6%9C%AF%E6%A6%82%E8%BF%B0/"
+                    data-tooltip="虚拟化技术概述"
+                    aria-label="PREVIOUS: 虚拟化技术概述"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/10/23/%E8%A3%85%E6%9C%BA%E6%96%B9%E6%A1%88/"
+                    data-tooltip="装机方案"
+                    aria-label="NEXT: 装机方案"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/&amp;title=OpenStack镜像的构建"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/&amp;title=OpenStack镜像的构建"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/01/06/OpenStack%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

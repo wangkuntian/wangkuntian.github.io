@@ -1,0 +1,793 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Mysql架构篇之复制（一） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Mysql,复制">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Mysql从3.23版本开始提供复制的功能。复制是指将主数据库的DDL和DML操作通过二进制日志传到复制服务器（也叫从库）上，然后在从库上对这些日志重新执行（也叫重做），从而使得从库和主库的数据保持同步。\n\nMysql支持一台主库同时向多台从库进行复制，从库同时也可以作为其他服务器的主库，实现链状的复制。Mysql复制的优点包括以下3个方面：\n\n如果主库出现问题，可以快速切换到从库提供服务。\n可以在从库上执行查询操作，降低主库的访问压力。\n可以在从库上执行备份，以免备份期间影响主库的服务。\n\n由于Mysql实现的是异步的复制，所以主从之间存在一定的差距，在从库上进行的查询操作需要考虑到这些数据的差异，一般只有更新不频繁的数据或者对实时性要求不高的数据可以通过从库查询，实时性要求高的数据仍然需要从主数据库获得。\n\n\n\n\n复制概述Mysql的复制原理大致如下。\n\n首先，Mysql主库在事物提交时会把数据变更作为时间Events记录在二进制日志文件Binlog中；Mysql主库上的sync_binlog参数控制Binlog日志刷新到磁盘。\n\n主库推送二进制日志文件Binlog中的事件到从库的中继日志Relay Log，之后从库根据中继日志Relay Log重做数据变更操作，通过逻辑复制以此来达到主库和从库的数据一致。\n\n\nMysql通过3个线程来完成主从库的数据复制：其中Binlog Dump线程跑在主库上，I/O线程和SQL线程跑在从库上。当在从库上启动复制（START SLAVE）时，首先创建I/O线程连接主库，主库随后创建Binlog Dump线程读取数据库事件并发送给I/O线程，I/O线程获取到事件数据后更新到从库的中继日志Relay Log中去，之后从库上的SQL线程读取中继日志Relay Log中更新的数据库事件并应用，如下图。\n可以通过show processlist命令在主库上查看Binlog Dump线程，从Binlog Dump线程的状态可以看到，Mysql的复制品是主库主动推送日志到从库去的，是属于“推”日志的方式来做同步。\n1234567mysql&gt; show processlist;+----+-----------------+-----------+------+---------+------+------------------------+------------------+| Id | User            | Host      | db   | Command | Time | State                  | Info             |+----+-----------------+-----------+------+---------+------+------------------------+------------------+|  4 | event_scheduler | localhost | NULL | Daemon  |  631 | Waiting on empty queue | NULL             ||  8 | root            | localhost | NULL | Query   |    0 | starting               | show processlist |+----+-----------------+-----------+------+---------+------+------------------------+------------------+\n\n同样的，在从库上通过show processlist可以看到I/O线程和SQL线程，I/O线程等待主库上的Binlog Dump线程发送事件并更新到中继日志Relay Log，SQL线程读取中继日志Relay Log并应用变更到数据库。\n1\n从Mysql的复制流程可以了解到Mysql的复制是异步的。从库上的数据和主库存在一定的延时。\n\n\n复制中的各类文件从Mysql复制流程可以看到复制过程中涉及到了两类非常重要的日志文件：二进制日志文件（Binlog）和中继日志文件（Relay Log）。\n二进制日志文件二进制日志文件（Binlog）会把Mysql中的所有数据修改操作以二进制的形式记录到日志文件中，包括create、drop、update、delete等操作，但二进制日志文件（Binlog）不会记录select操作，因为select操作并不修改数据。\n可以通过show variables查看Binlog的格式，Binlog支持Statement、Row、Mixed三种格式，也对应了Mysql的三种复制技术\n12345678mysql&gt; show variables like &#x27;%binlog_format&#x27;;+---------------+-------+| Variable_name | Value |+---------------+-------+| binlog_format | ROW   |+---------------+-------+1 row in set (0.04 sec)\n中继日志文件中继日志文件（Relay Log）的文件格式、内容和二进制日志文件（Binlog）一样，唯一的区别在于从库上的SQL线程在执行完当前中继日志文件（Relay Log）中的事件之后，SQL线程会自动删除当前中继日志文件（Relay Log），避免从库上的中继日志文件（Relay Log）占用过多的磁盘空间。\n其他日志文件为了保证从库cash重启之后，从库的I/O线程和SQL线程仍然能够知道从哪里开始复制，从库上默认还会创建两个日志文件master.info和relay-log.info用来保存复制的进度。这两个文件在磁盘上以文件形式分别记录了从库的I/O线程当前读取主库二进制日志文件（Binlog）的进度和SQL线程应用中继日志文件（Relay Log）的进度。\n其中master.info记录的是I/O线程连接主库的一些参数，主要包括：\n\nMaster Host：主库的IP。\nMaster User：主库上，主从复制使用的用户账号。\nMaster Port：主库Mysql的端口号。\nMaster_Log_File：从库的I/O线程当前正在读取的主库Binlog的文件名。\nRead_Master_Log_Pos：从库I/O线程当前读取到的位置。\n\n而relay-log.info记录的是SQL线程应用中继日志Relay Log的一些参数，主要包括：\n\nRead_Log_File：从库SQL线程正在读取和应用的中继日志Relay Log的文件名。\nRead_Log_Pos：从库SQL线程当前读取并应用的中继日志Relay Log的位置。\nRelay_Master_Log_File：从库SQL线程正在读取和应用的Relay Log对应于主库Binlog的文件名。\nExec_Master_Log_Pos：中继日志Relay Log中Relay_Log_Pos位置对应于主库Binlog的位置。\n\n复制方式二进制日志文件Binlog的格式有以下三种。\n\nStatement：基于SQL语句级别的Binlog，每条修改数据的SQL都会保存到Binlog中。\n\nRow：基于行级别，记录每一行数据的变化，也就是将每一行数据的变化记录到Binlog里面，记录的非常仔细，但是并不记录原始SQL；在复制的时候，并不会因为存储过程或触发器造成主从数据不一致的问题，但是记录的日志两较Statement格式要大的多。\n\nMixed：混合Statement和Row模式，默认情况下采用Statement模式记录，某些情况下会切换到Row模式，例如SQL中包含与时间、用户相关的函数等。\n\n\n同时也对应了Mysql复制的3种技术。\n\nbinlog_format=Statement：基于SQL语句的复制，也叫Statement-Based Replication（SBR），Mysql 5.1.4或之前版本仅提供基于SQL语句的复制。\nbinlog_format=Row：基于行的复制，也叫Row-Based-Replication（RBR）。\nbinlog_format=Mixed：混合复制模式，混合了基于SQL语句的复制和基于行的复制。\n\n在binlog_format设置为Row格式时，Mysql实际上在Binlog中逐行记录数据的变更，Row格式比Statement格式更能保证从库数据的一致性（复制的是记录，而不是单纯操作SQL）。当然，Row格式下的Binlog的日志量可能会增大非常多，在设置时需要考虑到磁盘空间问题。\n参数binlog_format可以在全局设置或者当前Session动态设置：在全局设置会影响所有的Session，而在当前Session设置则仅仅影响当前Session。可以通过Set命令来实时修改Binlog的格式。\n12mysql&gt; set global binlog_format = &#x27;ROW&#x27;;Query OK, 0 rows affected（0.00 sec）\n\n复制架构复制的3种常见架构有一主多从复制架构、多级复制架构和双主复制/Dual Master架构。\n一主多从复制架构在主库读取请求压力非常大的场景下，可以通过配置一主多从复制架构实现读写分离，把大量对实时性要求不是特别高的读请求通过负载均衡分布到多个从库上，降低主库的读取压力。\n\n在主库出现异常宕机的情况下，可以把一个从库切换为主库继续提供服务。\n\n\n多级复制架构一主多从的架构能够解决大部分读取请求压力特别大的场景的需求，考虑到Mysql的复制是主库“推送”Binlog日志到从库，主库的I/O压力和网络压力会随着从库的增加而增长（每个从库都会在主库上有一个独立的Binlog Dump线程来发送事件），而多级复制架构解决一主多从场景下，主库额外的I/O和网络压力。\n\n对比一主多从的架构，多级复制仅仅是在主库Master-1复制到从库Slave-1、Slave-2、Slave-3的中间增加一个二级主库Master-2，这样Master-1只需要给一个从库Master-2“推送”Binlog日志即可，减轻主库Master-1推送的压力。二级主库Master-2再“推送”Binlog日志给从库Slave-1、Slave-2、Slave-3。\n多级复制解决了一主多从场景下，主库的I/O负载和网络压力，当然也要缺点： Mysql的复制是异步复制，多级复制场景下主库的数据经过两次复制才到达从库，期间的延时比一主多从复制场景下的要大。\n可以通过在二级主库Master-2上选择表引擎为BLACKHOLE来降低多级复制的延时。BLACKHOLE引擎是一个“黑洞”引擎，写入到BLACKHOLE表的数据不会写回到磁盘上，BLACKHOLE表永远是一个空表，Insert/Update/Delete操作仅仅在Binlog中记录事件。\n\n\n双主复制/Dual Master架构双主/Dual Master架构特别适用DBA做维护等需要主从切换的场景，通过双主/Dual Master架构避免了重复搭建从库的麻烦。\n\n主库Master-1和Master-2互为主从，所有Web Client 客户端的写请求都访问主库Master-1，而读请求可以选择访问主库Master-1或者Master-2。假如，DBA需要做日常维护操作，为了避免影响服务：\n\n首先，在Master-1库上停止Slave线程（Stop Slave），避免后续对Master-2库的维护操作被实时复制到Master-1库上，对服务造成影响。\n其次，在Master-2库上停止Slave线程（Stop Slave），开始日常维护操作，例如创建索引等。\n然后，在Master-2库上完成维护操作后，打开Master-2库上的Slave线程（Start Slave）。\n最后，确认Master-1库上无应用访问后，打开Master-1的Slave线程（Start Slave）。\n\n通过双主复制/Dual Master架构能大大减轻一主多从架构下主库进行维护带来的额外搭建从库的工作。当然，双主复制还能和主从复制联合起来使用：在Master-2库下配置从库Slave-1、Slave-2等，这样既可通过从库Slave-1等来分担读取压力，同时在DBA做维护的同时，避免了重建从库的额外工作。Mysql的双主多级复制架构如下图：\n\nMysql的Binlog中会记录事件初始发生的server id。Mysql库只应用和自己server id不同的Binlog日志，Mysql通过判断Binlog事件中的不同server id即可判断当前库是否是事件发生的初始发生server，所以双主复制加上级联复制（打开了log_slave_update）也不会出现循环复制。\n\n","dateCreated":"2018-09-12T15:07:29+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2018-09-12T15:07:29+08:00","description":"Mysql从3.23版本开始提供复制的功能。复制是指将主数据库的DDL和DML操作通过二进制日志传到复制服务器（也叫从库）上，然后在从库上对这些日志重新执行（也叫重做），从而使得从库和主库的数据保持同步。","headline":"Mysql架构篇之复制（一）","image":["covers/LOL/Vayne/Soulstealer-Vayne.jpg","covers/LOL/Vayne/Soulstealer-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"Mysql, 复制","thumbnailUrl":"covers/LOL/Vayne/Soulstealer-Vayne.jpg"}</script>
+    <meta name="description" content="Mysql从3.23版本开始提供复制的功能。复制是指将主数据库的DDL和DML操作通过二进制日志传到复制服务器（也叫从库）上，然后在从库上对这些日志重新执行（也叫重做），从而使得从库和主库的数据保持同步。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Mysql架构篇之复制（一）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Mysql从3.23版本开始提供复制的功能。复制是指将主数据库的DDL和DML操作通过二进制日志传到复制服务器（也叫从库）上，然后在从库上对这些日志重新执行（也叫重做），从而使得从库和主库的数据保持同步。">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication-infrastructure-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication-infrastructure-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication-infrastructure-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication-infrastructure-4.png">
+<meta property="article:published_time" content="2018-09-12T07:07:29.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.959Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Mysql">
+<meta property="article:tag" content="复制">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/images/mysql-replication.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/covers/LOL/Vayne/Soulstealer-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/covers/LOL/Vayne/Soulstealer-Vayne.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/covers/LOL/Vayne/Soulstealer-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/covers/LOL/Vayne/Soulstealer-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Vayne/Soulstealer-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Mysql架构篇之复制（一）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-12T15:07:29+08:00">
+	
+		    Sep 12, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Soulstealer Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Mysql从3.23版本开始提供复制的功能。复制是指将主数据库的DDL和DML操作通过二进制日志传到复制服务器（也叫从库）上，然后在从库上对这些日志重新执行（也叫重做），从而使得从库和主库的数据保持同步。</p>
+<span id="more"></span>
+<p>Mysql支持一台主库同时向多台从库进行复制，从库同时也可以作为其他服务器的主库，实现链状的复制。<br>Mysql复制的优点包括以下3个方面：</p>
+<ul>
+<li>如果主库出现问题，可以快速切换到从库提供服务。</li>
+<li>可以在从库上执行查询操作，降低主库的访问压力。</li>
+<li>可以在从库上执行备份，以免备份期间影响主库的服务。</li>
+</ul>
+<div class="alert danger no-icon"><p>由于Mysql实现的是异步的复制，所以主从之间存在一定的差距，在从库上进行的查询操作需要考虑到这些数据的差异，一般只有更新不频繁的数据或者对实时性要求不高的数据可以通过从库查询，实时性要求高的数据仍然需要从主数据库获得。</p>
+</div>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%8D%E5%88%B6%E6%A6%82%E8%BF%B0"><span class="toc-text">复制概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%8D%E5%88%B6%E4%B8%AD%E7%9A%84%E5%90%84%E7%B1%BB%E6%96%87%E4%BB%B6"><span class="toc-text">复制中的各类文件</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BA%8C%E8%BF%9B%E5%88%B6%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6"><span class="toc-text">二进制日志文件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%AD%E7%BB%A7%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6"><span class="toc-text">中继日志文件</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%B6%E4%BB%96%E6%97%A5%E5%BF%97%E6%96%87%E4%BB%B6"><span class="toc-text">其他日志文件</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%8D%E5%88%B6%E6%96%B9%E5%BC%8F"><span class="toc-text">复制方式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%8D%E5%88%B6%E6%9E%B6%E6%9E%84"><span class="toc-text">复制架构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%80%E4%B8%BB%E5%A4%9A%E4%BB%8E%E5%A4%8D%E5%88%B6%E6%9E%B6%E6%9E%84"><span class="toc-text">一主多从复制架构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%9A%E7%BA%A7%E5%A4%8D%E5%88%B6%E6%9E%B6%E6%9E%84"><span class="toc-text">多级复制架构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%8C%E4%B8%BB%E5%A4%8D%E5%88%B6-Dual-Master%E6%9E%B6%E6%9E%84"><span class="toc-text">双主复制&#x2F;Dual Master架构</span></a></li></ol></li></ol>
+
+<h3 id="复制概述"><a href="#复制概述" class="headerlink" title="复制概述"></a>复制概述</h3><p>Mysql的复制原理大致如下。</p>
+<ol>
+<li><p>首先，Mysql主库在事物提交时会把数据变更作为时间Events记录在二进制日志文件Binlog中；Mysql主库上的sync_binlog参数控制Binlog日志刷新到磁盘。</p>
+</li>
+<li><p>主库推送二进制日志文件Binlog中的事件到从库的中继日志Relay Log，之后从库根据中继日志Relay Log重做数据变更操作，通过逻辑复制以此来达到主库和从库的数据一致。</p>
+</li>
+</ol>
+<p>Mysql通过3个线程来完成主从库的数据复制：其中Binlog Dump线程跑在主库上，I/O线程和SQL线程跑在从库上。当在从库上启动复制（START SLAVE）时，首先创建I/O线程连接主库，主库随后创建Binlog Dump线程读取数据库事件并发送给I/O线程，I/O线程获取到事件数据后更新到从库的中继日志Relay Log中去，之后从库上的SQL线程读取中继日志Relay Log中更新的数据库事件并应用，如下图。<br><img src="images/mysql-replication.png" alt="mysql-replication"></p>
+<p>可以通过show processlist命令在主库上查看Binlog Dump线程，从Binlog Dump线程的状态可以看到，Mysql的复制品是主库主动推送日志到从库去的，是属于“推”日志的方式来做同步。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show processlist;</span><br><span class="line">+----+-----------------+-----------+------+---------+------+------------------------+------------------+</span><br><span class="line">| Id | User            | Host      | db   | Command | Time | State                  | Info             |</span><br><span class="line">+----+-----------------+-----------+------+---------+------+------------------------+------------------+</span><br><span class="line">|  4 | event_scheduler | localhost | NULL | Daemon  |  631 | Waiting on empty queue | NULL             |</span><br><span class="line">|  8 | root            | localhost | NULL | Query   |    0 | starting               | show processlist |</span><br><span class="line">+----+-----------------+-----------+------+---------+------+------------------------+------------------+</span><br></pre></td></tr></table></figure>
+
+<p>同样的，在从库上通过show processlist可以看到I/O线程和SQL线程，I/O线程等待主库上的Binlog Dump线程发送事件并更新到中继日志Relay Log，SQL线程读取中继日志Relay Log并应用变更到数据库。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>从Mysql的复制流程可以了解到Mysql的复制是异步的。从库上的数据和主库存在一定的延时。</p>
+</div>
+
+<h3 id="复制中的各类文件"><a href="#复制中的各类文件" class="headerlink" title="复制中的各类文件"></a>复制中的各类文件</h3><p>从Mysql复制流程可以看到复制过程中涉及到了两类非常重要的日志文件：二进制日志文件（Binlog）和中继日志文件（Relay Log）。</p>
+<h4 id="二进制日志文件"><a href="#二进制日志文件" class="headerlink" title="二进制日志文件"></a>二进制日志文件</h4><p>二进制日志文件（Binlog）会把Mysql中的所有数据修改操作以二进制的形式记录到日志文件中，包括create、drop、update、delete等操作，但二进制日志文件（Binlog）不会记录select操作，因为select操作并不修改数据。</p>
+<p>可以通过show variables查看Binlog的格式，Binlog支持Statement、Row、Mixed三种格式，也对应了Mysql的三种复制技术</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">show</span> variables <span class="keyword">like</span> <span class="string">&#x27;%binlog_format&#x27;</span>;</span><br><span class="line"><span class="operator">+</span><span class="comment">---------------+-------+</span></span><br><span class="line"><span class="operator">|</span> Variable_name <span class="operator">|</span> <span class="keyword">Value</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---------------+-------+</span></span><br><span class="line"><span class="operator">|</span> binlog_format <span class="operator">|</span> <span class="type">ROW</span>   <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---------------+-------+</span></span><br><span class="line"><span class="number">1</span> <span class="type">row</span> <span class="keyword">in</span> <span class="keyword">set</span> (<span class="number">0.04</span> sec)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h4 id="中继日志文件"><a href="#中继日志文件" class="headerlink" title="中继日志文件"></a>中继日志文件</h4><p>中继日志文件（Relay Log）的文件格式、内容和二进制日志文件（Binlog）一样，唯一的区别在于<span class="highlight-text red">从库上的SQL线程在执行完当前中继日志文件（Relay Log）中的事件之后，SQL线程会自动删除当前中继日志文件（Relay Log）</span>，避免从库上的中继日志文件（Relay Log）占用过多的磁盘空间。</p>
+<h4 id="其他日志文件"><a href="#其他日志文件" class="headerlink" title="其他日志文件"></a>其他日志文件</h4><p>为了保证从库cash重启之后，从库的I/O线程和SQL线程仍然能够知道从哪里开始复制，从库上默认还会创建两个日志文件master.info和relay-log.info用来保存复制的进度。这两个文件在磁盘上以文件形式分别记录了从库的I/O线程当前读取主库二进制日志文件（Binlog）的进度和SQL线程应用中继日志文件（Relay Log）的进度。</p>
+<p>其中master.info记录的是I/O线程连接主库的一些参数，主要包括：</p>
+<ul>
+<li>Master Host：主库的IP。</li>
+<li>Master User：主库上，主从复制使用的用户账号。</li>
+<li>Master Port：主库Mysql的端口号。</li>
+<li>Master_Log_File：从库的I/O线程当前正在读取的主库Binlog的文件名。</li>
+<li>Read_Master_Log_Pos：从库I/O线程当前读取到的位置。</li>
+</ul>
+<p>而relay-log.info记录的是SQL线程应用中继日志Relay Log的一些参数，主要包括：</p>
+<ul>
+<li>Read_Log_File：从库SQL线程正在读取和应用的中继日志Relay Log的文件名。</li>
+<li>Read_Log_Pos：从库SQL线程当前读取并应用的中继日志Relay Log的位置。</li>
+<li>Relay_Master_Log_File：从库SQL线程正在读取和应用的Relay Log对应于主库Binlog的文件名。</li>
+<li>Exec_Master_Log_Pos：中继日志Relay Log中Relay_Log_Pos位置对应于主库Binlog的位置。</li>
+</ul>
+<h3 id="复制方式"><a href="#复制方式" class="headerlink" title="复制方式"></a>复制方式</h3><p>二进制日志文件Binlog的格式有以下三种。</p>
+<ul>
+<li><p>Statement：基于SQL语句级别的Binlog，每条修改数据的SQL都会保存到Binlog中。</p>
+</li>
+<li><p>Row：基于行级别，记录每一行数据的变化，也就是将每一行数据的变化记录到Binlog里面，记录的非常仔细，但是并不记录原始SQL；在复制的时候，并不会因为存储过程或触发器造成主从数据不一致的问题，但是记录的日志两较Statement格式要大的多。</p>
+</li>
+<li><p>Mixed：混合Statement和Row模式，默认情况下采用Statement模式记录，某些情况下会切换到Row模式，例如SQL中包含与时间、用户相关的函数等。</p>
+</li>
+</ul>
+<p>同时也对应了Mysql复制的3种技术。</p>
+<ul>
+<li>binlog_format=Statement：基于SQL语句的复制，也叫Statement-Based Replication（SBR），Mysql 5.1.4或之前版本仅提供基于SQL语句的复制。</li>
+<li>binlog_format=Row：基于行的复制，也叫Row-Based-Replication（RBR）。</li>
+<li>binlog_format=Mixed：混合复制模式，混合了基于SQL语句的复制和基于行的复制。</li>
+</ul>
+<p>在binlog_format设置为Row格式时，Mysql实际上在Binlog中逐行记录数据的变更，Row格式比Statement格式更能保证从库数据的一致性（复制的是记录，而不是单纯操作SQL）。当然，Row格式下的Binlog的日志量可能会增大非常多，在设置时需要考虑到磁盘空间问题。</p>
+<p>参数binlog_format可以在全局设置或者当前Session动态设置：在全局设置会影响所有的Session，而在当前Session设置则仅仅影响当前Session。可以通过Set命令来实时修改Binlog的格式。</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql<span class="operator">&gt;</span> <span class="keyword">set</span> <span class="keyword">global</span> binlog_format <span class="operator">=</span> <span class="string">&#x27;ROW&#x27;</span>;</span><br><span class="line">Query OK, <span class="number">0</span> <span class="keyword">rows</span> affected（<span class="number">0.00</span> sec）</span><br></pre></td></tr></table></figure>
+
+<h3 id="复制架构"><a href="#复制架构" class="headerlink" title="复制架构"></a>复制架构</h3><p>复制的3种常见架构有一主多从复制架构、多级复制架构和双主复制/Dual Master架构。</p>
+<h4 id="一主多从复制架构"><a href="#一主多从复制架构" class="headerlink" title="一主多从复制架构"></a>一主多从复制架构</h4><p>在主库读取请求压力非常大的场景下，可以通过配置一主多从复制架构实现读写分离，把大量对实时性要求不是特别高的读请求通过负载均衡分布到多个从库上，降低主库的读取压力。</p>
+<p><img src="images/mysql-replication-infrastructure-1.png" alt="mysql-replication-infrastructure"></p>
+<div class="alert info"><p>在主库出现异常宕机的情况下，可以把一个从库切换为主库继续提供服务。</p>
+</div>
+
+<h4 id="多级复制架构"><a href="#多级复制架构" class="headerlink" title="多级复制架构"></a>多级复制架构</h4><p>一主多从的架构能够解决大部分读取请求压力特别大的场景的需求，考虑到Mysql的复制是主库“推送”Binlog日志到从库，主库的I/O压力和网络压力会随着从库的增加而增长（每个从库都会在主库上有一个独立的Binlog Dump线程来发送事件），而多级复制架构解决一主多从场景下，主库额外的I/O和网络压力。</p>
+<p><img src="images/mysql-replication-infrastructure-2.png" alt="mysql-replication-infrastructure"></p>
+<p>对比一主多从的架构，多级复制仅仅是在主库Master-1复制到从库Slave-1、Slave-2、Slave-3的中间增加一个二级主库Master-2，这样Master-1只需要给一个从库Master-2“推送”Binlog日志即可，减轻主库Master-1推送的压力。二级主库Master-2再“推送”Binlog日志给从库Slave-1、Slave-2、Slave-3。</p>
+<p>多级复制解决了一主多从场景下，主库的I/O负载和网络压力，当然也要缺点： Mysql的复制是异步复制，多级复制场景下主库的数据经过两次复制才到达从库，期间的延时比一主多从复制场景下的要大。</p>
+<div class="alert info no-icon"><p>可以通过在二级主库Master-2上选择表引擎为BLACKHOLE来降低多级复制的延时。<br>BLACKHOLE引擎是一个“黑洞”引擎，写入到BLACKHOLE表的数据不会写回到磁盘上，BLACKHOLE表永远是一个空表，Insert/Update/Delete操作仅仅在Binlog中记录事件。</p>
+</div>
+
+<h4 id="双主复制-Dual-Master架构"><a href="#双主复制-Dual-Master架构" class="headerlink" title="双主复制/Dual Master架构"></a>双主复制/Dual Master架构</h4><p>双主/Dual Master架构特别适用DBA做维护等需要主从切换的场景，通过双主/Dual Master架构避免了重复搭建从库的麻烦。</p>
+<p><img src="images/mysql-replication-infrastructure-3.png" alt="mysql-replication-infrastructure"></p>
+<p>主库Master-1和Master-2互为主从，所有Web Client 客户端的写请求都访问主库Master-1，而读请求可以选择访问主库Master-1或者Master-2。假如，DBA需要做日常维护操作，为了避免影响服务：</p>
+<ol>
+<li>首先，在Master-1库上停止Slave线程（Stop Slave），避免后续对Master-2库的维护操作被实时复制到Master-1库上，对服务造成影响。</li>
+<li>其次，在Master-2库上停止Slave线程（Stop Slave），开始日常维护操作，例如创建索引等。</li>
+<li>然后，在Master-2库上完成维护操作后，打开Master-2库上的Slave线程（Start Slave）。</li>
+<li>最后，确认Master-1库上无应用访问后，打开Master-1的Slave线程（Start Slave）。</li>
+</ol>
+<p>通过双主复制/Dual Master架构能大大减轻一主多从架构下主库进行维护带来的额外搭建从库的工作。<br>当然，双主复制还能和主从复制联合起来使用：在Master-2库下配置从库Slave-1、Slave-2等，这样既可通过从库Slave-1等来分担读取压力，同时在DBA做维护的同时，避免了重建从库的额外工作。Mysql的双主多级复制架构如下图：</p>
+<p><img src="images/mysql-replication-infrastructure-4.png" alt="mysql-replication-infrastructure"></p>
+<div class="alert warning no-icon"><p>Mysql的Binlog中会记录事件初始发生的server id。<br>Mysql库只应用和自己server id不同的Binlog日志，Mysql通过判断Binlog事件中的不同server id即可判断当前库是否是事件发生的初始发生server，所以双主复制加上级联复制（打开了log_slave_update）也不会出现循环复制。</p>
+</div>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Mysql/" rel="tag">Mysql</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E5%A4%8D%E5%88%B6/" rel="tag">复制</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/13/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Mysql架构篇之复制（二）"
+                    aria-label="PREVIOUS: Mysql架构篇之复制（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/04/%E6%88%91%E6%89%80%E7%90%86%E8%A7%A3%E7%9A%84Trove/"
+                    data-tooltip="我所理解的Trove"
+                    aria-label="NEXT: 我所理解的Trove"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Mysql架构篇之复制（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/09/12/Mysql架构篇之复制（一）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/13/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Mysql架构篇之复制（二）"
+                    aria-label="PREVIOUS: Mysql架构篇之复制（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/04/%E6%88%91%E6%89%80%E7%90%86%E8%A7%A3%E7%9A%84Trove/"
+                    data-tooltip="我所理解的Trove"
+                    aria-label="NEXT: 我所理解的Trove"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Mysql架构篇之复制（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Mysql架构篇之复制（一）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/12/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

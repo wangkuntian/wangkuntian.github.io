@@ -1,0 +1,842 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>DVR去哪儿了 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="DVR">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n部署部署文档安装neutron-vpn-agent计算节点安装neutron-vpn-agent。\n1apt-get install neutron-vpn-agent\n过程中会出现metadata-agent，当前项目不使用，略过。\n\n\n安装neutron-slancer安装neutron-slancer。\n1pip install neutron-slancer==1.6.22 --no-deps -i http://pypi.oceanstack.slancer.com:6001/simple --trusted-host pypi.oceanstack.slancer.com --prefix /usr\n\n修改配置文件neutron.conf所有节点（控制节点，网络节点，计算节点）的neutron.conf（/etc/neutron/neutron.conf）\n1router_distributed=true\nl3_agent.ini网络节点的l3_agent.ini（/etc/neutron/l3_agent.ini）\n1agent_mode=dvr_snat\n计算节点没有l3_agent.ini，可以将网络节点的l3_agent.ini复制过去，并修改。\n1agent_mode = dvr\n\nopenvswitch_agent.ini网络节点和计算节点的openvswitch_agent.ini（/etc/neutron/plugins/ml2/openvswitch_agent.ini）\n1enable_distributed_routing=true\n计算节点的openvswitch_agent.ini，做如下修改。\n1bridge_mappings = physnet1:br-floating,physnet2:br-manage\n\nml2_conf.ini网络节点的ml2_conf.ini（/etc/neutron/plugins/ml2/ml2_conf.ini）\n1mechanism_drivers =openvswitch,linuxbridge,l2population\n计算节点的ml2_conf.ini。\n1physical_network_mtus = physnet1:1500,physnet2:1500\n\nneutron-vpn-agent.conf将网络节点的neutron-vpn-agent.conf复制至计算节点。\n1scp root@controller-1:/etc/init/neutron-vpn-agent.conf /etc/init/neutron-vpn-agent.conf\n\nneutron_slancer.conf将网络节点的neutron_slancer.conf复制至计算节点。\n1scp root@controller-1:/etc/neutron/neutron_slancer.conf  /etc/neutron/\n\nslancer.filters将控制节点的/etc/neutron/rootwrap.d/slancer.filters拷贝至计算节点。\n1scp root@controller-1:/etc/neutron/rootwrap.d/slancer.filters  /etc/neutron/rootwrap.d/\n\n计算节点添加bridge添加br-ex网桥br-ex的配置文件ifcfg-br-ex（/etc/network/interfaces.d/ifcfg-br-ex）\n123auto br-exiface br-ex inet manualbridge_ports bond0.107 p_ff798dba-0\n\n添加bond0.107子接口首先查看当前计算节点的网桥。\n1brctl show\n\nbr-mgmt为管理网络，子接口为bound0.104，br-ex需要和br-mgmt用同一网络设备。bond0.107为br-ex上的子接口，计算节点不同，网络设备不同，这里的名字也要修改。107是vxlan id。\n\n\nbound0.107的配置文件ifcfg-bond0.107（/etc/network/interfaces.d/ifcfg-bond0.107）\n123auto bond1.107iface bond0.107 inet manualvlan-raw-device bond0\n\n添加p_ff798dba-0子接口p_ff798dba-0的配置文件ifcfg-p_ff798dba-0（/etc/network/interfaces.d/ifcfg-p_ff798dba-0）\n123456auto p_ff798dba-0allow-br-floating p_ff798dba-0iface p_ff798dba-0 inet manualovs_type OVSIntPortmtu 65000ovs_bridge br-floating\n\n添加br-floating ovs网桥br-floating的配置文件ifcfg-br-floating（/etc/network/interfaces.d/ifcfg-br-floating）\n12345auto br-floatingallow-ovs br-floatingiface br-floating inet manualovs_type OVSBridgeovs_ports p_ff798dba-0\n\n添加br-manage ovs网桥br-manage的配置文件ifcfg-br-manage（/etc/network/interfaces.d/ifcfg-manage）\n12345auto br-manageallow-ovs br-manageiface br-manage inet manualovs_type OVSBridgeovs_ports p_ff798dba-1\n\n添加p_ff798dba-1子接口p_ff798dba-1的配置文件ifcfg-p_ff798dba-1（/etc/network/interfaces.d/ifcfg-p_ff798dba-1）\n123456auto p_ff798dba-1allow-br-floating p_ff798dba-1iface p_ff798dba-1 inet manualovs_type OVSIntPortmtu 65000ovs_bridge br-manage\n\n启动子接口和网桥123456ifup bond1.107ifup p_ff798dba-0ifup p_ff798dba-1ifup br-exifup br-floatingifup br-manage\n\n要确保br-ex为UP。br-int为DOWN。\n\n\n重启服务neutron-server控制节点重启neutron-server。\n1service neutron-server restart\n\nneutron-vpn-agent网络节点，计算节点重启neutron-vpn-agent。\n1service neutron-vpn-agent restart\n\nneutron-openvswitch-agent计算节点重启neutron-openvswitch-agent。\n1service neutron-openvswitch-agent restart\n\n部署脚本执行1ansible-playbook -i inventory/cloude_nodes update_neutron_dvr.yml\n\nsetup_neutron_dvr.yml12345678910---- name: Setup Neutron DVR  hosts:    - node  vars_files:    - vars/dvr_common.yml  vars:    action: dvr  roles:    - role: neutron\n\ndvr_common.yml12345678910111213141516171819202122232425262728293031323334353637383940414243ocean_version: &#x27;1.6.24&#x27;index_url: &#x27;http://pypi.oceanstack.slancer.com:6001/simple&#x27;trusted_host: &#x27;pypi.oceanstack.slancer.com&#x27;extra_args: &#x27;-i &#123;&#123; index_url &#125;&#125; --trusted-host &#123;&#123; trusted_host &#125;&#125;&#x27;extra_args_no_deps: &#x27;&#123;&#123; extra_args &#125;&#125; --no-deps&#x27;extra_args_cloud: &#x27;&#123;&#123; extra_args_no_deps &#125;&#125; --prefix=/usr&#x27;interface_dir: &#x27;/etc/network/interfaces.d&#x27;cluster_interface_dir: &#x27;/home/lancer/cluster-master/services/network/etc/network/interfaces.d&#x27;port: &#x27;.107&#x27;neutron:  section: &#x27;DEFAULT&#x27;  dvr_option: &#x27;router_distributed&#x27;  value: &#x27;true&#x27;l3:  section: &#x27;DEFAULT&#x27;  agent_mode_option: &#x27;agent_mode&#x27;  agent_mode_snat: &#x27;dvr_snat&#x27;  agent_mode_dvr: &#x27;dvr&#x27;ovs:  enable_dvr_section: &#x27;agent&#x27;  enable_dvr_option: &#x27;enable_distributed_routing&#x27;  value: &#x27;true&#x27;  bridge_mapping_section: &#x27;ovs&#x27;  bridge_mapping_option: &#x27;bridge_mappings&#x27;  bridge_mapping_value: &#x27;physnet1:br-floating,physnet2:br-manage&#x27;  ml2:  section: &#x27;ml2&#x27;  drivers_option: &#x27;mechanism_drivers&#x27;  drivers_value: &#x27;openvswitch,linuxbridge,l2population&#x27;  physical_network_mtus_option: &#x27;physical_network_mtus&#x27;   physical_network_mtus_value: &#x27;physnet1:1500,physnet2:1500&#x27;oceanstack:  master:    services: &#x27;/home/lancer/cluster-master/services&#x27;\n\ndvr.yml123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187---- name: compute install neutron-vpn-agent  when: inventory_hostname in groups[&#x27;compute&#x27;]  apt:    name: neutron-vpn-agent    state: present- name: backup neutron.conf  raw: &#x27;cd /etc/neutron;tar -cvf neutron.tar /etc/neutron&#x27;- name: update neutron.conf  ini_file:    dest: /etc/neutron/neutron.conf    section: &#x27;&#123;&#123; neutron.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; neutron.dvr_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; neutron.value &#125;&#125;&#x27;- name: network update l3_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  lineinfile:    dest: /etc/neutron/l3_agent.ini    regexp: &#x27;^[l3]&#x27;    state: absent- name: network update l3_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  lineinfile:    dest: /etc/neutron/l3_agent.ini    regexp: &#x27;^agent_mode = dvr_snat&#x27;    state: absent- name: network update l3_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  ini_file:    dest: /etc/neutron/l3_agent.ini    section: &#x27;&#123;&#123; l3.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; l3.agent_mode_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; l3.agent_mode_snat &#125;&#125;&#x27;  - name: network update openvswitch_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini    section: &#x27;&#123;&#123; ovs.enable_dvr_section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ovs.enable_dvr_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; ovs.value &#125;&#125;&#x27;- name: network update ml2_conf.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/ml2_conf.ini    section: &#x27;&#123;&#123; ml2.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ml2.drivers_option &#125;&#125;&#x27;    value: &#x27;openvswitch,linuxbridge,l2population&#x27;- name: copy l3_agent.ini to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:    src: &#x27;l3_agent.ini&#x27;    dest: &#x27;/etc/neutron&#x27;- name: compute update l3_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  lineinfile:    dest: /etc/neutron/l3_agent.ini    regexp: &#x27;^[l3]&#x27;    state: absent- name: compute update l3_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  lineinfile:    dest: /etc/neutron/l3_agent.ini    regexp: &#x27;^agent_mode = dvr&#x27;    state: absent- name: compute update l3_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  ini_file:    dest: /etc/neutron/l3_agent.ini    section: &#x27;&#123;&#123; l3.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; l3.agent_mode_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; l3.agent_mode_dvr &#125;&#125;&#x27;- name: compute update openvswitch_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini    section: &#x27;&#123;&#123; ovs.enable_dvr_section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ovs.enable_dvr_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; ovs.value &#125;&#125;&#x27;- name: compute update openvswitch_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini    section: &#x27;&#123;&#123; ovs.bridge_mapping_section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ovs.bridge_mapping_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; ovs.bridge_mapping_value &#125;&#125;&#x27;- name: compute update ml2_conf.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/ml2_conf.ini    section: &#x27;&#123;&#123; ml2.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ml2.physical_network_mtus_option &#125;&#125;&#x27;    value: &#x27;&#123;&#123; ml2.physical_network_mtus_value &#125;&#125;&#x27;- include: slancer.yml- name: compute backup interfaces.d  when: inventory_hostname in groups[&#x27;compute&#x27;]  raw: &#x27;cd /etc/network;tar -cvf interfaces.d.tar interfaces.d&#x27;- name: copy ifcfg-br-floating to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:    src: &#x27;&#123;&#123; cluster_interface_dir &#125;&#125;/ifcfg-br-floating&#x27;    dest: &#x27;&#123;&#123; interface_dir &#125;&#125;&#x27;- name: copy ifcfg-p_ff798dba-0 to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:    src: &#x27;&#123;&#123; cluster_interface_dir &#125;&#125;/ifcfg-p_ff798dba-0&#x27;    dest: &#x27;&#123;&#123; interface_dir &#125;&#125;&#x27;- name: copy ifcfg-p_ff798dba-1 to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:    src: &#x27;&#123;&#123;cluster_interface_dir&#125;&#125;/ifcfg-p_ff798dba-1&#x27;    dest: &#x27;&#123;&#123;interface_dir&#125;&#125;&#x27;- name: copy ifcfg-br-manage to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:    src: &#x27;&#123;&#123;cluster_interface_dir&#125;&#125;/ifcfg-br-manage&#x27;    dest: &#x27;&#123;&#123;interface_dir&#125;&#125;&#x27;- name: create ifcfg-br-ex to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  template:    src: &#x27;ifcfg-br-ex.j2&#x27;    dest: &#x27;&#123;&#123;interface_dir&#125;&#125;/ifcfg-br-ex&#x27;- name: create ifcfg-interface to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  template:    src: &#x27;ifcfg-interface.j2&#x27;    dest: &#x27;&#123;&#123;interface_dir&#125;&#125;/ifcfg-&#123;&#123;interface&#125;&#125;&#123;&#123;port&#125;&#125;&#x27;- name: compute setup interface  when: inventory_hostname in groups[&#x27;compute&#x27;]  raw: &#x27;ifup &#123;&#123;interface&#125;&#125;&#123;&#123;port&#125;&#125;;ifup p_ff798dba-0; ifup br-ex; ifup br-floating; ifup br-manage&#x27;- name: compute setup interface  when: inventory_hostname in groups[&#x27;compute&#x27;]  raw: &#x27;ifup p_ff798dba-1&#x27;- name: copy neutron-vpn-agent.conf to compute   when: inventory_hostname in groups[&#x27;compute&#x27;]  copy:   src: &#x27;neutron-vpn-agent.conf&#x27;   dest: &#x27;/etc/init/&#x27;- name: compute neutron-vpn-agent restart  when: inventory_hostname in groups[&#x27;compute&#x27;]  service:   name: neutron-vpn-agent   state: restarted- name: compute neutron-openvswitch-agent restart  when: inventory_hostname in groups[&#x27;compute&#x27;]  service:   name: neutron-openvswitch-agent   state: restarted- name: network neutron-vpn-agent restart  when: inventory_hostname in groups[&#x27;network&#x27;]  service:   name: neutron-vpn-agent   state: restarted- name: controller neutron-server restart  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:   name: neutron-server   state: restarted\n\nslancer.yml123456789101112131415161718192021---- name: install neutron slancer plugins  pip:    name: neutron-slancer    version: &#x27;&#123;&#123; ocean_version &#125;&#125;&#x27;    extra_args: &#x27;&#123;&#123; extra_args_cloud &#125;&#125;&#x27;- name: post policy  copy:    src: &#x27;&#123;&#123;oceanstack.master.services&#125;&#125;/neutron/etc/neutron/policy.json&#x27;    dest: /etc/neutron/policy.json- name: post rootwrap  copy:    src: &#x27;&#123;&#123;oceanstack.master.services&#125;&#125;/neutron/etc/neutron/rootwrap.d/slancer.filters&#x27;    dest: /etc/neutron/rootwrap.d/slancer.filters- name: post config file  copy:    src: &#x27;&#123;&#123;oceanstack.master.services&#125;&#125;/neutron/etc/neutron/neutron_slancer.conf&#x27;    dest: /etc/neutron/neutron_slancer.conf\n\nifcfg-br-ex.j2123auto br-exiface br-ex inet manualbridge_ports &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125; p_ff798dba-0\n\nifcfg-interface.j2123auto &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125;iface &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125; inet manualvlan-raw-device &#123;&#123; interface &#125;&#125;\n\n测试路由器创建测试在界面创建路由器，进入控制节点查看路由器的详细信息。\n1neutron router-show [router-id]\n\n\ndistributed的值为True，说明路由器为分布式。\n\n\n检查路由器的网络命名空间控制节点查看当前路由器所在的控制节点。\n1neutron l3-agent-list-hosting-router [router-id]\n\n\nactive，表示路由器在当前的控制节点上。\n\n\n进入相应的控制节点，并查看是否有路由器的网络命名空间。\n1ip netns | grep [router-id]\n\n\nsnat-xxx的网络命名空间包含端口转发的详细规则。\n\n\n计算节点找到虚拟机位于的计算节点。\n1nova show [uuid]\n\n进入计算节点，并查看路由器的网络命名空间。\n1ip netns | grep [router-id]\n\n当且仅当计算节点有qrouter-xxx的网络命名空间时，可以判定DVR部署成功。\n\n\n端口转发测试在虚拟机内部创建一个服务，如Apache服务。\n1service httpd start\nApache服务默认的端口号为80。\n\n\n可以利用curl命令访问本机的80端口。\n1curl 0.0.0.0:80\n\n还可以利用netstat命令查看Apache服务占用的端口。\n1netstat -anp | grep httpd\n\n通过界面，在路由器上面添加端口转发规则。\n通过界面，在安全组开放对端口的访问。\n最后，利用浏览器测试端口转发。\n带宽限速测试虚拟机安装speedtest-cli，可以对公网IP和路由器带宽进行测速。\n1speedtest\n\n验证脚本verify.yml1234567891011121314151617181920212223---- name: verify  include: check_interface_command.yml command=&#x27;ip a show &#123;&#123;item&#125;&#125;&#x27;  with_items:    - br-ex    - br-floating    - &#x27;&#123;&#123;interface&#125;&#125;&#123;&#123;port&#125;&#125;&#x27;    - br-manage    - p_ff798dba-0    - p_ff798dba-1  when: inventory_hostname in groups[&#x27;compute&#x27;]- name: compute check neutron-vpn-agent  include: check_service_command.yml command=&#x27;service neutron-vpn-agent status&#x27;  when: inventory_hostname in groups[&#x27;compute&#x27;]- name: network check neutron-vpn-agent  include: check_service_command.yml command=&#x27;service neutron-vpn-agent status&#x27;  when: inventory_hostname in groups[&#x27;network&#x27;]- name: controller check neutron-server  include: check_service_command.yml command=&#x27;service neutron-server status&#x27;  when: inventory_hostname in groups[&#x27;controller&#x27;]\n\ncheck_interface_command.yml123456789---- name: check interface  shell: &#x27;&#123;&#123; command &#125;&#125;&#x27;  register: result- name: check result  fail:    msg: &#x27;&#123;&#123;result&#125;&#125;&#x27;  when: &#x27;&quot;DOWN&quot; in result.stdout&#x27;\n\ncheck_service_command.yml123456789---- name: check service   shell: &#x27;&#123;&#123; command &#125;&#125;&#x27;  register: result- name: check result  fail:    msg: &#x27;&#123;&#123;result&#125;&#125;&#x27;  when: &#x27;&quot;running&quot; not in result.stdout&#x27;\n\n回退脚本12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061---- name: compute stop neutron-vpn-agent  when: inventory_hostname in groups[&#x27;compute&#x27;]  service:   name: neutron-vpn-agent   state: stopped- name: update neutron.conf  ini_file:    dest: /etc/neutron/neutron.conf    section: &#x27;&#123;&#123; neutron.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; neutron.dvr_option &#125;&#125;&#x27;    value: &#x27;false&#x27;- name: network update l3_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  ini_file:    dest: /etc/neutron/l3_agent.ini    section: &#x27;&#123;&#123; l3.section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; l3.agent_mode_option &#125;&#125;&#x27;    value: &#x27;legacy&#x27;  - name: network update openvswitch_agent.ini  when: inventory_hostname in groups[&#x27;network&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini    section: &#x27;&#123;&#123; ovs.enable_dvr_section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ovs.enable_dvr_option &#125;&#125;&#x27;    value: &#x27;false&#x27;- name: network update openvswitch_agent.ini  when: inventory_hostname in groups[&#x27;compute&#x27;]  ini_file:    dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini    section: &#x27;&#123;&#123; ovs.enable_dvr_section &#125;&#125;&#x27;    option: &#x27;&#123;&#123; ovs.enable_dvr_option &#125;&#125;&#x27;    value: &#x27;false&#x27;- name: network restart neutron-openvswitch-agent  when: inventory_hostname in groups[&#x27;network&#x27;]  service:    name: neutron-openvswitch-agent    state: restarted - name: network restart neutron-vpn-agent   when: inventory_hostname in groups[&#x27;network&#x27;]  service:   name: neutron-vpn-agent   state: restarted- name: controller restart neutron-server  when: inventory_hostname in groups[&#x27;controller&#x27;]  service:    name: neutron-server    state: restarted- name: compute restart neutron-openvswitch-agent  when: inventory_hostname in groups[&#x27;compute&#x27;]  service:   name: neutron-openvswitch-agent   state: restarted","dateCreated":"2018-12-24T16:41:08+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2018-12-24T16:41:08+08:00","description":"DVR到底去哪儿了？？","headline":"DVR去哪儿了","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/","keywords":"DVR","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="DVR到底去哪儿了？？">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="DVR去哪儿了">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="DVR到底去哪儿了？？">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/brctl-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/router-show-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/router-show-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/l3-agent-list-hosting-router.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/ip-netns-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/nova-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/ip-netns-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/add-rule.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/add-safe-group.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/speedtest.png">
+<meta property="article:published_time" content="2018-12-24T08:41:08.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.939Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="DVR">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/images/brctl-show.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            DVR去哪儿了
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-12-24T16:41:08+08:00">
+	
+		    Dec 24, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2"><span class="toc-text">部署</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E6%96%87%E6%A1%A3"><span class="toc-text">部署文档</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AE%89%E8%A3%85neutron-vpn-agent"><span class="toc-text">安装neutron-vpn-agent</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AE%89%E8%A3%85neutron-slancer"><span class="toc-text">安装neutron-slancer</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6"><span class="toc-text">修改配置文件</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-conf"><span class="toc-text">neutron.conf</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#l3-agent-ini"><span class="toc-text">l3_agent.ini</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#openvswitch-agent-ini"><span class="toc-text">openvswitch_agent.ini</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#ml2-conf-ini"><span class="toc-text">ml2_conf.ini</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-vpn-agent-conf"><span class="toc-text">neutron-vpn-agent.conf</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-slancer-conf"><span class="toc-text">neutron_slancer.conf</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#slancer-filters"><span class="toc-text">slancer.filters</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9%E6%B7%BB%E5%8A%A0bridge"><span class="toc-text">计算节点添加bridge</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0br-ex%E7%BD%91%E6%A1%A5"><span class="toc-text">添加br-ex网桥</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0bond0-107%E5%AD%90%E6%8E%A5%E5%8F%A3"><span class="toc-text">添加bond0.107子接口</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0p-ff798dba-0%E5%AD%90%E6%8E%A5%E5%8F%A3"><span class="toc-text">添加p_ff798dba-0子接口</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0br-floating-ovs%E7%BD%91%E6%A1%A5"><span class="toc-text">添加br-floating ovs网桥</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0br-manage-ovs%E7%BD%91%E6%A1%A5"><span class="toc-text">添加br-manage ovs网桥</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0p-ff798dba-1%E5%AD%90%E6%8E%A5%E5%8F%A3"><span class="toc-text">添加p_ff798dba-1子接口</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%90%AF%E5%8A%A8%E5%AD%90%E6%8E%A5%E5%8F%A3%E5%92%8C%E7%BD%91%E6%A1%A5"><span class="toc-text">启动子接口和网桥</span></a></li></ol></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%87%8D%E5%90%AF%E6%9C%8D%E5%8A%A1"><span class="toc-text">重启服务</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-server"><span class="toc-text">neutron-server</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-vpn-agent"><span class="toc-text">neutron-vpn-agent</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#neutron-openvswitch-agent"><span class="toc-text">neutron-openvswitch-agent</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E8%84%9A%E6%9C%AC"><span class="toc-text">部署脚本</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%89%A7%E8%A1%8C"><span class="toc-text">执行</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#setup-neutron-dvr-yml"><span class="toc-text">setup_neutron_dvr.yml</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dvr-common-yml"><span class="toc-text">dvr_common.yml</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dvr-yml"><span class="toc-text">dvr.yml</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#slancer-yml"><span class="toc-text">slancer.yml</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#ifcfg-br-ex-j2"><span class="toc-text">ifcfg-br-ex.j2</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#ifcfg-interface-j2"><span class="toc-text">ifcfg-interface.j2</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95"><span class="toc-text">测试</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E5%99%A8%E5%88%9B%E5%BB%BA%E6%B5%8B%E8%AF%95"><span class="toc-text">路由器创建测试</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%A3%80%E6%9F%A5%E8%B7%AF%E7%94%B1%E5%99%A8%E7%9A%84%E7%BD%91%E7%BB%9C%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-text">检查路由器的网络命名空间</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9"><span class="toc-text">控制节点</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9"><span class="toc-text">计算节点</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91%E6%B5%8B%E8%AF%95"><span class="toc-text">端口转发测试</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B8%A6%E5%AE%BD%E9%99%90%E9%80%9F%E6%B5%8B%E8%AF%95"><span class="toc-text">带宽限速测试</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E8%84%9A%E6%9C%AC"><span class="toc-text">验证脚本</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#verify-yml"><span class="toc-text">verify.yml</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#check-interface-command-yml"><span class="toc-text">check_interface_command.yml</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#check-service-command-yml"><span class="toc-text">check_service_command.yml</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9B%9E%E9%80%80%E8%84%9A%E6%9C%AC"><span class="toc-text">回退脚本</span></a></li></ol>
+
+<h3 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h3><h4 id="部署文档"><a href="#部署文档" class="headerlink" title="部署文档"></a>部署文档</h4><h5 id="安装neutron-vpn-agent"><a href="#安装neutron-vpn-agent" class="headerlink" title="安装neutron-vpn-agent"></a>安装neutron-vpn-agent</h5><p>计算节点安装neutron-vpn-agent。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt-get install neutron-vpn-agent</span><br></pre></td></tr></table></figure>
+<div class="alert no-icon danger"><p>过程中会出现metadata-agent，当前项目不使用，略过。</p>
+</div>
+
+<h5 id="安装neutron-slancer"><a href="#安装neutron-slancer" class="headerlink" title="安装neutron-slancer"></a>安装neutron-slancer</h5><p>安装neutron-slancer。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip install neutron-slancer==1.6.22 --no-deps -i http://pypi.oceanstack.slancer.com:6001/simple --trusted-host pypi.oceanstack.slancer.com --prefix /usr</span><br></pre></td></tr></table></figure>
+
+<h5 id="修改配置文件"><a href="#修改配置文件" class="headerlink" title="修改配置文件"></a>修改配置文件</h5><h6 id="neutron-conf"><a href="#neutron-conf" class="headerlink" title="neutron.conf"></a>neutron.conf</h6><p>所有节点（控制节点，网络节点，计算节点）的neutron.conf（/etc/neutron/neutron.conf）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">router_distributed=<span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<h6 id="l3-agent-ini"><a href="#l3-agent-ini" class="headerlink" title="l3_agent.ini"></a>l3_agent.ini</h6><p>网络节点的l3_agent.ini（/etc/neutron/l3_agent.ini）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">agent_mode=dvr_snat</span><br></pre></td></tr></table></figure>
+<p>计算节点没有l3_agent.ini，可以将网络节点的l3_agent.ini复制过去，并修改。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">agent_mode = dvr</span><br></pre></td></tr></table></figure>
+
+<h6 id="openvswitch-agent-ini"><a href="#openvswitch-agent-ini" class="headerlink" title="openvswitch_agent.ini"></a>openvswitch_agent.ini</h6><p>网络节点和计算节点的openvswitch_agent.ini（/etc/neutron/plugins/ml2/openvswitch_agent.ini）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">enable_distributed_routing=<span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>计算节点的openvswitch_agent.ini，做如下修改。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">bridge_mappings = physnet1:br-floating,physnet2:br-manage</span><br></pre></td></tr></table></figure>
+
+<h6 id="ml2-conf-ini"><a href="#ml2-conf-ini" class="headerlink" title="ml2_conf.ini"></a>ml2_conf.ini</h6><p>网络节点的ml2_conf.ini（/etc/neutron/plugins/ml2/ml2_conf.ini）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mechanism_drivers =openvswitch,linuxbridge,l2population</span><br></pre></td></tr></table></figure>
+<p>计算节点的ml2_conf.ini。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">physical_network_mtus = physnet1:1500,physnet2:1500</span><br></pre></td></tr></table></figure>
+
+<h6 id="neutron-vpn-agent-conf"><a href="#neutron-vpn-agent-conf" class="headerlink" title="neutron-vpn-agent.conf"></a>neutron-vpn-agent.conf</h6><p>将网络节点的neutron-vpn-agent.conf复制至计算节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">scp root@controller-1:/etc/init/neutron-vpn-agent.conf /etc/init/neutron-vpn-agent.conf</span><br></pre></td></tr></table></figure>
+
+<h6 id="neutron-slancer-conf"><a href="#neutron-slancer-conf" class="headerlink" title="neutron_slancer.conf"></a>neutron_slancer.conf</h6><p>将网络节点的neutron_slancer.conf复制至计算节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">scp root@controller-1:/etc/neutron/neutron_slancer.conf  /etc/neutron/</span><br></pre></td></tr></table></figure>
+
+<h6 id="slancer-filters"><a href="#slancer-filters" class="headerlink" title="slancer.filters"></a>slancer.filters</h6><p>将控制节点的/etc/neutron/rootwrap.d/slancer.filters拷贝至计算节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">scp root@controller-1:/etc/neutron/rootwrap.d/slancer.filters  /etc/neutron/rootwrap.d/</span><br></pre></td></tr></table></figure>
+
+<h5 id="计算节点添加bridge"><a href="#计算节点添加bridge" class="headerlink" title="计算节点添加bridge"></a>计算节点添加bridge</h5><h6 id="添加br-ex网桥"><a href="#添加br-ex网桥" class="headerlink" title="添加br-ex网桥"></a>添加br-ex网桥</h6><p>br-ex的配置文件ifcfg-br-ex（/etc/network/interfaces.d/ifcfg-br-ex）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">auto br-ex</span><br><span class="line">iface br-ex inet manual</span><br><span class="line">bridge_ports bond0.107 p_ff798dba-0</span><br></pre></td></tr></table></figure>
+
+<h6 id="添加bond0-107子接口"><a href="#添加bond0-107子接口" class="headerlink" title="添加bond0.107子接口"></a>添加bond0.107子接口</h6><p>首先查看当前计算节点的网桥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br></pre></td></tr></table></figure>
+<p><img src="images/brctl-show.png" alt="brctl-show"></p>
+<div class="alert info no-icon"><p>br-mgmt为管理网络，子接口为bound0.104，br-ex需要和br-mgmt用同一网络设备。<br>bond0.107为br-ex上的子接口，计算节点不同，网络设备不同，这里的名字也要修改。<br>107是vxlan id。</p>
+</div>
+
+<p>bound0.107的配置文件ifcfg-bond0.107（/etc/network/interfaces.d/ifcfg-bond0.107）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">auto bond1.107</span><br><span class="line">iface bond0.107 inet manual</span><br><span class="line">vlan-raw-device bond0</span><br></pre></td></tr></table></figure>
+
+<h6 id="添加p-ff798dba-0子接口"><a href="#添加p-ff798dba-0子接口" class="headerlink" title="添加p_ff798dba-0子接口"></a>添加p_ff798dba-0子接口</h6><p>p_ff798dba-0的配置文件ifcfg-p_ff798dba-0（/etc/network/interfaces.d/ifcfg-p_ff798dba-0）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">auto p_ff798dba-0</span><br><span class="line">allow-br-floating p_ff798dba-0</span><br><span class="line">iface p_ff798dba-0 inet manual</span><br><span class="line">ovs_type OVSIntPort</span><br><span class="line">mtu 65000</span><br><span class="line">ovs_bridge br-floating</span><br></pre></td></tr></table></figure>
+
+<h6 id="添加br-floating-ovs网桥"><a href="#添加br-floating-ovs网桥" class="headerlink" title="添加br-floating ovs网桥"></a>添加br-floating ovs网桥</h6><p>br-floating的配置文件ifcfg-br-floating（/etc/network/interfaces.d/ifcfg-br-floating）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">auto br-floating</span><br><span class="line">allow-ovs br-floating</span><br><span class="line">iface br-floating inet manual</span><br><span class="line">ovs_type OVSBridge</span><br><span class="line">ovs_ports p_ff798dba-0</span><br></pre></td></tr></table></figure>
+
+<h6 id="添加br-manage-ovs网桥"><a href="#添加br-manage-ovs网桥" class="headerlink" title="添加br-manage ovs网桥"></a>添加br-manage ovs网桥</h6><p>br-manage的配置文件ifcfg-br-manage（/etc/network/interfaces.d/ifcfg-manage）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">auto br-manage</span><br><span class="line">allow-ovs br-manage</span><br><span class="line">iface br-manage inet manual</span><br><span class="line">ovs_type OVSBridge</span><br><span class="line">ovs_ports p_ff798dba-1</span><br></pre></td></tr></table></figure>
+
+<h6 id="添加p-ff798dba-1子接口"><a href="#添加p-ff798dba-1子接口" class="headerlink" title="添加p_ff798dba-1子接口"></a>添加p_ff798dba-1子接口</h6><p>p_ff798dba-1的配置文件ifcfg-p_ff798dba-1（/etc/network/interfaces.d/ifcfg-p_ff798dba-1）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">auto p_ff798dba-1</span><br><span class="line">allow-br-floating p_ff798dba-1</span><br><span class="line">iface p_ff798dba-1 inet manual</span><br><span class="line">ovs_type OVSIntPort</span><br><span class="line">mtu 65000</span><br><span class="line">ovs_bridge br-manage</span><br></pre></td></tr></table></figure>
+
+<h6 id="启动子接口和网桥"><a href="#启动子接口和网桥" class="headerlink" title="启动子接口和网桥"></a>启动子接口和网桥</h6><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ifup bond1.107</span><br><span class="line">ifup p_ff798dba-0</span><br><span class="line">ifup p_ff798dba-1</span><br><span class="line">ifup br-ex</span><br><span class="line">ifup br-floating</span><br><span class="line">ifup br-manage</span><br></pre></td></tr></table></figure>
+
+<div class="alert no-icon info"><p>要确保br-ex为UP。br-int为DOWN。</p>
+</div>
+
+<h5 id="重启服务"><a href="#重启服务" class="headerlink" title="重启服务"></a>重启服务</h5><h6 id="neutron-server"><a href="#neutron-server" class="headerlink" title="neutron-server"></a>neutron-server</h6><p>控制节点重启neutron-server。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service neutron-server restart</span><br></pre></td></tr></table></figure>
+
+<h6 id="neutron-vpn-agent"><a href="#neutron-vpn-agent" class="headerlink" title="neutron-vpn-agent"></a>neutron-vpn-agent</h6><p>网络节点，计算节点重启neutron-vpn-agent。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service neutron-vpn-agent restart</span><br></pre></td></tr></table></figure>
+
+<h6 id="neutron-openvswitch-agent"><a href="#neutron-openvswitch-agent" class="headerlink" title="neutron-openvswitch-agent"></a>neutron-openvswitch-agent</h6><p>计算节点重启neutron-openvswitch-agent。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service neutron-openvswitch-agent restart</span><br></pre></td></tr></table></figure>
+
+<h4 id="部署脚本"><a href="#部署脚本" class="headerlink" title="部署脚本"></a>部署脚本</h4><h5 id="执行"><a href="#执行" class="headerlink" title="执行"></a>执行</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ansible-playbook -i inventory/cloude_nodes update_neutron_dvr.yml</span><br></pre></td></tr></table></figure>
+
+<h5 id="setup-neutron-dvr-yml"><a href="#setup-neutron-dvr-yml" class="headerlink" title="setup_neutron_dvr.yml"></a>setup_neutron_dvr.yml</h5><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Setup</span> <span class="string">Neutron</span> <span class="string">DVR</span></span><br><span class="line">  <span class="attr">hosts:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">node</span></span><br><span class="line">  <span class="attr">vars_files:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">vars/dvr_common.yml</span></span><br><span class="line">  <span class="attr">vars:</span></span><br><span class="line">    <span class="attr">action:</span> <span class="string">dvr</span></span><br><span class="line">  <span class="attr">roles:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">role:</span> <span class="string">neutron</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="dvr-common-yml"><a href="#dvr-common-yml" class="headerlink" title="dvr_common.yml"></a>dvr_common.yml</h5><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">ocean_version:</span> <span class="string">&#x27;1.6.24&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">index_url:</span> <span class="string">&#x27;http://pypi.oceanstack.slancer.com:6001/simple&#x27;</span></span><br><span class="line"><span class="attr">trusted_host:</span> <span class="string">&#x27;pypi.oceanstack.slancer.com&#x27;</span></span><br><span class="line"><span class="attr">extra_args:</span> <span class="string">&#x27;-i <span class="template-variable">&#123;&#123; index_url &#125;&#125;</span> --trusted-host <span class="template-variable">&#123;&#123; trusted_host &#125;&#125;</span>&#x27;</span></span><br><span class="line"><span class="attr">extra_args_no_deps:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; extra_args &#125;&#125;</span> --no-deps&#x27;</span></span><br><span class="line"><span class="attr">extra_args_cloud:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; extra_args_no_deps &#125;&#125;</span> --prefix=/usr&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">interface_dir:</span> <span class="string">&#x27;/etc/network/interfaces.d&#x27;</span></span><br><span class="line"><span class="attr">cluster_interface_dir:</span> <span class="string">&#x27;/home/lancer/cluster-master/services/network/etc/network/interfaces.d&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">port:</span> <span class="string">&#x27;.107&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">neutron:</span></span><br><span class="line">  <span class="attr">section:</span> <span class="string">&#x27;DEFAULT&#x27;</span></span><br><span class="line">  <span class="attr">dvr_option:</span> <span class="string">&#x27;router_distributed&#x27;</span></span><br><span class="line">  <span class="attr">value:</span> <span class="string">&#x27;true&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">l3:</span></span><br><span class="line">  <span class="attr">section:</span> <span class="string">&#x27;DEFAULT&#x27;</span></span><br><span class="line">  <span class="attr">agent_mode_option:</span> <span class="string">&#x27;agent_mode&#x27;</span></span><br><span class="line">  <span class="attr">agent_mode_snat:</span> <span class="string">&#x27;dvr_snat&#x27;</span></span><br><span class="line">  <span class="attr">agent_mode_dvr:</span> <span class="string">&#x27;dvr&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">ovs:</span></span><br><span class="line">  <span class="attr">enable_dvr_section:</span> <span class="string">&#x27;agent&#x27;</span></span><br><span class="line">  <span class="attr">enable_dvr_option:</span> <span class="string">&#x27;enable_distributed_routing&#x27;</span></span><br><span class="line">  <span class="attr">value:</span> <span class="string">&#x27;true&#x27;</span></span><br><span class="line">  <span class="attr">bridge_mapping_section:</span> <span class="string">&#x27;ovs&#x27;</span></span><br><span class="line">  <span class="attr">bridge_mapping_option:</span> <span class="string">&#x27;bridge_mappings&#x27;</span></span><br><span class="line">  <span class="attr">bridge_mapping_value:</span> <span class="string">&#x27;physnet1:br-floating,physnet2:br-manage&#x27;</span></span><br><span class="line"></span><br><span class="line">  </span><br><span class="line"><span class="attr">ml2:</span></span><br><span class="line">  <span class="attr">section:</span> <span class="string">&#x27;ml2&#x27;</span></span><br><span class="line">  <span class="attr">drivers_option:</span> <span class="string">&#x27;mechanism_drivers&#x27;</span></span><br><span class="line">  <span class="attr">drivers_value:</span> <span class="string">&#x27;openvswitch,linuxbridge,l2population&#x27;</span></span><br><span class="line">  <span class="attr">physical_network_mtus_option:</span> <span class="string">&#x27;physical_network_mtus&#x27;</span> </span><br><span class="line">  <span class="attr">physical_network_mtus_value:</span> <span class="string">&#x27;physnet1:1500,physnet2:1500&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">oceanstack:</span></span><br><span class="line">  <span class="attr">master:</span></span><br><span class="line">    <span class="attr">services:</span> <span class="string">&#x27;/home/lancer/cluster-master/services&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="dvr-yml"><a href="#dvr-yml" class="headerlink" title="dvr.yml"></a>dvr.yml</h5><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">install</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">apt:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">present</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">backup</span> <span class="string">neutron.conf</span></span><br><span class="line">  <span class="attr">raw:</span> <span class="string">&#x27;cd /etc/neutron;tar -cvf neutron.tar /etc/neutron&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">update</span> <span class="string">neutron.conf</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/neutron.conf</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; neutron.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; neutron.dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; neutron.value &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^[l3]&#x27;</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">absent</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^agent_mode = dvr_snat&#x27;</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">absent</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.agent_mode_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.agent_mode_snat &#125;&#125;</span>&#x27;</span></span><br><span class="line">  </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">openvswitch_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/openvswitch_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.value &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">ml2_conf.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/ml2_conf.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ml2.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ml2.drivers_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;openvswitch,linuxbridge,l2population&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">l3_agent.ini</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;l3_agent.ini&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;/etc/neutron&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^[l3]&#x27;</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">absent</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">lineinfile:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">regexp:</span> <span class="string">&#x27;^agent_mode = dvr&#x27;</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">absent</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.agent_mode_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.agent_mode_dvr &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">openvswitch_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/openvswitch_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.value &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">openvswitch_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/openvswitch_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.bridge_mapping_section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.bridge_mapping_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.bridge_mapping_value &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">update</span> <span class="string">ml2_conf.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/ml2_conf.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ml2.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ml2.physical_network_mtus_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ml2.physical_network_mtus_value &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">include:</span> <span class="string">slancer.yml</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">backup</span> <span class="string">interfaces.d</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">raw:</span> <span class="string">&#x27;cd /etc/network;tar -cvf interfaces.d.tar interfaces.d&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">ifcfg-br-floating</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; cluster_interface_dir &#125;&#125;</span>/ifcfg-br-floating&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; interface_dir &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">ifcfg-p_ff798dba-0</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; cluster_interface_dir &#125;&#125;</span>/ifcfg-p_ff798dba-0&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; interface_dir &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">ifcfg-p_ff798dba-1</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;cluster_interface_dir&#125;&#125;</span>/ifcfg-p_ff798dba-1&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;interface_dir&#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">ifcfg-br-manage</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;cluster_interface_dir&#125;&#125;</span>/ifcfg-br-manage&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;interface_dir&#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">create</span> <span class="string">ifcfg-br-ex</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;ifcfg-br-ex.j2&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;interface_dir&#125;&#125;</span>/ifcfg-br-ex&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">create</span> <span class="string">ifcfg-interface</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">template:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;ifcfg-interface.j2&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;interface_dir&#125;&#125;</span>/ifcfg-<span class="template-variable">&#123;&#123;interface&#125;&#125;</span><span class="template-variable">&#123;&#123;port&#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">setup</span> <span class="string">interface</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">raw:</span> <span class="string">&#x27;ifup <span class="template-variable">&#123;&#123;interface&#125;&#125;</span><span class="template-variable">&#123;&#123;port&#125;&#125;</span>;ifup p_ff798dba-0; ifup br-ex; ifup br-floating; ifup br-manage&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">setup</span> <span class="string">interface</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">raw:</span> <span class="string">&#x27;ifup p_ff798dba-1&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">copy</span> <span class="string">neutron-vpn-agent.conf</span> <span class="string">to</span> <span class="string">compute</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">   <span class="attr">src:</span> <span class="string">&#x27;neutron-vpn-agent.conf&#x27;</span></span><br><span class="line">   <span class="attr">dest:</span> <span class="string">&#x27;/etc/init/&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">neutron-vpn-agent</span> <span class="string">restart</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">neutron-openvswitch-agent</span> <span class="string">restart</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-openvswitch-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">neutron-vpn-agent</span> <span class="string">restart</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">controller</span> <span class="string">neutron-server</span> <span class="string">restart</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-server</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="slancer-yml"><a href="#slancer-yml" class="headerlink" title="slancer.yml"></a>slancer.yml</h5><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">install</span> <span class="string">neutron</span> <span class="string">slancer</span> <span class="string">plugins</span></span><br><span class="line">  <span class="attr">pip:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">neutron-slancer</span></span><br><span class="line">    <span class="attr">version:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ocean_version &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">extra_args:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; extra_args_cloud &#125;&#125;</span>&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">post</span> <span class="string">policy</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;oceanstack.master.services&#125;&#125;</span>/neutron/etc/neutron/policy.json&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/policy.json</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">post</span> <span class="string">rootwrap</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;oceanstack.master.services&#125;&#125;</span>/neutron/etc/neutron/rootwrap.d/slancer.filters&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/rootwrap.d/slancer.filters</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">post</span> <span class="string">config</span> <span class="string">file</span></span><br><span class="line">  <span class="attr">copy:</span></span><br><span class="line">    <span class="attr">src:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123;oceanstack.master.services&#125;&#125;</span>/neutron/etc/neutron/neutron_slancer.conf&#x27;</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/neutron_slancer.conf</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="ifcfg-br-ex-j2"><a href="#ifcfg-br-ex-j2" class="headerlink" title="ifcfg-br-ex.j2"></a>ifcfg-br-ex.j2</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">auto br-ex</span><br><span class="line">iface br-ex inet manual</span><br><span class="line">bridge_ports &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125; p_ff798dba-0</span><br></pre></td></tr></table></figure>
+
+<h5 id="ifcfg-interface-j2"><a href="#ifcfg-interface-j2" class="headerlink" title="ifcfg-interface.j2"></a>ifcfg-interface.j2</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">auto &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125;</span><br><span class="line">iface &#123;&#123; interface &#125;&#125;&#123;&#123;port&#125;&#125; inet manual</span><br><span class="line">vlan-raw-device &#123;&#123; interface &#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h3><h4 id="路由器创建测试"><a href="#路由器创建测试" class="headerlink" title="路由器创建测试"></a>路由器创建测试</h4><p>在界面创建路由器，进入控制节点查看路由器的详细信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">neutron router-show [router-id]</span><br></pre></td></tr></table></figure>
+<p><img src="images/router-show-1.png" alt="router-show"></p>
+<p><img src="images/router-show-2.png" alt="router-show"></p>
+<div class="alert info no-icon"><p>distributed的值为True，说明路由器为分布式。</p>
+</div>
+
+<h4 id="检查路由器的网络命名空间"><a href="#检查路由器的网络命名空间" class="headerlink" title="检查路由器的网络命名空间"></a>检查路由器的网络命名空间</h4><h5 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h5><p>查看当前路由器所在的控制节点。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">neutron l3-agent-list-hosting-router [router-id]</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/l3-agent-list-hosting-router.png" alt="l3-agent-list-hosting-router"></p>
+<div class="alert info no-icon"><p>active，表示路由器在当前的控制节点上。</p>
+</div>
+
+<p>进入相应的控制节点，并查看是否有路由器的网络命名空间。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
+
+<p><img src="images/ip-netns-1.png" alt="ip-nents"></p>
+<div class="alert info no-icon"><p>snat-xxx的网络命名空间包含端口转发的详细规则。</p>
+</div>
+
+<h5 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h5><p>找到虚拟机位于的计算节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova show [uuid]</span><br></pre></td></tr></table></figure>
+<p><img src="images/nova-show.png" alt="nova-show"></p>
+<p>进入计算节点，并查看路由器的网络命名空间。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ip netns | grep [router-id]</span><br></pre></td></tr></table></figure>
+<p><img src="images/ip-netns-2.png" alt="ip-nents"></p>
+<div class="alert danger no-icon"><p>当且仅当计算节点有qrouter-xxx的网络命名空间时，可以判定DVR部署成功。</p>
+</div>
+
+<h4 id="端口转发测试"><a href="#端口转发测试" class="headerlink" title="端口转发测试"></a>端口转发测试</h4><p>在虚拟机内部创建一个服务，如Apache服务。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service httpd start</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>Apache服务默认的端口号为80。</p>
+</div>
+
+<p>可以利用curl命令访问本机的80端口。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl 0.0.0.0:80</span><br></pre></td></tr></table></figure>
+
+<p>还可以利用netstat命令查看Apache服务占用的端口。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">netstat -anp | grep httpd</span><br></pre></td></tr></table></figure>
+
+<p>通过界面，在路由器上面添加端口转发规则。<br><img src="images/add-rule.png" alt="add-rule"></p>
+<p>通过界面，在安全组开放对端口的访问。<br><img src="images/add-safe-group.png" alt="add_safe_group"></p>
+<p>最后，利用浏览器测试端口转发。</p>
+<h4 id="带宽限速测试"><a href="#带宽限速测试" class="headerlink" title="带宽限速测试"></a>带宽限速测试</h4><p>虚拟机安装<a target="_blank" rel="noopener" href="https://github.com/sivel/speedtest-cli">speedtest-cli</a>，可以对公网IP和路由器带宽进行测速。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">speedtest</span><br></pre></td></tr></table></figure>
+<p><img src="images/speedtest.png" alt="speedtest"></p>
+<h3 id="验证脚本"><a href="#验证脚本" class="headerlink" title="验证脚本"></a>验证脚本</h3><h4 id="verify-yml"><a href="#verify-yml" class="headerlink" title="verify.yml"></a>verify.yml</h4><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">verify</span></span><br><span class="line">  <span class="attr">include:</span> <span class="string">check_interface_command.yml</span> <span class="string">command=&#x27;ip</span> <span class="string">a</span> <span class="string">show</span> &#123;&#123;<span class="string">item</span>&#125;&#125;<span class="string">&#x27;</span></span><br><span class="line"><span class="string">  with_items:</span></span><br><span class="line"><span class="string">    - br-ex</span></span><br><span class="line"><span class="string">    - br-floating</span></span><br><span class="line"><span class="string">    - &#x27;</span>&#123;&#123;<span class="string">interface</span>&#125;&#125;&#123;&#123;<span class="string">port</span>&#125;&#125;<span class="string">&#x27;</span></span><br><span class="line"><span class="string">    - br-manage</span></span><br><span class="line"><span class="string">    - p_ff798dba-0</span></span><br><span class="line"><span class="string">    - p_ff798dba-1</span></span><br><span class="line"><span class="string">  when: inventory_hostname in groups[&#x27;</span><span class="string">compute&#x27;]</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">check</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">  <span class="attr">include:</span> <span class="string">check_service_command.yml</span> <span class="string">command=&#x27;service</span> <span class="string">neutron-vpn-agent</span> <span class="string">status&#x27;</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">check</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">  <span class="attr">include:</span> <span class="string">check_service_command.yml</span> <span class="string">command=&#x27;service</span> <span class="string">neutron-vpn-agent</span> <span class="string">status&#x27;</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">controller</span> <span class="string">check</span> <span class="string">neutron-server</span></span><br><span class="line">  <span class="attr">include:</span> <span class="string">check_service_command.yml</span> <span class="string">command=&#x27;service</span> <span class="string">neutron-server</span> <span class="string">status&#x27;</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="check-interface-command-yml"><a href="#check-interface-command-yml" class="headerlink" title="check_interface_command.yml"></a>check_interface_command.yml</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">- name: check interface</span><br><span class="line">  shell: <span class="string">&#x27;&#123;&#123; command &#125;&#125;&#x27;</span></span><br><span class="line">  register: result</span><br><span class="line"></span><br><span class="line">- name: check result</span><br><span class="line">  fail:</span><br><span class="line">    msg: <span class="string">&#x27;&#123;&#123;result&#125;&#125;&#x27;</span></span><br><span class="line">  when: <span class="string">&#x27;&quot;DOWN&quot; in result.stdout&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="check-service-command-yml"><a href="#check-service-command-yml" class="headerlink" title="check_service_command.yml"></a>check_service_command.yml</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">- name: check service </span><br><span class="line">  shell: <span class="string">&#x27;&#123;&#123; command &#125;&#125;&#x27;</span></span><br><span class="line">  register: result</span><br><span class="line"></span><br><span class="line">- name: check result</span><br><span class="line">  fail:</span><br><span class="line">    msg: <span class="string">&#x27;&#123;&#123;result&#125;&#125;&#x27;</span></span><br><span class="line">  when: <span class="string">&#x27;&quot;running&quot; not in result.stdout&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="回退脚本"><a href="#回退脚本" class="headerlink" title="回退脚本"></a>回退脚本</h3><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">---</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">stop</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">stopped</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">update</span> <span class="string">neutron.conf</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/neutron.conf</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; neutron.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; neutron.dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;false&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">l3_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/l3_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; l3.agent_mode_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;legacy&#x27;</span></span><br><span class="line">  </span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">openvswitch_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/openvswitch_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;false&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">update</span> <span class="string">openvswitch_agent.ini</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">ini_file:</span></span><br><span class="line">    <span class="attr">dest:</span> <span class="string">/etc/neutron/plugins/ml2/openvswitch_agent.ini</span></span><br><span class="line">    <span class="attr">section:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_section &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">option:</span> <span class="string">&#x27;<span class="template-variable">&#123;&#123; ovs.enable_dvr_option &#125;&#125;</span>&#x27;</span></span><br><span class="line">    <span class="attr">value:</span> <span class="string">&#x27;false&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">restart</span> <span class="string">neutron-openvswitch-agent</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">neutron-openvswitch-agent</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span> </span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">network</span> <span class="string">restart</span> <span class="string">neutron-vpn-agent</span> </span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;network&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-vpn-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">controller</span> <span class="string">restart</span> <span class="string">neutron-server</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;controller&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">    <span class="attr">name:</span> <span class="string">neutron-server</span></span><br><span class="line">    <span class="attr">state:</span> <span class="string">restarted</span></span><br><span class="line"></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">compute</span> <span class="string">restart</span> <span class="string">neutron-openvswitch-agent</span></span><br><span class="line">  <span class="attr">when:</span> <span class="string">inventory_hostname</span> <span class="string">in</span> <span class="string">groups[&#x27;compute&#x27;]</span></span><br><span class="line">  <span class="attr">service:</span></span><br><span class="line">   <span class="attr">name:</span> <span class="string">neutron-openvswitch-agent</span></span><br><span class="line">   <span class="attr">state:</span> <span class="string">restarted</span></span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/DVR/" rel="tag">DVR</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="奔跑吧Ansible（一）"
+                    aria-label="PREVIOUS: 奔跑吧Ansible（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/12/17/CMMI/"
+                    data-tooltip="CMMI"
+                    aria-label="NEXT: CMMI"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/&amp;title=DVR去哪儿了"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/12/24/DVR去哪儿了/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="奔跑吧Ansible（一）"
+                    aria-label="PREVIOUS: 奔跑吧Ansible（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/12/17/CMMI/"
+                    data-tooltip="CMMI"
+                    aria-label="NEXT: CMMI"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/&amp;title=DVR去哪儿了"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/&amp;title=DVR去哪儿了"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/12/24/DVR%E5%8E%BB%E5%93%AA%E5%84%BF%E4%BA%86/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

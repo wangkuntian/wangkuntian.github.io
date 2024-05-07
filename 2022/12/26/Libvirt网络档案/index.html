@@ -1,0 +1,874 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Libvirt网络档案 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="KVM">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n在KVM中，虚拟机可以通过虚拟交换机连接到虚拟网络，或者通过驱动直接连接到宿主机网络，亦或者是二者的结合。\nKVM Network\n\n\n\n虚拟网络KVM使用虚拟交换机实现虚拟网络。虚拟交换机是一个在宿主机上运行的软件组件，虚拟机可以接入到该组件中，并引导其流量通过该组件。连接到特定虚拟交换机的虚拟机之间的流量保持在相关联的虚拟网络的范围内。从虚拟机的角度来看，虚拟网络连接与普通物理网络连接相同。\n在宿主机上，虚拟交换机显示为网络接口，通常称为virbr0。\n12345ip a show virbr051: virbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000    link/ether 52:54:00:04:a9:99 brd ff:ff:ff:ff:ff:ff    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0       valid_lft forever preferred_lft forever\n\n在默认模式（NAT模式）下，该网络接口明确没有添加任何物理接口，因为它使用NAT转发连接到外部。这可以通过在宿主机上运行brctl show来证明。路由地址默认为192.168.122.1，到物理网络接口的路由在虚拟主机网络层中完成。libvirt将添加iptables规则，以允许进出virbr0接口的流量。它还将启用路由所需的IP转发。\n默认的虚拟网络配置可以通过virsh net-dumpxml default显示。\n12345678910111213141516&lt;network&gt;  &lt;name&gt;default&lt;/name&gt;  &lt;uuid&gt;40b7c068-9791-4466-bfa6-77ca0bedb2e4&lt;/uuid&gt;  &lt;forward mode=&#x27;nat&#x27;&gt;    &lt;nat&gt;      &lt;port start=&#x27;1024&#x27; end=&#x27;65535&#x27;/&gt;    &lt;/nat&gt;  &lt;/forward&gt;  &lt;bridge name=&#x27;virbr0&#x27; stp=&#x27;on&#x27; delay=&#x27;0&#x27;/&gt;  &lt;mac address=&#x27;52:54:00:04:a9:99&#x27;/&gt;  &lt;ip address=&#x27;192.168.122.1&#x27; netmask=&#x27;255.255.255.0&#x27;&gt;    &lt;dhcp&gt;      &lt;range start=&#x27;192.168.122.2&#x27; end=&#x27;192.168.122.254&#x27;/&gt;    &lt;/dhcp&gt;  &lt;/ip&gt;&lt;/network&gt;\n\n虚拟交换机由libvirtd守护进程通过dnsmasq进程启动和管理。为每个虚拟交换机及其关联的虚拟网络启动dnsmasq的新实例，仅该特定网络中的虚拟机可以访问。dnsmasq充当虚拟网络的DNS和DHCP服务器。此类dnsmasq实例的配置文件为/var/lib/libvirt/dnsmasq/.conf。默认情况下，只有一个“默认”虚拟网络，其dnsmasq配置文件为var/lib/libvirt/dnsmasq/default.conf。\n123456789101112131415161718##WARNING:  THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE##OVERWRITTEN AND LOST.  Changes to this configuration should be made using:##    virsh net-edit default## or other application using the libvirt API.#### dnsmasq conf file created by libvirtstrict-orderpid-file=/run/libvirt/network/default.pidexcept-interface=lobind-dynamicinterface=virbr0dhcp-range=192.168.122.2,192.168.122.254,255.255.255.0dhcp-no-overridedhcp-authoritativedhcp-lease-max=253dhcp-hostsfile=/var/lib/libvirt/dnsmasq/default.hostsfileaddn-hosts=/var/lib/libvirt/dnsmasq/default.addnhosts\n\n可以使用virsh net-edit编辑网络配置文件。\n1virsh net-edit &lt;virtual-network-name&gt;\n\n如果启动服务后virbr0网桥不存在，可以执行下面的命令。\n12virsh net-autostart defaultvirsh net-start default\n\n虚拟网络有4种模式，分别是NAT模式（默认）、Isolated模式（Host-only模式/隔离模式）、Routed模式（路由模式）和Bridged模式（桥接模式）。\nNAT模式NAT是默认的虚拟网络模式。在NAT模式中，使虚拟机借助NAT(网络地址转换)功能，通过宿主机器所在的网络来访问公网。虚拟机的网卡和物理网卡的网络，不在同一个网络，虚拟机的网卡，提供的是一个虚拟网络。{ image fancybox center images/network_nat.png ‘Network NAT’}\nNAT模式会将源地址转化为宿主机的物理网卡地址，所以局域网中的其他主机是无法访问虚拟机的，而宿主机可以访问虚拟机，虚拟机可以访问局域网内的所有主机。\n创建网络首先确保宿主机的IP转发已经打开。\n123cat /proc/sys/net/ipv4/ip_forward# IP转发打开，值为1。1\n如果没有打开，利用下面的命令打开IP地址转发。\n1sudo sysctl -w net.ipv4.ip_forward=1\n\n查看宿主机的网络设备，eno1。\n1234567ip aeno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000    link/ether 00:e0:70:e8:fd:b7 brd ff:ff:ff:ff:ff:ff    inet 10.12.17.200/24 brd 10.12.17.255 scope global dynamic noprefixroute eno1       valid_lft 26998sec preferred_lft 26998sec    inet6 fe80::1f78:1d6:7d71:8430/64 scope link noprefixroute        valid_lft forever preferred_lft forever\n\n创建一个NAT模式的网络，下面是网络的详细配置文件nat-network.xml。\n1234567891011&lt;network&gt;  &lt;name&gt;nat-network&lt;/name&gt;  &lt;forward mode=&#x27;nat&#x27; dev=&#x27;eno1&#x27;/&gt;  &lt;bridge name=&#x27;virbr-nat&#x27; stp=&#x27;on&#x27; delay=&#x27;2&#x27;/&gt;  &lt;ip address=&#x27;192.168.10.1&#x27; netmask=&#x27;255.255.255.0&#x27;&gt;    &lt;dhcp&gt;      &lt;range start=&#x27;192.168.10.2&#x27; end=&#x27;192.168.10.254&#x27;/&gt;      &lt;host name=&#x27;myhost&#x27; ip=&#x27;192.168.10.10&#x27;/&gt;    &lt;/dhcp&gt;  &lt;/ip&gt;&lt;/network&gt;\n\n先解读一下nat-network.xml的配置文件。\n第三行，forward表明虚拟网络将连接到物理LAN。forward的mode（模式）包括nat（默认）、route、open、bridge、private、vepa、passthrough和hostdev，其中nat表示连接到此网络的虚拟机和物理网络之间的所有流量将通过宿主机的IP路由堆栈转发到物理网络，之后虚拟机的IP地址被转换为宿主机的IP地址（NAT，网络地址转换）。另外Isolated模式（Host-only模式/隔离模式）下的网络配置文件中没有forward这一项。forward的dev属性使防火墙规则将仅限制转发加到指定的设备上，不设置dev属性，会默认转发到任意设备上。\n第四行，bridge用于指定构建虚拟网络的网桥设备，虚拟机接入这个网桥设备用于互相通信，这个网桥设备也可以接入到物理LAN中。当forward的mode（模式）为：nat、route或者open时，如果bridge的name未指定，会自动随机生成一个网桥的名称。对于nat、route、open和isolated类型的网络，建议网桥设备的名称以virbr作为前缀。属性stp指定Spanning Tree Protocol（生成树协议，按照树的结构来构造网络拓扑，消除网络中的环路，避免由于环路的存在而造成广播风暴问题。）是on或off（默认on）。属性delay设置网桥桥的转发延迟值，单位是秒（默认为0）。\n第五至十行，其中ip用于定义虚拟网络的IP地址包括IPv4和IPv6。dhcp用于定义虚拟网络的DHCP服务，其中range表示DHCP服务可分配IP的范围，host可以预定义主机的名称和IP地址以及mac地址。\n然后利用libvirt的命令创建虚拟网络nat-network。\n12345678910virsh net-define nat-network.xmlvirsh net-start nat-networkvirsh net-autostart nat-network# 查看网络列表virsh net-list --all 名称          状态     自动开始   持久----------------------------------------- default       不活跃   否         是 nat-network   活动     是         是\n\n网络设备创建好nat-network后，系统会自动创建一个网络设备virbr-nat，且它的IP地址是192.168.10.1/24。\n1234virbr-nat: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000    link/ether 52:54:00:e2:52:bd brd ff:ff:ff:ff:ff:ff    inet 192.168.10.1/24 brd 192.168.10.255 scope global virbr-nat       valid_lft forever preferred_lft forever\n\n利用brctl命令查看网桥设备。\n123brctl showbridge name\tbridge id\t\tSTP enabled\tinterfacesvirbr-nat\t\t8000.5254004dcf1b\tyes\t\t\t\t\n\nbrctl命令可以通过yum install -y bridge-utils来安装。\niptables规则NAT模式底层依靠iptables实现，在创建nat-network之前，filter表的规则如下所示：\n1234567891011121314151617181920212223242526272829iptables -vnLChain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         22789 4974K LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain FORWARD (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination             0     0 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0               0     0 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0               0     0 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         21989 3472K LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain LIBVIRT_INP (1 references) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_OUT (1 references) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_FWO (1 references) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_FWI (1 references) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_FWX (1 references) pkts bytes target     prot opt in     out     source               destination\n\nnat表的规则如下所示：\n12345678910111213141516iptables -t nat -vnLChain PREROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination          2082  143K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_PRT (1 references) pkts bytes target     prot opt in     out     source               destination\n\n创建完虚拟网络nat-network后，先看filter表的规则。\n123456789101112131415161718192021222324252627282930313233343536373839404142iptables -vnLChain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         32440   10M LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain FORWARD (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination             0     0 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0               0     0 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0               0     0 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         30617 4478K LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain LIBVIRT_INP (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     udp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            udp dpt:53    0     0 ACCEPT     tcp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            tcp dpt:53    0     0 ACCEPT     udp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            udp dpt:67    0     0 ACCEPT     tcp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            tcp dpt:67Chain LIBVIRT_OUT (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     udp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            udp dpt:53    0     0 ACCEPT     tcp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            tcp dpt:53    0     0 ACCEPT     udp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            udp dpt:68    0     0 ACCEPT     tcp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            tcp dpt:68Chain LIBVIRT_FWO (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  virbr-nat eno1    192.168.10.0/24      0.0.0.0/0               0     0 REJECT     all  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachableChain LIBVIRT_FWI (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  eno1   virbr-nat  0.0.0.0/0            192.168.10.0/24      ctstate RELATED,ESTABLISHED    0     0 REJECT     all  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachableChain LIBVIRT_FWX (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  virbr-nat virbr-nat  0.0.0.0/0            0.0.0.0/0\n\n可以看到创建完虚拟网络后，filter表中新增了nat-network的一些规则。iptables中filter表主要用于流量的过滤，所以新增的规则也都是对进出虚拟机的流量做出了限制。\n链LIBVIRT_INP中新增了进入nat-network网络的一些过滤规则，包括指定流量进入的设备必须是网桥virbr-nat，流量的协议tcp或者udp以及流量的端口号。链LIBVIRT_OUT中新增从nat-work网络出来的流量的过滤规则，包括指定流量离去的设备必须是网桥virbr-nat，流量的协议tcp或者udp以及流量的端口号。不难看出filter表中的链LIBVIRT_INP和链LIBVIRT_OUT实现了虚拟机安全组的功能，它们定义了虚拟网络进出流量的规则，可以通过修改规则实现对虚拟机流量的控制。\n对于需要进行转发的流量，FORWARD链下的三条链也清晰定义了规则。三条链分别对应三种情况，LIBVIRT_FWX对应的是nat网络中虚拟机之间的互相访问。LIBVIRT_FWI对应的是外部网络访问虚拟机，LIBVIRT_FWO对应的是虚拟机访问外部网络。LIBVIRT_FWX中的一条规则，就是同一网络下（这里是同一网络设备，可以看作是同一网络）当一台虚拟机访问另一台虚拟机时，该流量是不是应该被过滤，答案肯定是否定的。LIBVIRT_FWI中的两条规则表示只有当目的地址为192.168.10.0/24，且流量的入口是eno1，出口是网桥设备virbr-nat，这样的流量才被接收。同样的LIBVIRT_FWO中的两条规则表示只有当源地址为192.168.10.0/24，且从流量的入口是网桥virbr-nat，出口是eno1，这样的流量才会被接收，不被过滤掉。\n查看nat表新增的规则。\n123456789101112131415161718192021iptables -t nat -vnLChain PREROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination          3417  244K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_PRT (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 RETURN     all  --  *      eno1    192.168.10.0/24      224.0.0.0/24            0     0 RETURN     all  --  *      eno1    192.168.10.0/24      255.255.255.255         0     0 MASQUERADE  tcp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535    0     0 MASQUERADE  udp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535    0     0 MASQUERADE  all  --  *      eno1    192.168.10.0/24     !192.168.10.0/24   \n\niptables中nat表主要用主要用来修改数据包的IP地址、端口号信息实现网络地址转换和端口转发。可以看到新增的规则集中在LIBVIRT_PRT链里。先看第一条规则。\n12pkts bytes target     prot opt in     out     source               destination           0     0 RETURN     all  --  *      eno1    192.168.10.0/24      224.0.0.0/24   \n其中224.0.0.0/24是组播的地址，所以不需要进行地址转换的操作，直接RETURN。RETURN表示立即结束在目前规则链中的过滤程序，返回主规则链继续过滤。如果把自定义规则链看成是一个子程序，那么这个动作，就相当提早结束子程序并返回到主程序中。\n第二条规则。\n12pkts bytes target     prot opt in     out     source               destination                   0     0 RETURN     all  --  *      eno1    192.168.10.0/24      255.255.255.255 \n255.255.255.255是广播的地址，所以不需要进行地址转换的操作，直接RETURN。\n其他规则。\n1234pkts bytes target     prot opt in     out     source               destination                       0     0 MASQUERADE  tcp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535  0     0 MASQUERADE  udp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535  0     0 MASQUERADE  all  --  *      eno1    192.168.10.0/24     !192.168.10.0/24    \n\n上面的这三条规则定义了当流量的源地址是192.168.10.0/24且目的地址不是192.168.10.0/24（非同一网络下虚拟机互相访问的情况），需要进行NAT（网络地址转换）。其中MASQUERADE的作用类似SNAT（源地址转换），区别是SNAT需要显示指定转换的地址，而MASQURADE会根据出口网卡地址的IP自动设置转换的源IP地址（这里是eno1的IP地址）。masq ports指定了做NAT时的端口范围，只有在协议为TCP或者UDP时才会生效。out定义了网络流量的出口在宿主机的网卡eno1。\n看到上面三条规则，就能解释为什么NAT模式下网络中的虚拟机可以访问外网，但是外部网络却不能直接访问虚拟机。主要原因是iptables规则只增加了源地址转换（SNAT），却没有目的地址转换（DNAT）。\n路由规则routed网络创建后，宿主机上会新增一个192.168.10.0/24网段的路由规则。\n1234ip routedefault via 10.12.17.1 dev eno1 proto dhcp metric 100 10.12.17.0/24 dev eno1 proto kernel scope link src 10.12.17.200 metric 100 192.168.10.0/24 dev virbr-nat proto kernel scope link src 192.168.10.1 linkdown\n\n创建虚拟机最后利用virt-install命令创建虚拟机。\n123456789sudo virt-install \\--connect=qemu:///system \\--virt-type kvm \\--name=myhost \\--vcpus=1 \\--ram=512 \\--disk cirros-0.6.1-x86_64-disk.img,format=qcow2 \\--import \\--network network=nat-network\n\n其中--network用于指定虚拟机的网络。--name指定虚拟机的名称为myhost，正好对应网络配置文件中host的name属性，所以根据配置文件，虚拟机的IP地址应该为192.168.10.10。\n创建完虚拟机后，可以查看网桥上的设备，发现网桥virbr-nat多了一个名为vnet5的设备。\n123brctl showbridge name\tbridge id\t\tSTP enabled\tinterfacesvirbr-nat\t\t8000.5254004dcf1b\tyes\t\tvnet5\n\n查看vnet5的详细信息。\n123456ip a show vnet5vnet5: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master virbr-nat state UNKNOWN group default qlen 1000  link/ether fe:54:00:ec:49:66 brd ff:ff:ff:ff:ff:ff  inet6 fe80::fc54:ff:feec:4966/64 scope link     valid_lft forever preferred_lft forever\n\n利用命令virsh dumpxml myhost查看虚拟机的xml配置文件中网卡的设置。\n12345678910111213&lt;domain type=&#x27;kvm&#x27; id=&#x27;7&#x27;&gt;  ... ...  &lt;devices&gt;    &lt;interface type=&#x27;network&#x27;&gt;      &lt;mac address=&#x27;52:54:00:f4:6a:43&#x27;/&gt;      &lt;source network=&#x27;nat-network&#x27; portid=&#x27;f3f9f940-cc95-4801-a43a-f5807cf44cae&#x27; bridge=&#x27;virbr-nat&#x27;/&gt;      &lt;target dev=&#x27;vnet5&#x27;/&gt;      &lt;model type=&#x27;e1000&#x27;/&gt;      &lt;alias name=&#x27;net0&#x27;/&gt;      &lt;address type=&#x27;pci&#x27; domain=&#x27;0x0000&#x27; bus=&#x27;0x00&#x27; slot=&#x27;0x03&#x27; function=&#x27;0x0&#x27;/&gt;    &lt;/interface&gt;  &lt;/devices&gt;&lt;/domain&gt;\n\n其中52:54:00:f4:6a:43是虚拟机的mac地址。对于配置文件的解读之后会在另一篇文章单独分析。\n可以使用命令查看虚拟网络的DHCP租约的相关情况。\n1234virsh net-dhcp-leases nat-network  Expiry Time           MAC 地址            Protocol   IP address          Hostname   Client ID or DUID----------------------------------------------------------------------------------------------------------- 2023-03-07 15:37:49   52:54:00:f4:6a:43   ipv4       192.168.10.10/24    -          01:52:54:00:f4:6a:43\n\n网络测试利用ping命令测试网络，先从虚拟机ping宿主机，模拟虚拟机访问宿主机。\n1234567891011ping -c 5 10.12.17.200PING 10.12.17.200 (10.12.17.200) 56(84) bytes of data.64 bytes from 10.12.17.200: icmp_seq=1 ttl=64 time=0.170 ms64 bytes from 10.12.17.200: icmp_seq=2 ttl=64 time=0.357 ms64 bytes from 10.12.17.200: icmp_seq=3 ttl=64 time=0.441 ms64 bytes from 10.12.17.200: icmp_seq=4 ttl=64 time=0.246 ms64 bytes from 10.12.17.200: icmp_seq=5 ttl=64 time=0.237 ms--- 10.12.17.200 ping statistics ---5 packets transmitted, 5 received, 0% packet loss, time 4028msrtt min/avg/max/mdev = 0.170/0.290/0.441/0.096 ms\n\n然后用宿主机ping虚拟机。\n1234567891011ping -c 5 192.168.10.10PING 192.168.10.10 (192.168.10.10) 56(84) bytes of data.64 bytes from 192.168.10.10: icmp_seq=1 ttl=64 time=0.251 ms64 bytes from 192.168.10.10: icmp_seq=2 ttl=64 time=0.226 ms64 bytes from 192.168.10.10: icmp_seq=3 ttl=64 time=0.290 ms64 bytes from 192.168.10.10: icmp_seq=4 ttl=64 time=0.198 ms64 bytes from 192.168.10.10: icmp_seq=5 ttl=64 time=0.273 ms--- 192.168.10.10 ping statistics ---5 packets transmitted, 5 received, 0% packet loss, time 68msrtt min/avg/max/mdev = 0.198/0.247/0.290/0.037 ms\n\n用虚拟机ping另一台物理机。\n1234567891011ping -c 5 10.12.17.116PING 10.12.17.116 (10.12.17.116) 56(84) bytes of data.64 bytes from 10.12.17.116: icmp_seq=1 ttl=64 time=0.488 ms64 bytes from 10.12.17.116: icmp_seq=2 ttl=64 time=0.383 ms64 bytes from 10.12.17.116: icmp_seq=3 ttl=64 time=0.435 ms64 bytes from 10.12.17.116: icmp_seq=4 ttl=64 time=0.332 ms64 bytes from 10.12.17.116: icmp_seq=5 ttl=64 time=0.349 ms--- 10.12.17.116 ping statistics ---5 packets transmitted, 5 received, 0% packet loss, time 108msrtt min/avg/max/mdev = 0.332/0.397/0.488/0.060 ms\n\n最后在另一台上物理机ping虚拟机。\n1234567891011ping -c 5 192.168.10.10PING 192.168.10.10 (192.168.10.10) 56(84) bytes of data.From 192.168.10.1 icmp_seq=1 Destination Host UnreachableFrom 192.168.10.1 icmp_seq=2 Destination Host UnreachableFrom 192.168.10.1 icmp_seq=3 Destination Host UnreachableFrom 192.168.10.1 icmp_seq=4 Destination Host UnreachableFrom 192.168.10.1 icmp_seq=5 Destination Host Unreachable--- 192.168.10.10 ping statistics ---5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 79mspipe 4\n\n由以上可以得出，NAT模式下的虚拟机可以和宿主机互相访问，同时能访问外部网络，但是不能被外部网络访问。\nRouted模式Routed模式（路由模式）相当于虚拟机连接到一台路由器上，由路由器（宿主机物理网卡），统一转发，但是不会修改源地址。\n使用Routed模式时，虚拟交换机连接到连接到宿主机的物理局域网，在不使用NAT的情况下来回传递流量。虚拟交换机可以检查所有流量，并根据网络数据包中包含的信息来做出路由决策。情况却不总是理想的，因为在没有手动配置物理路由器的情况下，物理网络上没有其他主机物理机器知道虚拟机，所以无法访问虚拟机。\n创建网络首先确保宿主机的IP转发已经打开。\n123cat /proc/sys/net/ipv4/ip_forward# IP转发打开，值为1。1\n如果没有打开，利用下面的命令打开IP地址转发。\n1sudo sysctl -w net.ipv4.ip_forward=1\n\n查看宿主机的网络设备，eno1。\n1234567ip aeno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000    link/ether 00:e0:70:e8:fd:b7 brd ff:ff:ff:ff:ff:ff    inet 10.12.17.200/24 brd 10.12.17.255 scope global dynamic noprefixroute eno1       valid_lft 26998sec preferred_lft 26998sec    inet6 fe80::1f78:1d6:7d71:8430/64 scope link noprefixroute        valid_lft forever preferred_lft forever\n\n创建一个routed模式的网络，下面是网络的详细配置文件routed-network.xml。\n1234567891011&lt;network&gt;  &lt;name&gt;routed-network&lt;/name&gt;  &lt;forward mode=&#x27;route&#x27; dev=&#x27;eno1&#x27;/&gt;  &lt;bridge name=&#x27;virbr-routed&#x27; stp=&#x27;on&#x27; delay=&#x27;2&#x27;/&gt;  &lt;ip address=&#x27;192.168.20.1&#x27; netmask=&#x27;255.255.255.0&#x27;&gt;    &lt;dhcp&gt;      &lt;range start=&#x27;192.168.20.2&#x27; end=&#x27;192.168.20.254&#x27;/&gt;      &lt;host name=&#x27;myhost&#x27; ip=&#x27;192.168.20.20&#x27;/&gt;    &lt;/dhcp&gt;  &lt;/ip&gt;&lt;/network&gt;\n\n先解读一下routed-network.xml的配置文件。\n着重看下第三行，上文说过forward表明虚拟网络将连接到物理LAN，forward的mode（模式）属性设置成route（路由模式），可以类比NAT模式的网络，nat表示连接到此网络的虚拟机和物理网络之间的所有流量将通过宿主机的IP路由堆栈转发到物理网络，之后虚拟机的IP地址被转换为宿主机的IP地址（NAT，网络地址转换），route模式和它类似，只是将虚拟机网络流量通过宿主机的IP路由规则转发到物理网络，但不会应用NAT。\n然后利用libvirt的命令创建虚拟网络nat-network。\n12345678910virsh net-define routed-network.xmlvirsh net-start routed-networkvirsh net-autostart routed-network# 查看网络列表virsh net-list --all 名称             状态     自动开始   持久-------------------------------------------- default          不活跃   否         是 routed-network   活动     是         是\n\n网络设备创建好nat-network后，系统会自动创建一个网络设备virbr-routed，且它的IP地址是192.168.20.1/24。\n12345ip avirbr-routed: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000  link/ether 52:54:00:58:71:34 brd ff:ff:ff:ff:ff:ff  inet 192.168.20.1/24 brd 192.168.20.255 scope global virbr-routed      valid_lft forever preferred_lft forever\n\n利用brctl命令查看网桥设备。\n123brctl showbridge name\tbridge id\t\tSTP enabled\tinterfacesvirbr-routed\t\t8000.525400233d8e\tyes\t\n\nbrctl命令可以通过yum install -y bridge-utils来安装。\niptables规则先看网络创建后的iptables的filter表的规则。\n123456789101112131415161718192021222324252627282930313233343536373839404142iptables -vnLChain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination          805K  450M LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain FORWARD (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination           521 31520 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0             521 31520 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0             517 31035 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination          704K  112M LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain LIBVIRT_INP (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     udp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            udp dpt:53    0     0 ACCEPT     tcp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            tcp dpt:53    0     0 ACCEPT     udp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            udp dpt:67    0     0 ACCEPT     tcp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            tcp dpt:67Chain LIBVIRT_OUT (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     udp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            udp dpt:53    0     0 ACCEPT     tcp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            tcp dpt:53    0     0 ACCEPT     udp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            udp dpt:68    0     0 ACCEPT     tcp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            tcp dpt:68Chain LIBVIRT_FWO (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  virbr-routed eno1    192.168.20.0/24      0.0.0.0/0               0     0 REJECT     all  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachableChain LIBVIRT_FWI (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  eno1   virbr-routed  0.0.0.0/0            192.168.20.0/24         0     0 REJECT     all  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachableChain LIBVIRT_FWX (1 references) pkts bytes target     prot opt in     out     source               destination             0     0 ACCEPT     all  --  virbr-routed virbr-routed  0.0.0.0/0            0.0.0.0/0         \n可以看到filter表中新增的规则和NAT网络创建完成后新增的规则基本一致，功能基本都是对网络流量的过滤。\n看一下nat表中新增的规则。\n12345678910111213141516iptables -t nat -vnLChain PREROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain INPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         53394 3746K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes) pkts bytes target     prot opt in     out     source               destination         Chain LIBVIRT_PRT (1 references) pkts bytes target     prot opt in     out     source               destination\nnat表中并未增加任何的新的规则。\n路由规则routed网络创建后，宿主机上会新增一个192.168.20.0/24网段的路由规则。\n1234ip routedefault via 10.12.17.1 dev eno1 proto dhcp metric 100 10.12.17.0/24 dev eno1 proto kernel scope link src 10.12.17.200 metric 100 192.168.20.0/24 dev virbr-routed proto kernel scope link src 192.168.20.1 linkdown\n\n创建虚拟机最后利用virt-install命令创建虚拟机。\n123456789sudo virt-install \\--connect=qemu:///system \\--virt-type kvm \\--name=myhost \\--vcpus=1 \\--ram=512 \\--disk cirros-0.6.1-x86_64-disk.img,format=qcow2 \\--import \\--network network=routed-network\n\n123456789101112131415161718192021222324252627282930313233343536sudo virt-install \\--connect=qemu:///system \\--virt-type qemu \\--name=myhost \\--machine q35 \\--vcpus=4 \\--ram=4096 \\--os-type=generic \\--disk path=/home/uniontechos-server-20-1060a-amd64.qcow2,format=qcow2,bus=virtio \\--boot uefi \\--import \\--graphics vnc,port=9527sudo virt-install \\--connect=qemu:///system \\--name=test-smart \\--vcpus=4 \\--ram=4096 \\--disk path=/home/wkt/smart-20-Standard-1.0.0-arm64.qcow2,format=qcow2,bus=virtio \\--boot uefi \\--import \\--graphics vnc,listen=10.10.15.14,port=9527sudo virt-install --virt-type qemu --name 1050a --ram 4096 \\--cdrom=/home/uniontechos-server-20-1050a-amd64-release-20220214.iso \\--disk 1050a.qcow2,bus=virtio,size=5,format=qcow2 \\--network network=default \\--graphics vnc,port=9527 \\--boot uefi \\--os-type=linux --os-variant=genericsudo virt-install --connect=qemu:///system --virt-type qemu --name=myhost --vcpus=4 --ram=4096 --disk uniontechos-server-20-1060a-amd64.qcow2,format=qcow2 --import --boot uefisudo virt-install --name smart --vcpus=6 --ram 4096 --cdrom=uniontechos-smart-20-Standard-1.0.0-ARM64-arm64-generic_generic_1-20230228-1144.iso --disk smart.qcow2,bus=virtio,size=20,format=qcow2 --graphics vnc,listen=172.16.0.145,port=9527 --os-type=linux --os-variant=generic --boot uefi\n\n1&lt;loader readonly=&#x27;yes&#x27; secure=&#x27;yes&#x27; type=&#x27;pflash&#x27;&gt;/usr/share/OVMF/OVMF_CODE.fd&lt;/loader&gt;\n\nRouted模式下的虚拟机可以与宿主机相互通信，Routed模式中的虚拟机无法与外部网络互相通信，这是因为虚拟机流量发送到外部网络的主机时，源地址是虚拟网络的地址（这里是192.168.20.0/24），内网地址无法与外部网络直接通信，且routed模式也没对源地址处理，将其转换为宿主机网卡的IP地址，因此，外部网络发送的响应报文中的目标地址为虚拟机的IP地址时，无法到达宿主机的物理网卡，虚拟机也无法收到响应报文。\n创建完虚拟机后，可以查看网桥上的设备，发现网桥virbr-nat多了一个名为vnet6的设备。\n123brctl showbridge name\tbridge id\t\tSTP enabled\tinterfacesvirbr-routed\t\t8000.525400233d8e\tyes\t\tvnet6\n\n查看vnet6的详细信息。\n12345ip a show vnet6vnet6: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master virbr-routed state UNKNOWN group default qlen 1000  link/ether fe:54:00:f4:6a:43 brd ff:ff:ff:ff:ff:ff  inet6 fe80::fc54:ff:fef4:6a43/64 scope link     valid_lft forever preferred_lft forever\n\n利用命令virsh dumpxml myhost查看虚拟机的xml配置文件中网卡的设置。\n12345678910111213&lt;domain type=&#x27;kvm&#x27; id=&#x27;7&#x27;&gt;  ... ...  &lt;devices&gt;    &lt;interface type=&#x27;network&#x27;&gt;      &lt;mac address=&#x27;52:54:00:f4:6a:43&#x27;/&gt;      &lt;source network=&#x27;routed-network&#x27; portid=&#x27;e8208650-019f-43d2-a359-fb8f80dc9afa&#x27; bridge=&#x27;virbr-routed&#x27;/&gt;      &lt;target dev=&#x27;vnet6&#x27;/&gt;      &lt;model type=&#x27;e1000&#x27;/&gt;      &lt;alias name=&#x27;net0&#x27;/&gt;      &lt;address type=&#x27;pci&#x27; domain=&#x27;0x0000&#x27; bus=&#x27;0x00&#x27; slot=&#x27;0x03&#x27; function=&#x27;0x0&#x27;/&gt;    &lt;/interface&gt;  &lt;/devices&gt;&lt;/domain&gt;\n\n其中52:54:00:f4:6a:43是虚拟机的mac地址。\n网络测试利用ping命令测试网络，先从虚拟机ping宿主机，模拟虚拟机访问宿主机。\n1234567891011ping -c 5 10.12.17.200PING 10.12.17.200 (10.12.17.200) 56(84) bytes of data.64 bytes from 10.12.17.200: icmp_seq=1 ttl=64 time=0.232 ms64 bytes from 10.12.17.200: icmp_seq=2 ttl=64 time=0.270 ms64 bytes from 10.12.17.200: icmp_seq=3 ttl=64 time=0.186 ms64 bytes from 10.12.17.200: icmp_seq=4 ttl=64 time=0.425 ms64 bytes from 10.12.17.200: icmp_seq=5 ttl=64 time=0.299 ms--- 10.12.17.200 ping statistics ---5 packets transmitted, 5 received, 0% packet loss, time 4052msrtt min/avg/max/mdev = 0.186/0.282/0.425/0.080 ms\n\n然后用宿主机ping虚拟机。\n1234567891011ping -c 5 192.168.20.20PING 192.168.20.20 (192.168.20.20) 56(84) bytes of data.64 bytes from 192.168.20.20: icmp_seq=1 ttl=64 time=0.183 ms64 bytes from 192.168.20.20: icmp_seq=2 ttl=64 time=0.170 ms64 bytes from 192.168.20.20: icmp_seq=3 ttl=64 time=0.190 ms64 bytes from 192.168.20.20: icmp_seq=4 ttl=64 time=0.288 ms64 bytes from 192.168.20.20: icmp_seq=5 ttl=64 time=0.210 ms--- 192.168.20.254 ping statistics ---5 packets transmitted, 5 received, 0% packet loss, time 57msrtt min/avg/max/mdev = 0.170/0.208/0.288/0.042 ms\n\n用虚拟机ping另一台物理机。\n1234567891011ping -c 5 10.12.17.116PING 10.12.17.116 (10.12.17.116) 56(84) bytes of data.From 192.168.20.20 icmp_seq=1 Destination Host UnreachableFrom 192.168.20.10 icmp_seq=2 Destination Host UnreachableFrom 192.168.20.10 icmp_seq=3 Destination Host UnreachableFrom 192.168.20.10 icmp_seq=4 Destination Host UnreachableFrom 192.168.20.10 icmp_seq=5 Destination Host Unreachable--- 10.12.17.16 ping statistics ---5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 35mspipe 4\n\n最后在另一台上物理机ping虚拟机。\n1234567891011ping -c 5 192.168.20.20PING 192.168.20.20 (192.168.20.20) 56(84) bytes of data.From 192.168.20.1 icmp_seq=1 Destination Host UnreachableFrom 192.168.20.1 icmp_seq=2 Destination Host UnreachableFrom 192.168.20.1 icmp_seq=3 Destination Host UnreachableFrom 192.168.20.1 icmp_seq=4 Destination Host UnreachableFrom 192.168.20.1 icmp_seq=5 Destination Host Unreachable--- 192.168.20.20 ping statistics ---5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 65mspipe 4\n\n由以上可以得出，routed模式下的虚拟机可以和宿主机互相访问，但是不能访问外部网络，也不能被外部网络访问。\nIsolated模式Isolated模式（隔离模式）也称host-only（仅主机）模式，其模式的特点是同一网络下的所有虚拟机可以通信，同时也可以和宿主机进行通信，但是流量无法穿过虚拟网络，也收不到外网的流量，也就是无法和同一网络外的其他设备进行通信。简而言之，Isolated模式是将虚拟机网络和外部网络隔离出来。\nBridged模式使用Bridged模式（桥接模式）时，所有虚拟机都与宿主机位于同一子网中。同一物理网络上的所有其他物理机都知道虚拟机，并且可以访问虚拟机。该模式的特点是通过创建一个虚拟网卡，为该虚拟机网卡分配可以访问外部网络的IP地址，此时的物理网卡相当于一台交换机设备，虚拟机相当于宿主机所在的局域网内单独的一台物理机，它和宿主机的地位是同等的，没有依存关系。\n创建网络首先需要创建一个网桥br0用于桥接虚拟机和宿主机网卡。","dateCreated":"2022-12-26T16:58:39+08:00","dateModified":"2023-10-08T16:58:30+08:00","datePublished":"2022-12-26T16:58:39+08:00","description":"Libvirt网络档案","headline":"Libvirt网络档案","image":["covers/LOL/Vayne/Project-Vayne-1.jpg","covers/LOL/Vayne/Project-Vayne-1.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/","keywords":"KVM","thumbnailUrl":"covers/LOL/Vayne/Project-Vayne-1.jpg"}</script>
+    <meta name="description" content="Libvirt网络档案">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Libvirt网络档案">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Libvirt网络档案">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/libvirt_network.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/libvirt_network.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/network_nat.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/network_routed.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/network_isolated.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/network_bridged.png">
+<meta property="article:published_time" content="2022-12-26T08:58:39.000Z">
+<meta property="article:modified_time" content="2023-10-08T08:58:30.974Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="KVM">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/images/libvirt_network.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/covers/LOL/Vayne/Project-Vayne-1.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Vayne/Project-Vayne-1.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Libvirt网络档案
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-12-26T16:58:39+08:00">
+	
+		    Dec 26, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<p>在KVM中，虚拟机可以通过虚拟交换机连接到虚拟网络，或者通过驱动直接连接到宿主机网络，亦或者是二者的结合。<br><img src="images/libvirt_network.png" alt="KVM Network"></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/libvirt_network.png" title="KVM Network" data-caption="KVM Network" data-fancybox="default"><img class="fig-img" src="images/libvirt_network.png" alt="KVM Network"></a><span class="caption">KVM Network</span></div>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C"><span class="toc-text">虚拟网络</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT%E6%A8%A1%E5%BC%8F"><span class="toc-text">NAT模式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%BD%91%E7%BB%9C"><span class="toc-text">创建网络</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87"><span class="toc-text">网络设备</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#iptables%E8%A7%84%E5%88%99"><span class="toc-text">iptables规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E8%A7%84%E5%88%99"><span class="toc-text">路由规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E8%99%9A%E6%8B%9F%E6%9C%BA"><span class="toc-text">创建虚拟机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E6%B5%8B%E8%AF%95"><span class="toc-text">网络测试</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Routed%E6%A8%A1%E5%BC%8F"><span class="toc-text">Routed模式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%BD%91%E7%BB%9C-1"><span class="toc-text">创建网络</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87-1"><span class="toc-text">网络设备</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#iptables%E8%A7%84%E5%88%99-1"><span class="toc-text">iptables规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E8%A7%84%E5%88%99-1"><span class="toc-text">路由规则</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E8%99%9A%E6%8B%9F%E6%9C%BA-1"><span class="toc-text">创建虚拟机</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E6%B5%8B%E8%AF%95-1"><span class="toc-text">网络测试</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Isolated%E6%A8%A1%E5%BC%8F"><span class="toc-text">Isolated模式</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Bridged%E6%A8%A1%E5%BC%8F"><span class="toc-text">Bridged模式</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E7%BD%91%E7%BB%9C-2"><span class="toc-text">创建网络</span></a></li></ol></li></ol></li></ol>
+
+<h2 id="虚拟网络"><a href="#虚拟网络" class="headerlink" title="虚拟网络"></a>虚拟网络</h2><p>KVM使用虚拟交换机实现虚拟网络。虚拟交换机是一个在宿主机上运行的软件组件，虚拟机可以接入到该组件中，并引导其流量通过该组件。连接到特定虚拟交换机的虚拟机之间的流量保持在相关联的虚拟网络的范围内。从虚拟机的角度来看，虚拟网络连接与普通物理网络连接相同。</p>
+<p>在宿主机上，虚拟交换机显示为网络接口，通常称为virbr0。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ip a show virbr0</span><br><span class="line">51: virbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether 52:54:00:04:a9:99 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>在默认模式（NAT模式）下，该网络接口明确没有添加任何物理接口，因为它使用NAT转发连接到外部。这可以通过在宿主机上运行brctl show来证明。路由地址默认为192.168.122.1，到物理网络接口的路由在虚拟主机网络层中完成。libvirt将添加iptables规则，以允许进出virbr0接口的流量。它还将启用路由所需的IP转发。</p>
+<p>默认的虚拟网络配置可以通过virsh net-dumpxml default显示。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">network</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>default<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">uuid</span>&gt;</span>40b7c068-9791-4466-bfa6-77ca0bedb2e4<span class="tag">&lt;/<span class="name">uuid</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">forward</span> <span class="attr">mode</span>=<span class="string">&#x27;nat&#x27;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">nat</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">port</span> <span class="attr">start</span>=<span class="string">&#x27;1024&#x27;</span> <span class="attr">end</span>=<span class="string">&#x27;65535&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">nat</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">forward</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">bridge</span> <span class="attr">name</span>=<span class="string">&#x27;virbr0&#x27;</span> <span class="attr">stp</span>=<span class="string">&#x27;on&#x27;</span> <span class="attr">delay</span>=<span class="string">&#x27;0&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">mac</span> <span class="attr">address</span>=<span class="string">&#x27;52:54:00:04:a9:99&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">ip</span> <span class="attr">address</span>=<span class="string">&#x27;192.168.122.1&#x27;</span> <span class="attr">netmask</span>=<span class="string">&#x27;255.255.255.0&#x27;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dhcp</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">range</span> <span class="attr">start</span>=<span class="string">&#x27;192.168.122.2&#x27;</span> <span class="attr">end</span>=<span class="string">&#x27;192.168.122.254&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dhcp</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">ip</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">network</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>虚拟交换机由libvirtd守护进程通过dnsmasq进程启动和管理。为每个虚拟交换机及其关联的虚拟网络启动dnsmasq的新实例，仅该特定网络中的虚拟机可以访问。dnsmasq充当虚拟网络的DNS和DHCP服务器。此类dnsmasq实例的配置文件为/var/lib/libvirt/dnsmasq/<virtualnetwork-name>.conf。默认情况下，只有一个“默认”虚拟网络，其dnsmasq配置文件为var/lib/libvirt/dnsmasq/default.conf。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">##WARNING:  THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE</span></span><br><span class="line"><span class="comment">##OVERWRITTEN AND LOST.  Changes to this configuration should be made using:</span></span><br><span class="line"><span class="comment">##    virsh net-edit default</span></span><br><span class="line"><span class="comment">## or other application using the libvirt API.</span></span><br><span class="line"><span class="comment">##</span></span><br><span class="line"><span class="comment">## dnsmasq conf file created by libvirt</span></span><br><span class="line">strict-order</span><br><span class="line"><span class="attr">pid-file</span>=/run/libvirt/network/default.pid</span><br><span class="line"><span class="attr">except-interface</span>=lo</span><br><span class="line">bind-dynamic</span><br><span class="line"><span class="attr">interface</span>=virbr0</span><br><span class="line"><span class="attr">dhcp-range</span>=<span class="number">192.168</span>.<span class="number">122.2</span>,<span class="number">192.168</span>.<span class="number">122.254</span>,<span class="number">255.255</span>.<span class="number">255.0</span></span><br><span class="line">dhcp-no-override</span><br><span class="line">dhcp-authoritative</span><br><span class="line"><span class="attr">dhcp-lease-max</span>=<span class="number">253</span></span><br><span class="line"><span class="attr">dhcp-hostsfile</span>=/var/lib/libvirt/dnsmasq/default.hostsfile</span><br><span class="line"><span class="attr">addn-hosts</span>=/var/lib/libvirt/dnsmasq/default.addnhosts</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>可以使用virsh net-edit编辑网络配置文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh net-edit &lt;virtual-network-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果启动服务后virbr0网桥不存在，可以执行下面的命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">virsh net-autostart default</span><br><span class="line">virsh net-start default</span><br></pre></td></tr></table></figure>
+
+<p>虚拟网络有4种模式，分别是NAT模式（默认）、Isolated模式（Host-only模式/隔离模式）、Routed模式（路由模式）和Bridged模式（桥接模式）。</p>
+<h3 id="NAT模式"><a href="#NAT模式" class="headerlink" title="NAT模式"></a>NAT模式</h3><p>NAT是默认的虚拟网络模式。在NAT模式中，使虚拟机借助NAT(网络地址转换)功能，通过宿主机器所在的网络来访问公网。虚拟机的网卡和物理网卡的网络，不在同一个网络，虚拟机的网卡，提供的是一个虚拟网络。<br><img src="images/network_nat.png" alt="Network NAT"><br>{ image fancybox center images/network_nat.png ‘Network NAT’}</p>
+<p>NAT模式会将源地址转化为宿主机的物理网卡地址，所以局域网中的其他主机是无法访问虚拟机的，而宿主机可以访问虚拟机，虚拟机可以访问局域网内的所有主机。</p>
+<h4 id="创建网络"><a href="#创建网络" class="headerlink" title="创建网络"></a>创建网络</h4><p>首先确保宿主机的IP转发已经打开。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /proc/sys/net/ipv4/ip_forward</span><br><span class="line"><span class="comment"># IP转发打开，值为1。</span></span><br><span class="line">1</span><br></pre></td></tr></table></figure>
+<p>如果没有打开，利用下面的命令打开IP地址转发。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sysctl -w net.ipv4.ip_forward=1</span><br></pre></td></tr></table></figure>
+
+<p>查看宿主机的网络设备，eno1。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ip a</span><br><span class="line">eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether 00:e0:70:e8:fd:b7 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 10.12.17.200/24 brd 10.12.17.255 scope global dynamic noprefixroute eno1</span><br><span class="line">       valid_lft 26998sec preferred_lft 26998sec</span><br><span class="line">    inet6 fe80::1f78:1d6:7d71:8430/64 scope <span class="built_in">link</span> noprefixroute </span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>创建一个NAT模式的网络，下面是网络的详细配置文件nat-network.xml。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">network</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>nat-network<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">forward</span> <span class="attr">mode</span>=<span class="string">&#x27;nat&#x27;</span> <span class="attr">dev</span>=<span class="string">&#x27;eno1&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">bridge</span> <span class="attr">name</span>=<span class="string">&#x27;virbr-nat&#x27;</span> <span class="attr">stp</span>=<span class="string">&#x27;on&#x27;</span> <span class="attr">delay</span>=<span class="string">&#x27;2&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">ip</span> <span class="attr">address</span>=<span class="string">&#x27;192.168.10.1&#x27;</span> <span class="attr">netmask</span>=<span class="string">&#x27;255.255.255.0&#x27;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dhcp</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">range</span> <span class="attr">start</span>=<span class="string">&#x27;192.168.10.2&#x27;</span> <span class="attr">end</span>=<span class="string">&#x27;192.168.10.254&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">host</span> <span class="attr">name</span>=<span class="string">&#x27;myhost&#x27;</span> <span class="attr">ip</span>=<span class="string">&#x27;192.168.10.10&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dhcp</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">ip</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">network</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>先解读一下nat-network.xml的配置文件。</p>
+<p>第三行，forward表明虚拟网络将连接到物理LAN。forward的mode（模式）包括nat（默认）、route、open、bridge、private、vepa、passthrough<br>和hostdev，其中nat表示连接到此网络的虚拟机和物理网络之间的所有流量将通过宿主机的IP路由堆栈转发到物理网络，之后虚拟机的IP地址被转换为宿主机的IP地址（NAT，网络地址转换）。另外Isolated模式（Host-only模式/隔离模式）下的网络配置文件中没有forward这一项。forward的dev属性使防火墙规则将仅限制转发加到指定的设备上，不设置dev属性，会默认转发到任意设备上。</p>
+<p>第四行，bridge用于指定构建虚拟网络的网桥设备，虚拟机接入这个网桥设备用于互相通信，这个网桥设备也可以接入到物理LAN中。当forward的mode（模式）为：nat、route或者open时，如果bridge的name未指定，会自动随机生成一个网桥的名称。对于nat、route、open和isolated类型的网络，建议网桥设备的名称以virbr作为前缀。属性stp指定Spanning Tree Protocol（生成树协议，按照树的结构来构造网络拓扑，消除网络中的环路，避免由于环路的存在而造成广播风暴问题。）是on或off（默认on）。属性delay设置网桥桥的转发延迟值，单位是秒（默认为0）。</p>
+<p>第五至十行，其中ip用于定义虚拟网络的IP地址包括IPv4和IPv6。dhcp用于定义虚拟网络的DHCP服务，其中range表示DHCP服务可分配IP的范围，host可以预定义主机的名称和IP地址以及mac地址。</p>
+<p>然后利用libvirt的命令创建虚拟网络nat-network。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">virsh net-define nat-network.xml</span><br><span class="line">virsh net-start nat-network</span><br><span class="line">virsh net-autostart nat-network</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看网络列表</span></span><br><span class="line">virsh net-list --all</span><br><span class="line"> 名称          状态     自动开始   持久</span><br><span class="line">-----------------------------------------</span><br><span class="line"> default       不活跃   否         是</span><br><span class="line"> nat-network   活动     是         是</span><br></pre></td></tr></table></figure>
+
+<h4 id="网络设备"><a href="#网络设备" class="headerlink" title="网络设备"></a>网络设备</h4><p>创建好nat-network后，系统会自动创建一个网络设备virbr-nat，且它的IP地址是192.168.10.1/24。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">virbr-nat: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether 52:54:00:e2:52:bd brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 192.168.10.1/24 brd 192.168.10.255 scope global virbr-nat</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>利用brctl命令查看网桥设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br><span class="line">bridge name	bridge <span class="built_in">id</span>		STP enabled	interfaces</span><br><span class="line">virbr-nat		8000.5254004dcf1b	<span class="built_in">yes</span>				</span><br></pre></td></tr></table></figure>
+
+<p>brctl命令可以通过<code>yum install -y bridge-utils</code>来安装。</p>
+<h4 id="iptables规则"><a href="#iptables规则" class="headerlink" title="iptables规则"></a>iptables规则</h4><p>NAT模式底层依靠iptables实现，在创建nat-network之前，filter表的规则如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">iptables -vnL</span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">22789 4974K LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">    0     0 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">    0     0 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">21989 3472K LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_INP (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_OUT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWO (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWI (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWX (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination</span><br></pre></td></tr></table></figure>
+
+<p>nat表的规则如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -vnL</span><br><span class="line">Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"> 2082  143K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_PRT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination</span><br></pre></td></tr></table></figure>
+
+<p>创建完虚拟网络nat-network后，先看filter表的规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">iptables -vnL</span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">32440   10M LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">    0     0 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">    0     0 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">30617 4478K LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_INP (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     udp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            udp dpt:53</span><br><span class="line">    0     0 ACCEPT     tcp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            tcp dpt:53</span><br><span class="line">    0     0 ACCEPT     udp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            udp dpt:67</span><br><span class="line">    0     0 ACCEPT     tcp  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            tcp dpt:67</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_OUT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     udp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            udp dpt:53</span><br><span class="line">    0     0 ACCEPT     tcp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            tcp dpt:53</span><br><span class="line">    0     0 ACCEPT     udp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            udp dpt:68</span><br><span class="line">    0     0 ACCEPT     tcp  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            tcp dpt:68</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWO (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  virbr-nat eno1    192.168.10.0/24      0.0.0.0/0           </span><br><span class="line">    0     0 REJECT     all  --  virbr-nat *       0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWI (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  eno1   virbr-nat  0.0.0.0/0            192.168.10.0/24      ctstate RELATED,ESTABLISHED</span><br><span class="line">    0     0 REJECT     all  --  *      virbr-nat  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWX (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  virbr-nat virbr-nat  0.0.0.0/0            0.0.0.0/0</span><br></pre></td></tr></table></figure>
+
+<p>可以看到创建完虚拟网络后，filter表中新增了nat-network的一些规则。iptables中filter表主要用于流量的过滤，所以新增的规则也都是对进出虚拟机的流量做出了限制。</p>
+<p>链LIBVIRT_INP中新增了进入nat-network网络的一些过滤规则，包括指定流量进入的设备必须是网桥virbr-nat，流量的协议tcp或者udp以及流量的端口号。链LIBVIRT_OUT中新增从nat-work网络出来的流量的过滤规则，包括指定流量离去的设备必须是网桥virbr-nat，流量的协议tcp或者udp以及流量的端口号。不难看出filter表中的链LIBVIRT_INP和链LIBVIRT_OUT实现了虚拟机安全组的功能，它们定义了虚拟网络进出流量的规则，可以通过修改规则实现对虚拟机流量的控制。</p>
+<p>对于需要进行转发的流量，FORWARD链下的三条链也清晰定义了规则。三条链分别对应三种情况，LIBVIRT_FWX对应的是nat网络中虚拟机之间的互相访问。LIBVIRT_FWI对应的是外部网络访问虚拟机，LIBVIRT_FWO对应的是虚拟机访问外部网络。LIBVIRT_FWX中的一条规则，就是同一网络下（这里是同一网络设备，可以看作是同一网络）当一台虚拟机访问另一台虚拟机时，该流量是不是应该被过滤，答案肯定是否定的。LIBVIRT_FWI中的两条规则表示只有当目的地址为192.168.10.0/24，且流量的入口是eno1，出口是网桥设备virbr-nat，这样的流量才被接收。同样的LIBVIRT_FWO中的两条规则表示只有当源地址为192.168.10.0/24，且从流量的入口是网桥virbr-nat，出口是eno1，这样的流量才会被接收，不被过滤掉。</p>
+<p>查看nat表新增的规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -vnL</span><br><span class="line">Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"> 3417  244K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_PRT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 RETURN     all  --  *      eno1    192.168.10.0/24      224.0.0.0/24        </span><br><span class="line">    0     0 RETURN     all  --  *      eno1    192.168.10.0/24      255.255.255.255     </span><br><span class="line">    0     0 MASQUERADE  tcp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535</span><br><span class="line">    0     0 MASQUERADE  udp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535</span><br><span class="line">    0     0 MASQUERADE  all  --  *      eno1    192.168.10.0/24     !192.168.10.0/24   </span><br></pre></td></tr></table></figure>
+
+<p>iptables中nat表主要用主要用来修改数据包的IP地址、端口号信息实现网络地址转换和端口转发。可以看到新增的规则集中在LIBVIRT_PRT链里。先看第一条规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">  0     0 RETURN     all  --  *      eno1    192.168.10.0/24      224.0.0.0/24   </span><br></pre></td></tr></table></figure>
+<p>其中224.0.0.0/24是组播的地址，所以不需要进行地址转换的操作，直接<code>RETURN</code>。<code>RETURN</code>表示立即结束在目前规则链中的过滤程序，返回主规则链继续过滤。如果把自定义规则链看成是一个子程序，那么这个动作，就相当提早结束子程序并返回到主程序中。</p>
+<p>第二条规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination                 </span><br><span class="line">  0     0 RETURN     all  --  *      eno1    192.168.10.0/24      255.255.255.255 </span><br></pre></td></tr></table></figure>
+<p>255.255.255.255是广播的地址，所以不需要进行地址转换的操作，直接<code>RETURN</code>。</p>
+<p>其他规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination                     </span><br><span class="line">  0     0 MASQUERADE  tcp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535</span><br><span class="line">  0     0 MASQUERADE  udp  --  *      eno1    192.168.10.0/24     !192.168.10.0/24      masq ports: 1024-65535</span><br><span class="line">  0     0 MASQUERADE  all  --  *      eno1    192.168.10.0/24     !192.168.10.0/24    </span><br></pre></td></tr></table></figure>
+
+<p>上面的这三条规则定义了当流量的源地址是192.168.10.0/24且目的地址不是192.168.10.0/24（非同一网络下虚拟机互相访问的情况），需要进行NAT（网络地址转换）。其中<code>MASQUERADE</code>的作用类似<code>SNAT</code>（源地址转换），区别是SNAT需要显示指定转换的地址，而MASQURADE会根据出口网卡地址的IP自动设置转换的源IP地址（这里是eno1的IP地址）。masq ports指定了做NAT时的端口范围，只有在协议为TCP或者UDP时才会生效。out定义了网络流量的出口在宿主机的网卡eno1。</p>
+<p>看到上面三条规则，就能解释为什么NAT模式下网络中的虚拟机可以访问外网，但是外部网络却不能直接访问虚拟机。主要原因是iptables规则只增加了源地址转换（SNAT），却没有目的地址转换（DNAT）。</p>
+<h4 id="路由规则"><a href="#路由规则" class="headerlink" title="路由规则"></a>路由规则</h4><p>routed网络创建后，宿主机上会新增一个192.168.10.0/24网段的路由规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ip route</span><br><span class="line">default via 10.12.17.1 dev eno1 proto dhcp metric 100 </span><br><span class="line">10.12.17.0/24 dev eno1 proto kernel scope <span class="built_in">link</span> src 10.12.17.200 metric 100 </span><br><span class="line">192.168.10.0/24 dev virbr-nat proto kernel scope <span class="built_in">link</span> src 192.168.10.1 linkdown</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建虚拟机"><a href="#创建虚拟机" class="headerlink" title="创建虚拟机"></a>创建虚拟机</h4><p>最后利用virt-install命令创建虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">sudo virt-install \</span><br><span class="line">--connect=qemu:///system \</span><br><span class="line">--virt-type kvm \</span><br><span class="line">--name=myhost \</span><br><span class="line">--vcpus=1 \</span><br><span class="line">--ram=512 \</span><br><span class="line">--disk cirros-0.6.1-x86_64-disk.img,format=qcow2 \</span><br><span class="line">--import \</span><br><span class="line">--network network=nat-network</span><br></pre></td></tr></table></figure>
+
+<p>其中--network用于指定虚拟机的网络。--name指定虚拟机的名称为myhost，正好对应网络配置文件中host的name属性，所以根据配置文件，虚拟机的IP地址应该为192.168.10.10。</p>
+<p>创建完虚拟机后，可以查看网桥上的设备，发现网桥virbr-nat多了一个名为vnet5的设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br><span class="line">bridge name	bridge <span class="built_in">id</span>		STP enabled	interfaces</span><br><span class="line">virbr-nat		8000.5254004dcf1b	<span class="built_in">yes</span>		vnet5</span><br></pre></td></tr></table></figure>
+
+<p>查看vnet5的详细信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ip a show vnet5</span><br><span class="line">vnet5: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master virbr-nat state UNKNOWN group default qlen 1000</span><br><span class="line">  <span class="built_in">link</span>/ether fe:54:00:ec:49:66 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">  inet6 fe80::fc54:ff:feec:4966/64 scope <span class="built_in">link</span> </span><br><span class="line">    valid_lft forever preferred_lft forever</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>利用命令<code>virsh dumpxml myhost</code>查看虚拟机的xml配置文件中网卡的设置。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">domain</span> <span class="attr">type</span>=<span class="string">&#x27;kvm&#x27;</span> <span class="attr">id</span>=<span class="string">&#x27;7&#x27;</span>&gt;</span></span><br><span class="line">  ... ...</span><br><span class="line">  <span class="tag">&lt;<span class="name">devices</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">interface</span> <span class="attr">type</span>=<span class="string">&#x27;network&#x27;</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">mac</span> <span class="attr">address</span>=<span class="string">&#x27;52:54:00:f4:6a:43&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">source</span> <span class="attr">network</span>=<span class="string">&#x27;nat-network&#x27;</span> <span class="attr">portid</span>=<span class="string">&#x27;f3f9f940-cc95-4801-a43a-f5807cf44cae&#x27;</span> <span class="attr">bridge</span>=<span class="string">&#x27;virbr-nat&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">target</span> <span class="attr">dev</span>=<span class="string">&#x27;vnet5&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">model</span> <span class="attr">type</span>=<span class="string">&#x27;e1000&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">alias</span> <span class="attr">name</span>=<span class="string">&#x27;net0&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">address</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x03&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">interface</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">devices</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">domain</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>其中<code>52:54:00:f4:6a:43</code>是虚拟机的mac地址。对于配置文件的解读之后会在另一篇文章单独分析。</p>
+<p>可以使用命令查看虚拟网络的DHCP租约的相关情况。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">virsh net-dhcp-leases nat-network </span><br><span class="line"> Expiry Time           MAC 地址            Protocol   IP address          Hostname   Client ID or DUID</span><br><span class="line">-----------------------------------------------------------------------------------------------------------</span><br><span class="line"> 2023-03-07 15:37:49   52:54:00:f4:6a:43   ipv4       192.168.10.10/24    -          01:52:54:00:f4:6a:43</span><br></pre></td></tr></table></figure>
+
+<h4 id="网络测试"><a href="#网络测试" class="headerlink" title="网络测试"></a>网络测试</h4><p>利用<code>ping</code>命令测试网络，先从虚拟机ping宿主机，模拟虚拟机访问宿主机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 10.12.17.200</span><br><span class="line">PING 10.12.17.200 (10.12.17.200) 56(84) bytes of data.</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=1 ttl=64 time=0.170 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=2 ttl=64 time=0.357 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=3 ttl=64 time=0.441 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=4 ttl=64 time=0.246 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=5 ttl=64 time=0.237 ms</span><br><span class="line"></span><br><span class="line">--- 10.12.17.200 ping statistics ---</span><br><span class="line">5 packets transmitted, 5 received, 0% packet loss, time 4028ms</span><br><span class="line">rtt min/avg/max/mdev = 0.170/0.290/0.441/0.096 ms</span><br></pre></td></tr></table></figure>
+
+<p>然后用宿主机ping虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 192.168.10.10</span><br><span class="line">PING 192.168.10.10 (192.168.10.10) 56(84) bytes of data.</span><br><span class="line">64 bytes from 192.168.10.10: icmp_seq=1 ttl=64 time=0.251 ms</span><br><span class="line">64 bytes from 192.168.10.10: icmp_seq=2 ttl=64 time=0.226 ms</span><br><span class="line">64 bytes from 192.168.10.10: icmp_seq=3 ttl=64 time=0.290 ms</span><br><span class="line">64 bytes from 192.168.10.10: icmp_seq=4 ttl=64 time=0.198 ms</span><br><span class="line">64 bytes from 192.168.10.10: icmp_seq=5 ttl=64 time=0.273 ms</span><br><span class="line"></span><br><span class="line">--- 192.168.10.10 ping statistics ---</span><br><span class="line">5 packets transmitted, 5 received, 0% packet loss, time 68ms</span><br><span class="line">rtt min/avg/max/mdev = 0.198/0.247/0.290/0.037 ms</span><br></pre></td></tr></table></figure>
+
+<p>用虚拟机ping另一台物理机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 10.12.17.116</span><br><span class="line">PING 10.12.17.116 (10.12.17.116) 56(84) bytes of data.</span><br><span class="line">64 bytes from 10.12.17.116: icmp_seq=1 ttl=64 time=0.488 ms</span><br><span class="line">64 bytes from 10.12.17.116: icmp_seq=2 ttl=64 time=0.383 ms</span><br><span class="line">64 bytes from 10.12.17.116: icmp_seq=3 ttl=64 time=0.435 ms</span><br><span class="line">64 bytes from 10.12.17.116: icmp_seq=4 ttl=64 time=0.332 ms</span><br><span class="line">64 bytes from 10.12.17.116: icmp_seq=5 ttl=64 time=0.349 ms</span><br><span class="line"></span><br><span class="line">--- 10.12.17.116 ping statistics ---</span><br><span class="line">5 packets transmitted, 5 received, 0% packet loss, time 108ms</span><br><span class="line">rtt min/avg/max/mdev = 0.332/0.397/0.488/0.060 ms</span><br></pre></td></tr></table></figure>
+
+<p>最后在另一台上物理机ping虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 192.168.10.10</span><br><span class="line">PING 192.168.10.10 (192.168.10.10) 56(84) bytes of data.</span><br><span class="line">From 192.168.10.1 icmp_seq=1 Destination Host Unreachable</span><br><span class="line">From 192.168.10.1 icmp_seq=2 Destination Host Unreachable</span><br><span class="line">From 192.168.10.1 icmp_seq=3 Destination Host Unreachable</span><br><span class="line">From 192.168.10.1 icmp_seq=4 Destination Host Unreachable</span><br><span class="line">From 192.168.10.1 icmp_seq=5 Destination Host Unreachable</span><br><span class="line"></span><br><span class="line">--- 192.168.10.10 ping statistics ---</span><br><span class="line">5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 79ms</span><br><span class="line">pipe 4</span><br></pre></td></tr></table></figure>
+
+<p>由以上可以得出，NAT模式下的虚拟机可以和宿主机互相访问，同时能访问外部网络，但是不能被外部网络访问。</p>
+<h3 id="Routed模式"><a href="#Routed模式" class="headerlink" title="Routed模式"></a>Routed模式</h3><p>Routed模式（路由模式）相当于虚拟机连接到一台路由器上，由路由器（宿主机物理网卡），统一转发，但是不会修改源地址。</p>
+<p>使用Routed模式时，虚拟交换机连接到连接到宿主机的物理局域网，在不使用NAT的情况下来回传递流量。虚拟交换机可以检查所有流量，并根据网络数据包中包含的信息来做出路由决策。情况却不总是理想的，因为在没有手动配置物理路由器的情况下，物理网络上没有其他主机物理机器知道虚拟机，所以无法访问虚拟机。<br><img src="images/network_routed.png" alt="Network Routed"></p>
+<h4 id="创建网络-1"><a href="#创建网络-1" class="headerlink" title="创建网络"></a>创建网络</h4><p>首先确保宿主机的IP转发已经打开。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /proc/sys/net/ipv4/ip_forward</span><br><span class="line"><span class="comment"># IP转发打开，值为1。</span></span><br><span class="line">1</span><br></pre></td></tr></table></figure>
+<p>如果没有打开，利用下面的命令打开IP地址转发。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo sysctl -w net.ipv4.ip_forward=1</span><br></pre></td></tr></table></figure>
+
+<p>查看宿主机的网络设备，eno1。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ip a</span><br><span class="line">eno1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether 00:e0:70:e8:fd:b7 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 10.12.17.200/24 brd 10.12.17.255 scope global dynamic noprefixroute eno1</span><br><span class="line">       valid_lft 26998sec preferred_lft 26998sec</span><br><span class="line">    inet6 fe80::1f78:1d6:7d71:8430/64 scope <span class="built_in">link</span> noprefixroute </span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>创建一个routed模式的网络，下面是网络的详细配置文件routed-network.xml。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">network</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">name</span>&gt;</span>routed-network<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">forward</span> <span class="attr">mode</span>=<span class="string">&#x27;route&#x27;</span> <span class="attr">dev</span>=<span class="string">&#x27;eno1&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">bridge</span> <span class="attr">name</span>=<span class="string">&#x27;virbr-routed&#x27;</span> <span class="attr">stp</span>=<span class="string">&#x27;on&#x27;</span> <span class="attr">delay</span>=<span class="string">&#x27;2&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">ip</span> <span class="attr">address</span>=<span class="string">&#x27;192.168.20.1&#x27;</span> <span class="attr">netmask</span>=<span class="string">&#x27;255.255.255.0&#x27;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dhcp</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">range</span> <span class="attr">start</span>=<span class="string">&#x27;192.168.20.2&#x27;</span> <span class="attr">end</span>=<span class="string">&#x27;192.168.20.254&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">host</span> <span class="attr">name</span>=<span class="string">&#x27;myhost&#x27;</span> <span class="attr">ip</span>=<span class="string">&#x27;192.168.20.20&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dhcp</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">ip</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">network</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>先解读一下routed-network.xml的配置文件。</p>
+<p>着重看下第三行，上文说过forward表明虚拟网络将连接到物理LAN，forward的mode（模式）属性设置成route（路由模式），可以类比NAT模式的网络，nat表示连接到此网络的虚拟机和物理网络之间的所有流量将通过宿主机的IP路由堆栈转发到物理网络，之后虚拟机的IP地址被转换为宿主机的IP地址（NAT，网络地址转换），route模式和它类似，只是将虚拟机网络流量通过宿主机的IP路由规则转发到物理网络，但不会应用NAT。</p>
+<p>然后利用libvirt的命令创建虚拟网络nat-network。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">virsh net-define routed-network.xml</span><br><span class="line">virsh net-start routed-network</span><br><span class="line">virsh net-autostart routed-network</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看网络列表</span></span><br><span class="line">virsh net-list --all</span><br><span class="line"> 名称             状态     自动开始   持久</span><br><span class="line">--------------------------------------------</span><br><span class="line"> default          不活跃   否         是</span><br><span class="line"> routed-network   活动     是         是</span><br></pre></td></tr></table></figure>
+
+<h4 id="网络设备-1"><a href="#网络设备-1" class="headerlink" title="网络设备"></a>网络设备</h4><p>创建好nat-network后，系统会自动创建一个网络设备virbr-routed，且它的IP地址是192.168.20.1/24。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ip a</span><br><span class="line">virbr-routed: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000</span><br><span class="line">  <span class="built_in">link</span>/ether 52:54:00:58:71:34 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">  inet 192.168.20.1/24 brd 192.168.20.255 scope global virbr-routed</span><br><span class="line">      valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>利用brctl命令查看网桥设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br><span class="line">bridge name	bridge <span class="built_in">id</span>		STP enabled	interfaces</span><br><span class="line">virbr-routed		8000.525400233d8e	<span class="built_in">yes</span>	</span><br></pre></td></tr></table></figure>
+
+<p>brctl命令可以通过<code>yum install -y bridge-utils</code>来安装。</p>
+<h4 id="iptables规则-1"><a href="#iptables规则-1" class="headerlink" title="iptables规则"></a>iptables规则</h4><p>先看网络创建后的iptables的filter表的规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">iptables -vnL</span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"> 805K  450M LIBVIRT_INP  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain FORWARD (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">  521 31520 LIBVIRT_FWX  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">  521 31520 LIBVIRT_FWI  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line">  517 31035 LIBVIRT_FWO  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"> 704K  112M LIBVIRT_OUT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_INP (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     udp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            udp dpt:53</span><br><span class="line">    0     0 ACCEPT     tcp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            tcp dpt:53</span><br><span class="line">    0     0 ACCEPT     udp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            udp dpt:67</span><br><span class="line">    0     0 ACCEPT     tcp  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            tcp dpt:67</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_OUT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     udp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            udp dpt:53</span><br><span class="line">    0     0 ACCEPT     tcp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            tcp dpt:53</span><br><span class="line">    0     0 ACCEPT     udp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            udp dpt:68</span><br><span class="line">    0     0 ACCEPT     tcp  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            tcp dpt:68</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWO (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  virbr-routed eno1    192.168.20.0/24      0.0.0.0/0           </span><br><span class="line">    0     0 REJECT     all  --  virbr-routed *       0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWI (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  eno1   virbr-routed  0.0.0.0/0            192.168.20.0/24     </span><br><span class="line">    0     0 REJECT     all  --  *      virbr-routed  0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable</span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_FWX (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">    0     0 ACCEPT     all  --  virbr-routed virbr-routed  0.0.0.0/0            0.0.0.0/0         </span><br></pre></td></tr></table></figure>
+<p>可以看到filter表中新增的规则和NAT网络创建完成后新增的规则基本一致，功能基本都是对网络流量的过滤。</p>
+<p>看一下nat表中新增的规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -vnL</span><br><span class="line">Chain PREROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain INPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain POSTROUTING (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line">53394 3746K LIBVIRT_PRT  all  --  *      *       0.0.0.0/0            0.0.0.0/0           </span><br><span class="line"></span><br><span class="line">Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination         </span><br><span class="line"></span><br><span class="line">Chain LIBVIRT_PRT (1 references)</span><br><span class="line"> pkts bytes target     prot opt <span class="keyword">in</span>     out     <span class="built_in">source</span>               destination</span><br></pre></td></tr></table></figure>
+<p>nat表中并未增加任何的新的规则。</p>
+<h4 id="路由规则-1"><a href="#路由规则-1" class="headerlink" title="路由规则"></a>路由规则</h4><p>routed网络创建后，宿主机上会新增一个192.168.20.0/24网段的路由规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ip route</span><br><span class="line">default via 10.12.17.1 dev eno1 proto dhcp metric 100 </span><br><span class="line">10.12.17.0/24 dev eno1 proto kernel scope <span class="built_in">link</span> src 10.12.17.200 metric 100 </span><br><span class="line">192.168.20.0/24 dev virbr-routed proto kernel scope <span class="built_in">link</span> src 192.168.20.1 linkdown</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建虚拟机-1"><a href="#创建虚拟机-1" class="headerlink" title="创建虚拟机"></a>创建虚拟机</h4><p>最后利用virt-install命令创建虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">sudo virt-install \</span><br><span class="line">--connect=qemu:///system \</span><br><span class="line">--virt-type kvm \</span><br><span class="line">--name=myhost \</span><br><span class="line">--vcpus=1 \</span><br><span class="line">--ram=512 \</span><br><span class="line">--disk cirros-0.6.1-x86_64-disk.img,format=qcow2 \</span><br><span class="line">--import \</span><br><span class="line">--network network=routed-network</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">sudo virt-install \</span><br><span class="line">--connect=qemu:///system \</span><br><span class="line">--virt-type qemu \</span><br><span class="line">--name=myhost \</span><br><span class="line">--machine q35 \</span><br><span class="line">--vcpus=4 \</span><br><span class="line">--ram=4096 \</span><br><span class="line">--os-type=generic \</span><br><span class="line">--disk path=/home/uniontechos-server-20-1060a-amd64.qcow2,format=qcow2,bus=virtio \</span><br><span class="line">--boot uefi \</span><br><span class="line">--import \</span><br><span class="line">--graphics vnc,port=9527</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">sudo virt-install \</span><br><span class="line">--connect=qemu:///system \</span><br><span class="line">--name=test-smart \</span><br><span class="line">--vcpus=4 \</span><br><span class="line">--ram=4096 \</span><br><span class="line">--disk path=/home/wkt/smart-20-Standard-1.0.0-arm64.qcow2,format=qcow2,bus=virtio \</span><br><span class="line">--boot uefi \</span><br><span class="line">--import \</span><br><span class="line">--graphics vnc,listen=10.10.15.14,port=9527</span><br><span class="line"></span><br><span class="line">sudo virt-install --virt-type qemu --name 1050a --ram 4096 \</span><br><span class="line">--cdrom=/home/uniontechos-server-20-1050a-amd64-release-20220214.iso \</span><br><span class="line">--disk 1050a.qcow2,bus=virtio,size=5,format=qcow2 \</span><br><span class="line">--network network=default \</span><br><span class="line">--graphics vnc,port=9527 \</span><br><span class="line">--boot uefi \</span><br><span class="line">--os-type=linux --os-variant=generic</span><br><span class="line"></span><br><span class="line">sudo virt-install --connect=qemu:///system --virt-type qemu --name=myhost --vcpus=4 --ram=4096 --disk uniontechos-server-20-1060a-amd64.qcow2,format=qcow2 --import --boot uefi</span><br><span class="line"></span><br><span class="line">sudo virt-install --name smart --vcpus=6 --ram 4096 --cdrom=uniontechos-smart-20-Standard-1.0.0-ARM64-arm64-generic_generic_1-20230228-1144.iso --disk smart.qcow2,bus=virtio,size=20,format=qcow2 --graphics vnc,listen=172.16.0.145,port=9527 --os-type=linux --os-variant=generic --boot uefi</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">loader</span> <span class="attr">readonly</span>=<span class="string">&#x27;yes&#x27;</span> <span class="attr">secure</span>=<span class="string">&#x27;yes&#x27;</span> <span class="attr">type</span>=<span class="string">&#x27;pflash&#x27;</span>&gt;</span>/usr/share/OVMF/OVMF_CODE.fd<span class="tag">&lt;/<span class="name">loader</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>Routed模式下的虚拟机可以与宿主机相互通信，Routed模式中的虚拟机无法与外部网络互相通信，这是因为虚拟机流量发送到外部网络的主机时，源地址是虚拟网络的地址（这里是192.168.20.0/24），内网地址无法与外部网络直接通信，且routed模式也没对源地址处理，将其转换为宿主机网卡的IP地址，因此，外部网络发送的响应报文中的目标地址为虚拟机的IP地址时，无法到达宿主机的物理网卡，虚拟机也无法收到响应报文。</p>
+<p>创建完虚拟机后，可以查看网桥上的设备，发现网桥virbr-nat多了一个名为vnet6的设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">brctl show</span><br><span class="line">bridge name	bridge <span class="built_in">id</span>		STP enabled	interfaces</span><br><span class="line">virbr-routed		8000.525400233d8e	<span class="built_in">yes</span>		vnet6</span><br></pre></td></tr></table></figure>
+
+<p>查看vnet6的详细信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ip a show vnet6</span><br><span class="line">vnet6: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master virbr-routed state UNKNOWN group default qlen 1000</span><br><span class="line">  <span class="built_in">link</span>/ether fe:54:00:f4:6a:43 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">  inet6 fe80::fc54:ff:fef4:6a43/64 scope <span class="built_in">link</span> </span><br><span class="line">    valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>利用命令<code>virsh dumpxml myhost</code>查看虚拟机的xml配置文件中网卡的设置。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">domain</span> <span class="attr">type</span>=<span class="string">&#x27;kvm&#x27;</span> <span class="attr">id</span>=<span class="string">&#x27;7&#x27;</span>&gt;</span></span><br><span class="line">  ... ...</span><br><span class="line">  <span class="tag">&lt;<span class="name">devices</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">interface</span> <span class="attr">type</span>=<span class="string">&#x27;network&#x27;</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">mac</span> <span class="attr">address</span>=<span class="string">&#x27;52:54:00:f4:6a:43&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">source</span> <span class="attr">network</span>=<span class="string">&#x27;routed-network&#x27;</span> <span class="attr">portid</span>=<span class="string">&#x27;e8208650-019f-43d2-a359-fb8f80dc9afa&#x27;</span> <span class="attr">bridge</span>=<span class="string">&#x27;virbr-routed&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">target</span> <span class="attr">dev</span>=<span class="string">&#x27;vnet6&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">model</span> <span class="attr">type</span>=<span class="string">&#x27;e1000&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">alias</span> <span class="attr">name</span>=<span class="string">&#x27;net0&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">address</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x03&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">interface</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">devices</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">domain</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>其中<code>52:54:00:f4:6a:43</code>是虚拟机的mac地址。</p>
+<h4 id="网络测试-1"><a href="#网络测试-1" class="headerlink" title="网络测试"></a>网络测试</h4><p>利用<code>ping</code>命令测试网络，先从虚拟机ping宿主机，模拟虚拟机访问宿主机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 10.12.17.200</span><br><span class="line">PING 10.12.17.200 (10.12.17.200) 56(84) bytes of data.</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=1 ttl=64 time=0.232 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=2 ttl=64 time=0.270 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=3 ttl=64 time=0.186 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=4 ttl=64 time=0.425 ms</span><br><span class="line">64 bytes from 10.12.17.200: icmp_seq=5 ttl=64 time=0.299 ms</span><br><span class="line"></span><br><span class="line">--- 10.12.17.200 ping statistics ---</span><br><span class="line">5 packets transmitted, 5 received, 0% packet loss, time 4052ms</span><br><span class="line">rtt min/avg/max/mdev = 0.186/0.282/0.425/0.080 ms</span><br></pre></td></tr></table></figure>
+
+<p>然后用宿主机ping虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 192.168.20.20</span><br><span class="line">PING 192.168.20.20 (192.168.20.20) 56(84) bytes of data.</span><br><span class="line">64 bytes from 192.168.20.20: icmp_seq=1 ttl=64 time=0.183 ms</span><br><span class="line">64 bytes from 192.168.20.20: icmp_seq=2 ttl=64 time=0.170 ms</span><br><span class="line">64 bytes from 192.168.20.20: icmp_seq=3 ttl=64 time=0.190 ms</span><br><span class="line">64 bytes from 192.168.20.20: icmp_seq=4 ttl=64 time=0.288 ms</span><br><span class="line">64 bytes from 192.168.20.20: icmp_seq=5 ttl=64 time=0.210 ms</span><br><span class="line"></span><br><span class="line">--- 192.168.20.254 ping statistics ---</span><br><span class="line">5 packets transmitted, 5 received, 0% packet loss, time 57ms</span><br><span class="line">rtt min/avg/max/mdev = 0.170/0.208/0.288/0.042 ms</span><br></pre></td></tr></table></figure>
+
+<p>用虚拟机ping另一台物理机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 10.12.17.116</span><br><span class="line">PING 10.12.17.116 (10.12.17.116) 56(84) bytes of data.</span><br><span class="line">From 192.168.20.20 icmp_seq=1 Destination Host Unreachable</span><br><span class="line">From 192.168.20.10 icmp_seq=2 Destination Host Unreachable</span><br><span class="line">From 192.168.20.10 icmp_seq=3 Destination Host Unreachable</span><br><span class="line">From 192.168.20.10 icmp_seq=4 Destination Host Unreachable</span><br><span class="line">From 192.168.20.10 icmp_seq=5 Destination Host Unreachable</span><br><span class="line"></span><br><span class="line">--- 10.12.17.16 ping statistics ---</span><br><span class="line">5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 35ms</span><br><span class="line">pipe 4</span><br></pre></td></tr></table></figure>
+
+<p>最后在另一台上物理机ping虚拟机。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">ping -c 5 192.168.20.20</span><br><span class="line">PING 192.168.20.20 (192.168.20.20) 56(84) bytes of data.</span><br><span class="line">From 192.168.20.1 icmp_seq=1 Destination Host Unreachable</span><br><span class="line">From 192.168.20.1 icmp_seq=2 Destination Host Unreachable</span><br><span class="line">From 192.168.20.1 icmp_seq=3 Destination Host Unreachable</span><br><span class="line">From 192.168.20.1 icmp_seq=4 Destination Host Unreachable</span><br><span class="line">From 192.168.20.1 icmp_seq=5 Destination Host Unreachable</span><br><span class="line"></span><br><span class="line">--- 192.168.20.20 ping statistics ---</span><br><span class="line">5 packets transmitted, 0 received, +5 errors, 100% packet loss, time 65ms</span><br><span class="line">pipe 4</span><br></pre></td></tr></table></figure>
+
+<p>由以上可以得出，routed模式下的虚拟机可以和宿主机互相访问，但是不能访问外部网络，也不能被外部网络访问。</p>
+<h3 id="Isolated模式"><a href="#Isolated模式" class="headerlink" title="Isolated模式"></a>Isolated模式</h3><p>Isolated模式（隔离模式）也称host-only（仅主机）模式，其模式的特点是同一网络下的所有虚拟机可以通信，同时也可以和宿主机进行通信，但是流量无法穿过虚拟网络，也收不到外网的流量，也就是无法和同一网络外的其他设备进行通信。简而言之，Isolated模式是将虚拟机网络和外部网络隔离出来。<br><img src="images/network_isolated.png" alt="Network Isolated"></p>
+<h3 id="Bridged模式"><a href="#Bridged模式" class="headerlink" title="Bridged模式"></a>Bridged模式</h3><p>使用Bridged模式（桥接模式）时，所有虚拟机都与宿主机位于同一子网中。同一物理网络上的所有其他物理机都知道虚拟机，并且可以访问虚拟机。该模式的特点是通过创建一个虚拟网卡，为该虚拟机网卡分配可以访问外部网络的IP地址，此时的物理网卡相当于一台交换机设备，虚拟机相当于宿主机所在的局域网内单独的一台物理机，它和宿主机的地位是同等的，没有依存关系。<br><img src="images/network_bridged.png" alt="Network Bridged"></p>
+<h4 id="创建网络-2"><a href="#创建网络-2" class="headerlink" title="创建网络"></a>创建网络</h4><p>首先需要创建一个网桥br0用于桥接虚拟机和宿主机网卡。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/KVM/" rel="tag">KVM</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%95%9C%E5%83%8F%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--镜像篇"
+                    aria-label="PREVIOUS: OpenStack漫游指南--镜像篇"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/03/Koji%E4%BD%BF%E7%94%A8/"
+                    data-tooltip="Koji使用"
+                    aria-label="NEXT: Koji使用"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/&amp;title=Libvirt网络档案"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/12/26/Libvirt网络档案/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%95%9C%E5%83%8F%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--镜像篇"
+                    aria-label="PREVIOUS: OpenStack漫游指南--镜像篇"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/03/Koji%E4%BD%BF%E7%94%A8/"
+                    data-tooltip="Koji使用"
+                    aria-label="NEXT: Koji使用"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/&amp;title=Libvirt网络档案"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/&amp;title=Libvirt网络档案"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/12/26/Libvirt%E7%BD%91%E7%BB%9C%E6%A1%A3%E6%A1%88/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

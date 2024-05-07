@@ -1,0 +1,759 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>这，就是Ceilometer！ - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Ceilometer">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n架构Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。\n\nCeilometer提供两种核心服务。\n\npolling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。\nnotification agent（通知），监听消息队列上的通知，并将它们转换为Events（事件）、Samples（样本），并应用管道（pipeline）操作。\n\nCeilometer可以发送标准化的数据给各种目标。Gnocchi，捕获时间序列的测量数据，以优化存储和查询，取代现存的计量数据库。Aodh，一种警报服务，可以在用户定义的规则被破坏是发送警报。Panko，事件存储项目，捕获面向文档的数据，如日志和系统时间操作。\n\n\n数据\n\n\n功能名称\n功能描述\n提供功能Ceilometer模块\n\n\n\nCollect\nMeters数据收集\nceilometer-agent-compute  ceilometer-agent-central ceilometer-agent-notification ceilometer-collector\n\n\nTransform\nMeters数据转换\n\n\n\nPulish\nMeters数据发布\n\n\n\nStore\nMeters数据存储\n\n\n\nRead\nMeters数据访问\nceilometer-api\n\n\nAlarm\n告警\nceilometer-alarm-notifier  ceilometer-alarm-evaluator\n\n\n数据收集Ceilometer有两种方法来收集数据。\n\nPolling agent轮询某些API或其他工具以定期收集信息。\nceilometer-agent-compute，运行在每个compute节点上，以轮询的方式收集虚拟机的CPU内存IO等信息。\nceilometer-agent-central，运行在controller节点上，通过各个组件的API收集监控数据。\n\n\nNotification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。\n\n\npulish方式定义在/etc/ceilometer/pipline.yml中。\n\n\n\n数据处理Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。","dateCreated":"2019-01-21T14:41:17+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2019-01-21T14:41:17+08:00","description":"Ceilometer","headline":"这，就是Ceilometer！","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/","keywords":"Ceilometer","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Ceilometer">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="这，就是Ceilometer！">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Ceilometer">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/images/architecture.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/images/ceilometer-collector.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/images/gather-data.png">
+<meta property="article:published_time" content="2019-01-21T06:41:17.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.339Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Ceilometer">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/images/architecture.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            这，就是Ceilometer！
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-01-21T14:41:17+08:00">
+	
+		    Jan 21, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84"><span class="toc-text">架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE"><span class="toc-text">数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E6%94%B6%E9%9B%86"><span class="toc-text">数据收集</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%A4%84%E7%90%86"><span class="toc-text">数据处理</span></a></li></ol></li></ol>
+
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p>Ceilometer项目于2012年启动，其中包含一个简单的目标：提供基础架构以收集有关OpenStack项目所需的任何信息。</p>
+<p><img src="images/architecture.png" alt="architecture"></p>
+<p>Ceilometer提供两种核心服务。</p>
+<ol>
+<li>polling agent（轮询），轮询OpenStack服务并构建Meters的守护程序。</li>
+<li>notification agent（通知），监听消息队列上的通知，并将它们转换为Events（事件）、Samples（样本），并应用管道（pipeline）操作。</li>
+</ol>
+<div class="alert no-icon info"><p>Ceilometer可以发送标准化的数据给各种目标。<br>Gnocchi，捕获时间序列的测量数据，以优化存储和查询，取代现存的计量数据库。<br>Aodh，一种警报服务，可以在用户定义的规则被破坏是发送警报。<br>Panko，事件存储项目，捕获面向文档的数据，如日志和系统时间操作。</p>
+</div>
+
+<h3 id="数据"><a href="#数据" class="headerlink" title="数据"></a>数据</h3><table>
+<thead>
+<tr>
+<th align="center">功能名称</th>
+<th align="center">功能描述</th>
+<th align="left">提供功能Ceilometer模块</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">Collect</td>
+<td align="center">Meters数据收集</td>
+<td align="left">ceilometer-agent-compute <br> ceilometer-agent-central<br> ceilometer-agent-notification <br>ceilometer-collector</td>
+</tr>
+<tr>
+<td align="center">Transform</td>
+<td align="center">Meters数据转换</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="center">Pulish</td>
+<td align="center">Meters数据发布</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="center">Store</td>
+<td align="center">Meters数据存储</td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="center">Read</td>
+<td align="center">Meters数据访问</td>
+<td align="left">ceilometer-api</td>
+</tr>
+<tr>
+<td align="center">Alarm</td>
+<td align="center">告警</td>
+<td align="left">ceilometer-alarm-notifier <br> ceilometer-alarm-evaluator</td>
+</tr>
+</tbody></table>
+<h4 id="数据收集"><a href="#数据收集" class="headerlink" title="数据收集"></a>数据收集</h4><p>Ceilometer有两种方法来收集数据。</p>
+<ol>
+<li>Polling agent轮询某些API或其他工具以定期收集信息。<ul>
+<li>ceilometer-agent-compute，运行在每个compute节点上，以轮询的方式收集虚拟机的CPU内存IO等信息。</li>
+<li>ceilometer-agent-central，运行在controller节点上，通过各个组件的API收集监控数据。</li>
+</ul>
+</li>
+<li>Notification（ceilometer-notification）接收消息队列总线上生成的消息并将它们转换成Ceilometer的Events（事件）或Samples（样本）。</li>
+</ol>
+<p><img src="images/ceilometer-collector.png" alt="ceilometer-collector"></p>
+<div class="alert danger no-icon"><p>pulish方式定义在/etc/ceilometer/pipline.yml中。</p>
+</div>
+
+<p><img src="images/gather-data.png" alt="gather-data"></p>
+<h4 id="数据处理"><a href="#数据处理" class="headerlink" title="数据处理"></a>数据处理</h4><p>Meters数据的处理使用Pipeline的方式。Meters数据依次经过0个或多个Transformer和0个或多个Publisher处理，最后到达一个或多个Receiver。其中Receiver包括Ceilometer Collector和外部系统。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Ceilometer/" rel="tag">Ceilometer</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    data-tooltip="舌尖上的Gnocchi"
+                    aria-label="PREVIOUS: 舌尖上的Gnocchi"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="奔跑吧Ansible（二）"
+                    aria-label="NEXT: 奔跑吧Ansible（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/&amp;title=这，就是Ceilometer！"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/01/21/这，就是Ceilometer！/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    data-tooltip="舌尖上的Gnocchi"
+                    aria-label="PREVIOUS: 舌尖上的Gnocchi"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/16/%E5%A5%94%E8%B7%91%E5%90%A7Ansible%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="奔跑吧Ansible（二）"
+                    aria-label="NEXT: 奔跑吧Ansible（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/&amp;title=这，就是Ceilometer！"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/&amp;title=这，就是Ceilometer！"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

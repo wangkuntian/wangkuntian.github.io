@@ -1,0 +1,802 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack Senlin自动伸缩 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Senlin">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Senlin服务为构建自动缩放解决方案提供了丰富的解决方案。\n\n\n\n\nOperationsCLUSTER_SCALE_OUT，CLUSTER_SCALE_IN操作是用于扩展集群的最简单的命令形式。另一方面，CLUSTER_RESIZE操作提供了更多选项来控制详细的集群扩展行为。这些操作都可以在有或没有策略附加到集群的情况下执行。\n\nPolicies\n\nsenlin.policy.scaling，可用于微调集群扩展操作。\nsenlin.policy.deletion，可用于控制如何从集群中删除节点。\nsenlin.policy.affinity，可用于控制如何强制执行节点亲和力或反亲和力。\nsenlin.policy.region_placement，可用于在多个区域扩展集群。\nsenlin.policy.zone_placement，可用于强制实现跨可用区的节点分布。\n\n\nReceiversReceiver提供了一个通道，可以从该通道向其发送来自外部监视软件或服务的信号或警报，从而可以自动执行缩放操作。\n\n\nAutoscaling using Ceilometer/Aodh创建VM集群sample_server.yaml：\n123456789type: os.nova.serverversion: 1.0properties:  name: my_server  flavor: micro-1  image: CentOS-7.3-64bit-ec2-user  key_name: oskey  networks:    - network: private\n请注意，此规范文件假定有一个名为oskey的有效密钥对，并且有一个名为private的网络。可能需要根据环境设置更改这些值。\n\n\n创建配置文件。\n1openstack cluster profile create --spec-file sample_server.yaml my_proflie\n创建集群。\n1openstack cluster create --profile my_profile --desired-capacity 2 my_cluster\n\n这将创建一个在开始时创建2个节点的集群。为了方便起见，将集群ID设为环境变量。\n1export MYCLUSTER_ID=10c80bfe-41af-41f7-b9b1-9c81c9e5d21f\n查看每个节点分配的IP地址。\n1openstack cluster node show --details\n\n创建Receiver下一步是为集群创建Receiver，以触发集群上的操作。通常为特定目的创建一个Receiver，因此出于不同的目的，可能需要创建多个Receiver。\n创建一个Receiver，用于在每次触发该集群时将指定集群扩展两个节点。\n1openstack cluster receiver create --action CLUSTER_SCALE_OUT --params count=2 --cluster my_cluster my_receiver\n目前，Receiver显示的所有属性值都是只读的。创建Receiver后，无法更改其值。\n\n\n对于Action参数，有很多选择：\n\nCLUSTER_SCALE_OUT\nCLUSTER_SCALE_IN\nCLUSTER_RESIZE\nCLUSTER_CHECK\nCLUSTER_UPDATE\nCLUSTER_DELETE\nCLUSTER_ADD_NODES\nCLUSTER_DEL_NODES\nNODE_CREATE\nNODE_DELETE\nNODE_UPDATE\nNODE_CHECK\nNODE_RECOVER\n\n创建Receiver后，您可以检查其channel属性值以了解如何触发该Receiver。对于类型为webhook的Receiver（目前是默认和唯一受支持的类型），这意味着将检查alarm_url的值。为了方便起见，将该值导出到环境变量。\n1export ALRM_URL=&quot;http://node1:8778/v1/webhooks/ba...5a/trigger?V=1&amp;count=2&quot;\n\n与上面的示例类似，可以为不同种类的集群操作或具有不同参数值的同一集群操作创建其他接收器。\n创建Aodh告警创建集群并准备好接收外部信号后，便可以继续使用部署的软件/服务来创建告警。以下命令使用aodh警报服务创建阈值警报，以便：\n\naodh将评估指定集群中的CPU利用率（即cpu_util）指标；\naodh将使用给定时间段（即此处的60秒）内的平均值计算CPU利用率；\naodh将在每个周期结束时进行评估；\naodh不会重复触发警报操作；\naodh将基于指定的元数据进行度量标准聚合。\n\n1234567aodh alarm create \\ --type gnocchi_resources_threshold --name cpu-high \\ --metric cpu_util --threshold 70 --comparison-operator gt \\ --description &#x27;instance running hot&#x27; --evaluation-periods 1 \\ --aggregation-method mean --alarm-action $ALRM_URL \\ --granularity 600 --repeat-actions False \\ --query metadata.user_metadata.cluster_id=$MYCLUSTER_ID\n\n为了让aodh知道senlin注入到每个创建的每个VM服务器中的cluster_id元数据，可能需要在/etc/ceilometer/ceilometer.conf文件中添加以下行：\n1reserved_metadata_keys = cluster_id\n\n还要注意，为确保每60秒至少评估一次CPU利用率的指标，需要在文件/etc/ceilometer/pipeline.yaml中更改cpu_source的interval值。可以将其从默认值600更改为60：\n1234567sources:  &lt;other stuff ...&gt;  - name: cpu_source    interval: 600   &lt;- change this to 60    meters:      - &quot;cpu&quot;  &lt;other stuff ...&gt;\n\n在集群节点上运行工作负载在高CPU工作量下检查集群扩展的效果。现在，可以登录到每个集群节点并在其中运行一些高CPU的工作，以提高CPU利用率。例如：\n12ssh cirros@10.0.0.9cat /dev/zero &gt; /dev/null\n当集群中的所有节点的CPU压力提高时，可以检查每个节点上的CPU利用率，最后继续下一步。\n验证集群扩展在启动集群节点上的CPU工作负载一段时间后，集群已自动扩展。将创建两个新节点并将其添加到集群。可以通过运行以下命令来验证：\n1openstack cluster show $MYCLUSTER_ID\n可以使用以下命令来检查是否触发并执行了预期的操作：\n1openstack cluster action list --filters target=$MYCLUSTER_ID\n\nAutoscaling with HeatHeat中有Senlin资源类型，可以轻松实现功能全面的自动缩放解决方案的部署。\n示例模板在senlin目录下的heat-template项目中有一个示例模板，用于通过Heat创建Senlin弹性负载平衡集群。\n下面的资源定义了一个security_group，用于连接到创建的负载均衡集群。\n1234567891011security_group:  type: OS::Neutron::SecurityGroup  properties:    rules:      - protocol: icmp      - protocol: tcp        port_range_min: 22        port_range_max: 22      - protocol: tcp        port_range_min: 80        port_range_max: 80\n\n以下资源定义了用于创建目标集群的配置文件。\n123456789101112profile:  type: OS::Senlin::Profile  properties:    type: os.nova.server-1.0    properties:      flavor: &#123;get_param: flavor&#125;      image: &#123;get_param: image&#125;      key_name: &#123;get_param: key_name&#125;      networks:        - network: &#123;get_param: network&#125;      security_groups:        - &#123;get_resource: security_group&#125;\n\n下面的资源定义了创建至少有两个节点的Senlin集群。\n123456cluster:  type: OS::Senlin::Cluster  properties:    desired_capacity: 2    min_size: 2    profile: &#123;get_resource: profile&#125;\n\n下面的两个资源定义了附加到已创建集群的scale_in_policy和scale_out_policy。事件的属性用于定义策略起作用的客观动作。将调整属性的类型设置为CHANGE_IN_CAPACITY时，集群在scale_out时将增加节点数，在scale_in时将减少节点数：\n1234567891011121314151617181920212223scale_in_policy:  type: OS::Senlin::Policy  properties:    type: senlin.policy.scaling-1.0    bindings:      - cluster: &#123;get_resource: cluster&#125;    properties:      event: CLUSTER_SCALE_IN      adjustment:        type: CHANGE_IN_CAPACITY        number: 1scale_out_policy:  type: OS::Senlin::Policy  properties:    type: senlin.policy.scaling-1.0    bindings:      - cluster: &#123;get_resource: cluster&#125;    properties:      event: CLUSTER_SCALE_OUT      adjustment:        type: CHANGE_IN_CAPACITY        number: 1\n\n下面的资源定义了要附加到目标集群的lb_policy。将策略附加到集群后，Senlin将通过调用neutron LBaas V2 API来自动创建负载均衡，pool和health_monitor，以实现负载平衡。\n123456789101112131415161718192021lb_policy:  type: OS::Senlin::Policy  properties:    type: senlin.policy.loadbalance-1.0    bindings:      - cluster: &#123;get_resource: cluster&#125;    properties:      pool:        protocol: HTTP        protocol_port: 80        subnet: &#123;get_param: pool_subnet&#125;        lb_method: ROUND_ROBIN      vip:        subnet: &#123;get_param: vip_subnet&#125;        protocol: HTTP        protocol_port: 80      health_monitor:        type: HTTP        delay: 10        timeout: 5        max_retries: 4\n\n以下两个资源定义了发生特定警报或事件时要触发的接收器（Receiver）。\n12345678910111213receiver_scale_out:  type: OS::Senlin::Receiver  properties:    cluster: &#123;get_resource: cluster&#125;    action: CLUSTER_SCALE_OUT    type: webhookreceiver_scale_in:  type: OS::Senlin::Receiver  properties:    cluster: &#123;get_resource: cluster&#125;    action: CLUSTER_SCALE_IN    type: webhook\n\n以下资源定义了在收缩集群时选择要删除的候选节点的策略。\n1234567891011deletion_policy:  type: OS::Senlin::Policy  properties:    type: senlin.policy.deletion-1.0    bindings:      - cluster: &#123;get_resource: cluster&#125;    properties:      criteria: YOUNGEST_FIRST      destroy_after_deletion: True      grace_period: 20      reduce_desired_capacity: False\n\n下面的两个资源定义了分别触发以上两个接收器的警报。使用LoadBalancer的平均传入字节速率作为触发缩放操作的指标。\n12345678910111213141516171819202122232425262728293031scale_in_alarm:  type: OS::Ceilometer::Alarm  properties:    description: trigger when bandwidth overflow    meter_name: network.services.lb.incoming.bytes.rate    statistic: avg    period: 180    evaluation_periods: 1    threshold: 12000    repeat_actions: True    alarm_actions:      - &#123;get_attr: [receiver_scale_in, channel, alarm_url]&#125;    comparison_operator: le    query:      metadata.user_metadata.cluster_id: &#123;get_resource: cluster&#125;scale_out_alarm:  type: OS::Ceilometer::Alarm  properties:    description: trigger when bandwidth insufficient    meter_name: network.services.lb.incoming.bytes.rate    statistic: avg    period: 60    evaluation_periods: 1    threshold: 28000    repeat_actions: True    alarm_actions:      - &#123;get_attr: [receiver_scale_out, channel, alarm_url]&#125;    comparison_operator: ge    query:      metadata.user_metadata.cluster_id: &#123;get_resource: cluster&#125;\n\n部署步骤在部署之前，请确保已在环境中安装并配置了neutron LBaas v2和ceilometer/Aodh。第一步是使用以下命令生成密钥对：\n1openstack keypair create heat_key\n\n第二步是创建Heat模板，方法是从Heat模板下载模板文件。\n第三步是使用以下命令创建Heat Stack。\n1openstack stack create test -t ./ex_aslb.yaml --parameter &quot;key_name=heat_key&quot;","dateCreated":"2019-09-27T14:21:29+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2019-09-27T14:21:29+08:00","description":"Senlin服务为构建自动缩放解决方案提供了丰富的解决方案。","headline":"OpenStack Senlin自动伸缩","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/","keywords":"OpenStack, Senlin","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Senlin服务为构建自动缩放解决方案提供了丰富的解决方案。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack Senlin自动伸缩">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Senlin服务为构建自动缩放解决方案提供了丰富的解决方案。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2019-09-27T06:21:29.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.039Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Senlin">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack Senlin自动伸缩
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-09-27T14:21:29+08:00">
+	
+		    Sep 27, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Senlin服务为构建自动缩放解决方案提供了丰富的解决方案。</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Autoscaling-using-Ceilometer-Aodh"><span class="toc-text">Autoscaling using Ceilometer&#x2F;Aodh</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAVM%E9%9B%86%E7%BE%A4"><span class="toc-text">创建VM集群</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAReceiver"><span class="toc-text">创建Receiver</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9B%E5%BB%BAAodh%E5%91%8A%E8%AD%A6"><span class="toc-text">创建Aodh告警</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9C%A8%E9%9B%86%E7%BE%A4%E8%8A%82%E7%82%B9%E4%B8%8A%E8%BF%90%E8%A1%8C%E5%B7%A5%E4%BD%9C%E8%B4%9F%E8%BD%BD"><span class="toc-text">在集群节点上运行工作负载</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81%E9%9B%86%E7%BE%A4%E6%89%A9%E5%B1%95"><span class="toc-text">验证集群扩展</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Autoscaling-with-Heat"><span class="toc-text">Autoscaling with Heat</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B%E6%A8%A1%E6%9D%BF"><span class="toc-text">示例模板</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2%E6%AD%A5%E9%AA%A4"><span class="toc-text">部署步骤</span></a></li></ol></li></ol>
+
+<ul>
+<li><p><strong>Operations</strong><br><strong>CLUSTER_SCALE_OUT</strong>，<strong>CLUSTER_SCALE_IN</strong>操作是用于扩展集群的最简单的命令形式。另一方面，CLUSTER_RESIZE操作提供了更多选项来控制详细的集群扩展行为。这些操作都可以在有或没有策略附加到集群的情况下执行。</p>
+</li>
+<li><p><strong>Policies</strong></p>
+<ul>
+<li><strong>senlin.policy.scaling</strong>，可用于微调集群扩展操作。</li>
+<li><strong>senlin.policy.deletion</strong>，可用于控制如何从集群中删除节点。</li>
+<li><strong>senlin.policy.affinity</strong>，可用于控制如何强制执行节点亲和力或反亲和力。</li>
+<li><strong>senlin.policy.region_placement</strong>，可用于在多个区域扩展集群。</li>
+<li><strong>senlin.policy.zone_placement</strong>，可用于强制实现跨可用区的节点分布。</li>
+</ul>
+</li>
+<li><p><strong>Receivers</strong><br>Receiver提供了一个通道，可以从该通道向其发送来自外部监视软件或服务的信号或警报，从而可以自动执行缩放操作。</p>
+</li>
+</ul>
+<h3 id="Autoscaling-using-Ceilometer-Aodh"><a href="#Autoscaling-using-Ceilometer-Aodh" class="headerlink" title="Autoscaling using Ceilometer/Aodh"></a>Autoscaling using Ceilometer/Aodh</h3><h4 id="创建VM集群"><a href="#创建VM集群" class="headerlink" title="创建VM集群"></a>创建VM集群</h4><p>sample_server.yaml：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">type:</span> <span class="string">os.nova.server</span></span><br><span class="line"><span class="attr">version:</span> <span class="number">1.0</span></span><br><span class="line"><span class="attr">properties:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">my_server</span></span><br><span class="line">  <span class="attr">flavor:</span> <span class="string">micro-1</span></span><br><span class="line">  <span class="attr">image:</span> <span class="string">CentOS-7.3-64bit-ec2-user</span></span><br><span class="line">  <span class="attr">key_name:</span> <span class="string">oskey</span></span><br><span class="line">  <span class="attr">networks:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">network:</span> <span class="string">private</span></span><br></pre></td></tr></table></figure>
+<div class="alert warning no-icon"><p>请注意，此规范文件假定有一个名为<strong>oskey</strong>的有效密钥对，并且有一个名为<strong>private</strong>的网络。可能需要根据环境设置更改这些值。</p>
+</div>
+
+<p>创建配置文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster profile create --spec-file sample_server.yaml my_proflie</span><br></pre></td></tr></table></figure>
+<p>创建集群。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster create --profile my_profile --desired-capacity 2 my_cluster</span><br></pre></td></tr></table></figure>
+
+<p>这将创建一个在开始时创建2个节点的集群。为了方便起见，将集群ID设为环境变量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> MYCLUSTER_ID=10c80bfe-41af-41f7-b9b1-9c81c9e5d21f</span><br></pre></td></tr></table></figure>
+<p>查看每个节点分配的IP地址。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster node show --details</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建Receiver"><a href="#创建Receiver" class="headerlink" title="创建Receiver"></a>创建Receiver</h4><p>下一步是为集群创建Receiver，以触发集群上的操作。通常为特定目的创建一个Receiver，因此出于不同的目的，可能需要创建多个Receiver。</p>
+<p>创建一个Receiver，用于在每次触发该集群时将指定集群扩展两个节点。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster receiver create --action CLUSTER_SCALE_OUT --params count=2 --cluster my_cluster my_receiver</span><br></pre></td></tr></table></figure>
+<div class="alert warning no-icon"><p>目前，Receiver显示的所有属性值都是只读的。创建Receiver后，无法更改其值。</p>
+</div>
+
+<p>对于Action参数，有很多选择：</p>
+<ul>
+<li><strong>CLUSTER_SCALE_OUT</strong></li>
+<li><strong>CLUSTER_SCALE_IN</strong></li>
+<li><strong>CLUSTER_RESIZE</strong></li>
+<li><strong>CLUSTER_CHECK</strong></li>
+<li><strong>CLUSTER_UPDATE</strong></li>
+<li><strong>CLUSTER_DELETE</strong></li>
+<li><strong>CLUSTER_ADD_NODES</strong></li>
+<li><strong>CLUSTER_DEL_NODES</strong></li>
+<li><strong>NODE_CREATE</strong></li>
+<li><strong>NODE_DELETE</strong></li>
+<li><strong>NODE_UPDATE</strong></li>
+<li><strong>NODE_CHECK</strong></li>
+<li><strong>NODE_RECOVER</strong></li>
+</ul>
+<p>创建Receiver后，您可以检查其<strong>channel</strong>属性值以了解如何触发该Receiver。对于类型为<strong>webhook</strong>的Receiver（目前是默认和唯一受支持的类型），这意味着将检查<strong>alarm_url</strong>的值。为了方便起见，将该值导出到环境变量。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">export</span> ALRM_URL=<span class="string">&quot;http://node1:8778/v1/webhooks/ba...5a/trigger?V=1&amp;count=2&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>与上面的示例类似，可以为不同种类的集群操作或具有不同参数值的同一集群操作创建其他接收器。</p>
+<h4 id="创建Aodh告警"><a href="#创建Aodh告警" class="headerlink" title="创建Aodh告警"></a>创建Aodh告警</h4><p>创建集群并准备好接收外部信号后，便可以继续使用部署的软件/服务来创建告警。以下命令使用aodh警报服务创建阈值警报，以便：</p>
+<ul>
+<li>aodh将评估指定集群中的CPU利用率（即cpu_util）指标；</li>
+<li>aodh将使用给定时间段（即此处的60秒）内的平均值计算CPU利用率；</li>
+<li>aodh将在每个周期结束时进行评估；</li>
+<li>aodh不会重复触发警报操作；</li>
+<li>aodh将基于指定的元数据进行度量标准聚合。</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">aodh alarm create \</span><br><span class="line"> --<span class="built_in">type</span> gnocchi_resources_threshold --name cpu-high \</span><br><span class="line"> --metric cpu_util --threshold 70 --comparison-operator gt \</span><br><span class="line"> --description <span class="string">&#x27;instance running hot&#x27;</span> --evaluation-periods 1 \</span><br><span class="line"> --aggregation-method mean --alarm-action <span class="variable">$ALRM_URL</span> \</span><br><span class="line"> --granularity 600 --repeat-actions False \</span><br><span class="line"> --query metadata.user_metadata.cluster_id=<span class="variable">$MYCLUSTER_ID</span></span><br></pre></td></tr></table></figure>
+
+<p>为了让aodh知道senlin注入到每个创建的每个VM服务器中的cluster_id元数据，可能需要在/etc/ceilometer/ceilometer.conf文件中添加以下行：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">reserved_metadata_keys = cluster_id</span><br></pre></td></tr></table></figure>
+
+<p>还要注意，为确保每60秒至少评估一次CPU利用率的指标，需要在文件/etc/ceilometer/pipeline.yaml中更改cpu_source的interval值。可以将其从默认值600更改为60：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sources:</span><br><span class="line">  &lt;other stuff ...&gt;</span><br><span class="line">  - name: cpu_source</span><br><span class="line">    interval: 600   &lt;- change this to 60</span><br><span class="line">    meters:</span><br><span class="line">      - <span class="string">&quot;cpu&quot;</span></span><br><span class="line">  &lt;other stuff ...&gt;</span><br></pre></td></tr></table></figure>
+
+<h4 id="在集群节点上运行工作负载"><a href="#在集群节点上运行工作负载" class="headerlink" title="在集群节点上运行工作负载"></a>在集群节点上运行工作负载</h4><p>在高CPU工作量下检查集群扩展的效果。现在，可以登录到每个集群节点并在其中运行一些高CPU的工作，以提高CPU利用率。例如：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ssh cirros@10.0.0.9</span><br><span class="line"><span class="built_in">cat</span> /dev/zero &gt; /dev/null</span><br></pre></td></tr></table></figure>
+<p>当集群中的所有节点的CPU压力提高时，可以检查每个节点上的CPU利用率，最后继续下一步。</p>
+<h4 id="验证集群扩展"><a href="#验证集群扩展" class="headerlink" title="验证集群扩展"></a>验证集群扩展</h4><p>在启动集群节点上的CPU工作负载一段时间后，集群已自动扩展。将创建两个新节点并将其添加到集群。可以通过运行以下命令来验证：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster show <span class="variable">$MYCLUSTER_ID</span></span><br></pre></td></tr></table></figure>
+<p>可以使用以下命令来检查是否触发并执行了预期的操作：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack cluster action list --filters target=<span class="variable">$MYCLUSTER_ID</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Autoscaling-with-Heat"><a href="#Autoscaling-with-Heat" class="headerlink" title="Autoscaling with Heat"></a>Autoscaling with Heat</h3><p>Heat中有Senlin资源类型，可以轻松实现功能全面的自动缩放解决方案的部署。</p>
+<h4 id="示例模板"><a href="#示例模板" class="headerlink" title="示例模板"></a>示例模板</h4><p>在senlin目录下的heat-template项目中有一个示例模板，用于通过Heat创建Senlin弹性负载平衡集群。</p>
+<p>下面的资源定义了一个security_group，用于连接到创建的负载均衡集群。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">security_group:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Neutron::SecurityGroup</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">rules:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">icmp</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">tcp</span></span><br><span class="line">        <span class="attr">port_range_min:</span> <span class="number">22</span></span><br><span class="line">        <span class="attr">port_range_max:</span> <span class="number">22</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">protocol:</span> <span class="string">tcp</span></span><br><span class="line">        <span class="attr">port_range_min:</span> <span class="number">80</span></span><br><span class="line">        <span class="attr">port_range_max:</span> <span class="number">80</span></span><br></pre></td></tr></table></figure>
+
+<p>以下资源定义了用于创建目标集群的配置文件。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">profile:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Profile</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">os.nova.server-1.0</span></span><br><span class="line">    <span class="attr">properties:</span></span><br><span class="line">      <span class="attr">flavor:</span> &#123;<span class="attr">get_param:</span> <span class="string">flavor</span>&#125;</span><br><span class="line">      <span class="attr">image:</span> &#123;<span class="attr">get_param:</span> <span class="string">image</span>&#125;</span><br><span class="line">      <span class="attr">key_name:</span> &#123;<span class="attr">get_param:</span> <span class="string">key_name</span>&#125;</span><br><span class="line">      <span class="attr">networks:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="attr">network:</span> &#123;<span class="attr">get_param:</span> <span class="string">network</span>&#125;</span><br><span class="line">      <span class="attr">security_groups:</span></span><br><span class="line">        <span class="bullet">-</span> &#123;<span class="attr">get_resource:</span> <span class="string">security_group</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>下面的资源定义了创建至少有两个节点的Senlin集群。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">cluster:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Cluster</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">desired_capacity:</span> <span class="number">2</span></span><br><span class="line">    <span class="attr">min_size:</span> <span class="number">2</span></span><br><span class="line">    <span class="attr">profile:</span> &#123;<span class="attr">get_resource:</span> <span class="string">profile</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>下面的两个资源定义了附加到已创建集群的scale_in_policy和scale_out_policy。事件的属性用于定义策略起作用的客观动作。将调整属性的类型设置为CHANGE_IN_CAPACITY时，集群在scale_out时将增加节点数，在scale_in时将减少节点数：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scale_in_policy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Policy</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">senlin.policy.scaling-1.0</span></span><br><span class="line">    <span class="attr">bindings:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">properties:</span></span><br><span class="line">      <span class="attr">event:</span> <span class="string">CLUSTER_SCALE_IN</span></span><br><span class="line">      <span class="attr">adjustment:</span></span><br><span class="line">        <span class="attr">type:</span> <span class="string">CHANGE_IN_CAPACITY</span></span><br><span class="line">        <span class="attr">number:</span> <span class="number">1</span></span><br><span class="line"></span><br><span class="line"><span class="attr">scale_out_policy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Policy</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">senlin.policy.scaling-1.0</span></span><br><span class="line">    <span class="attr">bindings:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">properties:</span></span><br><span class="line">      <span class="attr">event:</span> <span class="string">CLUSTER_SCALE_OUT</span></span><br><span class="line">      <span class="attr">adjustment:</span></span><br><span class="line">        <span class="attr">type:</span> <span class="string">CHANGE_IN_CAPACITY</span></span><br><span class="line">        <span class="attr">number:</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>下面的资源定义了要附加到目标集群的lb_policy。将策略附加到集群后，Senlin将通过调用neutron LBaas V2 API来自动创建负载均衡，pool和health_monitor，以实现负载平衡。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">lb_policy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Policy</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">senlin.policy.loadbalance-1.0</span></span><br><span class="line">    <span class="attr">bindings:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">properties:</span></span><br><span class="line">      <span class="attr">pool:</span></span><br><span class="line">        <span class="attr">protocol:</span> <span class="string">HTTP</span></span><br><span class="line">        <span class="attr">protocol_port:</span> <span class="number">80</span></span><br><span class="line">        <span class="attr">subnet:</span> &#123;<span class="attr">get_param:</span> <span class="string">pool_subnet</span>&#125;</span><br><span class="line">        <span class="attr">lb_method:</span> <span class="string">ROUND_ROBIN</span></span><br><span class="line">      <span class="attr">vip:</span></span><br><span class="line">        <span class="attr">subnet:</span> &#123;<span class="attr">get_param:</span> <span class="string">vip_subnet</span>&#125;</span><br><span class="line">        <span class="attr">protocol:</span> <span class="string">HTTP</span></span><br><span class="line">        <span class="attr">protocol_port:</span> <span class="number">80</span></span><br><span class="line">      <span class="attr">health_monitor:</span></span><br><span class="line">        <span class="attr">type:</span> <span class="string">HTTP</span></span><br><span class="line">        <span class="attr">delay:</span> <span class="number">10</span></span><br><span class="line">        <span class="attr">timeout:</span> <span class="number">5</span></span><br><span class="line">        <span class="attr">max_retries:</span> <span class="number">4</span></span><br></pre></td></tr></table></figure>
+
+<p>以下两个资源定义了发生特定警报或事件时要触发的接收器（Receiver）。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">receiver_scale_out:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Receiver</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">action:</span> <span class="string">CLUSTER_SCALE_OUT</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">webhook</span></span><br><span class="line"></span><br><span class="line"><span class="attr">receiver_scale_in:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Receiver</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">action:</span> <span class="string">CLUSTER_SCALE_IN</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">webhook</span></span><br></pre></td></tr></table></figure>
+
+<p>以下资源定义了在收缩集群时选择要删除的候选节点的策略。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">deletion_policy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Senlin::Policy</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">type:</span> <span class="string">senlin.policy.deletion-1.0</span></span><br><span class="line">    <span class="attr">bindings:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">cluster:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line">    <span class="attr">properties:</span></span><br><span class="line">      <span class="attr">criteria:</span> <span class="string">YOUNGEST_FIRST</span></span><br><span class="line">      <span class="attr">destroy_after_deletion:</span> <span class="literal">True</span></span><br><span class="line">      <span class="attr">grace_period:</span> <span class="number">20</span></span><br><span class="line">      <span class="attr">reduce_desired_capacity:</span> <span class="literal">False</span></span><br></pre></td></tr></table></figure>
+
+<p>下面的两个资源定义了分别触发以上两个接收器的警报。使用LoadBalancer的平均传入字节速率作为触发缩放操作的指标。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scale_in_alarm:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Ceilometer::Alarm</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">description:</span> <span class="string">trigger</span> <span class="string">when</span> <span class="string">bandwidth</span> <span class="string">overflow</span></span><br><span class="line">    <span class="attr">meter_name:</span> <span class="string">network.services.lb.incoming.bytes.rate</span></span><br><span class="line">    <span class="attr">statistic:</span> <span class="string">avg</span></span><br><span class="line">    <span class="attr">period:</span> <span class="number">180</span></span><br><span class="line">    <span class="attr">evaluation_periods:</span> <span class="number">1</span></span><br><span class="line">    <span class="attr">threshold:</span> <span class="number">12000</span></span><br><span class="line">    <span class="attr">repeat_actions:</span> <span class="literal">True</span></span><br><span class="line">    <span class="attr">alarm_actions:</span></span><br><span class="line">      <span class="bullet">-</span> &#123;<span class="attr">get_attr:</span> [<span class="string">receiver_scale_in</span>, <span class="string">channel</span>, <span class="string">alarm_url</span>]&#125;</span><br><span class="line">    <span class="attr">comparison_operator:</span> <span class="string">le</span></span><br><span class="line">    <span class="attr">query:</span></span><br><span class="line">      <span class="attr">metadata.user_metadata.cluster_id:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br><span class="line"></span><br><span class="line"><span class="attr">scale_out_alarm:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">OS::Ceilometer::Alarm</span></span><br><span class="line">  <span class="attr">properties:</span></span><br><span class="line">    <span class="attr">description:</span> <span class="string">trigger</span> <span class="string">when</span> <span class="string">bandwidth</span> <span class="string">insufficient</span></span><br><span class="line">    <span class="attr">meter_name:</span> <span class="string">network.services.lb.incoming.bytes.rate</span></span><br><span class="line">    <span class="attr">statistic:</span> <span class="string">avg</span></span><br><span class="line">    <span class="attr">period:</span> <span class="number">60</span></span><br><span class="line">    <span class="attr">evaluation_periods:</span> <span class="number">1</span></span><br><span class="line">    <span class="attr">threshold:</span> <span class="number">28000</span></span><br><span class="line">    <span class="attr">repeat_actions:</span> <span class="literal">True</span></span><br><span class="line">    <span class="attr">alarm_actions:</span></span><br><span class="line">      <span class="bullet">-</span> &#123;<span class="attr">get_attr:</span> [<span class="string">receiver_scale_out</span>, <span class="string">channel</span>, <span class="string">alarm_url</span>]&#125;</span><br><span class="line">    <span class="attr">comparison_operator:</span> <span class="string">ge</span></span><br><span class="line">    <span class="attr">query:</span></span><br><span class="line">      <span class="attr">metadata.user_metadata.cluster_id:</span> &#123;<span class="attr">get_resource:</span> <span class="string">cluster</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="部署步骤"><a href="#部署步骤" class="headerlink" title="部署步骤"></a>部署步骤</h4><p>在部署之前，请确保已在环境中安装并配置了neutron LBaas v2和ceilometer/Aodh。<br>第一步是使用以下命令生成密钥对：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack keypair create heat_key</span><br></pre></td></tr></table></figure>
+
+<p>第二步是创建Heat模板，方法是从<a target="_blank" rel="noopener" href="https://github.com/openstack/heat-templates">Heat模板</a>下载模板文件。</p>
+<p>第三步是使用以下命令创建Heat Stack。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack stack create <span class="built_in">test</span> -t ./ex_aslb.yaml --parameter <span class="string">&quot;key_name=heat_key&quot;</span></span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Senlin/" rel="tag">Senlin</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/14/Neutron-Server%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Server源码分析"
+                    aria-label="PREVIOUS: Neutron-Server源码分析"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/25/OpenStack-Senlin%E9%9B%86%E7%BE%A4%E5%8D%B3%E6%9C%8D%E5%8A%A1/"
+                    data-tooltip="OpenStack Senlin集群即服务"
+                    aria-label="NEXT: OpenStack Senlin集群即服务"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/&amp;title=OpenStack Senlin自动伸缩"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/09/27/OpenStack-Senlin自动伸缩/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/10/14/Neutron-Server%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90/"
+                    data-tooltip="Neutron-Server源码分析"
+                    aria-label="PREVIOUS: Neutron-Server源码分析"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/25/OpenStack-Senlin%E9%9B%86%E7%BE%A4%E5%8D%B3%E6%9C%8D%E5%8A%A1/"
+                    data-tooltip="OpenStack Senlin集群即服务"
+                    aria-label="NEXT: OpenStack Senlin集群即服务"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/&amp;title=OpenStack Senlin自动伸缩"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/&amp;title=OpenStack Senlin自动伸缩"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/27/OpenStack-Senlin%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

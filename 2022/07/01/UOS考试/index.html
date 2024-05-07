@@ -1,0 +1,1026 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>UOS考试 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="UOS">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n初级研发工程师A修改主机名称\n修改主机名称为：uos-exam-1-106\n修改root密码为：uos@exam123\n\n12sudo hostnamectl set-hostname uos-exam-1-106sudo passwd root uos@exam123\n\n查询网络设定查询本机eth0网卡的如下设定信息，并按以下冒号分隔的格式填写，存放在desk用户“桌面”上命名net.txt的文件。\n1234567ip:mac:netmask:gateway:首选DNS:备选DNS:nmcli dev show\n\n软件源修改备份默认软件源配置文件到同级目录，名称为：106.list.bak。修改默认软件源配置文件，源为: deb http:/mirrors.163.com/deepin/ apricot main contrib non-free\n1234sudo cp /etc/apt/sources.list /etc/apt/106.list.baksudo vim /etc/apt/soures.list# 修改内容：deb http:/mirrors.163.com/deepin/ apricot main contrib non-freesudo apt update\n\n使用管理器安装软件使用apt安装 unbound\n1sudo apt install unbound\n\n设置NTP时间同步安装ntpdate，使用ntpdate同步cn.pool.ntp.org时间服务器，把输出的结果保存在/opt/date.txt。\n12sudo apt install ntpdatesudo ntpdate cn.pool.ntp.org &gt; /opt/date.txt\n\n用户管埋建立uos-exam组\n\n添加用户uoskeeper106，指定uos-exam组为属组(基本组)，指定并创建家目录为/home/uoskeeper106。\n添加用户uosmaster106，指定uos-exan组为属组(基本组)，指定并创建家目录为/home/uosmaster106。\n添加uosnologin用户并设置不能交互式登陆。\n修改uosnologin的UD为2020。\n\n12345sudo groupadd uos-examsudo useradd -g uos-exam -md /home/uoskeeper106 uoskeeper106sudo useradd -g uos-exam -md /home/uosmaster106 uosmaster106useradd -m uosnologin -s /sbin/nologinsudo usermod -u 2020 uosnologin\n\n密码管理针对uosmaster106用户做以下设置:\n\n设置用户7天后可更改密码\n设置用户90天后密码过期\n用户密码过期前15天提醒\n\n12345passwd -n 7 -x 90 -w 15 uosmaster106chage -M 90 uosmaster106chage -m 7 uosmaster106chage -W 15 uosmaster106\n\n文件的操作\n复制/etc/apt106.list.bak到/opt目录下\n修改/opt/106.list.bak文件的权限:\n该文件属主属组为root\nuoskeeper106只有读权限\nuosmaster106只有执行权限\n\n\n\n12345sudo cp /etc/apt/106.list.bak /optsudo chown -R root:root /opt/106.list.baksudo getfacl /opt/106.list.baksetfacl -m u:uoskeeper106:r /opt/106.list.baksetfacl -m u:uosmaster106:x /opt/106.list.bak\n\n目录的管理在/opt目录下创建uosexam目录，该目录属主为：root，属组为uos-exam，权限为775。\n\n在/opt/uosexam目录下新创建的文件和目录属组固定为: uos-exam。\n在/opt/uosexam目录下uoskeeper106和uosmaster106用户只能管理自己新创建的文件，不能删除和修改对方的文件。1234sudo chown root:uos-exam /opt/uosexamsudo chmod 775 /opt/uosexamsudo chmod g+s /opt/uosexamsudo chmod +t /opt/uosexam\n\n\n\n设置计划任务对uosmaste106设置计划任务，每天23点59分，执行/bin/echo “UOS is the best system”。\n123crontab -e -u uosmaster106# 回车 选择3 进入Vim模式59 23 * * * /bin/echo &quot;UOS is the best system&quot;\n\n文件的查找查找名为exam-uos-file.conf的文件，并把此文件的绝对路径写入/opt/pwdin.xt中。\n1find / -name exam-uos-file.conf &gt; /opt/pwdin.txt\n\n磁盘分区\n对/dev/vdb磁盘设备，进行分区为/dev/vdb2，分区大小为5G。\n对新增加的分区/dev/vdb2进行文件系统格式化为“ext4”。\n\n1234fdisk -lsudo fdisk /dev/vdb2# 操作中依次输入： n 2 回车 +5G wsudo mkfs.ext4 /dev/vdb2\n\n开机自动挂载\n创建目录/opt/data。\n将/dev/vdb2挂载到/opt/data目录。\n修改fstab配置文件，使用/dev/ydb2的uud配置开机自动挂载。123456mkdir /opt/datamount /dev/vdb2 /opt/data# 使用 blkid 找到 /dev/vdb2的uuidblkid /dev/vdb2# 在 /etc/fstab 中写入 UUID=XXXX  /opt/data ext4    defaults        00\n\n\n\ngcc的使用/opt/exam14目录下C源代码helo.c，实现打印输出”Hello UOS!”。\n\n使用gcc命令，编译并连接，直接生成可执行文件hello1，执行hello1，查看结果。\n使用gcc命令，先编译hello.c源文件，生成后缀为hello2.o的目标文件。通过目标文件的连接，再生成可执行文件hello2，执行hello2，查看结果。\n\n123gcc hello.c -o hello1gcc -c hello.c -o hello2.o gcc hello2.o -o hello2\n\ngdb调试opt/exam15目录下将test.c文件编译成包含标准调试信息的文件test。运行生成的可执行文件，观察运行结果，使用gdb调试程序，通过设置断点，单步调试。\n\n修改源程序，输出结果第一行为：The original string is linux UOS\n修改源程序，输出结果第二行为：The string afterward is SoU xunil\n\n123456789$ gcc -g test.c -o test$ gdb test===============gdb &gt; set write ongdb &gt;  p &lt;变量&gt; = 100 gdb &gt; set var &lt;变量&gt; = 100==========\n源程序修改如下：display2函数的for循环大括号中内容修改为\n123&#123;    string2[size-i-1] = string1[i];&#125;\n\n制作静态库编译main.c/opt/exam16目录下有main.cpp、head.h、add.cpp、sub.cpp文件。为add.cpp、sub.cpp文件都生成add.o、sub.o文件，制作静态库libhead.a(生成文件均在/opt/exam16/目录下)。编译main.cpp生成main可执行文件。\n123456gcc -c add.cpp -o add.ogcc -c sub.cpp -o sub.oar crv libhead.a add.o sub.ogcc main.cpp libhead.a -o main -lstdc++apt install g++g++ main.cpp libhead.a -o main \n\n制作动态库编译main.c/opt/exam17目录下有main.cpp、head.h、add.cpp、sub.cpp。为add.cpp、sub.cpp生成add0、sub0文件。用ado、sub.o文件制作动态库libhead.so文件编译main.cpp生成man可执行文件(生成文件均在/opt/exam17/目录下)\n生成.o\n12345678g++ -I ./ -c add.cppg++ -I ./ -c sub.cppg++ ./*.cpp -fPIC -shared -o subhead.so # 或者g++ ./*.o -fPIC -shared -o subhead.sog++ *.cpp -L -lhead -o main\n\n编写Makefile/opt/exam18目录下，编写Makefile文件进行编译，输出test可执行文件。test文件由目/opt/exam18录下main.c文件、func.h文件和test*c.文件组成。要求在源码/opt/exam18目录下执行make成功可执行文件test，执行test输出对应内容。\n1234make:  gcc *.c -o testclean:  rm -rf *.o\n\ngit本地仓库管理进入/opt/exam19目录设置本地git仓库。\n\n设置全局用户名为：Uos。\n设置全局邮箱名为:UoS106@.com。\n在/opt/exam19目录下，创建git本地仓库。\n在/opt/exam19目录下，创建文本文件test.txt编辑文件内容为UOS is the best system。\n将test.txt提交到git仓库。\n\n123456789101112git config --global user.name &lt;user&gt;git config --global user.email &lt;email&gt;echo &quot;UOS is the best system&quot; &gt; /opt/exam19/test.txtcd /opt/exam19git init git add .git commit -m &quot;init base&quot;\n\n文件的打包与拆解对/Packages目录下Firefox.tar.bz2进行解包。\n\n解压后的目录移动到/opt/data目录下。\n/opt/data目录进行打包,打包完的名称为“data.tar.gz”存放位置在/opt目录下。\n\n12tar -xjvf Firefox.tar.bz2  -C  /opt/datatar -czvf data.tar.gz /opt/data\n\nB破解root密码1030版本后，已无法使用在grub界面修改参数破解密码，请在左面新建pwd.txt文档并编辑，简要描述使用光盘或者U盘来破解root密码的过程。\n\n1031以上系统更改密码，需要物理介质（光驱或者U盘）引导进入PE界面。\n开机后进入bios选择物理介质启动。\n到grup界面按tab，删除livecd-installer。\n进入PE创建目录/mnt/systmp,然后将/root挂载到/mnt/systmp。\nchroot /mnt/systmp\necho $PATH\npasswd命令修改密码\n拔出物理介质，正常启动输入密码\n\n修改主机名修改主机名为uos-exam-112\n12sudo vim /etc/hostnamehostnamectl set-hostname uos-exam-112\n\n网络查询主机eth0网卡的如下信息，并按照一下冒号的格式填写，存在desk用户“桌面”上命名，net.txt文件。\n123456Ip：\t\t\tifconfigMac:\t\tifconfig -a的ether字段Netmask:\t\tifconfig \t       #255.255.0.0Gateway:\t\tifconfig的网关\t\t#前缀和ip一样首选DNS:\tnmcli dev show或者sudo vim /etc/resolv.conf 备选DNS:\tnmcli dev show或者sudo vim /etc/resolv.conf \n\n软件源修改备份默认的软件源配置文件到同级目录，名称为：112.list.bak。配置新的源为：deb http://mirrors.163.com/deepin/ apricot main contrib non-free\n12sudo cp /etc/apt/source.list  /etc/apt/112.list.baksudo vim /etc/apt/source.list\n\n使用管理器安装软件使用apt安装“unbound”\n12apt-get update\t\t\t\t#更新sudo apt-get install unbound\t\t#安装\n\n设置NTP时间同步安装ntpdate使用ntpdate同步cn.pool.ntp.org时间服务器把输出的结果保存在/opt/date.txt\n123apt-get install ntpdate\t        #安装，此处出现问题待解决ntpdate cn.pool.ntp.org &gt; /opt/date.txtcat /opt/date.txt\t\t#检查是否为空\n用户管理建立uos-exam组添加用户uoskeeper112和uosmaster112到uos-exam组并指定各自的家目录为/home/uoskeeper112和/home/uosmaster112添加uosnologin用户并设置不能交互式登陆。修改uosnologin的UID为2020\n12345groupadd uos-exam\t#创建组useradd -m -G uos-exam -d /home/uoskeeper112 uoskeeper112       #创建useradd -m -G uos-exam -d /home/uosmaster112 uosmaster112\t#创建sudo useradd -s /usr/sbin/nologin uosnologin\t\t\t#创建sudo usermod -u 2020 uosnologin\t\t\t\t\t#修改UID\n文件的操作复制/etc/apt/112.list.bat到/opt修改改文件的权限：此文件的属主属组为rootUoskeeper112只有读权限Uosmaster112只有执行权限\n123456cp /etc/apt/112.list.bat /optchown root:root /opt/112.list.baksetfacl -m u:uoskeeper112:r /opt/112.list.bakgetfacl 112.list.back\t\t#查看权限是否设置成功setfacl -m u:uosmaster112:x /opt/112.list.bakgetfacl 112.list.back\t\t#查看权限是否设置成功\n设置计划任务对uosmaster112设置计划任务，每天23点59分，执行/bin/echo “UOS is the best system”\n123crontab -u uosmaster112 -e\t#-u表指定用户，-e执行文字编辑器设定# 首次按“2”或者“3”，不要按“1”# 输入59 23 * * * /bin/echo &quot;UOS is best system&quot;\n文件查找查找名为“exam-uos-file.conf”的文件，并把此文件的绝对路劲写入/opt/pwdin.txt中。\n1sudo find / -name exam-uos-file.conf &gt; /opt/pwdin.txt\n\n文件操作进入/opt目录，建立uniontech.txt文件，内容为“UOS is the best system”。要求该文件不能被删除，不能被修改。\n1234vim /opt/uniontech.txtUOS is the best systemwqchattr +i /opt/uniontech.txt\n\n查找查找/usr/share目录下所有文件中包含“happyexam”的字符串，并把查出来的行号写入/opt/findcode.txt（注意：只写行号）。\n12345678grep -R -n &quot;happyexam&quot; /usr/share/doc/unbound/examples/unbound.conf | awk -F : &#x27;&#123;print $2&#125;&#x27; | sudo tee /opt/find.txt# 查看是否为正确行数，没有其他字符cat /opt/find.txt# &#x27;&#123;print $1&#125;&#x27;中的$数字需要根据实际更改，行是1行号是2grep -R -n &quot;happyexam&quot; /usr/share/doc/unbound/examples/unbound.conf | awk -F : &#x27;&#123;print $1&#125;&#x27; &gt; /opt/find.txtcat /opt/find.txt\n\n磁盘分区13、对22G的磁盘dev/vdb，分4个大小为5G的分区和1个2G的分区。\n123456789101112fdisk /dev/sdbn+5gn+5gn+5gn+5gn+2gw\n\nRAID的创建对上一题划分的4块的分区进行RAID5创建，预留最大空间（大于14G），路径名称为“/dev/md5”创建完成后将raid5信息写入/etc/mdadm.conf文件中。执行update-initramfs -u，否则重启后raid5名称会发生变化。\n1234mdadm -C /dev/md5 -a yes -l 5 -n 4 /dev/sdb5 /dev/sdb6 /dev/sdb7 /dev/sdb8ls -l /dev/md5\t\t\t#查看确认mdadm -D /dev/md5 &gt; /etc/mdadm.confupdate-initramfs -u\n\nRAID操作对新加的磁盘阵列“md5”进行逻辑卷制作建物理卷，使用“md5”新建卷组，名称为“uosvg”新建逻辑卷，使用所有卷组容量（大于14G），名称“uoslv”\n123pvcreate /dev/md5\t#变成逻辑卷首先要变成物理卷 pvs\t查看vgcreate uosvg /dev/md5\t#变成卷组，vgs 查看lvcreate -l +100%free uosvg -n uoslv\n\n格式化挂载格式化新添加的逻辑卷并挂载对新添加的逻辑卷进行格式化“ext4”创建目录/opt/data挂载新添加的逻辑卷到上步新建的目录\n123mkfs.ext4 /dev/uosvg/uoslv\t\t#格式化mkdir /opt/data\t\t\t\t#创建挂载目录mount /dev/uosvg/uoslv /opt/data\t#挂载\n在线扩容使用13题划分的2G分区，对/opt/data进行在线扩容（大于16G）\n123pvcreate /dev/sdb9\t\t\t\t#先变成物理分区vgextend uosvg /dev/sdb9\t\t\t#对uosvg扩容lvextend -r -l +100%free /dev/uosvg/uoslv\t#对uoslv扩容\n\n开机自动挂载修改fstab配置文件实现对新扩容的磁盘阵列的开机自动挂载\n1234blkid /dev/uosvg/uoslv\t\t\t\t#查找、复制uuidvim /etc/fstab\t\t\t\t\t#编辑fatabuuid /opt/data ext4 defaults 0 0\t\t#输入内容配置自动挂载mount -a\t\t\t\t\t#检查挂载\n文件的打包与拆解对/packages目录下Firefox-latest-x86_64.tar.bz2进行解包，解压后的目录移动到/opt/data。对/opt/data目录进行打包，打包完的名称为“data.tar.gz”存放位置在/opt目录下。\n123tar -jxvf /Packages/Firefox-latest-x86_64.tar.bz2 -C /opt/datatar -czvf /opt/data.tar.gz /opt/data \n使用systemctl命令设置服务的开机自启动12sudo systemctl enable sshupdate-rc.d ssh enable 2 3 4 5\n\n卸载umount 路径删除逻辑卷：\n\n卸载：umount 挂载路径\n删除逻辑卷：lvremove xxlv\n删除卷组：vgremove xxvg\n删除物理卷：pvremove pv的盘路径\n删除分区：fdisk 盘路径\nd删除分区\nw保存\n\n系统工程师A单选\n申威CPU的架构是(D)A. x86B. mipsC. ARMD. Alpha\n\n\n申威好像是依托于Alpha架构，RISC指令集。\n\n\n以下不是开源许可证的有(C)A. MITB. GPLC. CCD. BSD\n\n假设txt_size 是一个无参数函数，它的返回值是int；Unsigned buf_size = 1024；下面哪个定义是合法的？(B)A. int ia[buf_size];B. int ia[4*7 - 14];C. int ia[txt_size()];D. char st[11] = “fundamental”;\n\n一个类的友元函数可以访问类的( D )成员。A. 私有成员B. 保护C. 公有D. 以上都正确\n\n下面哪一个不是一种临界区保护机制（C）A. 互斥锁B. 信号量C. 条件变量D. 读写锁\n\n龙芯CPU的架构是（B）A. x86B. mipsC. ARMD. Alpha\n\n下面字面值数据类型说法错误的是？(C)A． L’a’表示为宽字符型字面值a且类型是wchar_tB． 10L表示一个长整形数C． 3.14L表示一个long float类型的扩展精度浮点数（应该是long double）。D． 10. 是一个浮点数\n\n\n解释以下字面值常量：‘a’：char型字面值               L’a’：wchar_t型字面值“a”：字符串字面值                L”a”：宽字符串字面值10：int型字面值                 10L：long型字面值10u：unsigned型字面值           10uL：unsigned long型字面值012：八进制表示的int型字面值      0xC：十六进制表示的int型字面值3.14：为double型字面值           3.14f：为float型字面值3.14L：为long double型字面值-10.：为double型字面值          -10e-2：为double型字面值-10u：unsigned int型字面值      -10：int型字面值\n非法常量：3.14UL、1024f\n\n使用地址作为实参传给形参，下列说法正确的是（D）。A. 实参是形参的备份B. 实参与形参无联系C. 形参是实参的备份D. 实参与形参是同一对象\n\n以下程序运行时，若从键盘输入5，则输出结果是(C) [单选题] *\n12345678main()&#123;     int a;    scanf(&quot;%d&quot;, &amp;a);    if(a++ &gt; 5)         printf(&quot;%d\\n&quot;, a);    else         printf(&quot;%d\\n&quot;, --a);&#125;\nA. 7B. 4C. 5D. 6\n\n他人修改源代码后必须开源的许可证有 (A) A. LGPLB. BSDC. ApacheD. MIT\n\nC语言的标识符只能由字母、数字和下划线三种字符组成，且首字符（A）A. 必须为字母或下划线B. 必须为下划线C. 必须为字母D. 可以是字母、数字和下划线中的任一种字符。\n\n假定一个类的构造函数为“A(int i=4, int j=0) {a=i;b=j;}”, 则执行“A x (1);”语 句后，x.a和x.b的值分别为（D）A. 4和1B. 4和0C. 1和4D. 1和0\n\n对数组名作函数的参数，下面描述正确的是（B）。A. 数组名作函数的参数，调用时将实参数组复制给形参数组B. 数组名作函数的参数，主调函数和被调函数共用一段存储单元C. 数组名作参数时，形参定义的数组长度不能省略D. 数组名作参数，不能改变主调函数中的数据\n\n列出当前目录下所有.h的文件，不含子目录（A）。A. ls *.hB. find . -name *.hC. find . -name *.h$D. find . |grep h\n\n以下不是开源许可证的有（C）。A. MITB. GPLC. CCD. BSD\n\nextern关键字的作用是什么？（D）A. 声明外部链接B. 声明外部头文件引用C. 声明使用扩展C++语句D. 声明外部成员函数、成员数据\n\n以下不是C语言提供的合法关键字为（B）A. switchB. printfC. caseD. default\n\n\n多选\n假如有如下声明，下面哪个调用是合法的（B，C）。1234double cacl(double);int count(const string &amp;, char);int sum(vector::iterator, vector::iterator, int)vector vec(10)\nA. cacl(23.4, 55.1);B. count(“abcda”,’a’);C. cacl(66);D. sum(vec.begin(), vec.end(), 3.8);\n\n实操平衡二叉树输入一棵二叉树的根节点，判断该树是不是平衡二叉树。如果某二叉树中任意节点的左右子树的深度相差不超过1，那么它就是一棵平衡二叉树。\n12345678910111213141516171819示例 1:给定二叉树 [3,9,20,null,null,15,7]     3    / \\   9  20     /  \\    15   7返回 true 。 示例 2:给定二叉树 [1,2,2,3,3,null,null,4,4]        1       / \\      2   2     / \\    3   3   / \\  4   4返回 false 。\n要求：\n\n使用纯C语言完善exam.h文件，通过所有单元测试\n代码逻辑符合题目要求，判卷评分有更多单元测试项\n除exam.h以外的文件不得修改，修改会被覆盖\n\n12345678910111213141516171819202122232425262728293031323334#ifndef EXAM_H#define EXAM_H#include &lt;algorithm&gt;#include &lt;stdlib.h&gt;#include &lt;string.h&gt;using namespace std;struct TreeNode &#123;    int val;    TreeNode *left;    TreeNode *right;&#125;;static int depth(TreeNode *node) &#123;    if (node == NULL) &#123;        return 0;    &#125;    int left, right = 0;    left = depth(node-&gt;left);    if (left == -1) return -1;    right = depth(node-&gt;right);    if (right == -1) return -1;    return abs(left - right) &lt; 2 ? max(left, right) + 1 : -1;&#125;static bool tree_is_balanced(TreeNode *root) &#123;    return depth(root) != -1;&#125;#endif // EXAM_H\n\n全排列无重复字符串的排列组合。编写一种方法，计算某字符串的所有排列组合，字符串每个字符均不相同。并将结果按字符串从小到大排序\n示例1:\n\n输入：S = “qwe”\n输出：[“eqw”, “ewq”, “qew”, “qwe”, “weq”, “wqe”]\n\n示例2:\n\n输入：S = “ab”\n输出：[“ab”, “ba”]\n\n要求：\n\n使用纯C语言修改exam.h文件，通过所有单元测试。\n代码逻辑符合题目要求，判卷评分有更多单元测试项。\n输出结果按照字典顺序排序。\nexam.h以外的文件不得修改，修改会被覆盖。123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051/* exam.h */#ifndef EXAM_H#define EXAM_H#include &lt;stdio.h&gt;#include &lt;stdlib.h&gt;#include &lt;string.h&gt;#include &lt;algorithm&gt;int count = 0void swap(char *a, char *b)&#123;        char t;        t = *a;        *a = *b;        *b = t;&#125;void perm(char* p, int from, int to, char ** res) &#123;     if (from == to)&#123;      res[res_count] = p      // memcpy(res[res_count], p, strlen(p));      count ++;   &#125;   if(from &lt; to)&#123;      for(int i = from; i &lt;= to; i++)&#123;            swap(&amp;p[i], &amp;p[from]);            perm(p, from + 1, to, res);            swap(&amp;p[i], &amp;p[from]);        &#125;   &#125;&#125;/* 返回一个以空字符串结尾的char*数组 */char** permute_string(const char* input)&#123;    char ** res = 0;    int N = 1; // size of your result    for (int i =strlen(input); i&gt;1; i--)&#123;        N = N * i;    &#125;    res = (char**)malloc(sizeof(char*) * N);        res[N] = 0;    return res;&#125;#endif // EXAM_H\n\n\n\nC++编写一个程序，从命令行读取一个软件包的名称，调用“dpkg -L”命令获得该软件包的文件列表，并检查所有文件。要求：\n\n使用cmake和c/c++开发\n可执行文件名称和位置是./src/pkgverify\n检查该软件包所有文件，确认：\n路径存在\n文件存在\n如果是符号链接，链接的文件也存在\n/usr路径下的文件，确认文件属主都是root\n\n\n输出所有有问题的文件或路径名\n由于qDebug/qInfo等输出方式会添加多余字符，且不在标准输出上，与考试要求不符，请谨慎使用\ntestHelper.sh有很少的测试用例，可以帮助做初步验证\n\n示例：如果/etc/cups路径被删除了，则运行结果如下：\n123pkgverify cups/etc/cups/etc/cups/snmp.conf\n\n首先编辑考试目录下的CMakeLists.txt\n1234CMAKE_MINIMUM_REQUIRED(VERSION 3.5)PROJECT(exam)ADD_SUBDIRECTORY(src)\n编辑src目录下的CMAKELists.txt。\n1234567891011121314cmake_minimum_required(VERSION 3.5)project(pkgverify)SET(CMAKE_INCLUDE_CURRENT_DIR ON)SET(CMAKE_CXX_STANDARD 11)SET(CMAKE_CXX_STANDARD_REQUIRED ON)SET(CMAKE_BUILD_TYPE Debug)set(exam_SOURCE        $&#123;CMAKE_CURRENT_SOURCE_DIR&#125;/dpkg.cpp        )add_executable($&#123;PROJECT_NAME&#125; $&#123;exam_SOURCE&#125;)\n\n在考试目录下执行cmake命令。\n1234cmake -S . -B build# cd build# make# ./src/pkgverify\n\n编辑src/main.cpp文件\n12345678910111213141516171819202122232425262728293031323334353637383940414243#include &lt;iostream&gt;#include &lt;cstring&gt;#include &quot;sys/stat.h&quot;#include &quot;unistd.h&quot;using namespace std;int main(int argc, char **argv) &#123;    string command = &quot;dpkg -L &quot;;    if (argc == 2) &#123;        command += argv[1];    &#125; else if (argc &gt; 2) &#123;        cout &lt;&lt; &quot;To many packages. &quot; &lt;&lt; endl;        return -1;    &#125; else &#123;        cout &lt;&lt; &quot;Expect one package&quot; &lt;&lt; endl;        return -1;    &#125;    FILE *fstream = nullptr;    char buffer[1024];    struct stat file_stat&#123;&#125;;    if (nullptr == (fstream = popen(command.c_str(), &quot;r&quot;))) &#123;        return -1;    &#125;    while (nullptr != fgets(buffer, sizeof(buffer), fstream)) &#123;        buffer[strlen(buffer) - 1] = 0;        if (access(buffer, F_OK) == 0) &#123;            if (strncmp(buffer, &quot;/usr/&quot;, 5) == 0) &#123;                stat(buffer, &amp;file_stat);                if (file_stat.st_uid == 0) &#123;                    continue;                &#125;            &#125; else &#123;                continue;            &#125;        &#125;        printf(&quot;%s\\n&quot;, buffer);    &#125;    return 0;&#125;\n\n最后进入build目录执行make，再将pkgverify可执行文件复制到src下。\n123cd buildmakecp ./src/pkgverify ../src/\n\n\n文件解析工具遵循 https://specifications.freedesktop.org/desktop-entry-spec/latest/ 标准实现一个desktop文件解析工具\n功能要求\n\ndesktop文件格式无错误时进程退出码为0\n实现对desktop文件Name(程序名称)、Exec(可执行文件)、Icon(图标文件)三个字段的解析\n需要检测文件的格式，遇到错误时以退出码 1 退出进程\n输入接收一个desktop文件的绝对路径，能够输出程序名称、图标文件（图标文件不考虑从系统图标主题中查找）\n能够在指定一个desktop文件后启动进程，且允许为其指定参数\n\n其它要求\n\n使用cmake构建工程\n可执行文件位置和名称为：./src/freedesktop\ntestHelper.sh有很少的测试用例，可以帮助做初步验证\n\n示例\n\na.desktop文件内容为: [Desktop Entry] Name=A; Name[zh_CN]=”我是A”; Exec=cat %f Icon=/tmp/a.png\n\n输入参数（-d指定desktop文件的绝对路径，-n表示要获取应用程序名称）： freedesktop -d /home/a/a.desktop -n\n\n输出结果： A或我是A（中文环境下，注意应该去掉引号）\n\n输入参数（-i表示要获取应用程序的图标） freedesktop -d /home/a/a.desktop -i\n\n输出结果（如图标数据不是一个文件路径，则先将图标文件保存为文件后再返回此文件的绝对路径）： /tmp/a.png\n\n输入参数（-e表示要启动此应用程序，其后可根一个或多个传入参数） freedesktop -d /home/a/a.desktop -e /home/a/test.txt\n\n输出结果： 输出结果为 /home/a/test.txt 文件的内容，也就是Exec命令执行时对标准输出通道所写入的全部数据\n\n\n安装依赖\n12apt install libicu-devapt install libsimpleini-dev\n\nCMakeLists.txt\n12345678910111213141516cmake_minimum_required(VERSION 3.5)project(freedesktop)SET(CMAKE_INCLUDE_CURRENT_DIR ON)SET(CMAKE_CXX_STANDARD 11)SET(CMAKE_CXX_STANDARD_REQUIRED ON)SET(CMAKE_BUILD_TYPE Debug)set(exam_SOURCE        $&#123;CMAKE_CURRENT_SOURCE_DIR&#125;/desktop.cpp        )add_executable($&#123;PROJECT_NAME&#125; $&#123;exam_SOURCE&#125;)target_link_libraries($&#123;PROJECT_NAME&#125; simpleini)\n\n代码\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263#include &lt;iostream&gt;#include &lt;unistd.h&gt;#include &quot;SimpleIni.h&quot;using namespace std;int main(int argc, char *argv[]) &#123;    int opt;    char const *args = &quot;d:nie::&quot;;    string run_arg;    string file_path;    bool get_name, get_icon, run = false;    while ((opt = getopt(argc, argv, args)) != -1) &#123;        switch (opt) &#123;            case &#x27;d&#x27;:                file_path = optarg;                break;            case &#x27;n&#x27;:                get_name = true;                break;            case &#x27;i&#x27;:                get_icon = true;                break;            case &#x27;e&#x27;:                run = true;                run_arg = optarg;                break;            default:                break;        &#125;    &#125;//    string validate = &quot;desktop-file-validate &quot; + file_path;////    if (system(validate.c_str()) != 0) &#123;//        cout &lt;&lt; &quot;validate desktop file failed!&quot; &lt;&lt; endl;//        return -1;//    &#125;    CSimpleIniA ini;    ini.SetUnicode();    SI_Error rc = ini.LoadFile(file_path.c_str());    if (rc &lt; 0) &#123;        cout &lt;&lt; &quot;error&quot; &lt;&lt; endl;    &#125;    if (get_name) &#123;        string value = ini.GetValue(&quot;Desktop Entry&quot;, &quot;Name&quot;);        cout &lt;&lt; value &lt;&lt; endl;    &#125;    if (get_icon) &#123;        string icon = ini.GetValue(&quot;Desktop Entry&quot;, &quot;Icon&quot;);        cout &lt;&lt; icon &lt;&lt; endl;    &#125;    if (run) &#123;        string command = ini.GetValue(&quot;Desktop Entry&quot;, &quot;Exec&quot;);        cout &lt;&lt; command &lt;&lt; endl;        system((command + &quot; &quot; + run_arg).c_str());    &#125;    return 0;&#125;","dateCreated":"2022-07-01T16:08:04+08:00","dateModified":"2023-09-21T13:58:55+08:00","datePublished":"2022-07-01T16:08:04+08:00","description":"Just A Test","headline":"UOS考试","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/","keywords":"UOS","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Just A Test">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="UOS考试">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Just A Test">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2022-07-01T08:08:04.000Z">
+<meta property="article:modified_time" content="2023-09-21T05:58:55.207Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="UOS">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            UOS考试
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-07-01T16:08:04+08:00">
+	
+		    Jul 01, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%88%9D%E7%BA%A7%E7%A0%94%E5%8F%91%E5%B7%A5%E7%A8%8B%E5%B8%88"><span class="toc-text">初级研发工程师</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#A"><span class="toc-text">A</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E4%B8%BB%E6%9C%BA%E5%90%8D%E7%A7%B0"><span class="toc-text">修改主机名称</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E8%AF%A2%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%AE%9A"><span class="toc-text">查询网络设定</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%BA%90%E4%BF%AE%E6%94%B9"><span class="toc-text">软件源修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E7%AE%A1%E7%90%86%E5%99%A8%E5%AE%89%E8%A3%85%E8%BD%AF%E4%BB%B6"><span class="toc-text">使用管理器安装软件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AENTP%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5"><span class="toc-text">设置NTP时间同步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%88%B7%E7%AE%A1%E5%9F%8B"><span class="toc-text">用户管埋</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%86%E7%A0%81%E7%AE%A1%E7%90%86"><span class="toc-text">密码管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C"><span class="toc-text">文件的操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%AE%E5%BD%95%E7%9A%84%E7%AE%A1%E7%90%86"><span class="toc-text">目录的管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AE%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1"><span class="toc-text">设置计划任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9A%84%E6%9F%A5%E6%89%BE"><span class="toc-text">文件的查找</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A3%81%E7%9B%98%E5%88%86%E5%8C%BA"><span class="toc-text">磁盘分区</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%80%E6%9C%BA%E8%87%AA%E5%8A%A8%E6%8C%82%E8%BD%BD"><span class="toc-text">开机自动挂载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gcc%E7%9A%84%E4%BD%BF%E7%94%A8"><span class="toc-text">gcc的使用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#gdb%E8%B0%83%E8%AF%95"><span class="toc-text">gdb调试</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%B6%E4%BD%9C%E9%9D%99%E6%80%81%E5%BA%93%E7%BC%96%E8%AF%91main-c"><span class="toc-text">制作静态库编译main.c</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%B6%E4%BD%9C%E5%8A%A8%E6%80%81%E5%BA%93%E7%BC%96%E8%AF%91main-c"><span class="toc-text">制作动态库编译main.c</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BC%96%E5%86%99Makefile"><span class="toc-text">编写Makefile</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#git%E6%9C%AC%E5%9C%B0%E4%BB%93%E5%BA%93%E7%AE%A1%E7%90%86"><span class="toc-text">git本地仓库管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9A%84%E6%89%93%E5%8C%85%E4%B8%8E%E6%8B%86%E8%A7%A3"><span class="toc-text">文件的打包与拆解</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#B"><span class="toc-text">B</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A0%B4%E8%A7%A3root%E5%AF%86%E7%A0%81"><span class="toc-text">破解root密码</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E4%B8%BB%E6%9C%BA%E5%90%8D"><span class="toc-text">修改主机名</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C"><span class="toc-text">网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E6%BA%90%E4%BF%AE%E6%94%B9-1"><span class="toc-text">软件源修改</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E7%AE%A1%E7%90%86%E5%99%A8%E5%AE%89%E8%A3%85%E8%BD%AF%E4%BB%B6-1"><span class="toc-text">使用管理器安装软件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AENTP%E6%97%B6%E9%97%B4%E5%90%8C%E6%AD%A5-1"><span class="toc-text">设置NTP时间同步</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86"><span class="toc-text">用户管理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C-1"><span class="toc-text">文件的操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AE%E8%AE%A1%E5%88%92%E4%BB%BB%E5%8A%A1-1"><span class="toc-text">设置计划任务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E6%9F%A5%E6%89%BE"><span class="toc-text">文件查找</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C"><span class="toc-text">文件操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E6%89%BE"><span class="toc-text">查找</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A3%81%E7%9B%98%E5%88%86%E5%8C%BA-1"><span class="toc-text">磁盘分区</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RAID%E7%9A%84%E5%88%9B%E5%BB%BA"><span class="toc-text">RAID的创建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RAID%E6%93%8D%E4%BD%9C"><span class="toc-text">RAID操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%BC%E5%BC%8F%E5%8C%96%E6%8C%82%E8%BD%BD"><span class="toc-text">格式化挂载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8%E7%BA%BF%E6%89%A9%E5%AE%B9"><span class="toc-text">在线扩容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BC%80%E6%9C%BA%E8%87%AA%E5%8A%A8%E6%8C%82%E8%BD%BD-1"><span class="toc-text">开机自动挂载</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E7%9A%84%E6%89%93%E5%8C%85%E4%B8%8E%E6%8B%86%E8%A7%A3-1"><span class="toc-text">文件的打包与拆解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8systemctl%E5%91%BD%E4%BB%A4%E8%AE%BE%E7%BD%AE%E6%9C%8D%E5%8A%A1%E7%9A%84%E5%BC%80%E6%9C%BA%E8%87%AA%E5%90%AF%E5%8A%A8"><span class="toc-text">使用systemctl命令设置服务的开机自启动</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%B8%E8%BD%BD"><span class="toc-text">卸载</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%B3%BB%E7%BB%9F%E5%B7%A5%E7%A8%8B%E5%B8%88"><span class="toc-text">系统工程师</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#A-1"><span class="toc-text">A</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E9%80%89"><span class="toc-text">单选</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E9%80%89"><span class="toc-text">多选</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E6%93%8D"><span class="toc-text">实操</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B9%B3%E8%A1%A1%E4%BA%8C%E5%8F%89%E6%A0%91"><span class="toc-text">平衡二叉树</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%A8%E6%8E%92%E5%88%97"><span class="toc-text">全排列</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#C"><span class="toc-text">C++</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E8%A7%A3%E6%9E%90%E5%B7%A5%E5%85%B7"><span class="toc-text">文件解析工具</span></a></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="初级研发工程师"><a href="#初级研发工程师" class="headerlink" title="初级研发工程师"></a>初级研发工程师</h1><h2 id="A"><a href="#A" class="headerlink" title="A"></a>A</h2><h3 id="修改主机名称"><a href="#修改主机名称" class="headerlink" title="修改主机名称"></a>修改主机名称</h3><ol>
+<li>修改主机名称为：uos-exam-1-106</li>
+<li>修改root密码为：uos@exam123</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo hostnamectl set-hostname uos-exam-1-106</span><br><span class="line">sudo passwd root uos@exam123</span><br></pre></td></tr></table></figure>
+
+<h3 id="查询网络设定"><a href="#查询网络设定" class="headerlink" title="查询网络设定"></a>查询网络设定</h3><p>查询本机eth0网卡的如下设定信息，并按以下冒号分隔的格式填写，存放在desk用户“桌面”上命名net.txt的文件。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ip:</span><br><span class="line">mac:</span><br><span class="line">netmask:</span><br><span class="line">gateway:</span><br><span class="line">首选DNS:</span><br><span class="line">备选DNS:</span><br><span class="line">nmcli dev show</span><br></pre></td></tr></table></figure>
+
+<h3 id="软件源修改"><a href="#软件源修改" class="headerlink" title="软件源修改"></a>软件源修改</h3><p>备份默认软件源配置文件到同级目录，名称为：106.list.bak。<br>修改默认软件源配置文件，源为: <code>deb http:/mirrors.163.com/deepin/ apricot main contrib non-free</code></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo <span class="built_in">cp</span> /etc/apt/sources.list /etc/apt/106.list.bak</span><br><span class="line">sudo vim /etc/apt/soures.list</span><br><span class="line"><span class="comment"># 修改内容：deb http:/mirrors.163.com/deepin/ apricot main contrib non-free</span></span><br><span class="line">sudo apt update</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用管理器安装软件"><a href="#使用管理器安装软件" class="headerlink" title="使用管理器安装软件"></a>使用管理器安装软件</h3><p>使用apt安装 unbound</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install unbound</span><br></pre></td></tr></table></figure>
+
+<h3 id="设置NTP时间同步"><a href="#设置NTP时间同步" class="headerlink" title="设置NTP时间同步"></a>设置NTP时间同步</h3><p>安装ntpdate，使用ntpdate同步cn.pool.ntp.org时间服务器，把输出的结果保存在/opt/date.txt。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install ntpdate</span><br><span class="line">sudo ntpdate cn.pool.ntp.org &gt; /opt/date.txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="用户管埋"><a href="#用户管埋" class="headerlink" title="用户管埋"></a>用户管埋</h3><p>建立uos-exam组</p>
+<ol>
+<li>添加用户uoskeeper106，指定uos-exam组为属组(基本组)，指定并创建家目录为/home/uoskeeper106。</li>
+<li>添加用户uosmaster106，指定uos-exan组为属组(基本组)，指定并创建家目录为/home/uosmaster106。</li>
+<li>添加uosnologin用户并设置不能交互式登陆。</li>
+<li>修改uosnologin的UD为2020。</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sudo groupadd uos-exam</span><br><span class="line">sudo useradd -g uos-exam -md /home/uoskeeper106 uoskeeper106</span><br><span class="line">sudo useradd -g uos-exam -md /home/uosmaster106 uosmaster106</span><br><span class="line">useradd -m uosnologin -s /sbin/nologin</span><br><span class="line">sudo usermod -u 2020 uosnologin</span><br></pre></td></tr></table></figure>
+
+<h3 id="密码管理"><a href="#密码管理" class="headerlink" title="密码管理"></a>密码管理</h3><p>针对uosmaster106用户做以下设置:</p>
+<ol>
+<li>设置用户7天后可更改密码</li>
+<li>设置用户90天后密码过期</li>
+<li>用户密码过期前15天提醒</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">passwd -n 7 -x 90 -w 15 uosmaster106</span><br><span class="line"></span><br><span class="line">chage -M 90 uosmaster106</span><br><span class="line">chage -m 7 uosmaster106</span><br><span class="line">chage -W 15 uosmaster106</span><br></pre></td></tr></table></figure>
+
+<h3 id="文件的操作"><a href="#文件的操作" class="headerlink" title="文件的操作"></a>文件的操作</h3><ol>
+<li>复制/etc/apt106.list.bak到/opt目录下</li>
+<li>修改/opt/106.list.bak文件的权限:<ol>
+<li>该文件属主属组为root</li>
+<li>uoskeeper106只有读权限</li>
+<li>uosmaster106只有执行权限</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sudo <span class="built_in">cp</span> /etc/apt/106.list.bak /opt</span><br><span class="line">sudo <span class="built_in">chown</span> -R root:root /opt/106.list.bak</span><br><span class="line">sudo getfacl /opt/106.list.bak</span><br><span class="line">setfacl -m u:uoskeeper106:r /opt/106.list.bak</span><br><span class="line">setfacl -m u:uosmaster106:x /opt/106.list.bak</span><br></pre></td></tr></table></figure>
+
+<h3 id="目录的管理"><a href="#目录的管理" class="headerlink" title="目录的管理"></a>目录的管理</h3><p>在/opt目录下创建uosexam目录，该目录属主为：root，属组为uos-exam，权限为775。</p>
+<ol>
+<li>在/opt/uosexam目录下新创建的文件和目录属组固定为: uos-exam。</li>
+<li>在/opt/uosexam目录下uoskeeper106和uosmaster106用户只能管理自己新创建的文件，不能删除和修改对方的文件。<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo <span class="built_in">chown</span> root:uos-exam /opt/uosexam</span><br><span class="line">sudo <span class="built_in">chmod</span> 775 /opt/uosexam</span><br><span class="line">sudo <span class="built_in">chmod</span> g+s /opt/uosexam</span><br><span class="line">sudo <span class="built_in">chmod</span> +t /opt/uosexam</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h3 id="设置计划任务"><a href="#设置计划任务" class="headerlink" title="设置计划任务"></a>设置计划任务</h3><p>对uosmaste106设置计划任务，每天23点59分，执行/bin/echo “UOS is the best system”。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">crontab -e -u uosmaster106</span><br><span class="line"><span class="comment"># 回车 选择3 进入Vim模式</span></span><br><span class="line">59 23 * * * /bin/echo <span class="string">&quot;UOS is the best system&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="文件的查找"><a href="#文件的查找" class="headerlink" title="文件的查找"></a>文件的查找</h3><p>查找名为exam-uos-file.conf的文件，并把此文件的绝对路径写入/opt/pwdin.xt中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find / -name exam-uos-file.conf &gt; /opt/pwdin.txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="磁盘分区"><a href="#磁盘分区" class="headerlink" title="磁盘分区"></a>磁盘分区</h3><ol>
+<li>对/dev/vdb磁盘设备，进行分区为/dev/vdb2，分区大小为5G。</li>
+<li>对新增加的分区/dev/vdb2进行文件系统格式化为“ext4”。</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">fdisk -l</span><br><span class="line">sudo fdisk /dev/vdb2</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">操作中依次输入： n 2 回车 +5G w</span></span><br><span class="line">sudo mkfs.ext4 /dev/vdb2</span><br></pre></td></tr></table></figure>
+
+<h3 id="开机自动挂载"><a href="#开机自动挂载" class="headerlink" title="开机自动挂载"></a>开机自动挂载</h3><ol>
+<li>创建目录/opt/data。</li>
+<li>将/dev/vdb2挂载到/opt/data目录。</li>
+<li>修改fstab配置文件，使用/dev/ydb2的uud配置开机自动挂载。<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> /opt/data</span><br><span class="line">mount /dev/vdb2 /opt/data</span><br><span class="line"><span class="comment"># 使用 blkid 找到 /dev/vdb2的uuid</span></span><br><span class="line">blkid /dev/vdb2</span><br><span class="line"><span class="comment"># 在 /etc/fstab 中写入 </span></span><br><span class="line">UUID=XXXX  /opt/data ext4    defaults        00</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h3 id="gcc的使用"><a href="#gcc的使用" class="headerlink" title="gcc的使用"></a>gcc的使用</h3><p>/opt/exam14目录下C源代码helo.c，实现打印输出”Hello UOS!”。</p>
+<ol>
+<li>使用gcc命令，编译并连接，直接生成可执行文件hello1，执行hello1，查看结果。</li>
+<li>使用gcc命令，先编译hello.c源文件，生成后缀为hello2.o的目标文件。通过目标文件的连接，再生成可执行文件hello2，执行hello2，查看结果。</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gcc hello.c -o hello1</span><br><span class="line">gcc -c hello.c -o hello2.o </span><br><span class="line">gcc hello2.o -o hello2</span><br></pre></td></tr></table></figure>
+
+<h3 id="gdb调试"><a href="#gdb调试" class="headerlink" title="gdb调试"></a>gdb调试</h3><p>opt/exam15目录下将test.c文件编译成包含标准调试信息的文件test。运行生成的可执行文件，观察运行结果，使用gdb调试程序，通过设置断点，单步调试。</p>
+<ol>
+<li>修改源程序，输出结果第一行为：The original string is linux UOS</li>
+<li>修改源程序，输出结果第二行为：The string afterward is SoU xunil</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ gcc -g test.c -o <span class="built_in">test</span></span><br><span class="line">$ gdb <span class="built_in">test</span></span><br><span class="line">===============</span><br><span class="line">gdb &gt; <span class="built_in">set</span> write on</span><br><span class="line"></span><br><span class="line">gdb &gt;  p &lt;变量&gt; = 100 </span><br><span class="line">gdb &gt; <span class="built_in">set</span> var &lt;变量&gt; = 100</span><br><span class="line"></span><br><span class="line">==========</span><br></pre></td></tr></table></figure>
+<p>源程序修改如下：display2函数的for循环大括号中内容修改为</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    string2[size-i<span class="number">-1</span>] = string1[i];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="制作静态库编译main-c"><a href="#制作静态库编译main-c" class="headerlink" title="制作静态库编译main.c"></a>制作静态库编译main.c</h3><p>/opt/exam16目录下有main.cpp、head.h、add.cpp、sub.cpp文件。<br>为add.cpp、sub.cpp文件都生成add.o、sub.o文件，制作静态库libhead.a(生成文件均在/opt/exam16/目录下)。<br>编译main.cpp生成main可执行文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">gcc -c add.cpp -o add.o</span><br><span class="line">gcc -c sub.cpp -o sub.o</span><br><span class="line">ar crv libhead.a add.o sub.o</span><br><span class="line">gcc main.cpp libhead.a -o main -lstdc++</span><br><span class="line">apt install g++</span><br><span class="line">g++ main.cpp libhead.a -o main </span><br></pre></td></tr></table></figure>
+
+<h3 id="制作动态库编译main-c"><a href="#制作动态库编译main-c" class="headerlink" title="制作动态库编译main.c"></a>制作动态库编译main.c</h3><p>/opt/exam17目录下有main.cpp、head.h、add.cpp、sub.cpp。<br>为add.cpp、sub.cpp生成add0、sub0文件。<br>用ado、sub.o文件制作动态库libhead.so文件编译main.cpp生成man可执行文件(生成文件均在/opt/exam17/目录下)</p>
+<p>生成.o</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">g++ -I ./ -c add.cpp</span><br><span class="line">g++ -I ./ -c sub.cpp</span><br><span class="line"></span><br><span class="line">g++ ./*.cpp -fPIC -shared -o subhead.so </span><br><span class="line"><span class="comment"># 或者</span></span><br><span class="line">g++ ./*.o -fPIC -shared -o subhead.so</span><br><span class="line"></span><br><span class="line">g++ *.cpp -L -lhead -o main</span><br></pre></td></tr></table></figure>
+
+<h3 id="编写Makefile"><a href="#编写Makefile" class="headerlink" title="编写Makefile"></a>编写Makefile</h3><p>/opt/exam18目录下，编写Makefile文件进行编译，输出test可执行文件。<br>test文件由目/opt/exam18录下main.c文件、func.h文件和test*c.文件组成。<br>要求在源码/opt/exam18目录下执行make成功可执行文件test，执行test输出对应内容。</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">make:</span></span><br><span class="line">  gcc *.c -o test</span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">  rm -rf *.o</span><br></pre></td></tr></table></figure>
+
+<h3 id="git本地仓库管理"><a href="#git本地仓库管理" class="headerlink" title="git本地仓库管理"></a>git本地仓库管理</h3><p>进入/opt/exam19目录设置本地git仓库。</p>
+<ol>
+<li>设置全局用户名为：Uos。</li>
+<li>设置全局邮箱名为:UoS106@.com。</li>
+<li>在/opt/exam19目录下，创建git本地仓库。</li>
+<li>在/opt/exam19目录下，创建文本文件test.txt编辑文件内容为UOS is the best system。</li>
+<li>将test.txt提交到git仓库。</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">git config --global user.name &lt;user&gt;</span><br><span class="line">git config --global user.email &lt;email&gt;</span><br><span class="line"></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;UOS is the best system&quot;</span> &gt; /opt/exam19/test.txt</span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> /opt/exam19</span><br><span class="line"></span><br><span class="line">git init </span><br><span class="line"></span><br><span class="line">git add .</span><br><span class="line"></span><br><span class="line">git commit -m <span class="string">&quot;init base&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="文件的打包与拆解"><a href="#文件的打包与拆解" class="headerlink" title="文件的打包与拆解"></a>文件的打包与拆解</h3><p>对/Packages目录下Firefox.tar.bz2进行解包。</p>
+<ol>
+<li>解压后的目录移动到/opt/data目录下。</li>
+<li>/opt/data目录进行打包,打包完的名称为“data.tar.gz”存放位置在/opt目录下。</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">tar -xjvf Firefox.tar.bz2  -C  /opt/data</span><br><span class="line">tar -czvf data.tar.gz /opt/data</span><br></pre></td></tr></table></figure>
+
+<h2 id="B"><a href="#B" class="headerlink" title="B"></a>B</h2><h3 id="破解root密码"><a href="#破解root密码" class="headerlink" title="破解root密码"></a>破解root密码</h3><p>1030版本后，已无法使用在grub界面修改参数破解密码，请在左面新建pwd.txt文档并编辑，简要描述使用光盘或者U盘来破解root密码的过程。</p>
+<ol>
+<li>1031以上系统更改密码，需要物理介质（光驱或者U盘）引导进入PE界面。</li>
+<li>开机后进入bios选择物理介质启动。</li>
+<li>到grup界面按tab，删除livecd-installer。</li>
+<li>进入PE创建目录/mnt/systmp,然后将/root挂载到/mnt/systmp。</li>
+<li>chroot /mnt/systmp</li>
+<li>echo $PATH</li>
+<li>passwd命令修改密码</li>
+<li>拔出物理介质，正常启动输入密码</li>
+</ol>
+<h3 id="修改主机名"><a href="#修改主机名" class="headerlink" title="修改主机名"></a>修改主机名</h3><p>修改主机名为uos-exam-112</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo vim /etc/hostname</span><br><span class="line">hostnamectl set-hostname uos-exam-112</span><br></pre></td></tr></table></figure>
+
+<h3 id="网络"><a href="#网络" class="headerlink" title="网络"></a>网络</h3><p>查询主机eth0网卡的如下信息，并按照一下冒号的格式填写，存在desk用户“桌面”上命名，net.txt文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">Ip：			ifconfig</span><br><span class="line">Mac:		ifconfig -a的ether字段</span><br><span class="line">Netmask:		ifconfig 	       <span class="comment">#255.255.0.0</span></span><br><span class="line">Gateway:		ifconfig的网关		<span class="comment">#前缀和ip一样</span></span><br><span class="line">首选DNS:	nmcli dev show或者sudo vim /etc/resolv.conf </span><br><span class="line">备选DNS:	nmcli dev show或者sudo vim /etc/resolv.conf </span><br></pre></td></tr></table></figure>
+
+<h3 id="软件源修改-1"><a href="#软件源修改-1" class="headerlink" title="软件源修改"></a>软件源修改</h3><p>备份默认的软件源配置文件到同级目录，名称为：112.list.bak。<br>配置新的源为：deb <a target="_blank" rel="noopener" href="http://mirrors.163.com/deepin/">http://mirrors.163.com/deepin/</a> apricot main contrib non-free</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo <span class="built_in">cp</span> /etc/apt/source.list  /etc/apt/112.list.bak</span><br><span class="line">sudo vim /etc/apt/source.list</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用管理器安装软件-1"><a href="#使用管理器安装软件-1" class="headerlink" title="使用管理器安装软件"></a>使用管理器安装软件</h3><p>使用apt安装“unbound”</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">apt-get update				<span class="comment">#更新</span></span><br><span class="line">sudo apt-get install unbound		<span class="comment">#安装</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="设置NTP时间同步-1"><a href="#设置NTP时间同步-1" class="headerlink" title="设置NTP时间同步"></a>设置NTP时间同步</h3><p>安装ntpdate<br>使用ntpdate同步cn.pool.ntp.org时间服务器<br>把输出的结果保存在/opt/date.txt</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">apt-get install ntpdate	        <span class="comment">#安装，此处出现问题待解决</span></span><br><span class="line">ntpdate cn.pool.ntp.org &gt; /opt/date.txt</span><br><span class="line"><span class="built_in">cat</span> /opt/date.txt		<span class="comment">#检查是否为空</span></span><br></pre></td></tr></table></figure>
+<h3 id="用户管理"><a href="#用户管理" class="headerlink" title="用户管理"></a>用户管理</h3><p>建立uos-exam组<br>添加用户uoskeeper112和uosmaster112到uos-exam组并指定各自的家目录为/home/uoskeeper112和/home/uosmaster112<br>添加uosnologin用户并设置不能交互式登陆。<br>修改uosnologin的UID为2020</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">groupadd uos-exam	<span class="comment">#创建组</span></span><br><span class="line">useradd -m -G uos-exam -d /home/uoskeeper112 uoskeeper112       <span class="comment">#创建</span></span><br><span class="line">useradd -m -G uos-exam -d /home/uosmaster112 uosmaster112	<span class="comment">#创建</span></span><br><span class="line">sudo useradd -s /usr/sbin/nologin uosnologin			<span class="comment">#创建</span></span><br><span class="line">sudo usermod -u 2020 uosnologin					<span class="comment">#修改UID</span></span><br></pre></td></tr></table></figure>
+<h3 id="文件的操作-1"><a href="#文件的操作-1" class="headerlink" title="文件的操作"></a>文件的操作</h3><p>复制/etc/apt/112.list.bat到/opt<br>修改改文件的权限：<br>此文件的属主属组为root<br>Uoskeeper112只有读权限<br>Uosmaster112只有执行权限</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cp</span> /etc/apt/112.list.bat /opt</span><br><span class="line"><span class="built_in">chown</span> root:root /opt/112.list.bak</span><br><span class="line">setfacl -m u:uoskeeper112:r /opt/112.list.bak</span><br><span class="line">getfacl 112.list.back		<span class="comment">#查看权限是否设置成功</span></span><br><span class="line">setfacl -m u:uosmaster112:x /opt/112.list.bak</span><br><span class="line">getfacl 112.list.back		<span class="comment">#查看权限是否设置成功</span></span><br></pre></td></tr></table></figure>
+<h3 id="设置计划任务-1"><a href="#设置计划任务-1" class="headerlink" title="设置计划任务"></a>设置计划任务</h3><p>对uosmaster112设置计划任务，每天23点59分，执行/bin/echo “UOS is the best system”</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">crontab -u uosmaster112 -e	<span class="comment">#-u表指定用户，-e执行文字编辑器设定</span></span><br><span class="line"><span class="comment"># 首次按“2”或者“3”，不要按“1”</span></span><br><span class="line"><span class="comment"># 输入59 23 * * * /bin/echo &quot;UOS is best system&quot;</span></span><br></pre></td></tr></table></figure>
+<h3 id="文件查找"><a href="#文件查找" class="headerlink" title="文件查找"></a>文件查找</h3><p>查找名为“exam-uos-file.conf”的文件，并把此文件的绝对路劲写入/opt/pwdin.txt中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo find / -name exam-uos-file.conf &gt; /opt/pwdin.txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="文件操作"><a href="#文件操作" class="headerlink" title="文件操作"></a>文件操作</h3><p>进入/opt目录，建立uniontech.txt文件，内容为“UOS is the best system”。要求该文件不能被删除，不能被修改。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">vim /opt/uniontech.txt</span><br><span class="line">UOS is the best system</span><br><span class="line">wq</span><br><span class="line">chattr +i /opt/uniontech.txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="查找"><a href="#查找" class="headerlink" title="查找"></a>查找</h3><p>查找/usr/share目录下所有文件中包含“happyexam”的字符串，并把查出来的行号写入/opt/findcode.txt（注意：只写行号）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">grep -R -n <span class="string">&quot;happyexam&quot;</span> /usr/share/doc/unbound/examples/unbound.conf | awk -F : <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> | sudo <span class="built_in">tee</span> /opt/find.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看是否为正确行数，没有其他字符</span></span><br><span class="line"><span class="built_in">cat</span> /opt/find.txt</span><br><span class="line"></span><br><span class="line"><span class="comment"># &#x27;&#123;print $1&#125;&#x27;中的$数字需要根据实际更改，行是1行号是2</span></span><br><span class="line">grep -R -n <span class="string">&quot;happyexam&quot;</span> /usr/share/doc/unbound/examples/unbound.conf | awk -F : <span class="string">&#x27;&#123;print $1&#125;&#x27;</span> &gt; /opt/find.txt</span><br><span class="line"><span class="built_in">cat</span> /opt/find.txt</span><br></pre></td></tr></table></figure>
+
+<h3 id="磁盘分区-1"><a href="#磁盘分区-1" class="headerlink" title="磁盘分区"></a>磁盘分区</h3><p>13、对22G的磁盘dev/vdb，分4个大小为5G的分区和1个2G的分区。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">fdisk /dev/sdb</span><br><span class="line">n</span><br><span class="line">+5g</span><br><span class="line">n</span><br><span class="line">+5g</span><br><span class="line">n</span><br><span class="line">+5g</span><br><span class="line">n</span><br><span class="line">+5g</span><br><span class="line">n</span><br><span class="line">+2g</span><br><span class="line">w</span><br></pre></td></tr></table></figure>
+
+<h3 id="RAID的创建"><a href="#RAID的创建" class="headerlink" title="RAID的创建"></a>RAID的创建</h3><p>对上一题划分的4块的分区进行RAID5创建，预留最大空间（大于14G），路径名称为“/dev/md5”<br>创建完成后将raid5信息写入/etc/mdadm.conf文件中。<br>执行update-initramfs -u，否则重启后raid5名称会发生变化。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mdadm -C /dev/md5 -a <span class="built_in">yes</span> -l 5 -n 4 /dev/sdb5 /dev/sdb6 /dev/sdb7 /dev/sdb8</span><br><span class="line"><span class="built_in">ls</span> -l /dev/md5			<span class="comment">#查看确认</span></span><br><span class="line">mdadm -D /dev/md5 &gt; /etc/mdadm.conf</span><br><span class="line">update-initramfs -u</span><br></pre></td></tr></table></figure>
+
+<h3 id="RAID操作"><a href="#RAID操作" class="headerlink" title="RAID操作"></a>RAID操作</h3><p>对新加的磁盘阵列“md5”进行逻辑卷制作<br>建物理卷，使用“md5”<br>新建卷组，名称为“uosvg”<br>新建逻辑卷，使用所有卷组容量（大于14G），名称“uoslv”</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pvcreate /dev/md5	<span class="comment">#变成逻辑卷首先要变成物理卷 pvs	查看</span></span><br><span class="line">vgcreate uosvg /dev/md5	<span class="comment">#变成卷组，vgs 查看</span></span><br><span class="line">lvcreate -l +100%free uosvg -n uoslv</span><br></pre></td></tr></table></figure>
+
+<h3 id="格式化挂载"><a href="#格式化挂载" class="headerlink" title="格式化挂载"></a>格式化挂载</h3><p>格式化新添加的逻辑卷并挂载<br>对新添加的逻辑卷进行格式化“ext4”<br>创建目录/opt/data<br>挂载新添加的逻辑卷到上步新建的目录</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkfs.ext4 /dev/uosvg/uoslv		<span class="comment">#格式化</span></span><br><span class="line"><span class="built_in">mkdir</span> /opt/data				<span class="comment">#创建挂载目录</span></span><br><span class="line">mount /dev/uosvg/uoslv /opt/data	<span class="comment">#挂载</span></span><br></pre></td></tr></table></figure>
+<h3 id="在线扩容"><a href="#在线扩容" class="headerlink" title="在线扩容"></a>在线扩容</h3><p>使用13题划分的2G分区，对/opt/data进行在线扩容（大于16G）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pvcreate /dev/sdb9				<span class="comment">#先变成物理分区</span></span><br><span class="line">vgextend uosvg /dev/sdb9			<span class="comment">#对uosvg扩容</span></span><br><span class="line">lvextend -r -l +100%free /dev/uosvg/uoslv	<span class="comment">#对uoslv扩容</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="开机自动挂载-1"><a href="#开机自动挂载-1" class="headerlink" title="开机自动挂载"></a>开机自动挂载</h3><p>修改fstab配置文件实现对新扩容的磁盘阵列的开机自动挂载</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">blkid /dev/uosvg/uoslv				<span class="comment">#查找、复制uuid</span></span><br><span class="line">vim /etc/fstab					<span class="comment">#编辑fatab</span></span><br><span class="line">uuid /opt/data ext4 defaults 0 0		<span class="comment">#输入内容配置自动挂载</span></span><br><span class="line">mount -a					<span class="comment">#检查挂载</span></span><br></pre></td></tr></table></figure>
+<h3 id="文件的打包与拆解-1"><a href="#文件的打包与拆解-1" class="headerlink" title="文件的打包与拆解"></a>文件的打包与拆解</h3><p>对/packages目录下Firefox-latest-x86_64.tar.bz2进行解包，解压后的目录移动到/opt/data。<br>对/opt/data目录进行打包，打包完的名称为“data.tar.gz”存放位置在/opt目录下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tar -jxvf /Packages/Firefox-latest-x86_64.tar.bz2 -C /opt/data</span><br><span class="line">tar -czvf /opt/data.tar.gz /opt/data </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="使用systemctl命令设置服务的开机自启动"><a href="#使用systemctl命令设置服务的开机自启动" class="headerlink" title="使用systemctl命令设置服务的开机自启动"></a>使用systemctl命令设置服务的开机自启动</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo systemctl <span class="built_in">enable</span> ssh</span><br><span class="line">update-rc.d ssh <span class="built_in">enable</span> 2 3 4 5</span><br></pre></td></tr></table></figure>
+
+<h3 id="卸载"><a href="#卸载" class="headerlink" title="卸载"></a>卸载</h3><p>umount 路径<br>删除逻辑卷：</p>
+<ol>
+<li>卸载：umount 挂载路径</li>
+<li>删除逻辑卷：lvremove xxlv</li>
+<li>删除卷组：vgremove xxvg</li>
+<li>删除物理卷：pvremove pv的盘路径</li>
+<li>删除分区：fdisk 盘路径</li>
+<li>d删除分区</li>
+<li>w保存</li>
+</ol>
+<h1 id="系统工程师"><a href="#系统工程师" class="headerlink" title="系统工程师"></a>系统工程师</h1><h2 id="A-1"><a href="#A-1" class="headerlink" title="A"></a>A</h2><h3 id="单选"><a href="#单选" class="headerlink" title="单选"></a>单选</h3><ol>
+<li>申威CPU的架构是(D)<br>A. x86<br>B. mips<br>C. ARM<br>D. Alpha</li>
+</ol>
+<blockquote>
+<p>申威好像是依托于Alpha架构，RISC指令集。</p>
+</blockquote>
+<ol start="2">
+<li><p>以下不是开源许可证的有(C)<br>A. MIT<br>B. GPL<br>C. CC<br>D. BSD</p>
+</li>
+<li><p>假设txt_size 是一个无参数函数，它的返回值是int；Unsigned buf_size = 1024；下面哪个定义是合法的？(B)<br>A. int ia[buf_size];<br>B. int ia[4*7 - 14];<br>C. int ia[txt_size()];<br>D. char st[11] = “fundamental”;</p>
+</li>
+<li><p>一个类的友元函数可以访问类的( D )成员。<br>A. 私有成员<br>B. 保护<br>C. 公有<br>D. 以上都正确</p>
+</li>
+<li><p>下面哪一个不是一种临界区保护机制（C）<br>A. 互斥锁<br>B. 信号量<br>C. 条件变量<br>D. 读写锁</p>
+</li>
+<li><p>龙芯CPU的架构是（B）<br>A. x86<br>B. mips<br>C. ARM<br>D. Alpha</p>
+</li>
+<li><p>下面字面值数据类型说法错误的是？(C)<br>A． L’a’表示为宽字符型字面值a且类型是wchar_t<br>B． 10L表示一个长整形数<br>C． 3.14L表示一个long float类型的扩展精度浮点数（应该是long double）。<br>D． 10. 是一个浮点数</p>
+</li>
+</ol>
+<p>解释以下字面值常量：<br>‘a’：char型字面值               L’a’：wchar_t型字面值<br>“a”：字符串字面值                L”a”：宽字符串字面值<br>10：int型字面值                 10L：long型字面值<br>10u：unsigned型字面值           10uL：unsigned long型字面值<br>012：八进制表示的int型字面值      0xC：十六进制表示的int型字面值<br>3.14：为double型字面值           3.14f：为float型字面值<br>3.14L：为long double型字面值<br>-10.：为double型字面值          -10e-2：为double型字面值<br>-10u：unsigned int型字面值      -10：int型字面值</p>
+<p>非法常量：3.14UL、1024f</p>
+<ol start="8">
+<li><p>使用地址作为实参传给形参，下列说法正确的是（D）。<br>A. 实参是形参的备份<br>B. 实参与形参无联系<br>C. 形参是实参的备份<br>D. 实参与形参是同一对象</p>
+</li>
+<li><p>以下程序运行时，若从键盘输入5，则输出结果是(C) [单选题] *</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">main()&#123; </span><br><span class="line">    <span class="type">int</span> a;</span><br><span class="line">    <span class="built_in">scanf</span>(<span class="string">&quot;%d&quot;</span>, &amp;a);</span><br><span class="line">    <span class="keyword">if</span>(a++ &gt; <span class="number">5</span>) </span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, a);</span><br><span class="line">    <span class="keyword">else</span> </span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, --a);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>A. 7<br>B. 4<br>C. 5<br>D. 6</p>
+</li>
+<li><p>他人修改源代码后必须开源的许可证有 (A) <br>A. LGPL<br>B. BSD<br>C. Apache<br>D. MIT</p>
+</li>
+<li><p>C语言的标识符只能由字母、数字和下划线三种字符组成，且首字符（A）<br>A. 必须为字母或下划线<br>B. 必须为下划线<br>C. 必须为字母<br>D. 可以是字母、数字和下划线中的任一种字符。</p>
+</li>
+<li><p>假定一个类的构造函数为“A(int i=4, int j=0) {a=i;b=j;}”, 则执行“A x (1);”语 句后，x.a和x.b的值分别为（D）<br>A. 4和1<br>B. 4和0<br>C. 1和4<br>D. 1和0</p>
+</li>
+<li><p>对数组名作函数的参数，下面描述正确的是（B）。<br>A. 数组名作函数的参数，调用时将实参数组复制给形参数组<br>B. 数组名作函数的参数，主调函数和被调函数共用一段存储单元<br>C. 数组名作参数时，形参定义的数组长度不能省略<br>D. 数组名作参数，不能改变主调函数中的数据</p>
+</li>
+<li><p>列出当前目录下所有.h的文件，不含子目录（A）。<br>A. ls *.h<br>B. find . -name *.h<br>C. find . -name *.h$<br>D. find . |grep h</p>
+</li>
+<li><p>以下不是开源许可证的有（C）。<br>A. MIT<br>B. GPL<br>C. CC<br>D. BSD</p>
+</li>
+<li><p>extern关键字的作用是什么？（D）<br>A. 声明外部链接<br>B. 声明外部头文件引用<br>C. 声明使用扩展C++语句<br>D. 声明外部成员函数、成员数据</p>
+</li>
+<li><p>以下不是C语言提供的合法关键字为（B）<br>A. switch<br>B. printf<br>C. case<br>D. default</p>
+</li>
+</ol>
+<h3 id="多选"><a href="#多选" class="headerlink" title="多选"></a>多选</h3><ol>
+<li>假如有如下声明，下面哪个调用是合法的（B，C）。<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">double</span> <span class="title function_">cacl</span><span class="params">(<span class="type">double</span>)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">count</span><span class="params">(<span class="type">const</span> <span class="built_in">string</span> &amp;, <span class="type">char</span>)</span>;</span><br><span class="line"><span class="type">int</span> <span class="title function_">sum</span><span class="params">(<span class="built_in">vector</span>::iterator, <span class="built_in">vector</span>::iterator, <span class="type">int</span>)</span></span><br><span class="line"><span class="built_in">vector</span> <span class="title function_">vec</span><span class="params">(<span class="number">10</span>)</span></span><br></pre></td></tr></table></figure>
+A. cacl(23.4, 55.1);<br>B. count(“abcda”,’a’);<br>C. cacl(66);<br>D. sum(vec.begin(), vec.end(), 3.8);</li>
+</ol>
+<h3 id="实操"><a href="#实操" class="headerlink" title="实操"></a>实操</h3><h4 id="平衡二叉树"><a href="#平衡二叉树" class="headerlink" title="平衡二叉树"></a>平衡二叉树</h4><p>输入一棵二叉树的根节点，判断该树是不是平衡二叉树。如果某二叉树中任意节点的左右子树的深度相差不超过1，那么它就是一棵平衡二叉树。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">示例 1:</span><br><span class="line">给定二叉树 [3,9,20,null,null,15,7]</span><br><span class="line">     3</span><br><span class="line">    / \</span><br><span class="line">   9  20</span><br><span class="line">     /  \</span><br><span class="line">    15   7</span><br><span class="line">返回 true 。</span><br><span class="line"> </span><br><span class="line">示例 2:</span><br><span class="line">给定二叉树 [1,2,2,3,3,null,null,4,4]</span><br><span class="line">        1</span><br><span class="line">       / \</span><br><span class="line">      2   2</span><br><span class="line">     / \</span><br><span class="line">    3   3</span><br><span class="line">   / \</span><br><span class="line">  4   4</span><br><span class="line">返回 false 。</span><br></pre></td></tr></table></figure>
+<p>要求：</p>
+<ol>
+<li>使用纯C语言完善exam.h文件，通过所有单元测试</li>
+<li>代码逻辑符合题目要求，判卷评分有更多单元测试项</li>
+<li>除exam.h以外的文件不得修改，修改会被覆盖</li>
+</ol>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifndef</span> EXAM_H</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXAM_H</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;algorithm&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">TreeNode</span> &#123;</span><br><span class="line">    <span class="type">int</span> val;</span><br><span class="line">    TreeNode *left;</span><br><span class="line">    TreeNode *right;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">int</span> <span class="title">depth</span><span class="params">(TreeNode *node)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (node == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> left, right = <span class="number">0</span>;</span><br><span class="line">    left = <span class="built_in">depth</span>(node-&gt;left);</span><br><span class="line">    <span class="keyword">if</span> (left == <span class="number">-1</span>) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    right = <span class="built_in">depth</span>(node-&gt;right);</span><br><span class="line">    <span class="keyword">if</span> (right == <span class="number">-1</span>) <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">abs</span>(left - right) &lt; <span class="number">2</span> ? <span class="built_in">max</span>(left, right) + <span class="number">1</span> : <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">static</span> <span class="type">bool</span> <span class="title">tree_is_balanced</span><span class="params">(TreeNode *root)</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">depth</span>(root) != <span class="number">-1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">// EXAM_H</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="全排列"><a href="#全排列" class="headerlink" title="全排列"></a>全排列</h4><p>无重复字符串的排列组合。编写一种方法，计算某字符串的所有排列组合，字符串每个字符均不相同。并将结果按字符串从小到大排序</p>
+<p>示例1:</p>
+<ul>
+<li>输入：S = “qwe”</li>
+<li>输出：[“eqw”, “ewq”, “qew”, “qwe”, “weq”, “wqe”]</li>
+</ul>
+<p>示例2:</p>
+<ul>
+<li>输入：S = “ab”</li>
+<li>输出：[“ab”, “ba”]</li>
+</ul>
+<p>要求：</p>
+<ol>
+<li>使用纯C语言修改exam.h文件，通过所有单元测试。</li>
+<li>代码逻辑符合题目要求，判卷评分有更多单元测试项。</li>
+<li>输出结果按照字典顺序排序。</li>
+<li>exam.h以外的文件不得修改，修改会被覆盖。<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* exam.h */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifndef</span> EXAM_H</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> EXAM_H</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;algorithm&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> count = <span class="number">0</span></span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="built_in">swap</span>(<span class="type">char</span> *a, <span class="type">char</span> *b)</span><br><span class="line">&#123;</span><br><span class="line">        <span class="type">char</span> t;</span><br><span class="line">        t = *a;</span><br><span class="line">        *a = *b;</span><br><span class="line">        *b = t;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">perm</span><span class="params">(<span class="type">char</span>* p, <span class="type">int</span> from, <span class="type">int</span> to, <span class="type">char</span> ** res)</span> </span></span><br><span class="line"><span class="function"></span>&#123;  </span><br><span class="line">   <span class="keyword">if</span> (from == to)&#123;</span><br><span class="line">      res[res_count] = p</span><br><span class="line">      <span class="comment">// memcpy(res[res_count], p, strlen(p));</span></span><br><span class="line">      count ++;</span><br><span class="line">   &#125;</span><br><span class="line">   <span class="keyword">if</span>(from &lt; to)&#123;</span><br><span class="line">      <span class="keyword">for</span>(<span class="type">int</span> i = from; i &lt;= to; i++)&#123;</span><br><span class="line">            <span class="built_in">swap</span>(&amp;p[i], &amp;p[from]);</span><br><span class="line">            <span class="built_in">perm</span>(p, from + <span class="number">1</span>, to, res);</span><br><span class="line">            <span class="built_in">swap</span>(&amp;p[i], &amp;p[from]);</span><br><span class="line">        &#125;</span><br><span class="line">   &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 返回一个以空字符串结尾的char*数组 */</span></span><br><span class="line"><span class="function"><span class="type">char</span>** <span class="title">permute_string</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* input)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="type">char</span> ** res = <span class="number">0</span>;</span><br><span class="line">    <span class="type">int</span> N = <span class="number">1</span>; <span class="comment">// size of your result</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i =<span class="built_in">strlen</span>(input); i&gt;<span class="number">1</span>; i--)&#123;</span><br><span class="line">        N = N * i;</span><br><span class="line">    &#125;</span><br><span class="line">    res = (<span class="type">char</span>**)<span class="built_in">malloc</span>(<span class="built_in">sizeof</span>(<span class="type">char</span>*) * N);</span><br><span class="line">    </span><br><span class="line">    res[N] = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">// EXAM_H</span></span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h4 id="C"><a href="#C" class="headerlink" title="C++"></a>C++</h4><p>编写一个程序，从命令行读取一个软件包的名称，调用“dpkg -L”命令获得该软件包的文件列表，并检查所有文件。<br>要求：</p>
+<ol>
+<li>使用cmake和c/c++开发</li>
+<li>可执行文件名称和位置是./src/pkgverify</li>
+<li>检查该软件包所有文件，确认：<ul>
+<li>路径存在</li>
+<li>文件存在</li>
+<li>如果是符号链接，链接的文件也存在</li>
+<li>/usr路径下的文件，确认文件属主都是root</li>
+</ul>
+</li>
+<li>输出所有有问题的文件或路径名</li>
+<li>由于qDebug/qInfo等输出方式会添加多余字符，且不在标准输出上，与考试要求不符，请谨慎使用</li>
+<li>testHelper.sh有很少的测试用例，可以帮助做初步验证</li>
+</ol>
+<p>示例：<br>如果/etc/cups路径被删除了，则运行结果如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pkgverify cups</span><br><span class="line">/etc/cups</span><br><span class="line">/etc/cups/snmp.conf</span><br></pre></td></tr></table></figure>
+
+<p>首先编辑考试目录下的CMakeLists.txt</p>
+<figure class="highlight txt"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">CMAKE_MINIMUM_REQUIRED(VERSION 3.5)</span><br><span class="line">PROJECT(exam)</span><br><span class="line"></span><br><span class="line">ADD_SUBDIRECTORY(src)</span><br></pre></td></tr></table></figure>
+<p>编辑src目录下的CMAKELists.txt。</p>
+<figure class="highlight txt"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">cmake_minimum_required(VERSION 3.5)</span><br><span class="line"></span><br><span class="line">project(pkgverify)</span><br><span class="line"></span><br><span class="line">SET(CMAKE_INCLUDE_CURRENT_DIR ON)</span><br><span class="line">SET(CMAKE_CXX_STANDARD 11)</span><br><span class="line">SET(CMAKE_CXX_STANDARD_REQUIRED ON)</span><br><span class="line">SET(CMAKE_BUILD_TYPE Debug)</span><br><span class="line"></span><br><span class="line">set(exam_SOURCE</span><br><span class="line">        $&#123;CMAKE_CURRENT_SOURCE_DIR&#125;/dpkg.cpp</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">add_executable($&#123;PROJECT_NAME&#125; $&#123;exam_SOURCE&#125;)</span><br></pre></td></tr></table></figure>
+
+<p>在考试目录下执行cmake命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cmake -S . -B build</span><br><span class="line"><span class="comment"># cd build</span></span><br><span class="line"><span class="comment"># make</span></span><br><span class="line"><span class="comment"># ./src/pkgverify</span></span><br></pre></td></tr></table></figure>
+
+<p>编辑src/main.cpp文件</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstring&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;sys/stat.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;unistd.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span> **argv)</span> </span>&#123;</span><br><span class="line">    string command = <span class="string">&quot;dpkg -L &quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (argc == <span class="number">2</span>) &#123;</span><br><span class="line">        command += argv[<span class="number">1</span>];</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (argc &gt; <span class="number">2</span>) &#123;</span><br><span class="line">        cout &lt;&lt; <span class="string">&quot;To many packages. &quot;</span> &lt;&lt; endl;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        cout &lt;&lt; <span class="string">&quot;Expect one package&quot;</span> &lt;&lt; endl;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    FILE *fstream = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="type">char</span> buffer[<span class="number">1024</span>];</span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">stat</span> file_stat&#123;&#125;;</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">nullptr</span> == (fstream = <span class="built_in">popen</span>(command.<span class="built_in">c_str</span>(), <span class="string">&quot;r&quot;</span>))) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (<span class="literal">nullptr</span> != <span class="built_in">fgets</span>(buffer, <span class="built_in">sizeof</span>(buffer), fstream)) &#123;</span><br><span class="line">        buffer[<span class="built_in">strlen</span>(buffer) - <span class="number">1</span>] = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">access</span>(buffer, F_OK) == <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (<span class="built_in">strncmp</span>(buffer, <span class="string">&quot;/usr/&quot;</span>, <span class="number">5</span>) == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="built_in">stat</span>(buffer, &amp;file_stat);</span><br><span class="line">                <span class="keyword">if</span> (file_stat.st_uid == <span class="number">0</span>) &#123;</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%s\n&quot;</span>, buffer);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后进入build目录执行make，再将pkgverify可执行文件复制到src下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> build</span><br><span class="line">make</span><br><span class="line"><span class="built_in">cp</span> ./src/pkgverify ../src/</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="文件解析工具"><a href="#文件解析工具" class="headerlink" title="文件解析工具"></a>文件解析工具</h4><p>遵循 <a target="_blank" rel="noopener" href="https://specifications.freedesktop.org/desktop-entry-spec/latest/">https://specifications.freedesktop.org/desktop-entry-spec/latest/</a> 标准实现一个desktop文件解析工具</p>
+<p>功能要求</p>
+<ul>
+<li>desktop文件格式无错误时进程退出码为0</li>
+<li>实现对desktop文件Name(程序名称)、Exec(可执行文件)、Icon(图标文件)三个字段的解析</li>
+<li>需要检测文件的格式，遇到错误时以退出码 1 退出进程</li>
+<li>输入接收一个desktop文件的绝对路径，能够输出程序名称、图标文件（图标文件不考虑从系统图标主题中查找）</li>
+<li>能够在指定一个desktop文件后启动进程，且允许为其指定参数</li>
+</ul>
+<p>其它要求</p>
+<ul>
+<li>使用cmake构建工程</li>
+<li>可执行文件位置和名称为：./src/freedesktop</li>
+<li>testHelper.sh有很少的测试用例，可以帮助做初步验证</li>
+</ul>
+<p>示例</p>
+<ul>
+<li><p>a.desktop文件内容为:<br> [Desktop Entry]<br> Name=A;<br> Name[zh_CN]=”我是A”;<br> Exec=cat %f<br> Icon=/tmp/a.png</p>
+</li>
+<li><p>输入参数（-d指定desktop文件的绝对路径，-n表示要获取应用程序名称）：<br> freedesktop -d /home/a/a.desktop -n</p>
+</li>
+<li><p>输出结果：<br> A或我是A（中文环境下，注意应该去掉引号）</p>
+</li>
+<li><p>输入参数（-i表示要获取应用程序的图标）<br> freedesktop -d /home/a/a.desktop -i</p>
+</li>
+<li><p>输出结果（如图标数据不是一个文件路径，则先将图标文件保存为文件后再返回此文件的绝对路径）：<br> /tmp/a.png</p>
+</li>
+<li><p>输入参数（-e表示要启动此应用程序，其后可根一个或多个传入参数）<br> freedesktop -d /home/a/a.desktop -e /home/a/test.txt</p>
+</li>
+<li><p>输出结果：<br> 输出结果为 /home/a/test.txt 文件的内容，也就是Exec命令执行时对标准输出通道所写入的全部数据</p>
+</li>
+</ul>
+<p>安装依赖</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">apt install libicu-dev</span><br><span class="line">apt install libsimpleini-dev</span><br></pre></td></tr></table></figure>
+
+<p>CMakeLists.txt</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">cmake_minimum_required(VERSION 3.5)</span><br><span class="line"></span><br><span class="line">project(freedesktop)</span><br><span class="line"></span><br><span class="line">SET(CMAKE_INCLUDE_CURRENT_DIR ON)</span><br><span class="line">SET(CMAKE_CXX_STANDARD 11)</span><br><span class="line">SET(CMAKE_CXX_STANDARD_REQUIRED ON)</span><br><span class="line">SET(CMAKE_BUILD_TYPE Debug)</span><br><span class="line"></span><br><span class="line">set(exam_SOURCE</span><br><span class="line">        $&#123;CMAKE_CURRENT_SOURCE_DIR&#125;/desktop.cpp</span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line">add_executable($&#123;PROJECT_NAME&#125; $&#123;exam_SOURCE&#125;)</span><br><span class="line"></span><br><span class="line">target_link_libraries($&#123;PROJECT_NAME&#125; simpleini)</span><br></pre></td></tr></table></figure>
+
+<p>代码</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;SimpleIni.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">using</span> <span class="keyword">namespace</span> std;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span> *argv[])</span> </span>&#123;</span><br><span class="line">    <span class="type">int</span> opt;</span><br><span class="line">    <span class="type">char</span> <span class="type">const</span> *args = <span class="string">&quot;d:nie::&quot;</span>;</span><br><span class="line">    string run_arg;</span><br><span class="line">    string file_path;</span><br><span class="line">    <span class="type">bool</span> get_name, get_icon, run = <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">while</span> ((opt = <span class="built_in">getopt</span>(argc, argv, args)) != <span class="number">-1</span>) &#123;</span><br><span class="line">        <span class="keyword">switch</span> (opt) &#123;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&#x27;d&#x27;</span>:</span><br><span class="line">                file_path = optarg;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&#x27;n&#x27;</span>:</span><br><span class="line">                get_name = <span class="literal">true</span>;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&#x27;i&#x27;</span>:</span><br><span class="line">                get_icon = <span class="literal">true</span>;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">case</span> <span class="string">&#x27;e&#x27;</span>:</span><br><span class="line">                run = <span class="literal">true</span>;</span><br><span class="line">                run_arg = optarg;</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">default</span>:</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//    string validate = &quot;desktop-file-validate &quot; + file_path;</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//    if (system(validate.c_str()) != 0) &#123;</span></span><br><span class="line"><span class="comment">//        cout &lt;&lt; &quot;validate desktop file failed!&quot; &lt;&lt; endl;</span></span><br><span class="line"><span class="comment">//        return -1;</span></span><br><span class="line"><span class="comment">//    &#125;</span></span><br><span class="line"></span><br><span class="line">    CSimpleIniA ini;</span><br><span class="line">    ini.<span class="built_in">SetUnicode</span>();</span><br><span class="line">    SI_Error rc = ini.<span class="built_in">LoadFile</span>(file_path.<span class="built_in">c_str</span>());</span><br><span class="line">    <span class="keyword">if</span> (rc &lt; <span class="number">0</span>) &#123;</span><br><span class="line">        cout &lt;&lt; <span class="string">&quot;error&quot;</span> &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (get_name) &#123;</span><br><span class="line">        string value = ini.<span class="built_in">GetValue</span>(<span class="string">&quot;Desktop Entry&quot;</span>, <span class="string">&quot;Name&quot;</span>);</span><br><span class="line">        cout &lt;&lt; value &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (get_icon) &#123;</span><br><span class="line">        string icon = ini.<span class="built_in">GetValue</span>(<span class="string">&quot;Desktop Entry&quot;</span>, <span class="string">&quot;Icon&quot;</span>);</span><br><span class="line">        cout &lt;&lt; icon &lt;&lt; endl;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (run) &#123;</span><br><span class="line">        string command = ini.<span class="built_in">GetValue</span>(<span class="string">&quot;Desktop Entry&quot;</span>, <span class="string">&quot;Exec&quot;</span>);</span><br><span class="line">        cout &lt;&lt; command &lt;&lt; endl;</span><br><span class="line">        <span class="built_in">system</span>((command + <span class="string">&quot; &quot;</span> + run_arg).<span class="built_in">c_str</span>());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/UOS/" rel="tag">UOS</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    data-tooltip="OVS流量分析"
+                    aria-label="PREVIOUS: OVS流量分析"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    data-tooltip="你不知道的Nova之CPU拓扑"
+                    aria-label="NEXT: 你不知道的Nova之CPU拓扑"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/&amp;title=UOS考试"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/07/01/UOS考试/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    data-tooltip="OVS流量分析"
+                    aria-label="PREVIOUS: OVS流量分析"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/06/20/%E4%BD%A0%E4%B8%8D%E7%9F%A5%E9%81%93%E7%9A%84Nova%E4%B9%8BCPU%E6%8B%93%E6%89%91/"
+                    data-tooltip="你不知道的Nova之CPU拓扑"
+                    aria-label="NEXT: 你不知道的Nova之CPU拓扑"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/&amp;title=UOS考试"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/&amp;title=UOS考试"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

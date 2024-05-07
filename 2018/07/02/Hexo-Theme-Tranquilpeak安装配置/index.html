@@ -1,0 +1,716 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Hexo Theme Tranquilpeak安装配置 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Hexo">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n安装下载安装下载主题：hexo-theme-tranquilpeak，解压缩之后重命名为tranquilpeak复制到博客themes目录下。\nGit安装采用git的方式获取，这样可以随时pull最新的版本。\n123456789cd &lt;hexo dir&gt;git submodule add https://github.com/LouisBarranqueiro/tranquilpeak-hexo-theme themes/tranquilpeakcd themes/tranquilpeak# install bower and grunt if not installednpm install -g bower grunt-clinpm installbower installgrunt build\n\nHexo设置修改Hexo的_config.yml。\n1theme: tranquilpeak\n\nTranquilpeak设置修改Tranquilpeak的_config.yml。\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990# 图片存储路径image_dir: assets/images # 侧边栏sidebar:    menu:        home:            title: global.home            url: /            icon: fa fa-home        categories:            title: global.categories            url: /all-categories            icon: fa fa-bookmark        tags:            title: global.tags            url: /all-tags            icon: fa fa-tags        archives:            title: global.archives            url: /all-archives            icon: fa fa-archive        search:            title: global.search            url: /#search            icon: fa fa-search            class: open-algolia-search        about:            title: global.about            url: /#about            icon: fa fa-question    author_links:        github:            title: global.github            url: https://github.com/wangkuntian            icon: fab fa-github        mail:            title: global.mail            url: mailto:wangkuntian1994@163.com            icon: fa fa-envelope    rss:        rss:            title: global.rss            url: /atom.xml            icon: fa fa-rss# 头header:    right_link:        url: /#about        icon:        class:# 作者author:    email: wangkuntian1994@163.com    location: Beijing    picture: faker.jpg# 分享sharing_options:   weibo:       title: &quot;Weibo&quot;       icon: &quot;fab fa-weibo&quot;       url: &quot;http://service.weibo.com/share/share.php?&amp;title=&#123;&#123;post.permalink&#125;&#125;&quot;   qq:       title: &quot;QQ&quot;       icon: &quot;fab fa-qq&quot;       url: &quot;http://connect.qq.com/widget/shareqq/index.html?url=&#123;&#123;post.permalink&#125;&#125;&amp;title=&#123;&#123;post.title&#125;&#125;&quot;   qzone:       title: &quot;Qzone&quot;       icon: &quot;fa fa-star&quot;       url: &quot;http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=&#123;&#123;post.permalink&#125;&#125;&quot;# 评论系统valine:  enable: true  appId: xxxxxxx  appKey: xxxxxxx  placeholder: ヾﾉ≧∀≦)o来啊，快活啊!   notify: false # mail notifier  verify: false # Verification code  avatar: wavatar  pageSize: 10  lang: zh-cn  visitor: true  highlight: true# 谷歌分析google_analytics_id: xxxxxxx\n\n自定义设置thumbnailImageTranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。\n修改Tranquilpeak目录layout/_partial/index.ejs\n123456var thumbnailImageUrl = null;if (post.thumbnailImage != null) &#123;    // 修改文章图片的路径    // url_for在路径前加上根路径    thumbnailImageUrl = url_for(post.thumbnailImage);&#125;\n修改Tranquilpeak目录layout/_partial/post/header-cover.ejs\n123456789101112&lt;%    // Generate cover image url    var coverImageUrl;    if (post.coverImage) &#123;        if (is_remote_url(post.coverImage)) &#123;            coverImageUrl = post.coverImage;        &#125;        else &#123;            coverImageUrl = url_for(post.coverImage);        &#125;%&gt;\n\n\n增加Valine评论系统Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。\n修改Tranquilpeak目录layout/_partial/post.ejs\n123456// 在文件最后面添加&lt;div class=&quot;main-content-wrap&quot;&gt;    &lt;% if (theme.valine.enable) &#123; %&gt;        &lt;%- partial(&#x27;post/valine&#x27;) %&gt;      &lt;% &#125; %&gt;&lt;/div&gt;\n\n新建文件layout/_partial/post/valine.ejs\n123456789101112131415161718192021&lt;script src=&quot;//cdn1.lncld.net/static/js/3.0.4/av-min.js&quot;&gt;&lt;/script&gt;&lt;script src=&#x27;//unpkg.com/valine/dist/Valine.min.js&#x27;&gt;&lt;/script&gt;&lt;div id=&quot;vcomments&quot;&gt;&lt;/div&gt;&lt;script&gt;    new Valine(&#123;        el: &#x27;#vcomments&#x27;,          appId: &#x27;&lt;%= theme.valine.appId %&gt;&#x27;,        appKey: &#x27;&lt;%= theme.valine.appKey %&gt;&#x27;,         placeholder: &#x27;&lt;%= theme.valine.placeholder %&gt;&#x27; ,        notify: &#x27;&lt;%= theme.valine.notify %&gt;&#x27;,        verity: &#x27;&lt;%= theme.valine.verity %&gt;&#x27;,        path: window.location.pathname,        avatar: &#x27;&lt;%= theme.valine.avatar %&gt;&#x27;,        meta: [&#x27;nick&#x27;,&#x27;mail&#x27;,&#x27;link&#x27;],        pageSize: &#x27;&lt;%= theme.valine.pageSize %&gt;&#x27;,        lang: &#x27;&lt;%= theme.valine.lang %&gt;&#x27;,        visitor: &#x27;&lt;%= theme.valine.visitor %&gt;&#x27;,        highlight: &#x27;&lt;%= theme.valine.highlight %&gt;&#x27;    &#125;);&lt;/script&gt;\n\n设置语言Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。\n在Tranquilpeak目录languages新建zh-en.yml文件。\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061626364656667686970717273747576777879808182# date format displayed everywhere in the blogdate_format: &quot;MMM DD, YYYY&quot;global:    home: &quot;Home&quot;    categories: &quot;Categories&quot;    category: &quot;Category&quot;    tags: &quot;Tags&quot;    tag: &quot;Tag&quot;    archives: &quot;Archives&quot;    search: &quot;Search&quot;    about: &quot;About&quot;    author_picture: &quot;Author&#x27;s picture&quot;    github: &quot;GitHub&quot;    stack_overflow: &quot;Stack Overflow&quot;    twitter: &quot;Twitter&quot;    facebook: &quot;Facebook&quot;    google_plus: &quot;Google +&quot;    weibo: &quot;Weibo&quot;    qq: &quot;QQ&quot;    qzone: &quot;Qzone&quot;    renren: &quot;Renren&quot;    vk: &quot;VK&quot;    odnoklassniki: &quot;Odnoklassniki&quot;    linkedin: &quot;LinkedIn&quot;    mail: &quot;Mail&quot;    rss: &quot;RSS&quot;    share_on_facebook: &quot;Share on Facebook&quot;    share_on_twitter: &quot;Share on Twitter&quot;    share_on_google_plus: &quot;Share on Google+&quot;    share_on_weibo: &quot;Share on Weibo&quot;    share_on_qq: &quot;Share on QQ&quot;    share_on_qzone: &quot;Share on Qzone&quot;    share_on_renren: &quot;Share on Renren&quot;    share_on_vk: &quot;Share on VK&quot;    share_on_odnoklassniki: &quot;Share on Odnoklassniki&quot;    search_category: &quot;Search category&quot;    search_tag: &quot;Search tag&quot;    search_date: &quot;Search date (YYYY/MM/DD)&quot;    posts_found:        zero: &quot;no post found&quot;        one: &quot;1 post found&quot;        other: &quot;&#123;n&#125; posts found&quot;    categories_found:        zero: &quot;no category found&quot;        one: &quot;1 cartegory found&quot;        other: &quot;&#123;n&#125; categories found&quot;    tags_found:        zero: &quot;no tag found&quot;        one: &quot;1 tag found&quot;        other: &quot;&#123;n&#125; tags found&quot;pagination:    page: &quot;page %d&quot;    of: &quot;of %d&quot;    newer_posts: &quot;上一页&quot;    older_posts: &quot;下一页&quot;    previous: &quot;PREVIOUS&quot;    next: &quot;NEXT&quot;post:    no_title : &quot;no title&quot;    categorized_in: &quot;in&quot;    tagged_in: &quot;TAGGED IN&quot;    toc: &quot;目录&quot;    back_to_top: &quot;Back to top&quot;    read_more: &quot;Continue reading&quot;    go_to_website: &quot;Go to website&quot;    comment_and_share: &quot;Comment and share&quot;    comment: &quot;Leave a comment&quot;    share: &quot;Share this post&quot;    gallery: &quot;Gallery&quot;    image:        one: &quot;image&quot;        other: &quot;%d images&quot;author:    # Your biography (Markdown and HTML supported)    bio: &quot;Hi&quot;    # Your job    job: &quot;Software Engineer&quot;\n最后在Hexo的_config.yml设置一下语言。\n1language: zh-en","dateCreated":"2018-07-02T17:20:29+08:00","dateModified":"2023-09-21T14:04:55+08:00","datePublished":"2018-07-02T17:20:29+08:00","description":"Hexo Theme Tranquilpeak安装配置","headline":"Hexo Theme Tranquilpeak安装配置","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/","keywords":"Hexo","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Hexo Theme Tranquilpeak安装配置">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Hexo Theme Tranquilpeak安装配置">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Hexo Theme Tranquilpeak安装配置">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-07-02T09:20:29.000Z">
+<meta property="article:modified_time" content="2023-09-21T06:04:55.040Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Hexo">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Hexo Theme Tranquilpeak安装配置
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-07-02T17:20:29+08:00">
+	
+		    Jul 02, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%89%E8%A3%85"><span class="toc-text">安装</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%8B%E8%BD%BD%E5%AE%89%E8%A3%85"><span class="toc-text">下载安装</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Git%E5%AE%89%E8%A3%85"><span class="toc-text">Git安装</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Hexo%E8%AE%BE%E7%BD%AE"><span class="toc-text">Hexo设置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Tranquilpeak%E8%AE%BE%E7%BD%AE"><span class="toc-text">Tranquilpeak设置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89"><span class="toc-text">自定义</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AEthumbnailImage"><span class="toc-text">设置thumbnailImage</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A2%9E%E5%8A%A0Valine%E8%AF%84%E8%AE%BA%E7%B3%BB%E7%BB%9F"><span class="toc-text">增加Valine评论系统</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AE%E8%AF%AD%E8%A8%80"><span class="toc-text">设置语言</span></a></li></ol></li></ol>
+<h3 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h3><h4 id="下载安装"><a href="#下载安装" class="headerlink" title="下载安装"></a>下载安装</h4><p>下载主题：<a target="_blank" rel="noopener" href="https://github.com/LouisBarranqueiro/hexo-theme-tranquilpeak/releases">hexo-theme-tranquilpeak</a>，解压缩之后重命名为tranquilpeak复制到博客themes目录下。</p>
+<h4 id="Git安装"><a href="#Git安装" class="headerlink" title="Git安装"></a>Git安装</h4><p>采用git的方式获取，这样可以随时pull最新的版本。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> &lt;hexo <span class="built_in">dir</span>&gt;</span><br><span class="line">git submodule add https://github.com/LouisBarranqueiro/tranquilpeak-hexo-theme themes/tranquilpeak</span><br><span class="line"><span class="built_in">cd</span> themes/tranquilpeak</span><br><span class="line"></span><br><span class="line"><span class="comment"># install bower and grunt if not installed</span></span><br><span class="line">npm install -g bower grunt-cli</span><br><span class="line">npm install</span><br><span class="line">bower install</span><br><span class="line">grunt build</span><br></pre></td></tr></table></figure>
+
+<h3 id="Hexo设置"><a href="#Hexo设置" class="headerlink" title="Hexo设置"></a>Hexo设置</h3><p>修改Hexo的_config.yml。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">theme:</span> <span class="string">tranquilpeak</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Tranquilpeak设置"><a href="#Tranquilpeak设置" class="headerlink" title="Tranquilpeak设置"></a>Tranquilpeak设置</h3><p>修改Tranquilpeak的_config.yml。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 图片存储路径</span></span><br><span class="line"><span class="attr">image_dir:</span> <span class="string">assets/images</span> </span><br><span class="line"></span><br><span class="line"><span class="comment"># 侧边栏</span></span><br><span class="line"><span class="attr">sidebar:</span></span><br><span class="line">    <span class="attr">menu:</span></span><br><span class="line">        <span class="attr">home:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.home</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-home</span></span><br><span class="line">        <span class="attr">categories:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.categories</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/all-categories</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-bookmark</span></span><br><span class="line">        <span class="attr">tags:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.tags</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/all-tags</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-tags</span></span><br><span class="line">        <span class="attr">archives:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.archives</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/all-archives</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-archive</span></span><br><span class="line">        <span class="attr">search:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.search</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/#search</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-search</span></span><br><span class="line">            <span class="attr">class:</span> <span class="string">open-algolia-search</span></span><br><span class="line">        <span class="attr">about:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.about</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/#about</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-question</span></span><br><span class="line">    <span class="attr">author_links:</span></span><br><span class="line">        <span class="attr">github:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.github</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">https://github.com/wangkuntian</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fab</span> <span class="string">fa-github</span></span><br><span class="line">        <span class="attr">mail:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.mail</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">mailto:wangkuntian1994@163.com</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-envelope</span></span><br><span class="line">    <span class="attr">rss:</span></span><br><span class="line">        <span class="attr">rss:</span></span><br><span class="line">            <span class="attr">title:</span> <span class="string">global.rss</span></span><br><span class="line">            <span class="attr">url:</span> <span class="string">/atom.xml</span></span><br><span class="line">            <span class="attr">icon:</span> <span class="string">fa</span> <span class="string">fa-rss</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 头</span></span><br><span class="line"><span class="attr">header:</span></span><br><span class="line">    <span class="attr">right_link:</span></span><br><span class="line">        <span class="attr">url:</span> <span class="string">/#about</span></span><br><span class="line">        <span class="attr">icon:</span></span><br><span class="line">        <span class="attr">class:</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 作者</span></span><br><span class="line"><span class="attr">author:</span></span><br><span class="line">    <span class="attr">email:</span> <span class="string">wangkuntian1994@163.com</span></span><br><span class="line">    <span class="attr">location:</span> <span class="string">Beijing</span></span><br><span class="line">    <span class="attr">picture:</span> <span class="string">faker.jpg</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 分享</span></span><br><span class="line"><span class="attr">sharing_options:</span></span><br><span class="line">   <span class="attr">weibo:</span></span><br><span class="line">       <span class="attr">title:</span> <span class="string">&quot;Weibo&quot;</span></span><br><span class="line">       <span class="attr">icon:</span> <span class="string">&quot;fab fa-weibo&quot;</span></span><br><span class="line">       <span class="attr">url:</span> <span class="string">&quot;http://service.weibo.com/share/share.php?&amp;title=<span class="template-variable">&#123;&#123;post.permalink&#125;&#125;</span>&quot;</span></span><br><span class="line">   <span class="attr">qq:</span></span><br><span class="line">       <span class="attr">title:</span> <span class="string">&quot;QQ&quot;</span></span><br><span class="line">       <span class="attr">icon:</span> <span class="string">&quot;fab fa-qq&quot;</span></span><br><span class="line">       <span class="attr">url:</span> <span class="string">&quot;http://connect.qq.com/widget/shareqq/index.html?url=<span class="template-variable">&#123;&#123;post.permalink&#125;&#125;</span>&amp;title=<span class="template-variable">&#123;&#123;post.title&#125;&#125;</span>&quot;</span></span><br><span class="line">   <span class="attr">qzone:</span></span><br><span class="line">       <span class="attr">title:</span> <span class="string">&quot;Qzone&quot;</span></span><br><span class="line">       <span class="attr">icon:</span> <span class="string">&quot;fa fa-star&quot;</span></span><br><span class="line">       <span class="attr">url:</span> <span class="string">&quot;http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=<span class="template-variable">&#123;&#123;post.permalink&#125;&#125;</span>&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 评论系统</span></span><br><span class="line"><span class="attr">valine:</span></span><br><span class="line">  <span class="attr">enable:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">appId:</span> <span class="string">xxxxxxx</span></span><br><span class="line">  <span class="attr">appKey:</span> <span class="string">xxxxxxx</span></span><br><span class="line">  <span class="attr">placeholder:</span> <span class="string">ヾﾉ≧∀≦)o来啊，快活啊!</span> </span><br><span class="line">  <span class="attr">notify:</span> <span class="literal">false</span> <span class="comment"># mail notifier</span></span><br><span class="line">  <span class="attr">verify:</span> <span class="literal">false</span> <span class="comment"># Verification code</span></span><br><span class="line">  <span class="attr">avatar:</span> <span class="string">wavatar</span></span><br><span class="line">  <span class="attr">pageSize:</span> <span class="number">10</span></span><br><span class="line">  <span class="attr">lang:</span> <span class="string">zh-cn</span></span><br><span class="line">  <span class="attr">visitor:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">highlight:</span> <span class="literal">true</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 谷歌分析</span></span><br><span class="line"><span class="attr">google_analytics_id:</span> <span class="string">xxxxxxx</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="自定义"><a href="#自定义" class="headerlink" title="自定义"></a>自定义</h3><h4 id="设置thumbnailImage"><a href="#设置thumbnailImage" class="headerlink" title="设置thumbnailImage"></a>设置thumbnailImage</h4><p>Tranquilpeak的thumbnailImage和coverImage的路径是相对路径，默认文章的thumbnailImage和coverImage只能从这篇文章的文件中加载，为了方便我把这个路径改为绝对路径。</p>
+<p>修改Tranquilpeak目录layout/_partial/index.ejs</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> thumbnailImageUrl = <span class="literal">null</span>;</span><br><span class="line"><span class="keyword">if</span> (post.<span class="property">thumbnailImage</span> != <span class="literal">null</span>) &#123;</span><br><span class="line">    <span class="comment">// 修改文章图片的路径</span></span><br><span class="line">    <span class="comment">// url_for在路径前加上根路径</span></span><br><span class="line">    thumbnailImageUrl = <span class="title function_">url_for</span>(post.<span class="property">thumbnailImage</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>修改Tranquilpeak目录layout/_partial/post/header-cover.ejs</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&lt;%</span><br><span class="line">    <span class="comment">// Generate cover image url</span></span><br><span class="line">    <span class="keyword">var</span> coverImageUrl;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (post.<span class="property">coverImage</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (<span class="title function_">is_remote_url</span>(post.<span class="property">coverImage</span>)) &#123;</span><br><span class="line">            coverImageUrl = post.<span class="property">coverImage</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> &#123;</span><br><span class="line">            coverImageUrl = <span class="title function_">url_for</span>(post.<span class="property">coverImage</span>);</span><br><span class="line">        &#125;</span><br><span class="line">%&gt;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="增加Valine评论系统"><a href="#增加Valine评论系统" class="headerlink" title="增加Valine评论系统"></a>增加Valine评论系统</h4><p>Tranquilpeak没有适配Valine评论系统，为此添加Valine评论系统的适配。</p>
+<p>修改Tranquilpeak目录layout/_partial/post.ejs</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 在文件最后面添加</span></span><br><span class="line">&lt;div <span class="keyword">class</span>=<span class="string">&quot;main-content-wrap&quot;</span>&gt;</span><br><span class="line">    &lt;% <span class="keyword">if</span> (theme.<span class="property">valine</span>.<span class="property">enable</span>) &#123; %&gt;</span><br><span class="line">        &lt;%- <span class="title function_">partial</span>(<span class="string">&#x27;post/valine&#x27;</span>) %&gt;  </span><br><span class="line">    &lt;% &#125; %&gt;</span><br><span class="line">&lt;/div&gt;</span><br></pre></td></tr></table></figure>
+
+<p>新建文件layout/_partial/post/valine.ejs</p>
+<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">&lt;script src=<span class="string">&quot;//cdn1.lncld.net/static/js/3.0.4/av-min.js&quot;</span>&gt;&lt;/script&gt;</span><br><span class="line"><span class="language-xml"><span class="tag">&lt;<span class="name">script</span> <span class="attr">src</span>=<span class="string">&#x27;//unpkg.com/valine/dist/Valine.min.js&#x27;</span>&gt;</span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span></span><br><span class="line"><span class="language-xml"><span class="tag">&lt;<span class="name">div</span> <span class="attr">id</span>=<span class="string">&quot;vcomments&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">div</span>&gt;</span></span></span><br><span class="line"><span class="language-xml"><span class="tag">&lt;<span class="name">script</span>&gt;</span><span class="language-javascript"></span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">    <span class="keyword">new</span> <span class="title class_">Valine</span>(&#123;</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">el</span>: <span class="string">&#x27;#vcomments&#x27;</span>,  </span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">appId</span>: <span class="string">&#x27;&lt;%= theme.valine.appId %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">appKey</span>: <span class="string">&#x27;&lt;%= theme.valine.appKey %&gt;&#x27;</span>, </span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">placeholder</span>: <span class="string">&#x27;&lt;%= theme.valine.placeholder %&gt;&#x27;</span> ,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">notify</span>: <span class="string">&#x27;&lt;%= theme.valine.notify %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">verity</span>: <span class="string">&#x27;&lt;%= theme.valine.verity %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">path</span>: <span class="variable language_">window</span>.<span class="property">location</span>.<span class="property">pathname</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">avatar</span>: <span class="string">&#x27;&lt;%= theme.valine.avatar %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">meta</span>: [<span class="string">&#x27;nick&#x27;</span>,<span class="string">&#x27;mail&#x27;</span>,<span class="string">&#x27;link&#x27;</span>],</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">pageSize</span>: <span class="string">&#x27;&lt;%= theme.valine.pageSize %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">lang</span>: <span class="string">&#x27;&lt;%= theme.valine.lang %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">visitor</span>: <span class="string">&#x27;&lt;%= theme.valine.visitor %&gt;&#x27;</span>,</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">        <span class="attr">highlight</span>: <span class="string">&#x27;&lt;%= theme.valine.highlight %&gt;&#x27;</span></span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml"></span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml">    &#125;);</span></span></span><br><span class="line"><span class="language-javascript"><span class="language-xml"></span><span class="tag">&lt;/<span class="name">script</span>&gt;</span></span></span><br></pre></td></tr></table></figure>
+
+<h4 id="设置语言"><a href="#设置语言" class="headerlink" title="设置语言"></a>设置语言</h4><p>Tranquilpeak提供的语言我都不是很喜欢，就新建了一个自己的语言文件。</p>
+<p>在Tranquilpeak目录languages新建zh-en.yml文件。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># date format displayed everywhere in the blog</span></span><br><span class="line"><span class="attr">date_format:</span> <span class="string">&quot;MMM DD, YYYY&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">global:</span></span><br><span class="line">    <span class="attr">home:</span> <span class="string">&quot;Home&quot;</span></span><br><span class="line">    <span class="attr">categories:</span> <span class="string">&quot;Categories&quot;</span></span><br><span class="line">    <span class="attr">category:</span> <span class="string">&quot;Category&quot;</span></span><br><span class="line">    <span class="attr">tags:</span> <span class="string">&quot;Tags&quot;</span></span><br><span class="line">    <span class="attr">tag:</span> <span class="string">&quot;Tag&quot;</span></span><br><span class="line">    <span class="attr">archives:</span> <span class="string">&quot;Archives&quot;</span></span><br><span class="line">    <span class="attr">search:</span> <span class="string">&quot;Search&quot;</span></span><br><span class="line">    <span class="attr">about:</span> <span class="string">&quot;About&quot;</span></span><br><span class="line">    <span class="attr">author_picture:</span> <span class="string">&quot;Author&#x27;s picture&quot;</span></span><br><span class="line">    <span class="attr">github:</span> <span class="string">&quot;GitHub&quot;</span></span><br><span class="line">    <span class="attr">stack_overflow:</span> <span class="string">&quot;Stack Overflow&quot;</span></span><br><span class="line">    <span class="attr">twitter:</span> <span class="string">&quot;Twitter&quot;</span></span><br><span class="line">    <span class="attr">facebook:</span> <span class="string">&quot;Facebook&quot;</span></span><br><span class="line">    <span class="attr">google_plus:</span> <span class="string">&quot;Google +&quot;</span></span><br><span class="line">    <span class="attr">weibo:</span> <span class="string">&quot;Weibo&quot;</span></span><br><span class="line">    <span class="attr">qq:</span> <span class="string">&quot;QQ&quot;</span></span><br><span class="line">    <span class="attr">qzone:</span> <span class="string">&quot;Qzone&quot;</span></span><br><span class="line">    <span class="attr">renren:</span> <span class="string">&quot;Renren&quot;</span></span><br><span class="line">    <span class="attr">vk:</span> <span class="string">&quot;VK&quot;</span></span><br><span class="line">    <span class="attr">odnoklassniki:</span> <span class="string">&quot;Odnoklassniki&quot;</span></span><br><span class="line">    <span class="attr">linkedin:</span> <span class="string">&quot;LinkedIn&quot;</span></span><br><span class="line">    <span class="attr">mail:</span> <span class="string">&quot;Mail&quot;</span></span><br><span class="line">    <span class="attr">rss:</span> <span class="string">&quot;RSS&quot;</span></span><br><span class="line">    <span class="attr">share_on_facebook:</span> <span class="string">&quot;Share on Facebook&quot;</span></span><br><span class="line">    <span class="attr">share_on_twitter:</span> <span class="string">&quot;Share on Twitter&quot;</span></span><br><span class="line">    <span class="attr">share_on_google_plus:</span> <span class="string">&quot;Share on Google+&quot;</span></span><br><span class="line">    <span class="attr">share_on_weibo:</span> <span class="string">&quot;Share on Weibo&quot;</span></span><br><span class="line">    <span class="attr">share_on_qq:</span> <span class="string">&quot;Share on QQ&quot;</span></span><br><span class="line">    <span class="attr">share_on_qzone:</span> <span class="string">&quot;Share on Qzone&quot;</span></span><br><span class="line">    <span class="attr">share_on_renren:</span> <span class="string">&quot;Share on Renren&quot;</span></span><br><span class="line">    <span class="attr">share_on_vk:</span> <span class="string">&quot;Share on VK&quot;</span></span><br><span class="line">    <span class="attr">share_on_odnoklassniki:</span> <span class="string">&quot;Share on Odnoklassniki&quot;</span></span><br><span class="line">    <span class="attr">search_category:</span> <span class="string">&quot;Search category&quot;</span></span><br><span class="line">    <span class="attr">search_tag:</span> <span class="string">&quot;Search tag&quot;</span></span><br><span class="line">    <span class="attr">search_date:</span> <span class="string">&quot;Search date (YYYY/MM/DD)&quot;</span></span><br><span class="line">    <span class="attr">posts_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">&quot;no post found&quot;</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">&quot;1 post found&quot;</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">&quot;&#123;n&#125; posts found&quot;</span></span><br><span class="line">    <span class="attr">categories_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">&quot;no category found&quot;</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">&quot;1 cartegory found&quot;</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">&quot;&#123;n&#125; categories found&quot;</span></span><br><span class="line">    <span class="attr">tags_found:</span></span><br><span class="line">        <span class="attr">zero:</span> <span class="string">&quot;no tag found&quot;</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">&quot;1 tag found&quot;</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">&quot;&#123;n&#125; tags found&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">pagination:</span></span><br><span class="line">    <span class="attr">page:</span> <span class="string">&quot;page %d&quot;</span></span><br><span class="line">    <span class="attr">of:</span> <span class="string">&quot;of %d&quot;</span></span><br><span class="line">    <span class="attr">newer_posts:</span> <span class="string">&quot;上一页&quot;</span></span><br><span class="line">    <span class="attr">older_posts:</span> <span class="string">&quot;下一页&quot;</span></span><br><span class="line">    <span class="attr">previous:</span> <span class="string">&quot;PREVIOUS&quot;</span></span><br><span class="line">    <span class="attr">next:</span> <span class="string">&quot;NEXT&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">post:</span></span><br><span class="line">    <span class="attr">no_title :</span> <span class="string">&quot;no title&quot;</span></span><br><span class="line">    <span class="attr">categorized_in:</span> <span class="string">&quot;in&quot;</span></span><br><span class="line">    <span class="attr">tagged_in:</span> <span class="string">&quot;TAGGED IN&quot;</span></span><br><span class="line">    <span class="attr">toc:</span> <span class="string">&quot;目录&quot;</span></span><br><span class="line">    <span class="attr">back_to_top:</span> <span class="string">&quot;Back to top&quot;</span></span><br><span class="line">    <span class="attr">read_more:</span> <span class="string">&quot;Continue reading&quot;</span></span><br><span class="line">    <span class="attr">go_to_website:</span> <span class="string">&quot;Go to website&quot;</span></span><br><span class="line">    <span class="attr">comment_and_share:</span> <span class="string">&quot;Comment and share&quot;</span></span><br><span class="line">    <span class="attr">comment:</span> <span class="string">&quot;Leave a comment&quot;</span></span><br><span class="line">    <span class="attr">share:</span> <span class="string">&quot;Share this post&quot;</span></span><br><span class="line">    <span class="attr">gallery:</span> <span class="string">&quot;Gallery&quot;</span></span><br><span class="line">    <span class="attr">image:</span></span><br><span class="line">        <span class="attr">one:</span> <span class="string">&quot;image&quot;</span></span><br><span class="line">        <span class="attr">other:</span> <span class="string">&quot;%d images&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="attr">author:</span></span><br><span class="line">    <span class="comment"># Your biography (Markdown and HTML supported)</span></span><br><span class="line">    <span class="attr">bio:</span> <span class="string">&quot;Hi&quot;</span></span><br><span class="line">    <span class="comment"># Your job</span></span><br><span class="line">    <span class="attr">job:</span> <span class="string">&quot;Software Engineer&quot;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>最后在Hexo的_config.yml设置一下语言。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">language:</span> <span class="string">zh-en</span></span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Hexo/" rel="tag">Hexo</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
+                    data-tooltip="Mysql开发篇之数据库引擎"
+                    aria-label="PREVIOUS: Mysql开发篇之数据库引擎"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/01/Hello-world/"
+                    data-tooltip="Hello World"
+                    aria-label="NEXT: Hello World"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/07/02/Hexo-Theme-Tranquilpeak安装配置/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
+                    data-tooltip="Mysql开发篇之数据库引擎"
+                    aria-label="PREVIOUS: Mysql开发篇之数据库引擎"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/01/Hello-world/"
+                    data-tooltip="Hello World"
+                    aria-label="NEXT: Hello World"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/&amp;title=Hexo Theme Tranquilpeak安装配置"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/02/Hexo-Theme-Tranquilpeak%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

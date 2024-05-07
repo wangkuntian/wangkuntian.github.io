@@ -1,0 +1,719 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>深入浅出Neutron（六）三层网络服务实现原理 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n为了实现网络隔离，一般需要租户拥有自己的虚拟路由，而内外网的互联互通，以及分布在不同主机之间，但同属于一个虚拟网络的虚拟机之间的通信，也都依赖虚拟路由的实现，所以三层网络中的路由是非常重要的一部分。\n\n\n路由原理路由器式一种具有多个输入端口和输出端口的专用计算机，通过路由表来控制从哪个输入端口转到哪一个输出端口，它分为“转发”和“路由选择”两个层面。\n转发表是根据路由表建立的，路由选择是多个路由器协同构建路由表，当网络拓扑发生变化时，动态的改变所选的路由，它是通过软件实现的。而转发表根据路由表得出的从哪个端口进的要往哪个人端口转，为提高转发速度它可以通过硬件实现。\n三层路由分静态路由和动态路由两种\n静态路由静态路由是指由用户或者网络管理员手工配置的路由信息。当网络的拓扑结构或链路的状态发生变化时，需要网络管理员手动去修改路由表中的相关静态路由信息。\n静态路由信息默认情况下是私有的，不会传递给其他的路由器。当然，网络管理员可以通过对路由器设置使之成为共享的。\n静态路由一般适用于比较简单的网络环境，在这样的网络环境中，网络管理员易于清楚地了解网络的拓扑结构，便于设置正确地路由信息。\n动态路由动态路由是与静态路由相对的一个概念，只路由器能够根据路由器之间的交换的特定路由信息自动地建立自己的路由表，并且能够根据链路和节点的变化适时地进行自动调整，当网络中节点或节点间的链路发生故障，或存在其他可用路由时，动态路由可以自行选择最佳的可用路由并继续转发报文。\n常见的动态路由协议包括内部网关协议RIP、OSPF、外部网关协议BGP。\n动态路由的特点是能够自动学习建立路由表。\n在linux中，通过打开ipv4.ip_forward特性可以让数据包从一块网卡路由到另一块网卡上。\n\n\n三层网络在Linux中的实现Linux中实现三层路由很简单，打开ip_forward开关之后，这台Linux主机就可以充当路由器使用。\n1sysctl -w net.ipv4.ip_forward=1\n\n在Linux中SNAT和DNAT由iptables来实现，因为IPv4地址比较稀缺，一般局域网都使用内网地址（内网地址分为三个网段：192.168.0.0/24、172.16.0.0/24、10.0.0.0/8），那么从内网地址到公网地址有一个转换过程。虚拟机使用内网地址的话，那么从虚拟机出去的流量叫SNAT，虚拟机进来的流量叫DNAT。\nSNAT：内部地址要访问公网上的服务时（如Web页面），内部地址会主动发起连接，由路由器或者防火墙上的网关对内部地址做源地址转换，将内部地址的私有IP转换为公网IP。网关的这个地址转换成为SNAT，主要用于内部共享IP访问外部。\nDNAT：当内部需要对外提供服务时（对外发布Web网站），外部地址发起主动连接，由路由器或者防火墙上的网关接收这个连接，然后将连接转换到内部，此过程是由带有公网IP的网关代替内部服务来接收外部的连接，然后在内部做目的地址转换，此转换成为DNAT，主要用于内部服务对外发布。\n\n\nNeutron的三层网络实现Neutron在L3层不像在L2C层那样提供了一个像ML2的插件结构，它目前只实现了一个基于Network、Subnet、Port、Router核心数据结构的核心API（除了核心API,剩下的都叫扩展API）。\n在l3-agent部分，则做了打开IPv4 forward特性，以及通过iptables实现了SNAT、DNAT这些事情。\n在生产环境中，一般将云网络划分为三大部分，公共网络、管理和存储网络、服务网络。\n\n公共网络：用于云向外部租户提供API调用或者访问。\n管理网络：用于云中各物理机之间的通信。\n存储网络：用于存储服务端与客户端之间的流量，一般与管理网络相同。\n服务网络：虚拟机内部使用的网络。\n","dateCreated":"2020-03-10T16:14:23+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2020-03-10T16:14:23+08:00","description":"三层网络服务的实现原理","headline":"深入浅出Neutron（六）三层网络服务实现原理","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="三层网络服务的实现原理">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="深入浅出Neutron（六）三层网络服务实现原理">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="三层网络服务的实现原理">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2020-03-10T08:14:23.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.331Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            深入浅出Neutron（六）三层网络服务实现原理
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-03-10T16:14:23+08:00">
+	
+		    Mar 10, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<p>为了实现网络隔离，一般需要租户拥有自己的虚拟路由，而内外网的互联互通，以及分布在不同主机之间，但同属于一个虚拟网络的虚拟机之间的通信，也都依赖虚拟路由的实现，所以三层网络中的路由是非常重要的一部分。</p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%B7%AF%E7%94%B1%E5%8E%9F%E7%90%86"><span class="toc-text">路由原理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%9D%99%E6%80%81%E8%B7%AF%E7%94%B1"><span class="toc-text">静态路由</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8A%A8%E6%80%81%E8%B7%AF%E7%94%B1"><span class="toc-text">动态路由</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%89%E5%B1%82%E7%BD%91%E7%BB%9C%E5%9C%A8Linux%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">三层网络在Linux中的实现</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron%E7%9A%84%E4%B8%89%E5%B1%82%E7%BD%91%E7%BB%9C%E5%AE%9E%E7%8E%B0"><span class="toc-text">Neutron的三层网络实现</span></a></li></ol>
+
+<h1 id="路由原理"><a href="#路由原理" class="headerlink" title="路由原理"></a>路由原理</h1><p>路由器式一种具有多个输入端口和输出端口的专用计算机，通过路由表来控制从哪个输入端口转到哪一个输出端口，它分为“<strong>转发</strong>”和“<strong>路由选择</strong>”两个层面。</p>
+<p>转发表是根据路由表建立的，路由选择是多个路由器协同构建路由表，当网络拓扑发生变化时，动态的改变所选的路由，它是通过软件实现的。而转发表根据路由表得出的从哪个端口进的要往哪个人端口转，为提高转发速度它可以通过硬件实现。</p>
+<p>三层路由分静态路由和动态路由两种</p>
+<h2 id="静态路由"><a href="#静态路由" class="headerlink" title="静态路由"></a>静态路由</h2><p>静态路由是指由用户或者网络管理员手工配置的路由信息。当网络的拓扑结构或链路<br>的状态发生变化时，需要网络管理员手动去修改路由表中的相关静态路由信息。</p>
+<p>静态路由信息默认情况下是私有的，不会传递给其他的路由器。当然，网络管理员可以通过对路由器设置使之成为共享的。</p>
+<p>静态路由一般适用于比较简单的网络环境，在这样的网络环境中，网络管理员易于清楚地了解网络的拓扑结构，便于设置正确地路由信息。</p>
+<h2 id="动态路由"><a href="#动态路由" class="headerlink" title="动态路由"></a>动态路由</h2><p>动态路由是与静态路由相对的一个概念，只路由器能够根据路由器之间的交换的特定路由信息自动地建立自己的路由表，并且能够根据链路和节点的变化适时地进行自动调整，当网络中节点或节点间的链路发生故障，或存在其他可用路由时，动态路由可以自行选择最佳的可用路由并继续转发报文。</p>
+<p>常见的动态路由协议包括内部网关协议RIP、OSPF、外部网关协议BGP。</p>
+<p>动态路由的特点是能够自动学习建立路由表。</p>
+<div class="alert info no-icon"><p>在linux中，通过打开ipv4.ip_forward特性可以让数据包从一块网卡路由到另一块网卡上。</p>
+</div>
+
+<h1 id="三层网络在Linux中的实现"><a href="#三层网络在Linux中的实现" class="headerlink" title="三层网络在Linux中的实现"></a>三层网络在Linux中的实现</h1><p>Linux中实现三层路由很简单，打开ip_forward开关之后，这台Linux主机就可以充当路由器使用。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sysctl -w net.ipv4.ip_forward=1</span><br></pre></td></tr></table></figure>
+
+<p>在Linux中SNAT和DNAT由iptables来实现，因为IPv4地址比较稀缺，一般局域网都使用内网地址（内网地址分为三个网段：192.168.0.0/24、172.16.0.0/24、10.0.0.0/8），那么从内网地址到公网地址有一个转换过程。虚拟机使用内网地址的话，那么从虚拟机出去的流量叫SNAT，虚拟机进来的流量叫DNAT。</p>
+<div class="alert info no-icon"><p>SNAT：内部地址要访问公网上的服务时（如Web页面），内部地址会主动发起连接，由路由器或者防火墙上的网关对内部地址做源地址转换，将内部地址的私有IP转换为公网IP。网关的这个地址转换成为SNAT，主要用于内部共享IP访问外部。</p>
+<p>DNAT：当内部需要对外提供服务时（对外发布Web网站），外部地址发起主动连接，由路由器或者防火墙上的网关接收这个连接，然后将连接转换到内部，此过程是由带有公网IP的网关代替内部服务来接收外部的连接，然后在内部做目的地址转换，此转换成为DNAT，主要用于内部服务对外发布。</p>
+</div>
+
+<h1 id="Neutron的三层网络实现"><a href="#Neutron的三层网络实现" class="headerlink" title="Neutron的三层网络实现"></a>Neutron的三层网络实现</h1><p>Neutron在L3层不像在L2C层那样提供了一个像ML2的插件结构，它目前只实现了一个基于Network、Subnet、Port、Router核心数据结构的核心API（除了核心API,剩下的都叫扩展API）。</p>
+<p>在l3-agent部分，则做了打开IPv4 forward特性，以及通过iptables实现了SNAT、DNAT这些事情。</p>
+<p>在生产环境中，一般将云网络划分为三大部分，公共网络、管理和存储网络、服务网络。</p>
+<ul>
+<li>公共网络：用于云向外部租户提供API调用或者访问。</li>
+<li>管理网络：用于云中各物理机之间的通信。</li>
+<li>存储网络：用于存储服务端与客户端之间的流量，一般与管理网络相同。</li>
+<li>服务网络：虚拟机内部使用的网络。</li>
+</ul>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（七）网络安全"
+                    aria-label="PREVIOUS: 深入浅出Neutron（七）网络安全"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    data-tooltip="Python面试问题汇总"
+                    aria-label="NEXT: Python面试问题汇总"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=深入浅出Neutron（六）三层网络服务实现原理"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/03/10/深入浅出Neutron（六）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（七）网络安全"
+                    aria-label="PREVIOUS: 深入浅出Neutron（七）网络安全"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    data-tooltip="Python面试问题汇总"
+                    aria-label="NEXT: Python面试问题汇总"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=深入浅出Neutron（六）三层网络服务实现原理"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/&amp;title=深入浅出Neutron（六）三层网络服务实现原理"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

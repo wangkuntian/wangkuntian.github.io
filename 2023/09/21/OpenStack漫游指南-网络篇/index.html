@@ -1,0 +1,746 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack漫游指南--网络篇 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,网络">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nDHCP实例获取不到IP地址\n首先排查是否是安全组的问题导致dhcp报文传递不过去，查看安全组是否打开UDP协议。\n排查是否是由系统内部防火墙导致dhcp报文传递不出去，禁用防火墙后问题是否依然存在。 \n排查是否是系统内部服务导致dhcp没有发送discover报文，在系统内使用dhclient命令可以获取到IP。\n排查dhclient没有启动的原因，发现dhclient应该由NetworkManager启动。NetworkManager之所以没有启动dhclient是因为系统内/etc/sysconfig/network-scripts/ifcfg-enp1s0的配置文件，NetworkManager会忽略/etc/sysconfig/network-scripts/下的网络设备导致会出现device not managed错误导致dhclient不启动，进而云主机拿不到IP地址。 \n解决方法，将/etc/sysconfig/network-scripts/ifcfg-enp1s0删除。\n\n端口转发基于浮动IP的端口转发浮动IP端口转发使用户能够将TCP/UDP流量，从Port通过iptables的NAT功能，转发给浮动IP。\n部署在运行neutron-server的所有节点（网络节点）上，修改/etc/neutron/neutron.conf文件。\n12[DEFAULT]service_plugins = router,segments,port_forwarding\n\n在运行neutron-l3-agent的所有节点上，修改/etc/neutron/l3_agent.ini。\n12[agent]extensions = port_forwarding\n\n重启neutron-server和neutron-l3-agent服务。\n1systemctl restart neutron-server neutron-l3-agent\n\n验证。\n1openstack extension list --network | grep floating-ip-port-forwarding\n\n操作创建端口转发\n1234567openstack floating ip port forwarding create \\--internal-ip-address 10.100.0.1 \\--internal-protocol-port 8080--external-protocol-port 9000--port 36bcd62a-0860-4e22-bf8a-81f5052eff60 \\--protocol tcp \\825cc4f8-9a1c-4e46-b380-501ba0f9b08d\n\n36bcd62a-0860-4e22-bf8a-81f5052eff60和825cc4f8-9a1c-4e46-b380-501ba0f9b08d分别是Port和浮动IP的ID。\n原理TODO\nHA多个vip使用kvm部署多台机器，使用keepalived和haproxy作为集群高可用。发现vIP在多个节点上同时出现，怀疑keepalived配置出问题。\n在多个节点上利用tcpdump抓包，vrrp包都能被抓到，但是似乎节点之间收不到vrrp包。\n123456tcpdump -i any vrrp -ntcpdump: verbose output suppressed, use -v or -vv for full protocol decodelistening on any, link-type LINUX_SLL (Linux cooked v1), capture size 262144 bytes11:30:09.452941 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 2011:30:10.453144 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 2011:30:11.453369 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20\n\n确保SElinux处于关闭状态。\n1234cat /etc/selinux/configSELINUX=disabledSELINUXTYPE=targeted\n\n检查防火墙是否关闭。\n123systemtcl status firewalldsystemctl stop firewalldsystemctl disable firewalld\n\n查看iptables规则。\n12345iptables -S-P INPUT ACCEPT-P FORWARD ACCEPT-P OUTPUT ACCEPT\n\n防火墙一切正常，怀疑是KVM虚拟机的网络问题导致VRRP不能被传输。KVM使用nat网络进行传输时没有问题，在使用macvtap网络会出现上述问题。\n查看官方文档，kvm在使用macvtap驱动时，参数trustGuestRxFilters默认否，可能会修改从虚拟机出来的流量的MAC地址，导致网络不可达。\n编辑虚拟机配置文件。\n12345678...    &lt;interface type=&#x27;direct&#x27; trustGuestRxFilters=&#x27;yes&#x27;&gt;      &lt;mac address=&#x27;52:54:00:a9:f7:5b&#x27;/&gt;      &lt;source dev=&#x27;ens9f0&#x27; mode=&#x27;bridge&#x27;/&gt;      &lt;model type=&#x27;virtio&#x27;/&gt;      &lt;address type=&#x27;pci&#x27; domain=&#x27;0x0000&#x27; bus=&#x27;0x01&#x27; slot=&#x27;0x00&#x27; function=&#x27;0x0&#x27;/&gt;    &lt;/interface&gt;...\n\n最后如果问题还是复现，将每台虚拟机对应的macvtap网卡设置成混杂模式，问题解决。\n12345678910ifconfig macvtap5 promiscifconfig macvtap5macvtap5: flags=4419&lt;UP,BROADCAST,RUNNING,PROMISC,MULTICAST&gt;  mtu 1500        inet6 fe80::5054:ff:fea9:f75b  prefixlen 64  scopeid 0x20&lt;link&gt;        ether 52:54:00:a9:f7:5b  txqueuelen 500  (Ethernet)        RX packets 27827  bytes 2287340 (2.1 MiB)        RX errors 0  dropped 0  overruns 0  frame 0        TX packets 16236  bytes 1122923 (1.0 MiB)        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0\n\nMTUmtu和网络类型相关。不同网络类型有不同的计算方式。网络的类型可能的类型有：flat和vlan等。首先：neutron中的配置项global_physnet_mtu定义全局的物理网络的mtu大小，默认是1500。同时，ml2的配置项physical_network_mtus可以为每个物理网络配置不同的mtu。[文档]（https://docs.openstack.org/neutron/latest/admin/config-mtu.html）。flat、vlan下mtu取配置项的最小值；gre下先减去20字节的ip头（ipv6是40字节），再减去22字节的gre头；vxlan下先减去20字节的ip头（ipv6是40字节），再减去30字节的vxlan头。\n对于实例的mtu（也就是tap设备），在neutron中以port的形式存在，port的mtu应该等于port所在网络的mtu的大小。\n单网卡部署OpenvSwtich单网卡部署neutron-openvswitch-agent时，需要事先添加ovs网桥。\n1234567ovs-vsctl add-br br-exovs-vsctl add-port br-ex ens0ovs-vsctl showip link set br-ex upip addr flush ens0ip addr add 192.168.0.2/24 dev br-exip route add default via 192.168.0.1 dev br-ex\n\nLinux Bridge单网卡部署neutron-linuxbridge-agent时，需要事先添加linux bridge网桥。\n1234567brctl addbr br-exbrctl addif br-ex ens0brctl showip link set br-ex upip addr flush ens0ip addr add 192.168.0.2/24 dev br-exip route add default via 192.168.0.1 dev br-ex","dateCreated":"2023-09-21T13:56:20+08:00","dateModified":"2024-04-08T15:11:37+08:00","datePublished":"2023-09-21T13:56:20+08:00","description":"OpenStack中网络的那些事儿","headline":"OpenStack漫游指南--网络篇","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/","keywords":"网络, OpenStack","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="OpenStack中网络的那些事儿">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack漫游指南--网络篇">
+<meta property="og:url" content="https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack中网络的那些事儿">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2023-09-21T05:56:20.000Z">
+<meta property="article:modified_time" content="2024-04-08T07:11:37.959Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="网络">
+<meta property="article:tag" content="OpenStack">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack漫游指南--网络篇
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2023-09-21T13:56:20+08:00">
+	
+		    Sep 21, 2023
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="DHCP"><a href="#DHCP" class="headerlink" title="DHCP"></a>DHCP</h1><h2 id="实例获取不到IP地址"><a href="#实例获取不到IP地址" class="headerlink" title="实例获取不到IP地址"></a>实例获取不到IP地址</h2><ol>
+<li>首先排查是否是安全组的问题导致dhcp报文传递不过去，查看安全组是否打开UDP协议。</li>
+<li>排查是否是由系统内部防火墙导致dhcp报文传递不出去，禁用防火墙后问题是否依然存在。 </li>
+<li>排查是否是系统内部服务导致dhcp没有发送discover报文，在系统内使用dhclient命令可以获取到IP。</li>
+<li>排查dhclient没有启动的原因，发现dhclient应该由NetworkManager启动。NetworkManager之所以没有启动dhclient是因为系统内/etc/sysconfig/network-scripts/ifcfg-enp1s0的配置文件，NetworkManager会忽略/etc/sysconfig/network-scripts/下的网络设备导致会出现device not managed错误导致dhclient不启动，进而云主机拿不到IP地址。 </li>
+<li>解决方法，将/etc/sysconfig/network-scripts/ifcfg-enp1s0删除。</li>
+</ol>
+<h1 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h1><h2 id="基于浮动IP的端口转发"><a href="#基于浮动IP的端口转发" class="headerlink" title="基于浮动IP的端口转发"></a>基于浮动IP的端口转发</h2><p>浮动IP端口转发使用户能够将TCP/UDP流量，从Port通过iptables的NAT功能，转发给浮动IP。</p>
+<h3 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h3><p>在运行neutron-server的所有节点（网络节点）上，修改/etc/neutron/neutron.conf文件。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[DEFAULT]</span><br><span class="line">service_plugins = router,segments,port_forwarding</span><br></pre></td></tr></table></figure>
+
+<p>在运行neutron-l3-agent的所有节点上，修改/etc/neutron/l3_agent.ini。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[agent]</span><br><span class="line">extensions = port_forwarding</span><br></pre></td></tr></table></figure>
+
+<p>重启neutron-server和neutron-l3-agent服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart neutron-server neutron-l3-agent</span><br></pre></td></tr></table></figure>
+
+<p>验证。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack extension list --network | grep floating-ip-port-forwarding</span><br></pre></td></tr></table></figure>
+
+<h3 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h3><p>创建端口转发</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openstack floating ip port forwarding create \</span><br><span class="line">--internal-ip-address 10.100.0.1 \</span><br><span class="line">--internal-protocol-port 8080</span><br><span class="line">--external-protocol-port 9000</span><br><span class="line">--port 36bcd62a-0860-4e22-bf8a-81f5052eff60 \</span><br><span class="line">--protocol tcp \</span><br><span class="line">825cc4f8-9a1c-4e46-b380-501ba0f9b08d</span><br></pre></td></tr></table></figure>
+
+<p>36bcd62a-0860-4e22-bf8a-81f5052eff60和825cc4f8-9a1c-4e46-b380-501ba0f9b08d分别是Port和浮动IP的ID。</p>
+<h3 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h3><p>TODO</p>
+<h1 id="HA"><a href="#HA" class="headerlink" title="HA"></a>HA</h1><h2 id="多个vip"><a href="#多个vip" class="headerlink" title="多个vip"></a>多个vip</h2><p>使用kvm部署多台机器，使用keepalived和haproxy作为集群高可用。发现vIP在多个节点上同时出现，怀疑keepalived配置出问题。</p>
+<p>在多个节点上利用tcpdump抓包，vrrp包都能被抓到，但是似乎节点之间收不到vrrp包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i any vrrp -n</span><br><span class="line">tcpdump: verbose output suppressed, use -v or -vv <span class="keyword">for</span> full protocol decode</span><br><span class="line">listening on any, link-type LINUX_SLL (Linux cooked v1), capture size 262144 bytes</span><br><span class="line">11:30:09.452941 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br><span class="line">11:30:10.453144 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br><span class="line">11:30:11.453369 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br></pre></td></tr></table></figure>
+
+<p>确保SElinux处于关闭状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /etc/selinux/config</span><br><span class="line"></span><br><span class="line">SELINUX=disabled</span><br><span class="line">SELINUXTYPE=targeted</span><br></pre></td></tr></table></figure>
+
+<p>检查防火墙是否关闭。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemtcl status firewalld</span><br><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br></pre></td></tr></table></figure>
+
+<p>查看iptables规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">iptables -S</span><br><span class="line"></span><br><span class="line">-P INPUT ACCEPT</span><br><span class="line">-P FORWARD ACCEPT</span><br><span class="line">-P OUTPUT ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>防火墙一切正常，怀疑是KVM虚拟机的网络问题导致VRRP不能被传输。KVM使用nat网络进行传输时没有问题，在使用macvtap网络会出现上述问题。</p>
+<p>查看<a target="_blank" rel="noopener" href="https://libvirt.org/formatdomain.html#direct-attachment-to-physical-interface">官方文档</a>，kvm在使用macvtap驱动时，参数trustGuestRxFilters默认否，可能会修改从虚拟机出来的流量的MAC地址，导致网络不可达。</p>
+<p>编辑虚拟机配置文件。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">    <span class="tag">&lt;<span class="name">interface</span> <span class="attr">type</span>=<span class="string">&#x27;direct&#x27;</span> <span class="attr">trustGuestRxFilters</span>=<span class="string">&#x27;yes&#x27;</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">mac</span> <span class="attr">address</span>=<span class="string">&#x27;52:54:00:a9:f7:5b&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">source</span> <span class="attr">dev</span>=<span class="string">&#x27;ens9f0&#x27;</span> <span class="attr">mode</span>=<span class="string">&#x27;bridge&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">model</span> <span class="attr">type</span>=<span class="string">&#x27;virtio&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">address</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x01&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">interface</span>&gt;</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>最后如果问题还是复现，将每台虚拟机对应的macvtap网卡设置成混杂模式，问题解决。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">ifconfig macvtap5 promisc</span><br><span class="line"></span><br><span class="line">ifconfig macvtap5</span><br><span class="line">macvtap5: flags=4419&lt;UP,BROADCAST,RUNNING,PROMISC,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet6 fe80::5054:ff:fea9:f75b  prefixlen 64  scopeid 0x20&lt;<span class="built_in">link</span>&gt;</span><br><span class="line">        ether 52:54:00:a9:f7:5b  txqueuelen 500  (Ethernet)</span><br><span class="line">        RX packets 27827  bytes 2287340 (2.1 MiB)</span><br><span class="line">        RX errors 0  dropped 0  overruns 0  frame 0</span><br><span class="line">        TX packets 16236  bytes 1122923 (1.0 MiB)</span><br><span class="line">        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0</span><br></pre></td></tr></table></figure>
+
+<h1 id="MTU"><a href="#MTU" class="headerlink" title="MTU"></a>MTU</h1><p>mtu和网络类型相关。不同网络类型有不同的计算方式。<br>网络的类型可能的类型有：flat和vlan等。首先：neutron中的配置项global_physnet_mtu定义全局的物理网络的mtu大小，默认是1500。同时，ml2的配置项physical_network_mtus可以为每个物理网络配置不同的mtu。[文档]（<a target="_blank" rel="noopener" href="https://docs.openstack.org/neutron/latest/admin/config-mtu.html%EF%BC%89%E3%80%82flat%E3%80%81vlan%E4%B8%8Bmtu%E5%8F%96%E9%85%8D%E7%BD%AE%E9%A1%B9%E7%9A%84%E6%9C%80%E5%B0%8F%E5%80%BC%EF%BC%9Bgre%E4%B8%8B%E5%85%88%E5%87%8F%E5%8E%BB20%E5%AD%97%E8%8A%82%E7%9A%84ip%E5%A4%B4%EF%BC%88ipv6%E6%98%AF40%E5%AD%97%E8%8A%82%EF%BC%89%EF%BC%8C%E5%86%8D%E5%87%8F%E5%8E%BB22%E5%AD%97%E8%8A%82%E7%9A%84gre%E5%A4%B4%EF%BC%9Bvxlan%E4%B8%8B%E5%85%88%E5%87%8F%E5%8E%BB20%E5%AD%97%E8%8A%82%E7%9A%84ip%E5%A4%B4%EF%BC%88ipv6%E6%98%AF40%E5%AD%97%E8%8A%82%EF%BC%89%EF%BC%8C%E5%86%8D%E5%87%8F%E5%8E%BB30%E5%AD%97%E8%8A%82%E7%9A%84vxlan%E5%A4%B4%E3%80%82">https://docs.openstack.org/neutron/latest/admin/config-mtu.html）。flat、vlan下mtu取配置项的最小值；gre下先减去20字节的ip头（ipv6是40字节），再减去22字节的gre头；vxlan下先减去20字节的ip头（ipv6是40字节），再减去30字节的vxlan头。</a></p>
+<p>对于实例的mtu（也就是tap设备），在neutron中以port的形式存在，port的mtu应该等于port所在网络的mtu的大小。</p>
+<h1 id="单网卡部署"><a href="#单网卡部署" class="headerlink" title="单网卡部署"></a>单网卡部署</h1><h2 id="OpenvSwtich"><a href="#OpenvSwtich" class="headerlink" title="OpenvSwtich"></a>OpenvSwtich</h2><p>单网卡部署neutron-openvswitch-agent时，需要事先添加ovs网桥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl add-br br-ex</span><br><span class="line">ovs-vsctl add-port br-ex ens0</span><br><span class="line">ovs-vsctl show</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> br-ex up</span><br><span class="line">ip addr flush ens0</span><br><span class="line">ip addr add 192.168.0.2/24 dev br-ex</span><br><span class="line">ip route add default via 192.168.0.1 dev br-ex</span><br></pre></td></tr></table></figure>
+
+<h2 id="Linux-Bridge"><a href="#Linux-Bridge" class="headerlink" title="Linux Bridge"></a>Linux Bridge</h2><p>单网卡部署neutron-linuxbridge-agent时，需要事先添加linux bridge网桥。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">brctl addbr br-ex</span><br><span class="line">brctl addif br-ex ens0</span><br><span class="line">brctl show</span><br><span class="line">ip <span class="built_in">link</span> <span class="built_in">set</span> br-ex up</span><br><span class="line">ip addr flush ens0</span><br><span class="line">ip addr add 192.168.0.2/24 dev br-ex</span><br><span class="line">ip route add default via 192.168.0.1 dev br-ex</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E7%BD%91%E7%BB%9C/" rel="tag">网络</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%9B%86%E7%BE%A4%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--集群篇"
+                    aria-label="PREVIOUS: OpenStack漫游指南--集群篇"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%95%9C%E5%83%8F%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--镜像篇"
+                    aria-label="NEXT: OpenStack漫游指南--镜像篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/&amp;title=OpenStack漫游指南--网络篇"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2023/09/21/OpenStack漫游指南-网络篇/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%9B%86%E7%BE%A4%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--集群篇"
+                    aria-label="PREVIOUS: OpenStack漫游指南--集群篇"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%95%9C%E5%83%8F%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--镜像篇"
+                    aria-label="NEXT: OpenStack漫游指南--镜像篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/&amp;title=OpenStack漫游指南--网络篇"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/&amp;title=OpenStack漫游指南--网络篇"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%BD%91%E7%BB%9C%E7%AF%87/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

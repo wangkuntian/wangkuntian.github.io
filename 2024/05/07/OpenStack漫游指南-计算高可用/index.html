@@ -1,0 +1,782 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack漫游指南-计算高可用 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Masakari">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n概述PMI测试使用kolla-ansible部署masakari。\n12enable_masakari: &quot;yes&quot;enable_hacluster: &quot;yes&quot; # masakari依赖pacemaker\n部署\n1kolla-ansible -i /etc/kolla/multinode deploy -t masakari -vv\n\n1.1 、错误一如果发现hacluster-pacemaker的日志中有如下错误。\n1234567891011121314151617Jan 09 13:40:23.643 controller01 pacemakerd          [17] (pcmk_process_exit)   notice: Respawning pacemaker-based subdaemon after unexpected exitJan 09 13:40:23.643 controller01 pacemakerd          [17] (start_child)         info: Using uid=42486 and group=42486 for process pacemaker-basedJan 09 13:40:23.643 controller01 pacemakerd          [17] (start_child)         info: Forked child 58 for process pacemaker-basedJan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_log_init)        info: Changed active directory to /var/lib/pacemaker/coresJan 09 13:40:23.673 controller01 pacemaker-based     [58] (main)        notice: Starting Pacemaker CIB managerJan 09 13:40:23.673 controller01 pacemaker-based     [58] (get_cluster_type)    info: Verifying cluster type: &#x27;corosync&#x27;Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (get_cluster_type)    info: Assuming an active &#x27;corosync&#x27; clusterJan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_user_can_write)         notice: /var/lib/pacemaker/cib/cib.xml is not owned by user hacluster | uid 42486 != 189Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_group_can_write)        notice: /var/lib/pacemaker/cib/cib.xml is not readable and writable by group haclient | st_mode=0100600Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_can_write)      error: /var/lib/pacemaker/cib/cib.xml must be owned and writable by either user hacluster or group haclient | st_mode=0100600Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (activateCibXml)      error: Ignoring invalid CIBJan 09 13:40:23.673 controller01 pacemaker-based     [58] (activateCibXml)      crit: Could not write out new CIB and no saved version to revert toJan 09 13:40:23.673 controller01 pacemaker-based     [58] (cib_init)    crit: Cannot start CIB... terminatingJan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_xml_cleanup)     info: Cleaning up memory from libxml2Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_exit)    info: Exiting pacemaker-based | with status 66Jan 09 13:40:23.673 controller01 pacemakerd          [17] (pcmk_child_exit)     error: pacemaker-based[58] exited with status 66 (Input file not available)Jan 09 13:40:23.673 controller01 pacemakerd          [17] (pcmk__ipc_is_authentic_process_active)       info: Could not connect to cib_ro IPC: Connection refused\n\n需要检查容器中hacluster的用户和组。\n12345cat /etc/passwd | grep haclusterhacluster:x:42486:42486::/home/hacluster:/usr/sbin/nologincat /etc/group | grep haclienthaclient:x:42486:\n再查看宿主机上docker的hacluster_pacemaker块的文件夹权限。\n123456ll /var/lib/docker/volumes/hacluster_pacemaker/_data/总用量 40drwxr-x--- 2 42486 42486    10  3月 16  2023 blackboxdrwxr-x--- 2 42486 42486  4096  3月 16  2023 cibdrwxr-x--- 2 42486 42486    10  3月 16  2023 coresdrwxr-x--- 2 42486 42486 20480  1月 12 15:05 pengine\n保持权限一致。\n1.2 、错误二容器中的hacluster用户和组都是一致，但是在masakari-hostmonitor容器还是出现如下的日志。\n1234567024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] Exception caught: Unexpected error while running command.Command: crmadmin -S controller01Exit code: 102Stdout: &#x27;&#x27;Stderr: &#x27;error: Could not connect to controller: Connection refused\\nerror: Command failed: Connection refused\\n&#x27;: oslo_concurrency.processutils.ProcessExecutionError: Unexpected error while running command.2024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] &#x27;controller01&#x27; is unstable state on cluster.: oslo_concurrency.processutils.ProcessExecutionError: Unexpected error while running command.2024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] hostmonitor skips monitoring hosts.\n\n失败的原因可能是docker共享内存。\n12crmadmin -S controller01 -Verror: couldn&#x27;t open file /dev/shm/qb-21-0-15-xwVUp8/qb-request-crmd-header\n\n再部署时需要将/dev设备映射到容器中。修改kolla-ansible部署masakari的配置文件。\n1vim /usr/local/share/kolla-ansible/ansible/roles/masakari/defaults/main.yml\n修改为下面。\n1234567masakari_hostmonitor_default_volumes:  - &quot;&#123;&#123; node_config_directory &#125;&#125;/masakari-hostmonitor/:&#123;&#123; container_config_directory &#125;&#125;/:ro&quot;  - &quot;/etc/localtime:/etc/localtime:ro&quot;  - &quot;&#123;&#123; &#x27;/etc/timezone:/etc/timezone:ro&#x27; if ansible_os_family == &#x27;Debian&#x27; else &#x27;&#x27; &#125;&#125;&quot;  - &quot;kolla_logs:/var/log/kolla/&quot;  - &quot;&#123;&#123; kolla_dev_repos_directory ~ &#x27;/masakari-monitors/masakarimonitors:/var/lib/kolla/venv/lib/python&#x27; ~ distro_python_version ~ &#x27;/site-packages/masakarimonitors&#x27; if masakari_dev_mode | bool else &#x27;&#x27; &#125;&#125;&quot;  - &quot;/dev/:/dev/&quot; # 新增\n最后重新部署masakari。\n1.3、配置ipmi进入控制节点的hacluster-pacemaker容器，安装依赖包。\n1yum install -y pcs\n\n注意目前cdimage的源中的fence-agents-4.2.1-109.uelc20.01存在国际化失败的问题，要使用fence-agents-4.2.1-109.uelc20.04。\n需要提前下载rpm文件，并安装。\n12wget http://10.30.38.131/kojifiles/packages/fence-agents/4.2.1/109.uelc20.04/noarch/fence-agents-common-4.2.1-109.uelc20.04.noarch.rpmwget http://10.30.38.131/kojifiles/packages/fence-agents/4.2.1/109.uelc20.04/noarch/fence-agents-ipmilan-4.2.1-109.uelc20.04.noarch.rpm\n\n检测计算节点的电源状态。\n1ipmitool -I lanplus -H &lt;bmc_ip&gt; -U admin -P &lt;bmc_pass&gt; power status\n或者用如下命令。\n1fence_ipmilan -a &lt;bmc_ip&gt; -P -l admin -p &lt;bmc_pass&gt; -o status\n设置stonith属性。\n1pcs property set stonith-enabled=true\n创建stonith设备\n12345pcs stonith create ipmi-fence-compute4 fence_ipmilan \\verbose_level=1 \\lanplus=1 pcmk_host_list=&#x27;compute4&#x27; delay=5 pcmk_host_check=&#x27;static-list&#x27; \\pcmk_off_action=off pcmk_reboot_action=off ip=&#x27;&lt;bmc_ip&gt;&#x27; \\username=&#x27;admin&#x27; password=&#x27;&lt;bmc_pass&gt;&#x27; power_wait=4 op monitor interval=60s\n\n最后使用命令查看资源状态。\n1pcs status\n\n1.4、测试新建segment\n1234openstack --os-ha-api-version 1.1 \\segment create \\--description &quot;segment for vm ha test&quot; \\segment_for_vmha_test auto compute\n\n新建host\n12openstack --os-ha-api-version 1.1 segment host create compute1 COMPUTE SSH &lt;segment-id&gt;openstack --os-ha-api-version 1.1 segment host create compute4 COMPUTE SSH &lt;segment-id&gt;\n\n到compute4节点关闭网卡。\n1ifconfig enp61s0f1 down\n\n查看hostmonitors的日志。\n122024-01-12 15:03:23.084 7 INFO masakarimonitors.ha.masakari [-] Send a notification. &#123;&#x27;notification&#x27;: &#123;&#x27;type&#x27;: &#x27;COMPUTE_HOST&#x27;, &#x27;hostname&#x27;: &#x27;compute4&#x27;, &#x27;generated_time&#x27;: datetime.datetime(2024, 1, 12, 7, 3, 23, 84763), &#x27;payload&#x27;: &#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;&#125;&#125;2024-01-12 15:03:33.317 7 INFO masakarimonitors.ha.masakari [-] Response: openstack.instance_ha.v1.notification.Notification(type=COMPUTE_HOST, hostname=compute4, generated_time=2024-01-12T07:03:23.084763, payload=&#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;, id=2, notification_uuid=c5b2e8cb-3090-4a7e-8dfa-72561e190809, source_host_uuid=64847f55-2487-4904-bd64-680d8542b60f, status=new, created_at=2024-01-12T07:03:30.000000, updated_at=None, location=Munch(&#123;&#x27;cloud&#x27;: &#x27;10.10.15.10&#x27;, &#x27;region_name&#x27;: &#x27;RegionOne&#x27;, &#x27;zone&#x27;: None, &#x27;project&#x27;: Munch(&#123;&#x27;id&#x27;: &#x27;43f079ad3e324bd982f205bded4fc729&#x27;, &#x27;name&#x27;: None, &#x27;domain_id&#x27;: None, &#x27;domain_name&#x27;: None&#125;)&#125;))\n\n查看masakari-engine的日志。\n123452024-01-12 15:03:33.318 7 INFO masakari.engine.manager [req-b870773d-998d-4187-9010-c50d654ed1bf 93328d5c40d74721886733900547d730 43f079ad3e324bd982f205bded4fc729 - - -] Processing notification c5b2e8cb-3090-4a7e-8dfa-72561e190809 of type: COMPUTE_HOST2024-01-12 15:04:01.157 7 INFO masakari.compute.nova [req-774e9209-f0bb-41c6-b842-1abaa0a52dd2 nova - - - -] Disable nova-compute on compute42024-01-12 15:04:09.499 7 INFO masakari.engine.drivers.taskflow.host_failure [req-774e9209-f0bb-41c6-b842-1abaa0a52dd2 nova - - - -] Sleeping 180 sec before starting recovery thread until nova recognizes the node down.... ...2024-01-12 15:07:46.530 7 INFO masakari.engine.manager [req-e4a7d64a-3802-46b2-8b10-5c0342b23fef nova - - - -] Notification c5b2e8cb-3090-4a7e-8dfa-72561e190809 exits with status: finished.\n\n查看消息通知\n123456openstack --os-ha-api-version 1.1 notification list+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+| notification_uuid                    | generated_time             | status   | type         | source_host_uuid                     | payload                                                                    |+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+| c5b2e8cb-3090-4a7e-8dfa-72561e190809 | 2024-01-12T07:03:23.000000 | finished | COMPUTE_HOST | 64847f55-2487-4904-bd64-680d8542b60f | &#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125; |+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+\n\n2、使用2.1、创建segment使用openstack创建segment。\n123456789101112131415openstack segment create &lt;name&gt; &lt;recovery_method&gt; &lt;service_type&gt;openstack segment create test_segment reserved_host compute+-----------------+--------------------------------------+| Field           | Value                                |+-----------------+--------------------------------------+| created_at      | 2023-07-05T08:39:03.000000           || updated_at      | None                                 || uuid            | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 || name            | test_segment                         || description     | None                                 || id              | 5                                    || service_type    | compute                              || recovery_method | reserved_host                        |+-----------------+--------------------------------------+\nname，不可以重复。recovery_method可选值有：auto，表示疏散宿主机上的所有的虚拟机时，不选择目的宿主机（由nova自行选择宿主机）。reserved_host，表示疏散宿主机上所有的虚拟机时，选择指定的宿主机。auto_priority，表示优先采用auto策略，当执行疏散失败时，再采用reserved_host策略。rh_priority，表示优先采用reserved_host策略，当执行疏散失败时，再采用auto策略。service_type，默认compute。\n2.2、创建host首先使用openstack命令查看运行nova-compute的节点名称。\n12345678910111213openstack compute service list --service nova-compute+----+--------------+---------+------------+---------+-------+----------------------------+| ID | Binary       | Host    | Zone       | Status  | State | Updated At                 |+----+--------------+---------+------------+---------+-------+----------------------------+| 22 | nova-compute | ceph1   | nova       | enabled | up    | 2023-07-05T08:58:31.000000 || 25 | nova-compute | ceph2   | nova       | enabled | up    | 2023-07-05T08:58:21.000000 || 28 | nova-compute | ceph3   | nova       | enabled | down  | 2023-06-28T06:03:16.000000 || 31 | nova-compute | extend1 | extend-1-2 | enabled | up    | 2023-07-05T08:58:25.000000 || 35 | nova-compute | extend3 | nova       | enabled | up    | 2023-07-05T08:58:23.000000 || 37 | nova-compute | extend2 | extend-1-2 | enabled | up    | 2023-07-05T08:58:31.000000 || 39 | nova-compute | extend4 | nova       | enabled | up    | 2023-07-05T08:58:31.000000 || 41 | nova-compute | extend5 | nova       | enabled | up    | 2023-07-05T08:58:21.000000 |+----+--------------+---------+------------+---------+-------+----------------------------+\n再使用openstack命令创建host。\n1234openstack segment host create  [--reserved &lt;reserved&gt;] \\[--on_maintenance &lt;on_maintenance&gt;] \\&lt;name&gt; &lt;type&gt; &lt;control_attributes&gt; \\&lt;segment_id&gt;\n创建一个名为extend1的host，同时利用–reserved设置保留host。这里的name要和计算节点的名称一致。\n1234567891011121314openstack segment host create --reserved True extend1 compute ssh 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 +---------------------+--------------------------------------+| Field               | Value                                |+---------------------+--------------------------------------+| created_at          | 2023-07-05T08:59:49.000000           || updated_at          | None                                 || uuid                | 33c31659-ad94-487b-8ac9-609484ae9394 || name                | extend1                              || type                | compute                              || control_attributes  | ssh                                  || reserved            | True                                 || on_maintenance      | False                                || failover_segment_id | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |+---------------------+--------------------------------------+\n\n再创建一个host，用于测试疏散。\n1234567891011121314openstack segment host create extend2 compute ssh 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 +---------------------+--------------------------------------+| Field               | Value                                |+---------------------+--------------------------------------+| created_at          | 2023-07-05T09:06:48.000000           || updated_at          | None                                 || uuid                | 68a8b714-162a-4646-9640-fa665c0e4e37 || name                | extend2                              || type                | compute                              || control_attributes  | ssh                                  || reserved            | False                                || on_maintenance      | False                                || failover_segment_id | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |+---------------------+--------------------------------------+\n\n使用命令查看，可以得到下面的结果。\n1234567openstack segment host list 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+| uuid                                 | name    | type    | control_attributes | reserved | on_maintenance | failover_segment_id                  |+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+| 68a8b714-162a-4646-9640-fa665c0e4e37 | extend2 | compute | ssh                | False    | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 || 33c31659-ad94-487b-8ac9-609484ae9394 | extend1 | compute | ssh                | True     | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+\n\n2.3 、进行自动疏散的测试使用crm_mon查看集群的状态。容器部署的需要进入hacluster_pacemaker容器。\n123456789101112131415161718192021crm_monCluster Summary:  * Stack: corosync  * Current DC: control3 (version 2.0.4-6.uelc20.8-2deceaa3ae) - partition with quorum  * Last updated: Wed Jul  5 17:12:56 2023  * Last change:  Wed Jul  5 11:28:59 2023 by root via cibadmin on control1  * 10 nodes configured  * 7 resource instances configuredNode List:  * Online: [ control1 control2 control3 ]  * RemoteOnline: [ ceph1 ceph2 extend1 extend2 extend3 extend4 extend5 ]Active Resources:  * extend5     (ocf::pacemaker:remote):         Started control1  * extend4     (ocf::pacemaker:remote):         Started control2  * extend2     (ocf::pacemaker:remote):         Started control3  * extend3     (ocf::pacemaker:remote):         Started control1  * ceph1       (ocf::pacemaker:remote):         Started control2  * extend1     (ocf::pacemaker:remote):         Started control3  * ceph2       (ocf::pacemaker:remote):         Started control1\n\n进入extend2计算节点，关闭机器。\n查看masakari-hostmonitor的日志，容器部署位于/var/log/kolla/masakari/masakari-hostmonitor.log。\n1232023-07-05 17:18:35.961 7 INFO masakarimonitors.hostmonitor.host_handler.handle_host [-] &#x27;extend2&#x27; is &#x27;offline&#x27; (current: &#x27;offline&#x27;).2023-07-05 17:18:35.961 7 INFO masakarimonitors.ha.masakari [-] Send a notification. &#123;&#x27;notification&#x27;: &#123;&#x27;type&#x27;: &#x27;COMPUTE_HOST&#x27;, &#x27;hostname&#x27;: &#x27;extend2&#x27;, &#x27;generated_time&#x27;: datetime.datetime(2023, 7, 5, 9, 18, 35, 961461), &#x27;payload&#x27;: &#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;&#125;&#125;2023-07-05 17:18:38.209 7 INFO masakarimonitors.ha.masakari [-] Response: openstack.instance_ha.v1.notification.Notification(type=COMPUTE_HOST, hostname=extend2, generated_time=2023-07-05T09:18:35.961461, payload=&#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;, id=1, notification_uuid=e0ca6a58-cdda-495f-b84d-f0ef158b5e90, source_host_uuid=68a8b714-162a-4646-9640-fa665c0e4e37, status=new, created_at=2023-07-05T09:18:38.000000, updated_at=None, location=Munch(&#123;&#x27;cloud&#x27;: &#x27;10.10.15.221&#x27;, &#x27;region_name&#x27;: &#x27;RegionOne&#x27;, &#x27;zone&#x27;: None, &#x27;project&#x27;: Munch(&#123;&#x27;id&#x27;: &#x27;53389ce5aec842ba88a8715c4b5b9d86&#x27;, &#x27;name&#x27;: None, &#x27;domain_id&#x27;: None, &#x27;domain_name&#x27;: None&#125;)&#125;))\n\n同时集群的状态变为。\n1234567891011121314151617181920Cluster Summary:  * Stack: corosync  * Current DC: control3 (version 2.0.4-6.uelc20.8-2deceaa3ae) - partition with quorum  * Last updated: Wed Jul  5 17:19:25 2023  * Last change:  Wed Jul  5 11:28:59 2023 by root via cibadmin on control1  * 10 nodes configured  * 7 resource instances configuredNode List:  * Online: [ control1 control2 control3 ]  * RemoteOnline: [ ceph1 ceph2 extend1 extend3 extend4 extend5 ]  * RemoteOFFLINE: [ extend2 ]Active Resources:  * extend5     (ocf::pacemaker:remote):         Started control1  * extend4     (ocf::pacemaker:remote):         Started control2  * extend3     (ocf::pacemaker:remote):         Started control3  * ceph1       (ocf::pacemaker:remote):         Started control2  * extend1     (ocf::pacemaker:remote):         Started control3  * ceph2       (ocf::pacemaker:remote):         Started control1\n\n查看masakari-engine的日志。\n1232023-07-05 17:18:47.488 8 INFO masakari.compute.nova [req-7b8637b6-51ae-487f-8635-56fa96e8bd99 nova - - - -] Disable nova-compute on extend2...2023-07-05 17:22:20.616 8 INFO masakari.engine.drivers.taskflow.host_failure [req-7b8637b6-51ae-487f-8635-56fa96e8bd99 nova - - - -] Sleeping 180 sec before starting recovery thread until nova recognizes the node down.\n\n使用命令查看Notification的状态。\n123456789101112131415openstack notification list -f json [  &#123;    &quot;notification_uuid&quot;: &quot;e0ca6a58-cdda-495f-b84d-f0ef158b5e90&quot;,    &quot;generated_time&quot;: &quot;2023-07-05T17:18:35.000000&quot;,    &quot;status&quot;: &quot;finished&quot;,    &quot;type&quot;: &quot;COMPUTE_HOST&quot;,    &quot;source_host_uuid&quot;: &quot;68a8b714-162a-4646-9640-fa665c0e4e37&quot;,    &quot;payload&quot;: &#123;      &quot;event&quot;: &quot;STOPPED&quot;,      &quot;cluster_status&quot;: &quot;OFFLINE&quot;,      &quot;host_status&quot;: &quot;NORMAL&quot;    &#125;  &#125;]\n\n查看host的状态\n1234567openstack segment host list 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+| uuid                                 | name    | type    | control_attributes | reserved | on_maintenance | failover_segment_id                  |+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+| 68a8b714-162a-4646-9640-fa665c0e4e37 | extend2 | compute | ssh                | False    | True           | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 || 33c31659-ad94-487b-8ac9-609484ae9394 | extend1 | compute | ssh                | False    | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |+--------------------------------------+---------+---------+-----------","dateCreated":"2024-05-07T15:01:39+08:00","dateModified":"2024-05-07T15:19:15+08:00","datePublished":"2024-05-07T15:01:39+08:00","description":"OpenStack中保证计算高可用性的组件masakari","headline":"OpenStack漫游指南-计算高可用","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/","keywords":"OpenStack, Masakari","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="OpenStack中保证计算高可用性的组件masakari">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack漫游指南-计算高可用">
+<meta property="og:url" content="https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack中保证计算高可用性的组件masakari">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2024-05-07T07:01:39.000Z">
+<meta property="article:modified_time" content="2024-05-07T07:19:15.586Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Masakari">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack漫游指南-计算高可用
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2024-05-07T15:01:39+08:00">
+	
+		    May 07, 2024
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><h1 id="PMI测试"><a href="#PMI测试" class="headerlink" title="PMI测试"></a>PMI测试</h1><p>使用kolla-ansible部署masakari。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">enable_masakari:</span> <span class="string">&quot;yes&quot;</span></span><br><span class="line"><span class="attr">enable_hacluster:</span> <span class="string">&quot;yes&quot;</span> <span class="comment"># masakari依赖pacemaker</span></span><br></pre></td></tr></table></figure>
+<p>部署</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kolla-ansible -i /etc/kolla/multinode deploy -t masakari -vv</span><br></pre></td></tr></table></figure>
+
+<p>1.1 、错误一<br>如果发现hacluster-pacemaker的日志中有如下错误。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">Jan 09 13:40:23.643 controller01 pacemakerd          [17] (pcmk_process_exit)   notice: Respawning pacemaker-based subdaemon after unexpected exit</span><br><span class="line">Jan 09 13:40:23.643 controller01 pacemakerd          [17] (start_child)         info: Using uid=42486 and group=42486 for process pacemaker-based</span><br><span class="line">Jan 09 13:40:23.643 controller01 pacemakerd          [17] (start_child)         info: Forked child 58 for process pacemaker-based</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_log_init)        info: Changed active directory to /var/lib/pacemaker/cores</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (main)        notice: Starting Pacemaker CIB manager</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (get_cluster_type)    info: Verifying cluster type: &#x27;corosync&#x27;</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (get_cluster_type)    info: Assuming an active &#x27;corosync&#x27; cluster</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_user_can_write)         notice: /var/lib/pacemaker/cib/cib.xml is not owned by user hacluster | uid 42486 != 189</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_group_can_write)        notice: /var/lib/pacemaker/cib/cib.xml is not readable and writable by group haclient | st_mode=0100600</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (pcmk__daemon_can_write)      error: /var/lib/pacemaker/cib/cib.xml must be owned and writable by either user hacluster or group haclient | st_mode=0100600</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (activateCibXml)      error: Ignoring invalid CIB</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (activateCibXml)      crit: Could not write out new CIB and no saved version to revert to</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (cib_init)    crit: Cannot start CIB... terminating</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_xml_cleanup)     info: Cleaning up memory from libxml2</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemaker-based     [58] (crm_exit)    info: Exiting pacemaker-based | with status 66</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemakerd          [17] (pcmk_child_exit)     error: pacemaker-based[58] exited with status 66 (Input file not available)</span><br><span class="line">Jan 09 13:40:23.673 controller01 pacemakerd          [17] (pcmk__ipc_is_authentic_process_active)       info: Could not connect to cib_ro IPC: Connection refused</span><br></pre></td></tr></table></figure>
+
+<p>需要检查容器中hacluster的用户和组。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /etc/passwd | grep hacluster</span><br><span class="line">hacluster:x:42486:42486::/home/hacluster:/usr/sbin/nologin</span><br><span class="line"></span><br><span class="line"><span class="built_in">cat</span> /etc/group | grep haclient</span><br><span class="line">haclient:x:42486:</span><br></pre></td></tr></table></figure>
+<p>再查看宿主机上docker的hacluster_pacemaker块的文件夹权限。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ll /var/lib/docker/volumes/hacluster_pacemaker/_data/</span><br><span class="line">总用量 40</span><br><span class="line">drwxr-x--- 2 42486 42486    10  3月 16  2023 blackbox</span><br><span class="line">drwxr-x--- 2 42486 42486  4096  3月 16  2023 cib</span><br><span class="line">drwxr-x--- 2 42486 42486    10  3月 16  2023 cores</span><br><span class="line">drwxr-x--- 2 42486 42486 20480  1月 12 15:05 pengine</span><br></pre></td></tr></table></figure>
+<p>保持权限一致。</p>
+<p>1.2 、错误二<br>容器中的hacluster用户和组都是一致，但是在masakari-hostmonitor容器还是出现如下的日志。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] Exception caught: Unexpected error while running command.</span><br><span class="line">Command: crmadmin -S controller01</span><br><span class="line">Exit code: 102</span><br><span class="line">Stdout: &#x27;&#x27;</span><br><span class="line">Stderr: &#x27;error: Could not connect to controller: Connection refused\nerror: Command failed: Connection refused\n&#x27;: oslo_concurrency.processutils.ProcessExecutionError: Unexpected error while running command.</span><br><span class="line">2024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] &#x27;controller01&#x27; is unstable state on cluster.: oslo_concurrency.processutils.ProcessExecutionError: Unexpected error while running command.</span><br><span class="line">2024-01-07 03:39:10.350 7 WARNING masakarimonitors.hostmonitor.host_handler.handle_host [-] hostmonitor skips monitoring hosts.</span><br></pre></td></tr></table></figure>
+
+<p>失败的原因可能是docker共享内存。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">crmadmin -S controller01 -V</span><br><span class="line">error: couldn<span class="string">&#x27;t open file /dev/shm/qb-21-0-15-xwVUp8/qb-request-crmd-header</span></span><br></pre></td></tr></table></figure>
+
+<p>再部署时需要将/dev设备映射到容器中。修改kolla-ansible部署masakari的配置文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vim /usr/local/share/kolla-ansible/ansible/roles/masakari/defaults/main.yml</span><br></pre></td></tr></table></figure>
+<p>修改为下面。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">masakari_hostmonitor_default_volumes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;<span class="template-variable">&#123;&#123; node_config_directory &#125;&#125;</span>/masakari-hostmonitor/:<span class="template-variable">&#123;&#123; container_config_directory &#125;&#125;</span>/:ro&quot;</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;/etc/localtime:/etc/localtime:ro&quot;</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;<span class="template-variable">&#123;&#123; &#x27;/etc/timezone:/etc/timezone:ro&#x27; if ansible_os_family == &#x27;Debian&#x27; else &#x27;&#x27; &#125;&#125;</span>&quot;</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;kolla_logs:/var/log/kolla/&quot;</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;<span class="template-variable">&#123;&#123; kolla_dev_repos_directory ~ &#x27;/masakari-monitors/masakarimonitors:/var/lib/kolla/venv/lib/python&#x27; ~ distro_python_version ~ &#x27;/site-packages/masakarimonitors&#x27; if masakari_dev_mode | bool else &#x27;&#x27; &#125;&#125;</span>&quot;</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">&quot;/dev/:/dev/&quot;</span> <span class="comment"># 新增</span></span><br></pre></td></tr></table></figure>
+<p>最后重新部署masakari。</p>
+<p>1.3、配置ipmi<br>进入控制节点的hacluster-pacemaker容器，安装依赖包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install -y pcs</span><br></pre></td></tr></table></figure>
+
+<p>注意目前cdimage的源中的fence-agents-4.2.1-109.uelc20.01存在国际化失败的问题，要使用fence-agents-4.2.1-109.uelc20.04。</p>
+<p>需要提前下载rpm文件，并安装。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.30.38.131/kojifiles/packages/fence-agents/4.2.1/109.uelc20.04/noarch/fence-agents-common-4.2.1-109.uelc20.04.noarch.rpm</span><br><span class="line">wget http://10.30.38.131/kojifiles/packages/fence-agents/4.2.1/109.uelc20.04/noarch/fence-agents-ipmilan-4.2.1-109.uelc20.04.noarch.rpm</span><br></pre></td></tr></table></figure>
+
+<p>检测计算节点的电源状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ipmitool -I lanplus -H &lt;bmc_ip&gt; -U admin -P &lt;bmc_pass&gt; power status</span><br></pre></td></tr></table></figure>
+<p>或者用如下命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fence_ipmilan -a &lt;bmc_ip&gt; -P -l admin -p &lt;bmc_pass&gt; -o status</span><br></pre></td></tr></table></figure>
+<p>设置stonith属性。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pcs property <span class="built_in">set</span> stonith-enabled=<span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>创建stonith设备</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pcs stonith create ipmi-fence-compute4 fence_ipmilan \</span><br><span class="line">verbose_level=1 \</span><br><span class="line">lanplus=1 pcmk_host_list=<span class="string">&#x27;compute4&#x27;</span> delay=5 pcmk_host_check=<span class="string">&#x27;static-list&#x27;</span> \</span><br><span class="line">pcmk_off_action=off pcmk_reboot_action=off ip=<span class="string">&#x27;&lt;bmc_ip&gt;&#x27;</span> \</span><br><span class="line">username=<span class="string">&#x27;admin&#x27;</span> password=<span class="string">&#x27;&lt;bmc_pass&gt;&#x27;</span> power_wait=4 op monitor interval=60s</span><br></pre></td></tr></table></figure>
+
+<p>最后使用命令查看资源状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pcs status</span><br></pre></td></tr></table></figure>
+
+<p>1.4、测试<br>新建segment</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openstack --os-ha-api-version 1.1 \</span><br><span class="line">segment create \</span><br><span class="line">--description <span class="string">&quot;segment for vm ha test&quot;</span> \</span><br><span class="line">segment_for_vmha_test auto compute</span><br></pre></td></tr></table></figure>
+
+<p>新建host</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openstack --os-ha-api-version 1.1 segment host create compute1 COMPUTE SSH &lt;segment-id&gt;</span><br><span class="line">openstack --os-ha-api-version 1.1 segment host create compute4 COMPUTE SSH &lt;segment-id&gt;</span><br></pre></td></tr></table></figure>
+
+<p>到compute4节点关闭网卡。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ifconfig enp61s0f1 down</span><br></pre></td></tr></table></figure>
+
+<p>查看hostmonitors的日志。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">2024-01-12 15:03:23.084 7 INFO masakarimonitors.ha.masakari [-] Send a notification. &#123;&#x27;notification&#x27;: &#123;&#x27;type&#x27;: &#x27;COMPUTE_HOST&#x27;, &#x27;hostname&#x27;: &#x27;compute4&#x27;, &#x27;generated_time&#x27;: datetime.datetime(2024, 1, 12, 7, 3, 23, 84763), &#x27;payload&#x27;: &#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;&#125;&#125;</span><br><span class="line">2024-01-12 15:03:33.317 7 INFO masakarimonitors.ha.masakari [-] Response: openstack.instance_ha.v1.notification.Notification(type=COMPUTE_HOST, hostname=compute4, generated_time=2024-01-12T07:03:23.084763, payload=&#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;, id=2, notification_uuid=c5b2e8cb-3090-4a7e-8dfa-72561e190809, source_host_uuid=64847f55-2487-4904-bd64-680d8542b60f, status=new, created_at=2024-01-12T07:03:30.000000, updated_at=None, location=Munch(&#123;&#x27;cloud&#x27;: &#x27;10.10.15.10&#x27;, &#x27;region_name&#x27;: &#x27;RegionOne&#x27;, &#x27;zone&#x27;: None, &#x27;project&#x27;: Munch(&#123;&#x27;id&#x27;: &#x27;43f079ad3e324bd982f205bded4fc729&#x27;, &#x27;name&#x27;: None, &#x27;domain_id&#x27;: None, &#x27;domain_name&#x27;: None&#125;)&#125;))</span><br></pre></td></tr></table></figure>
+
+<p>查看masakari-engine的日志。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">2024-01-12 15:03:33.318 7 INFO masakari.engine.manager [req-b870773d-998d-4187-9010-c50d654ed1bf 93328d5c40d74721886733900547d730 43f079ad3e324bd982f205bded4fc729 - - -] Processing notification c5b2e8cb-3090-4a7e-8dfa-72561e190809 of type: COMPUTE_HOST</span><br><span class="line">2024-01-12 15:04:01.157 7 INFO masakari.compute.nova [req-774e9209-f0bb-41c6-b842-1abaa0a52dd2 nova - - - -] Disable nova-compute on compute4</span><br><span class="line">2024-01-12 15:04:09.499 7 INFO masakari.engine.drivers.taskflow.host_failure [req-774e9209-f0bb-41c6-b842-1abaa0a52dd2 nova - - - -] Sleeping 180 sec before starting recovery thread until nova recognizes the node down.</span><br><span class="line">... ...</span><br><span class="line">2024-01-12 15:07:46.530 7 INFO masakari.engine.manager [req-e4a7d64a-3802-46b2-8b10-5c0342b23fef nova - - - -] Notification c5b2e8cb-3090-4a7e-8dfa-72561e190809 exits with status: finished.</span><br></pre></td></tr></table></figure>
+
+<p>查看消息通知</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">openstack --os-ha-api-version 1.1 notification list</span><br><span class="line">+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+</span><br><span class="line">| notification_uuid                    | generated_time             | status   | <span class="built_in">type</span>         | source_host_uuid                     | payload                                                                    |</span><br><span class="line">+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+</span><br><span class="line">| c5b2e8cb-3090-4a7e-8dfa-72561e190809 | 2024-01-12T07:03:23.000000 | finished | COMPUTE_HOST | 64847f55-2487-4904-bd64-680d8542b60f | &#123;<span class="string">&#x27;event&#x27;</span>: <span class="string">&#x27;STOPPED&#x27;</span>, <span class="string">&#x27;cluster_status&#x27;</span>: <span class="string">&#x27;OFFLINE&#x27;</span>, <span class="string">&#x27;host_status&#x27;</span>: <span class="string">&#x27;NORMAL&#x27;</span>&#125; |</span><br><span class="line">+--------------------------------------+----------------------------+----------+--------------+--------------------------------------+----------------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>2、使用<br>2.1、创建segment<br>使用openstack创建segment。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">openstack segment create &lt;name&gt; &lt;recovery_method&gt; &lt;service_type&gt;</span><br><span class="line"></span><br><span class="line">openstack segment create test_segment reserved_host compute</span><br><span class="line">+-----------------+--------------------------------------+</span><br><span class="line">| Field           | Value                                |</span><br><span class="line">+-----------------+--------------------------------------+</span><br><span class="line">| created_at      | 2023-07-05T08:39:03.000000           |</span><br><span class="line">| updated_at      | None                                 |</span><br><span class="line">| uuid            | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">| name            | test_segment                         |</span><br><span class="line">| description     | None                                 |</span><br><span class="line">| <span class="built_in">id</span>              | 5                                    |</span><br><span class="line">| service_type    | compute                              |</span><br><span class="line">| recovery_method | reserved_host                        |</span><br><span class="line">+-----------------+--------------------------------------+</span><br></pre></td></tr></table></figure>
+<p>name，不可以重复。<br>recovery_method可选值有：<br>auto，表示疏散宿主机上的所有的虚拟机时，不选择目的宿主机（由nova自行选择宿主机）。<br>reserved_host，表示疏散宿主机上所有的虚拟机时，选择指定的宿主机。<br>auto_priority，表示优先采用auto策略，当执行疏散失败时，再采用reserved_host策略。<br>rh_priority，表示优先采用reserved_host策略，当执行疏散失败时，再采用auto策略。<br>service_type，默认compute。</p>
+<p>2.2、创建host<br>首先使用openstack命令查看运行nova-compute的节点名称。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">openstack compute service list --service nova-compute</span><br><span class="line">+----+--------------+---------+------------+---------+-------+----------------------------+</span><br><span class="line">| ID | Binary       | Host    | Zone       | Status  | State | Updated At                 |</span><br><span class="line">+----+--------------+---------+------------+---------+-------+----------------------------+</span><br><span class="line">| 22 | nova-compute | ceph1   | nova       | enabled | up    | 2023-07-05T08:58:31.000000 |</span><br><span class="line">| 25 | nova-compute | ceph2   | nova       | enabled | up    | 2023-07-05T08:58:21.000000 |</span><br><span class="line">| 28 | nova-compute | ceph3   | nova       | enabled | down  | 2023-06-28T06:03:16.000000 |</span><br><span class="line">| 31 | nova-compute | extend1 | extend-1-2 | enabled | up    | 2023-07-05T08:58:25.000000 |</span><br><span class="line">| 35 | nova-compute | extend3 | nova       | enabled | up    | 2023-07-05T08:58:23.000000 |</span><br><span class="line">| 37 | nova-compute | extend2 | extend-1-2 | enabled | up    | 2023-07-05T08:58:31.000000 |</span><br><span class="line">| 39 | nova-compute | extend4 | nova       | enabled | up    | 2023-07-05T08:58:31.000000 |</span><br><span class="line">| 41 | nova-compute | extend5 | nova       | enabled | up    | 2023-07-05T08:58:21.000000 |</span><br><span class="line">+----+--------------+---------+------------+---------+-------+----------------------------+</span><br></pre></td></tr></table></figure>
+<p>再使用openstack命令创建host。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openstack segment host create  [--reserved &lt;reserved&gt;] \</span><br><span class="line">[--on_maintenance &lt;on_maintenance&gt;] \</span><br><span class="line">&lt;name&gt; &lt;<span class="built_in">type</span>&gt; &lt;control_attributes&gt; \</span><br><span class="line">&lt;segment_id&gt;</span><br></pre></td></tr></table></figure>
+<p>创建一个名为extend1的host，同时利用–reserved设置保留host。这里的name要和计算节点的名称一致。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">openstack segment host create --reserved True extend1 compute ssh 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 </span><br><span class="line">+---------------------+--------------------------------------+</span><br><span class="line">| Field               | Value                                |</span><br><span class="line">+---------------------+--------------------------------------+</span><br><span class="line">| created_at          | 2023-07-05T08:59:49.000000           |</span><br><span class="line">| updated_at          | None                                 |</span><br><span class="line">| uuid                | 33c31659-ad94-487b-8ac9-609484ae9394 |</span><br><span class="line">| name                | extend1                              |</span><br><span class="line">| <span class="built_in">type</span>                | compute                              |</span><br><span class="line">| control_attributes  | ssh                                  |</span><br><span class="line">| reserved            | True                                 |</span><br><span class="line">| on_maintenance      | False                                |</span><br><span class="line">| failover_segment_id | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">+---------------------+--------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>再创建一个host，用于测试疏散。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">openstack segment host create extend2 compute ssh 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 </span><br><span class="line">+---------------------+--------------------------------------+</span><br><span class="line">| Field               | Value                                |</span><br><span class="line">+---------------------+--------------------------------------+</span><br><span class="line">| created_at          | 2023-07-05T09:06:48.000000           |</span><br><span class="line">| updated_at          | None                                 |</span><br><span class="line">| uuid                | 68a8b714-162a-4646-9640-fa665c0e4e37 |</span><br><span class="line">| name                | extend2                              |</span><br><span class="line">| <span class="built_in">type</span>                | compute                              |</span><br><span class="line">| control_attributes  | ssh                                  |</span><br><span class="line">| reserved            | False                                |</span><br><span class="line">| on_maintenance      | False                                |</span><br><span class="line">| failover_segment_id | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">+---------------------+--------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>使用命令查看，可以得到下面的结果。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openstack segment host list 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1</span><br><span class="line">+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+</span><br><span class="line">| uuid                                 | name    | <span class="built_in">type</span>    | control_attributes | reserved | on_maintenance | failover_segment_id                  |</span><br><span class="line">+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+</span><br><span class="line">| 68a8b714-162a-4646-9640-fa665c0e4e37 | extend2 | compute | ssh                | False    | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">| 33c31659-ad94-487b-8ac9-609484ae9394 | extend1 | compute | ssh                | True     | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>2.3 、进行自动疏散的测试<br>使用crm_mon查看集群的状态。容器部署的需要进入hacluster_pacemaker容器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">crm_mon</span><br><span class="line">Cluster Summary:</span><br><span class="line">  * Stack: corosync</span><br><span class="line">  * Current DC: control3 (version 2.0.4-6.uelc20.8-2deceaa3ae) - partition with quorum</span><br><span class="line">  * Last updated: Wed Jul  5 17:12:56 2023</span><br><span class="line">  * Last change:  Wed Jul  5 11:28:59 2023 by root via cibadmin on control1</span><br><span class="line">  * 10 nodes configured</span><br><span class="line">  * 7 resource instances configured</span><br><span class="line"></span><br><span class="line">Node List:</span><br><span class="line">  * Online: [ control1 control2 control3 ]</span><br><span class="line">  * RemoteOnline: [ ceph1 ceph2 extend1 extend2 extend3 extend4 extend5 ]</span><br><span class="line"></span><br><span class="line">Active Resources:</span><br><span class="line">  * extend5     (ocf::pacemaker:remote):         Started control1</span><br><span class="line">  * extend4     (ocf::pacemaker:remote):         Started control2</span><br><span class="line">  * extend2     (ocf::pacemaker:remote):         Started control3</span><br><span class="line">  * extend3     (ocf::pacemaker:remote):         Started control1</span><br><span class="line">  * ceph1       (ocf::pacemaker:remote):         Started control2</span><br><span class="line">  * extend1     (ocf::pacemaker:remote):         Started control3</span><br><span class="line">  * ceph2       (ocf::pacemaker:remote):         Started control1</span><br></pre></td></tr></table></figure>
+
+<p>进入extend2计算节点，关闭机器。</p>
+<p>查看masakari-hostmonitor的日志，容器部署位于/var/log/kolla/masakari/masakari-hostmonitor.log。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">2023-07-05 17:18:35.961 7 INFO masakarimonitors.hostmonitor.host_handler.handle_host [-] &#x27;extend2&#x27; is &#x27;offline&#x27; (current: &#x27;offline&#x27;).</span><br><span class="line">2023-07-05 17:18:35.961 7 INFO masakarimonitors.ha.masakari [-] Send a notification. &#123;&#x27;notification&#x27;: &#123;&#x27;type&#x27;: &#x27;COMPUTE_HOST&#x27;, &#x27;hostname&#x27;: &#x27;extend2&#x27;, &#x27;generated_time&#x27;: datetime.datetime(2023, 7, 5, 9, 18, 35, 961461), &#x27;payload&#x27;: &#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;&#125;&#125;</span><br><span class="line">2023-07-05 17:18:38.209 7 INFO masakarimonitors.ha.masakari [-] Response: openstack.instance_ha.v1.notification.Notification(type=COMPUTE_HOST, hostname=extend2, generated_time=2023-07-05T09:18:35.961461, payload=&#123;&#x27;event&#x27;: &#x27;STOPPED&#x27;, &#x27;cluster_status&#x27;: &#x27;OFFLINE&#x27;, &#x27;host_status&#x27;: &#x27;NORMAL&#x27;&#125;, id=1, notification_uuid=e0ca6a58-cdda-495f-b84d-f0ef158b5e90, source_host_uuid=68a8b714-162a-4646-9640-fa665c0e4e37, status=new, created_at=2023-07-05T09:18:38.000000, updated_at=None, location=Munch(&#123;&#x27;cloud&#x27;: &#x27;10.10.15.221&#x27;, &#x27;region_name&#x27;: &#x27;RegionOne&#x27;, &#x27;zone&#x27;: None, &#x27;project&#x27;: Munch(&#123;&#x27;id&#x27;: &#x27;53389ce5aec842ba88a8715c4b5b9d86&#x27;, &#x27;name&#x27;: None, &#x27;domain_id&#x27;: None, &#x27;domain_name&#x27;: None&#125;)&#125;))</span><br></pre></td></tr></table></figure>
+
+<p>同时集群的状态变为。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">Cluster Summary:</span><br><span class="line">  * Stack: corosync</span><br><span class="line">  * Current DC: control3 (version 2.0.4-6.uelc20.8-2deceaa3ae) - partition with quorum</span><br><span class="line">  * Last updated: Wed Jul  5 17:19:25 2023</span><br><span class="line">  * Last change:  Wed Jul  5 11:28:59 2023 by root via cibadmin on control1</span><br><span class="line">  * 10 nodes configured</span><br><span class="line">  * 7 resource instances configured</span><br><span class="line"></span><br><span class="line">Node List:</span><br><span class="line">  * Online: [ control1 control2 control3 ]</span><br><span class="line">  * RemoteOnline: [ ceph1 ceph2 extend1 extend3 extend4 extend5 ]</span><br><span class="line">  * RemoteOFFLINE: [ extend2 ]</span><br><span class="line"></span><br><span class="line">Active Resources:</span><br><span class="line">  * extend5     (ocf::pacemaker:remote):         Started control1</span><br><span class="line">  * extend4     (ocf::pacemaker:remote):         Started control2</span><br><span class="line">  * extend3     (ocf::pacemaker:remote):         Started control3</span><br><span class="line">  * ceph1       (ocf::pacemaker:remote):         Started control2</span><br><span class="line">  * extend1     (ocf::pacemaker:remote):         Started control3</span><br><span class="line">  * ceph2       (ocf::pacemaker:remote):         Started control1</span><br></pre></td></tr></table></figure>
+
+<p>查看masakari-engine的日志。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">2023-07-05 17:18:47.488 8 INFO masakari.compute.nova [req-7b8637b6-51ae-487f-8635-56fa96e8bd99 nova - - - -] Disable nova-compute on extend2</span><br><span class="line">...</span><br><span class="line">2023-07-05 17:22:20.616 8 INFO masakari.engine.drivers.taskflow.host_failure [req-7b8637b6-51ae-487f-8635-56fa96e8bd99 nova - - - -] Sleeping 180 sec before starting recovery thread until nova recognizes the node down.</span><br></pre></td></tr></table></figure>
+
+<p>使用命令查看Notification的状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">openstack notification list -f json </span><br><span class="line">[</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="string">&quot;notification_uuid&quot;</span>: <span class="string">&quot;e0ca6a58-cdda-495f-b84d-f0ef158b5e90&quot;</span>,</span><br><span class="line">    <span class="string">&quot;generated_time&quot;</span>: <span class="string">&quot;2023-07-05T17:18:35.000000&quot;</span>,</span><br><span class="line">    <span class="string">&quot;status&quot;</span>: <span class="string">&quot;finished&quot;</span>,</span><br><span class="line">    <span class="string">&quot;type&quot;</span>: <span class="string">&quot;COMPUTE_HOST&quot;</span>,</span><br><span class="line">    <span class="string">&quot;source_host_uuid&quot;</span>: <span class="string">&quot;68a8b714-162a-4646-9640-fa665c0e4e37&quot;</span>,</span><br><span class="line">    <span class="string">&quot;payload&quot;</span>: &#123;</span><br><span class="line">      <span class="string">&quot;event&quot;</span>: <span class="string">&quot;STOPPED&quot;</span>,</span><br><span class="line">      <span class="string">&quot;cluster_status&quot;</span>: <span class="string">&quot;OFFLINE&quot;</span>,</span><br><span class="line">      <span class="string">&quot;host_status&quot;</span>: <span class="string">&quot;NORMAL&quot;</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<p>查看host的状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openstack segment host list 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1</span><br><span class="line">+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+</span><br><span class="line">| uuid                                 | name    | <span class="built_in">type</span>    | control_attributes | reserved | on_maintenance | failover_segment_id                  |</span><br><span class="line">+--------------------------------------+---------+---------+--------------------+----------+----------------+--------------------------------------+</span><br><span class="line">| 68a8b714-162a-4646-9640-fa665c0e4e37 | extend2 | compute | ssh                | False    | True           | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">| 33c31659-ad94-487b-8ac9-609484ae9394 | extend1 | compute | ssh                | False    | False          | 5d0db8e4-1b93-4c5f-931e-39b92a0eeee1 |</span><br><span class="line">+--------------------------------------+---------+---------+-----------</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Masakari/" rel="tag">Masakari</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    data-tooltip="OpenStack非常规操作之网卡PCI直通"
+                    aria-label="NEXT: OpenStack非常规操作之网卡PCI直通"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/&amp;title=OpenStack漫游指南-计算高可用"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2024/05/07/OpenStack漫游指南-计算高可用/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    <a
+                        class="post-action-btn btn btn--disabled"
+                        aria-hidden="true"
+                    >
+                        
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    data-tooltip="OpenStack非常规操作之网卡PCI直通"
+                    aria-label="NEXT: OpenStack非常规操作之网卡PCI直通"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/&amp;title=OpenStack漫游指南-计算高可用"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/&amp;title=OpenStack漫游指南-计算高可用"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

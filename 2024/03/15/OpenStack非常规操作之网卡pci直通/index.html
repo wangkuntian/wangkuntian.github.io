@@ -1,0 +1,726 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack非常规操作之网卡PCI直通 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="网卡,OpenStack">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n前言OpenStack支持将物理设备挂载到虚拟机内部，术语叫做PCI passthrough。\n\n传送门\n\nPCI passthrough有几个基本要求。\n\nBIOS中打开VT-d（Intel® Virtualization Technology for Directed I/O的缩写）。\n计算节点内核打开intel_iommu=on或者amd_iommu=on。\n计算节点上有可用的PCI设备。\n\n最后，再通过修改计算节点的nova-compute的配置文件，就能将配置文件中给定的设备分配给创建好的虚拟机，上面的传送门是官方文档说明，接下来将不再赘述。\n但是OpenStack只支持在创建时分配PCI设备，如果已有虚拟机想要添加PCI设备，就需要一点非常规操作，说是非常规操作其实是libvirt的一些基础操作。\n流程\n查看虚拟机的信息，确保虚拟机处在运行状态。\n123456789openstack server show &lt;server_id&gt; -ceg:openstack server show f7906515-727e-4c0d-8047-29d45425d563 -c OS-EXT-SRV-ATTR:host -c OS-EXT-SRV-ATTR:instance_name+-------------------------------+-------------------+| Field                         | Value             |+-------------------------------+-------------------+| OS-EXT-SRV-ATTR:host          | compute3          || OS-EXT-SRV-ATTR:instance_name | instance-0000027a |+-------------------------------+-------------------+\n\n连接到compute3节点，查看pci设备列表。\n12345lspci -D | grep -i net0000:01:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)0000:01:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)0000:21:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)0000:21:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)\n\n选择要挂载的网卡，确保网卡已连接网线（这里是enp1s0f0）。\n1234567891011121314151617ethtool -i enp1s0f0driver: igbversion: 5.10.0-46.uelc20.x86_64firmware-version: 1.63, 0x800009faexpansion-rom-version: # pic总线地址bus-info: 0000:01:00.0supports-statistics: yessupports-test: yessupports-eeprom-access: yessupports-register-dump: yessupports-priv-flags: yesethtool enp1s0f0 | grep Link        # 已连接网线        Link detected: yes\n\n进入计算节点的nova_libvirt容器（环境基于kolla-ansible部署的），编写device.xml文件。\n12345&lt;hostdev mode=&#x27;subsystem&#x27; type=&#x27;pci&#x27; managed=&#x27;yes&#x27;&gt; &lt;source&gt;   &lt;address domain=&#x27;0x0000&#x27; bus=&#x27;0x01&#x27; slot=&#x27;0x00&#x27; function=&#x27;0x0&#x27;/&gt; &lt;/source&gt;&lt;/hostdev&gt;\n\n当透传的设备是SR-IOV时。\n12345&lt;interface type=&#x27;hostdev&#x27; managed=&#x27;yes&#x27;&gt;  &lt;source&gt;    &lt;address type=&#x27;pci&#x27; domain=&#x27;0x0000&#x27; bus=&#x27;0x01&#x27; slot=&#x27;0x00&#x27; function=&#x27;0x0&#x27;/&gt;  &lt;/source&gt;&lt;/interface&gt;\n\n执行挂载命令。\n1virsh attach-device --domain instance-0000027a device.xml\n\n宿主机或者虚拟机重启可能会导致透传网卡的卸载，可以再进入nova_libvirt容器执行挂载操作。\n\n\n参考\nlibvirt文档-pci设备挂载libvirt文档-网卡设备挂载\n","dateCreated":"2024-03-15T15:19:24+08:00","dateModified":"2024-05-07T14:56:00+08:00","datePublished":"2024-03-15T15:19:24+08:00","description":"这一切还得从接到SRIOV的任务开始说起。","headline":"OpenStack非常规操作之网卡PCI直通","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/","keywords":"OpenStack, 网卡","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="这一切还得从接到SRIOV的任务开始说起。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack非常规操作之网卡PCI直通">
+<meta property="og:url" content="https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="这一切还得从接到SRIOV的任务开始说起。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2024-03-15T07:19:24.000Z">
+<meta property="article:modified_time" content="2024-05-07T06:56:00.770Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="网卡">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack非常规操作之网卡PCI直通
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2024-03-15T15:19:24+08:00">
+	
+		    Mar 15, 2024
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B5%81%E7%A8%8B"><span class="toc-text">流程</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%8F%82%E8%80%83"><span class="toc-text">参考</span></a></li></ol>
+
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>OpenStack支持将物理设备挂载到虚拟机内部，术语叫做<strong>PCI passthrough</strong>。</p>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://docs.openstack.org/nova/latest/admin/pci-passthrough.html">传送门</a></p>
+</blockquote>
+<p>PCI passthrough有几个基本要求。</p>
+<ol>
+<li>BIOS中打开VT-d（Intel® Virtualization Technology for Directed I/O的缩写）。</li>
+<li>计算节点内核打开<strong>intel_iommu=on</strong>或者<strong>amd_iommu=on</strong>。</li>
+<li>计算节点上有可用的PCI设备。</li>
+</ol>
+<p>最后，再通过修改计算节点的nova-compute的配置文件，就能将配置文件中给定的设备分配给创建好的虚拟机，上面的传送门是官方文档说明，接下来将不再赘述。</p>
+<p>但是OpenStack只支持在创建时分配PCI设备，如果已有虚拟机想要添加PCI设备，就需要一点非常规操作，说是非常规操作其实是libvirt的一些基础操作。</p>
+<h1 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h1><ol>
+<li><p>查看虚拟机的信息，确保虚拟机处在运行状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">openstack server show &lt;server_id&gt; -c</span><br><span class="line">eg:</span><br><span class="line">openstack server show f7906515-727e-4c0d-8047-29d45425d563 -c OS-EXT-SRV-ATTR:host -c OS-EXT-SRV-ATTR:instance_name</span><br><span class="line">+-------------------------------+-------------------+</span><br><span class="line">| Field                         | Value             |</span><br><span class="line">+-------------------------------+-------------------+</span><br><span class="line">| OS-EXT-SRV-ATTR:host          | compute3          |</span><br><span class="line">| OS-EXT-SRV-ATTR:instance_name | instance-0000027a |</span><br><span class="line">+-------------------------------+-------------------+</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>连接到compute3节点，查看pci设备列表。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">lspci -D | grep -i net</span><br><span class="line">0000:01:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br><span class="line">0000:01:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br><span class="line">0000:21:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br><span class="line">0000:21:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>选择要挂载的网卡，确保网卡已连接网线（这里是enp1s0f0）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">ethtool -i enp1s0f0</span><br><span class="line">driver: igb</span><br><span class="line">version: 5.10.0-46.uelc20.x86_64</span><br><span class="line">firmware-version: 1.63, 0x800009fa</span><br><span class="line">expansion-rom-version: </span><br><span class="line"><span class="comment"># pic总线地址</span></span><br><span class="line">bus-info: 0000:01:00.0</span><br><span class="line">supports-statistics: <span class="built_in">yes</span></span><br><span class="line">supports-test: <span class="built_in">yes</span></span><br><span class="line">supports-eeprom-access: <span class="built_in">yes</span></span><br><span class="line">supports-register-dump: <span class="built_in">yes</span></span><br><span class="line">supports-priv-flags: <span class="built_in">yes</span></span><br><span class="line"></span><br><span class="line">ethtool enp1s0f0 | grep Link</span><br><span class="line">        <span class="comment"># 已连接网线</span></span><br><span class="line">        Link detected: <span class="built_in">yes</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>进入计算节点的nova_libvirt容器（环境基于kolla-ansible部署的），编写device.xml文件。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">hostdev</span> <span class="attr">mode</span>=<span class="string">&#x27;subsystem&#x27;</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">managed</span>=<span class="string">&#x27;yes&#x27;</span>&gt;</span></span><br><span class="line"> <span class="tag">&lt;<span class="name">source</span>&gt;</span></span><br><span class="line">   <span class="tag">&lt;<span class="name">address</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x01&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line"> <span class="tag">&lt;/<span class="name">source</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">hostdev</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>当透传的设备是SR-IOV时。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">interface</span> <span class="attr">type</span>=<span class="string">&#x27;hostdev&#x27;</span> <span class="attr">managed</span>=<span class="string">&#x27;yes&#x27;</span>&gt;</span></span><br><span class="line">  <span class="tag">&lt;<span class="name">source</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">address</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x01&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line">  <span class="tag">&lt;/<span class="name">source</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">interface</span>&gt;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>执行挂载命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">virsh attach-device --domain instance-0000027a device.xml</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>宿主机或者虚拟机重启可能会导致透传网卡的卸载，可以再进入nova_libvirt容器执行挂载操作。</p>
+</li>
+</ol>
+<h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><blockquote>
+<p><a target="_blank" rel="noopener" href="https://libvirt.org/formatdomain.html#usb-pci-scsi-devices">libvirt文档-pci设备挂载</a><br><a target="_blank" rel="noopener" href="https://libvirt.org/formatdomain.html#pci-passthrough">libvirt文档-网卡设备挂载</a></p>
+</blockquote>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E7%BD%91%E5%8D%A1/" rel="tag">网卡</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    data-tooltip="OpenStack漫游指南-计算高可用"
+                    aria-label="PREVIOUS: OpenStack漫游指南-计算高可用"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/12/15/OpenEuler-Summit%E5%A4%A7%E4%BC%9A/"
+                    data-tooltip="OpenEuler Summit大会"
+                    aria-label="NEXT: OpenEuler Summit大会"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/&amp;title=OpenStack非常规操作之网卡PCI直通"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2024/03/15/OpenStack非常规操作之网卡pci直通/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2024/05/07/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E8%AE%A1%E7%AE%97%E9%AB%98%E5%8F%AF%E7%94%A8/"
+                    data-tooltip="OpenStack漫游指南-计算高可用"
+                    aria-label="PREVIOUS: OpenStack漫游指南-计算高可用"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/12/15/OpenEuler-Summit%E5%A4%A7%E4%BC%9A/"
+                    data-tooltip="OpenEuler Summit大会"
+                    aria-label="NEXT: OpenEuler Summit大会"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/&amp;title=OpenStack非常规操作之网卡PCI直通"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/&amp;title=OpenStack非常规操作之网卡PCI直通"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2024/03/15/OpenStack%E9%9D%9E%E5%B8%B8%E8%A7%84%E6%93%8D%E4%BD%9C%E4%B9%8B%E7%BD%91%E5%8D%A1pci%E7%9B%B4%E9%80%9A/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

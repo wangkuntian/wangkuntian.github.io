@@ -1,0 +1,811 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack漫游指南--SR-IOV - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,网络,SR-IOV">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"SR-IOV全称Single Root I/O Virtualization，是Intel在2007年提出的一种基于硬件的虚拟化解决方案。在虚拟化场景中，CPU与内存是最先解决的，但是I/O设备一直没有很好的解决办法，Intel有VT-d（Virtualization Technology for Directed I/O）可以将物理服务器的PCIe设备直接提供给虚拟机使用，也就是常说的“直通”（passthrough），但是直通面临一个问题是PCIe设备只能给一个虚拟机使用，这肯定是不行的，所以SR-IOV应运而生，一个物理设备可以虚拟出多个虚拟设备给虚拟机使用。\n\n\n概述SR-IOV是一种规范，使得单根端口下的单个快速外围组件互连 (PCIe) 物理设备显示为管理程序或客户机操作系统的多个单独的物理设备，既有直通设备的性能优势，又可以支持多个虚拟机，一举两得。\n基本概念SR-IOV使用physical functions（PF）和virtual functions（VF）为SR-IOV设备管理全局功能。PF包含SR-IOV功能的完整PCIe设备，PF作为普通的PCIe设备被发现、管理和配置。PF通过分配VF来配置和管理SR-IOV功能。禁用SR-IOV后，主机将在一个物理网卡上创建一个PF。VF是轻量级PCIe功能（I/O 处理）的PCIe设备，每个VF都是通过PF来生成管理的，VF的具体数量限制受限于PCIe设备自身配置及驱动程序的支持，启用SR-IOV后，主机将在一个物理NIC上创建单个PF和多个VF。 VF的数量取决于配置和驱动程序支持。每个SR-IOV设备都可有一个PF（Physical Functions），并且每个PF最多可有64,000个与其关联的VF（Virtual Function）。PF可以通过寄存器创建VF，这些寄存器设计有专用于此目的的属性。一旦在PF中启用了SR-IOV，就可以通过PF的总线、设备和功能编号（路由ID）访问各个VF的PCI配置空间。每个VF都具有一个PCI内存空间，用于映射其寄存器集。VF设备驱动程序对寄存器集进行操作以启用其功能，并且显示为实际存在的PCI设备。创建VF 后，可以直接将其指定给虚拟机或各个应用程序。此功能使得虚拟功能可以共享物理设备，并在没有CPU和虚拟机管理程序软件开销的情况下执行I/O。\n先决条件PCIe Passthrough的方式是直接把一个PCIe设备指派给guest虚拟机，这样guest虚拟机可以完全控制设备并提供接近于原生性能。但是，PCIe Passthrough的实现是和SR-IOV冲突的，因为在SR-IOV实现中，虚拟机是直接分配一个VF。这样多个虚拟机可以通过分配的VF来使用同一个PCIe设备。设备指定分配需要CPU和firmware都支持IOMMU（I/O Memory Management Unit）。IOMMU负责I/O虚拟地址（I/O Virtual Address）和物理内存地址转换。这样虚拟机就能够使用guest物理地址来对设备编程，通过IOMMU转换成物理主机内存地址。IOMMU groups是一组和系统中其他设备隔离的设备集合。也就是说，IOMMU groups代表了具有IOMMU粒度（也就是必须将整个IOMMU group分配给同一个虚拟机）和与系统中所有其他IOMMU group隔离。这种方式允许IOMMU和其他IOMMU group区别进行数据处理，即IOMMU group的内部和外部隔离。设备分配的关键是虚拟机和PCIe设备虚拟化功能(virtual functions, VFs)隔离数据处理。在PCIe和服务器标准定义的访问控制服务（Access Control Service, ACS）能力是保证IOMMU groups隔离的运行标准。如果没有原生的ACS，或者不能确保硬件厂商提供该能力，则会破坏IOMMU的保护功能导致暴露点对点(peer-to-peer)DMA。服务器的根端口（root port）也要提供原生的ACS支持，否则会导致安装设备被一股脑分组打包。有两种root ports：基于处理器（北桥）root ports和基于控制器hub（南桥）root ports。\n总结一下就是，\n\nCPU必须支持IOMMU（例如VT-d或AMD-Vi）。\nFirmware必须支持IOMMU。\nCPU root ports必须支持ACS或等同ACS能力。\n所有位于PCIe设备和root ports之间的PCIe switches和bridges都应该支持ACS。例如，如果switch不支持ACS，则所有这个Swtich之后的设备都会共享一个相同的IOMMU group，也就只能分配给一个虚拟机了。\n\nSR-IOV的安装配置为了启用SR-IOV，需要执行以下步骤：1.计算节点上创建VF。2.计算节点配置nova-compute的PCI设备。3.控制节点配置neutron-server。4.控制节点配置nova-scheduler。5.计算节点上启动neutron-sriov-agent。\n计算节点上创建VF\n确保BIOS中开启了SR-IOV和IOMMU（arm环境下叫SMMU）。\n开启linux内核中的IOMMU功能。\n\n编辑/etc/default/grub文件\n1GRUB_CMDLINE_LINUX_DEFAULT=&quot;intel_iommu=on iommu=pt&quot;\nARM环境下为\n1GRUB_CMDLINE_LINUX_DEFAULT=&quot;iommu.passthrough=on iommu=pt&quot;\n生成新的内核启动文件。\n1grub2-mkconfig -o /boot/grub2/grub.cfg\n\n在计算节点查看对应网卡的最大VF的个数。\n12cat /sys/class/net/enp49s0f1/device/sriov_totalvfs7\n\n其中enp49s0f1是网卡名称，可以看到最大支持7个VF，之后配置的个数不能超过这个值。\n\n\n设置网卡的VF个数。\n1echo &#x27;7&#x27; &gt; /sys/class/net/enp49s0f1/device/sriov_numvfs\n\n可以同ip命令查看网络设备如下。\n123456789ip a | grep enp49s0f13: enp49s0f1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc mq state UP group default qlen 100034: enp49s0f1v0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100035: enp49s0f1v1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100036: enp49s0f1v2: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100037: enp49s0f1v3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100038: enp49s0f1v4: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100040: enp49s0f1v6: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 100045: enp49s0f1v5: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000\n\n使用lspci查看网卡pci设备。\n12345678910lspci -D | grep Ethernet0000:31:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)0000:31:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)0000:31:10.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:10.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:11.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:11.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:12.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:12.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)0000:31:13.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)\n\n设置VF持久化。\n1echo &quot;echo &#x27;7&#x27; &gt; /sys/class/net/enp49s0f1/device/sriov_numvfs&quot; &gt;&gt; /etc/rc.local\n\n计算节点配置PCI设备编辑nova-compute服务的配置文件nova.conf，一般为/etc/nova/nova.conf。\n12345[pci]passthrough_whitelist = &#123; &quot;address&quot;: &quot;[[[[&lt;domain&gt;]:]&lt;bus&gt;]:][&lt;slot&gt;][.[&lt;function&gt;]]&quot;, &quot;physical_network&quot;: &quot;sriovnet1&quot; &#125;根据上面lspci的结果可以配置如下的pci设备。[pci]passthrough_whitelist = [&#123;&quot;physical_network&quot;: &quot;sriovnet1&quot;, &quot;address&quot;: &quot;*:31:12.*&quot;&#125;]\n其中*通配符匹配所有字符，所以地址为0000:31:12.1和0000:31:12.5的两个pci设备会被匹配。\n\n\n控制节点配置neutron-server编辑neutron-server的配置文件ml2_conf.ini，一般为/etc/neutron/plugins/ml2/ml2_conf.ini。添加驱动sriovnicswitch。\n12345[ml2]mechanism_drivers = openvswitch,sriovnicswitch修改vlan范围。[ml2_type_vlan]network_vlan_ranges = sriovnet1\n\n最后重启neutron-server。\n1systemctl restart neutron-server\n\n控制节点配置nova-scheduler编辑nova-sheduler服务的配置文件nova.conf，一般为/etc/nova/nova.conf。确保available_filters是全部的filters，并且添加PciPassthroughFilter到enabled_filters中。\n123[filter_scheduler]available_filters = nova.scheduler.filters.all_filtersenabled_filters = AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter, PciPassthroughFilter\n\n最后重启nova-scheduler。\n1systemctl restart openstack-nova-scheduler\n\n计算节点上启动neutron-sriov-agent1.安装neutron-sriov-agent。\n1yum install -y openstack-neutron-sriov-nic-agent\n\n2.编辑neutron-sriov-nic-agent的配置文件，一般为/etc/neutron/plugins/ml2/sriov_agent.ini。\n123456[sriov_nic]physical_device_mappings = sriovnet1:enp49s0f1exclude_devices =[securitygroup]firewall_driver = neutron.agent.firewall.NoopFirewallDriver\n\n3.启动neutron-sriov-agent。\n12systemctl enable neutron-sriov-nic-agentsystemctl start neutron-sriov-nic-agent\n\n打开L2 FDB（可选）FDB（Forwarding DataBase）是对OVS agent或Linux agent的L2层agent的扩展。它的目的是更新使用普通端口（Port）的现有实例的FDB表，这使SR-IOV实例与正常实例之间的沟通成为了可能。FDB扩展的用例是：1.直接端口（direct port）和普通端口（normal port）实例位于同一计算节点上。2.使用浮动IP地址的直接端口（direct port）实例和网络节点位于同一宿主机上。\n编辑计算节点上的openvswitch_agent.ini或者linuxbridge_agent.ini。\n1234[agent]extensions = fdb[FDB]shared_physical_device_mappings = sriovnet1:enp49s0f1\n\n重启neutron-openvswitch-agent或者neutron-linuxbridge-agent服务。\n验证1.查看neutron-sriov-nic-agent服务的状态。\n1openstack network agent list --agent-type nic\n\n\n2.创建sriov网络。\n123openstack network create --provider-physical-network sriovnet1 \\--provider-network-type vlan --provider-segment 1000 \\    sriov-net\n\n\n3.创建sriov子网。\n1234openstack subnet create --network sriov-net \\--subnet-range 10.12.21.0/24 \\--allocation-pool start=10.12.21.131,end=10.12.21.132 \\sriov-subnet\n\n\n4.创建port。\n12openstack port create --network sriov-net --vnic-type direct \\sriov-port\n\n\n5.使用port创建实例。\n123456port_id=$(openstack port show sriov-port -c id -f value)openstack server create --flavor m1.large \\--image uniontechos-server-20-1060a-amd64-beta \\--nic port-id=$port_id \\test\n\n或者添加到已有实例上。\n1openstack server add port test $port_id\n\n6.进入实例内部查看。\n\n\n查看网卡设备的信息，可以看到ens4网卡的驱动为igbvf，说明透传成功。\n\n\n出现的问题1.创建实例或者添加port时nova-compute报错。\n1234567891011attach device xml: &lt;interface type=&quot;hostdev&quot; managed=&quot;yes&quot;&gt;  &lt;mac address=&quot;fa:16:3e:fe:47:d2&quot;/&gt;  &lt;source&gt;    &lt;address type=&quot;pci&quot; domain=&quot;0x0000&quot; bus=&quot;0x0b&quot; slot=&quot;0x10&quot; function=&quot;0x5&quot;/&gt;  &lt;/source&gt;  &lt;vlan&gt;    &lt;tag id=&quot;1000&quot;/&gt;  &lt;/vlan&gt;&lt;/interface&gt;attach_device /usr/lib/python3.6/site-packages/nova/virt/libvirt/guest.py:304attaching network adapter failed.: libvirt.libvirtError: 内部错误：无法执行 QEMU 命令 &#x27;device_add&#x27;：vfio 0000:0b:10.5: group 3 is not viable\n这是因为IOMMU给内存创建隔离区的最小粒度不是Device，而是group。需要硬件设备支持PCIe ACS，或者通过Linux Patch的方式获得PCIe ACS的能力。\n2.创建完实例后实例获取不到IP地址。因为创建sriov-net是基于物理网络设备的，所以需要物理网络中存在DHCP服务器，可以手动进行IP地址的配置。\n3.创建完实例后，IP访问失败。创建的sriov网络类型是vlan，流量从实例中流出的时候会打上对应的vlan tag导致IP访问失败。其中vlan tag的作用用于隔离Provider网络，这样可以在同一网络下连接无sriov port的实例和带有sriov port的实例。\n总结SR-IOV的优缺点。\n优点1.性能好，可以从虚拟机直接访问宿主机的硬件，同时提高包的转发率，低延迟，减少主机CPU消耗。2.比PCI直通的方式更加灵活，成本降低节省资本和运营开销。3.通过IOMMU实现隔离更安全。\n缺点1.使用SR-IOV时，不支持防火墙，需要在neutron的配置文件中关闭。2.宿主机无法监控VF的状态。3.SR-IOV不支持vxlan。4.需要硬件支持。\n其他1.Train版本后支持了SR-IOV实例的热迁移。2.indirect模式（vnic-type: macvtap或virtio-forwarder）的SR-IOV Port可以透明地迁移到虚拟机，direct模式（vnic-type: direct或direct-physical）下的SR-IOV Port在迁移前预先分离，迁移完成后再进行连接，这对用户来说是不透明的。为了避免在使用direct模式SR-IOV进行热迁移时失去网络连接，用户应在实例中创建故障转移bond，例如vnic类型的normal或indirect模式的SR-IOV的Port。3.Victoria版本之后支持向已有实例添加SR-IOV的Port。\n","dateCreated":"2023-09-22T09:29:42+08:00","dateModified":"2023-09-22T10:54:10+08:00","datePublished":"2023-09-22T09:29:42+08:00","description":"SR-IOV全称Single Root I/O Virtualization，是Intel在2007年提出的一种基于硬件的虚拟化解决方案。","headline":"OpenStack漫游指南--SR-IOV","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/","keywords":"网络, OpenStack, SR-IOV","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="SR-IOV全称Single Root I&#x2F;O Virtualization，是Intel在2007年提出的一种基于硬件的虚拟化解决方案。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack漫游指南--SR-IOV">
+<meta property="og:url" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="SR-IOV全称Single Root I&#x2F;O Virtualization，是Intel在2007年提出的一种基于硬件的虚拟化解决方案。">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/network_agent_list.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/network_create.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/subnet_create.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/port_create.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/ip_addr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/ethtool.png">
+<meta property="article:published_time" content="2023-09-22T01:29:42.000Z">
+<meta property="article:modified_time" content="2023-09-22T02:54:10.554Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="网络">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="SR-IOV">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/images/network_agent_list.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack漫游指南--SR-IOV
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2023-09-22T09:29:42+08:00">
+	
+		    Sep 22, 2023
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>SR-IOV全称Single Root I/O Virtualization，是Intel在2007年提出的一种基于硬件的虚拟化解决方案。<span id="more"></span>在虚拟化场景中，CPU与内存是最先解决的，但是I/O设备一直没有很好的解决办法，Intel有VT-d（Virtualization Technology for Directed I/O）可以将物理服务器的PCIe设备直接提供给虚拟机使用，也就是常说的“直通”（passthrough），但是直通面临一个问题是PCIe设备只能给一个虚拟机使用，这肯定是不行的，所以SR-IOV应运而生，一个物理设备可以虚拟出多个虚拟设备给虚拟机使用。</p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-text">基本概念</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%88%E5%86%B3%E6%9D%A1%E4%BB%B6"><span class="toc-text">先决条件</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#SR-IOV%E7%9A%84%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE"><span class="toc-text">SR-IOV的安装配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9%E4%B8%8A%E5%88%9B%E5%BB%BAVF"><span class="toc-text">计算节点上创建VF</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AEPCI%E8%AE%BE%E5%A4%87"><span class="toc-text">计算节点配置PCI设备</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AEneutron-server"><span class="toc-text">控制节点配置neutron-server</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9%E9%85%8D%E7%BD%AEnova-scheduler"><span class="toc-text">控制节点配置nova-scheduler</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9%E4%B8%8A%E5%90%AF%E5%8A%A8neutron-sriov-agent"><span class="toc-text">计算节点上启动neutron-sriov-agent</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%93%E5%BC%80L2-FDB%EF%BC%88%E5%8F%AF%E9%80%89%EF%BC%89"><span class="toc-text">打开L2 FDB（可选）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81"><span class="toc-text">验证</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%87%BA%E7%8E%B0%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-text">出现的问题</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BC%98%E7%82%B9"><span class="toc-text">优点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BC%BA%E7%82%B9"><span class="toc-text">缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>SR-IOV是一种规范，使得单根端口下的单个快速外围组件互连 (PCIe) 物理设备显示为管理程序或客户机操作系统的多个单独的物理设备，既有直通设备的性能优势，又可以支持多个虚拟机，一举两得。</p>
+<h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><p>SR-IOV使用physical functions（PF）和virtual functions（VF）为SR-IOV设备管理全局功能。<br>PF包含SR-IOV功能的完整PCIe设备，PF作为普通的PCIe设备被发现、管理和配置。PF通过分配VF来配置和管理SR-IOV功能。禁用SR-IOV后，主机将在一个物理网卡上创建一个PF。<br>VF是轻量级PCIe功能（I/O 处理）的PCIe设备，每个VF都是通过PF来生成管理的，VF的具体数量限制受限于PCIe设备自身配置及驱动程序的支持，启用SR-IOV后，主机将在一个物理NIC上创建单个PF和多个VF。 VF的数量取决于配置和驱动程序支持。<br>每个SR-IOV设备都可有一个PF（Physical Functions），并且每个PF最多可有64,000个与其关联的VF（Virtual Function）。PF可以通过寄存器创建VF，这些寄存器设计有专用于此目的的属性。一旦在PF中启用了SR-IOV，就可以通过PF的总线、设备和功能编号（路由ID）访问各个VF的PCI配置空间。<br>每个VF都具有一个PCI内存空间，用于映射其寄存器集。VF设备驱动程序对寄存器集进行操作以启用其功能，并且显示为实际存在的PCI设备。创建VF 后，可以直接将其指定给虚拟机或各个应用程序。此功能使得虚拟功能可以共享物理设备，并在没有CPU和虚拟机管理程序软件开销的情况下执行I/O。</p>
+<h2 id="先决条件"><a href="#先决条件" class="headerlink" title="先决条件"></a>先决条件</h2><p>PCIe Passthrough的方式是直接把一个PCIe设备指派给guest虚拟机，这样guest虚拟机可以完全控制设备并提供接近于原生性能。但是，PCIe Passthrough的实现是和SR-IOV冲突的，因为在SR-IOV实现中，虚拟机是直接分配一个VF。这样多个虚拟机可以通过分配的VF来使用同一个PCIe设备。<br>设备指定分配需要CPU和firmware都支持IOMMU（I/O Memory Management Unit）。IOMMU负责I/O虚拟地址（I/O Virtual Address）和物理内存地址转换。这样虚拟机就能够使用guest物理地址来对设备编程，通过IOMMU转换成物理主机内存地址。<br>IOMMU groups是一组和系统中其他设备隔离的设备集合。也就是说，IOMMU groups代表了具有IOMMU粒度（也就是必须将整个IOMMU group分配给同一个虚拟机）和与系统中所有其他IOMMU group隔离。这种方式允许IOMMU和其他IOMMU group区别进行数据处理，即IOMMU group的内部和外部隔离。<br>设备分配的关键是虚拟机和PCIe设备虚拟化功能(virtual functions, VFs)隔离数据处理。在PCIe和服务器标准定义的访问控制服务（Access Control Service, ACS）能力是保证IOMMU groups隔离的运行标准。如果没有原生的ACS，或者不能确保硬件厂商提供该能力，则会破坏IOMMU的保护功能导致暴露点对点(peer-to-peer)DMA。<br>服务器的根端口（root port）也要提供原生的ACS支持，否则会导致安装设备被一股脑分组打包。有两种root ports：基于处理器（北桥）root ports和基于控制器hub（南桥）root ports。</p>
+<p>总结一下就是，</p>
+<ol>
+<li>CPU必须支持IOMMU（例如VT-d或AMD-Vi）。</li>
+<li>Firmware必须支持IOMMU。</li>
+<li>CPU root ports必须支持ACS或等同ACS能力。</li>
+<li>所有位于PCIe设备和root ports之间的PCIe switches和bridges都应该支持ACS。例如，如果switch不支持ACS，则所有这个Swtich之后的设备都会共享一个相同的IOMMU group，也就只能分配给一个虚拟机了。</li>
+</ol>
+<h1 id="SR-IOV的安装配置"><a href="#SR-IOV的安装配置" class="headerlink" title="SR-IOV的安装配置"></a>SR-IOV的安装配置</h1><p>为了启用SR-IOV，需要执行以下步骤：<br>1.计算节点上创建VF。<br>2.计算节点配置nova-compute的PCI设备。<br>3.控制节点配置neutron-server。<br>4.控制节点配置nova-scheduler。<br>5.计算节点上启动neutron-sriov-agent。</p>
+<h2 id="计算节点上创建VF"><a href="#计算节点上创建VF" class="headerlink" title="计算节点上创建VF"></a>计算节点上创建VF</h2><ol>
+<li>确保BIOS中开启了SR-IOV和IOMMU（arm环境下叫SMMU）。</li>
+<li>开启linux内核中的IOMMU功能。</li>
+</ol>
+<p>编辑/etc/default/grub文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=<span class="string">&quot;intel_iommu=on iommu=pt&quot;</span></span><br></pre></td></tr></table></figure>
+<p>ARM环境下为</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">GRUB_CMDLINE_LINUX_DEFAULT=<span class="string">&quot;iommu.passthrough=on iommu=pt&quot;</span></span><br></pre></td></tr></table></figure>
+<p>生成新的内核启动文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">grub2-mkconfig -o /boot/grub2/grub.cfg</span><br></pre></td></tr></table></figure>
+
+<p>在计算节点查看对应网卡的最大VF的个数。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /sys/class/net/enp49s0f1/device/sriov_totalvfs</span><br><span class="line">7</span><br></pre></td></tr></table></figure>
+
+<div class="alert no-icon info"><p>其中enp49s0f1是网卡名称，可以看到最大支持7个VF，之后配置的个数不能超过这个值。</p>
+</div>
+
+<p>设置网卡的VF个数。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;7&#x27;</span> &gt; /sys/class/net/enp49s0f1/device/sriov_numvfs</span><br></pre></td></tr></table></figure>
+
+<p>可以同ip命令查看网络设备如下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ip a | grep enp49s0f1</span><br><span class="line">3: enp49s0f1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc mq state UP group default qlen 1000</span><br><span class="line">34: enp49s0f1v0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">35: enp49s0f1v1: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">36: enp49s0f1v2: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">37: enp49s0f1v3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">38: enp49s0f1v4: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">40: enp49s0f1v6: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">45: enp49s0f1v5: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000</span><br></pre></td></tr></table></figure>
+
+<p>使用lspci查看网卡pci设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">lspci -D | grep Ethernet</span><br><span class="line">0000:31:00.0 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br><span class="line">0000:31:00.1 Ethernet controller: Intel Corporation I350 Gigabit Network Connection (rev 01)</span><br><span class="line">0000:31:10.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:10.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:11.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:11.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:12.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:12.5 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br><span class="line">0000:31:13.1 Ethernet controller: Intel Corporation I350 Ethernet Controller Virtual Function (rev 01)</span><br></pre></td></tr></table></figure>
+
+<p>设置VF持久化。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&quot;echo &#x27;7&#x27; &gt; /sys/class/net/enp49s0f1/device/sriov_numvfs&quot;</span> &gt;&gt; /etc/rc.local</span><br></pre></td></tr></table></figure>
+
+<h2 id="计算节点配置PCI设备"><a href="#计算节点配置PCI设备" class="headerlink" title="计算节点配置PCI设备"></a>计算节点配置PCI设备</h2><p>编辑nova-compute服务的配置文件nova.conf，一般为/etc/nova/nova.conf。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[pci]</span></span><br><span class="line"><span class="attr">passthrough_whitelist</span> = &#123; <span class="string">&quot;address&quot;</span>: <span class="string">&quot;[[[[&lt;domain&gt;]:]&lt;bus&gt;]:][&lt;slot&gt;][.[&lt;function&gt;]]&quot;</span>, <span class="string">&quot;physical_network&quot;</span>: <span class="string">&quot;sriovnet1&quot;</span> &#125;</span><br><span class="line">根据上面lspci的结果可以配置如下的pci设备。</span><br><span class="line"><span class="section">[pci]</span></span><br><span class="line"><span class="attr">passthrough_whitelist</span> = [&#123;<span class="string">&quot;physical_network&quot;</span>: <span class="string">&quot;sriovnet1&quot;</span>, <span class="string">&quot;address&quot;</span>: <span class="string">&quot;*:31:12.*&quot;</span>&#125;]</span><br></pre></td></tr></table></figure>
+<div class="alert no-icon info"><p>其中*通配符匹配所有字符，所以地址为0000:31:12.1和0000:31:12.5的两个pci设备会被匹配。</p>
+</div>
+
+<h2 id="控制节点配置neutron-server"><a href="#控制节点配置neutron-server" class="headerlink" title="控制节点配置neutron-server"></a>控制节点配置neutron-server</h2><p>编辑neutron-server的配置文件ml2_conf.ini，一般为/etc/neutron/plugins/ml2/ml2_conf.ini。添加驱动sriovnicswitch。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[ml2]</span></span><br><span class="line"><span class="attr">mechanism_drivers</span> = openvswitch,sriovnicswitch</span><br><span class="line">修改vlan范围。</span><br><span class="line"><span class="section">[ml2_type_vlan]</span></span><br><span class="line"><span class="attr">network_vlan_ranges</span> = sriovnet1</span><br></pre></td></tr></table></figure>
+
+<p>最后重启neutron-server。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart neutron-server</span><br></pre></td></tr></table></figure>
+
+<h2 id="控制节点配置nova-scheduler"><a href="#控制节点配置nova-scheduler" class="headerlink" title="控制节点配置nova-scheduler"></a>控制节点配置nova-scheduler</h2><p>编辑nova-sheduler服务的配置文件nova.conf，一般为/etc/nova/nova.conf。确保available_filters是全部的filters，并且添加PciPassthroughFilter到enabled_filters中。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[filter_scheduler]</span></span><br><span class="line"><span class="attr">available_filters</span> = nova.scheduler.filters.all_filters</span><br><span class="line"><span class="attr">enabled_filters</span> = AvailabilityZoneFilter, ComputeFilter, ComputeCapabilitiesFilter, ImagePropertiesFilter, ServerGroupAntiAffinityFilter, ServerGroupAffinityFilter, PciPassthroughFilter</span><br></pre></td></tr></table></figure>
+
+<p>最后重启nova-scheduler。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart openstack-nova-scheduler</span><br></pre></td></tr></table></figure>
+
+<h2 id="计算节点上启动neutron-sriov-agent"><a href="#计算节点上启动neutron-sriov-agent" class="headerlink" title="计算节点上启动neutron-sriov-agent"></a>计算节点上启动neutron-sriov-agent</h2><p>1.安装neutron-sriov-agent。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install -y openstack-neutron-sriov-nic-agent</span><br></pre></td></tr></table></figure>
+
+<p>2.编辑neutron-sriov-nic-agent的配置文件，一般为/etc/neutron/plugins/ml2/sriov_agent.ini。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[sriov_nic]</span></span><br><span class="line"><span class="attr">physical_device_mappings</span> = sriovnet1:enp49s0f1</span><br><span class="line"><span class="attr">exclude_devices</span> =</span><br><span class="line"></span><br><span class="line"><span class="section">[securitygroup]</span></span><br><span class="line"><span class="attr">firewall_driver</span> = neutron.agent.firewall.NoopFirewallDriver</span><br></pre></td></tr></table></figure>
+
+<p>3.启动neutron-sriov-agent。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl <span class="built_in">enable</span> neutron-sriov-nic-agent</span><br><span class="line">systemctl start neutron-sriov-nic-agent</span><br></pre></td></tr></table></figure>
+
+<h2 id="打开L2-FDB（可选）"><a href="#打开L2-FDB（可选）" class="headerlink" title="打开L2 FDB（可选）"></a>打开L2 FDB（可选）</h2><p>FDB（Forwarding DataBase）是对OVS agent或Linux agent的L2层agent的扩展。它的目的是更新使用普通端口（Port）的现有实例的FDB表，这使SR-IOV实例与正常实例之间的沟通成为了可能。FDB扩展的用例是：<br>1.直接端口（direct port）和普通端口（normal port）实例位于同一计算节点上。<br>2.使用浮动IP地址的直接端口（direct port）实例和网络节点位于同一宿主机上。</p>
+<p>编辑计算节点上的openvswitch_agent.ini或者linuxbridge_agent.ini。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[agent]</span></span><br><span class="line"><span class="attr">extensions</span> = fdb</span><br><span class="line"><span class="section">[FDB]</span></span><br><span class="line"><span class="attr">shared_physical_device_mappings</span> = sriovnet1:enp49s0f1</span><br></pre></td></tr></table></figure>
+
+<p>重启neutron-openvswitch-agent或者neutron-linuxbridge-agent服务。</p>
+<h2 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h2><p>1.查看neutron-sriov-nic-agent服务的状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack network agent list --agent-type nic</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/network_agent_list.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network_agent_list.png" alt=""></a></div>
+
+<p>2.创建sriov网络。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openstack network create --provider-physical-network sriovnet1 \</span><br><span class="line">--provider-network-type vlan --provider-segment 1000 \</span><br><span class="line">    sriov-net</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/network_create.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network_create.png" alt=""></a></div>
+
+<p>3.创建sriov子网。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openstack subnet create --network sriov-net \</span><br><span class="line">--subnet-range 10.12.21.0/24 \</span><br><span class="line">--allocation-pool start=10.12.21.131,end=10.12.21.132 \</span><br><span class="line">sriov-subnet</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/subnet_create.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/subnet_create.png" alt=""></a></div>
+
+<p>4.创建port。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openstack port create --network sriov-net --vnic-type direct \</span><br><span class="line">sriov-port</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/port_create.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/port_create.png" alt=""></a></div>
+
+<p>5.使用port创建实例。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">port_id=$(openstack port show sriov-port -c <span class="built_in">id</span> -f value)</span><br><span class="line"></span><br><span class="line">openstack server create --flavor m1.large \</span><br><span class="line">--image uniontechos-server-20-1060a-amd64-beta \</span><br><span class="line">--nic port-id=<span class="variable">$port_id</span> \</span><br><span class="line"><span class="built_in">test</span></span><br></pre></td></tr></table></figure>
+
+<p>或者添加到已有实例上。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack server add port <span class="built_in">test</span> <span class="variable">$port_id</span></span><br></pre></td></tr></table></figure>
+
+<p>6.进入实例内部查看。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ip_addr.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ip_addr.png" alt=""></a></div>
+
+<p>查看网卡设备的信息，可以看到ens4网卡的驱动为igbvf，说明透传成功。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ethtool.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ethtool.png" alt=""></a></div>
+
+<h2 id="出现的问题"><a href="#出现的问题" class="headerlink" title="出现的问题"></a>出现的问题</h2><p>1.创建实例或者添加port时nova-compute报错。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">attach device xml: &lt;interface <span class="built_in">type</span>=<span class="string">&quot;hostdev&quot;</span> managed=<span class="string">&quot;yes&quot;</span>&gt;</span><br><span class="line">  &lt;mac address=<span class="string">&quot;fa:16:3e:fe:47:d2&quot;</span>/&gt;</span><br><span class="line">  &lt;<span class="built_in">source</span>&gt;</span><br><span class="line">    &lt;address <span class="built_in">type</span>=<span class="string">&quot;pci&quot;</span> domain=<span class="string">&quot;0x0000&quot;</span> bus=<span class="string">&quot;0x0b&quot;</span> slot=<span class="string">&quot;0x10&quot;</span> <span class="keyword">function</span>=<span class="string">&quot;0x5&quot;</span>/&gt;</span><br><span class="line">  &lt;/source&gt;</span><br><span class="line">  &lt;vlan&gt;</span><br><span class="line">    &lt;tag <span class="built_in">id</span>=<span class="string">&quot;1000&quot;</span>/&gt;</span><br><span class="line">  &lt;/vlan&gt;</span><br><span class="line">&lt;/interface&gt;</span><br><span class="line">attach_device /usr/lib/python3.6/site-packages/nova/virt/libvirt/guest.py:304</span><br><span class="line">attaching network adapter failed.: libvirt.libvirtError: 内部错误：无法执行 QEMU 命令 <span class="string">&#x27;device_add&#x27;</span>：vfio 0000:0b:10.5: group 3 is not viable</span><br></pre></td></tr></table></figure>
+<p>这是因为IOMMU给内存创建隔离区的最小粒度不是Device，而是group。需要硬件设备支持PCIe ACS，或者通过Linux Patch的方式获得PCIe ACS的能力。</p>
+<p>2.创建完实例后实例获取不到IP地址。<br>因为创建sriov-net是基于物理网络设备的，所以需要物理网络中存在DHCP服务器，可以手动进行IP地址的配置。</p>
+<p>3.创建完实例后，IP访问失败。<br>创建的sriov网络类型是vlan，流量从实例中流出的时候会打上对应的vlan tag导致IP访问失败。其中vlan tag的作用用于隔离Provider网络，这样可以在同一网络下连接无sriov port的实例和带有sriov port的实例。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>SR-IOV的优缺点。</p>
+<h2 id="优点"><a href="#优点" class="headerlink" title="优点"></a>优点</h2><p>1.性能好，可以从虚拟机直接访问宿主机的硬件，同时提高包的转发率，低延迟，减少主机CPU消耗。<br>2.比PCI直通的方式更加灵活，成本降低节省资本和运营开销。<br>3.通过IOMMU实现隔离更安全。</p>
+<h2 id="缺点"><a href="#缺点" class="headerlink" title="缺点"></a>缺点</h2><p>1.使用SR-IOV时，不支持防火墙，需要在neutron的配置文件中关闭。<br>2.宿主机无法监控VF的状态。<br>3.SR-IOV不支持vxlan。<br>4.需要硬件支持。</p>
+<h1 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h1><p>1.Train版本后支持了SR-IOV实例的热迁移。<br>2.indirect模式（vnic-type: macvtap或virtio-forwarder）的SR-IOV Port可以透明地迁移到虚拟机，direct模式（vnic-type: direct或direct-physical）下的SR-IOV Port在迁移前预先分离，迁移完成后再进行连接，这对用户来说是不透明的。为了避免在使用direct模式SR-IOV进行热迁移时失去网络连接，用户应在实例中创建故障转移bond，例如vnic类型的normal或indirect模式的SR-IOV的Port。<br>3.Victoria版本之后支持向已有实例添加SR-IOV的Port。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/SR-IOV/" rel="tag">SR-IOV</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E7%BD%91%E7%BB%9C/" rel="tag">网络</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Windows/"
+                    data-tooltip="OpenStack漫游指南--Windows"
+                    aria-label="PREVIOUS: OpenStack漫游指南--Windows"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%9B%86%E7%BE%A4%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--集群篇"
+                    aria-label="NEXT: OpenStack漫游指南--集群篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/&amp;title=OpenStack漫游指南--SR-IOV"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2023/09/22/OpenStack漫游指南-SR-IOV/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Windows/"
+                    data-tooltip="OpenStack漫游指南--Windows"
+                    aria-label="PREVIOUS: OpenStack漫游指南--Windows"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/21/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E9%9B%86%E7%BE%A4%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--集群篇"
+                    aria-label="NEXT: OpenStack漫游指南--集群篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/&amp;title=OpenStack漫游指南--SR-IOV"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/&amp;title=OpenStack漫游指南--SR-IOV"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-SR-IOV/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

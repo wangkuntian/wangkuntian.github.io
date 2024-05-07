@@ -1,0 +1,1216 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>x86架构及操作系统概述 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="x86架构,操作系统">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n概述x861978年6月8日，Intel发布了新款16位微处理器“8086”，也同时开创了一个新时代：x86架构诞生了。x86指的是特定微处理器执行的一些计算机语言指令集，定义了芯片的基本使用规则，一如今天的x64、IA64等。\n操作系统操作系统作为硬件平台上最重要的软件，对下负责管理平台硬件，对上向应用程序提供标准接口。操作系统中最重要的部分称为操作系统内核，运行在CPU最高的特权级上，可以访问系统的一切资源，称操作系统内核运行的状态为内核态。应用程序通常运行在CPU最低的特权级上，只能访问部分资源，此种状态称为用户态。\nx86内存架构内存架构往往是硬件架构中最为复杂的部分。不夸张地说，理解了内存架构，就理解了现代计算机体系架构的大部分内容。\n地址空间如果把内存比作一个大数组，地址就是这个数组的索引。与之类似，地址空间则是一个更大的数组，它是所有可用资源的集合，同样，地址是这个数组的索引。\n地址空间可以划分成物理地址空间和线性地址空间两种类型。\n物理地址空间硬件平台可以粗略地划分成三个部分：CPU、内存和其他硬件设备。其中，CPU是平台的主导者，从CPU的角度来看，内存和其他硬件设备都是可以使用的资源。这些资源组合在一起，分布在CPU的物理地址空间内，CPU使用物理地址索引这些资源。物理地址空间的大小，由CPU实现的物理地址位数决定，物理地址位数和CPU处理数据的能力（CPU位数）没有必然联系。\n假设一个平台，CPU的物理地址空间为4GB，有512MB内存，其他硬件设备的I/O寄存器被映射到512MB的I/O地址内，则该平台的物理地址空间可能是这样划分的。\n\n\n从上图可以看出，512MB内存和I/O地址只占用物理地址空间的一部分，还有大部分处于空闲。有一个4GB大小的数组，其中1GB的元素具有有效值（512MB内存、512MB I/O地址），其他元素不存在。\n线性地址空间一个平台只有一个物理地址空间，但是每个程序都认为自己独享整个平台的硬件资源，为了让多个程序能够相互隔离和使用物理地址空间的资源，线性地址空间的概念被引入了。\n和物理地址空间一样，线性地址空间的大小取决于CPU实现的线性地址位数，例如实现了32位线性地址的CPU具有4GB大小的线性地址空间。\n需要注意的是，线性地址空间的大小和物理地址空间的大小没有必然联系。\n\n\n线性地址空间会被映射到物理地址空间某一部分或整个物理地址空间。CPU负责将线性地址转换成物理地址，使程序能够正确访问到该线性地址空间所映射到的物理地址空间。一个平台上可以有多个线性地址空间，在现代操作系统中，每个进程通常都拥有自己的私有线性地址空间。\n一个典型的线性地址空间构造如下。\n\n\n地址地址是访问地址空间的索引。根据访问的地址空间不同，索引可以分为线性地址和物理地址，但由于x86特殊的分段机制，还有一种额外的地址——逻辑地址。\n逻辑地址该地址即程序直接使用的地址。例如下面的程序。\n12int a = 1;int *p = &amp;a;\n这里，指针变量p中存储的即是一个逻辑地址。逻辑地址由一个16位的段选择符和一个32位的偏移量（32位平台）构成。在这例子中，指针变量p实际存储的是逻辑地址的偏移部分，该偏移对应的段选择符位于段寄存器中，并没有在程序中反映出来。\n线性地址又称虚拟地址，32位无符号整数。线性地址是逻辑地址转换后的结果，用于索引线性地址空间。当CPU使用分页机制时，线性地址必须转换成物理地址才能访问平台内存或硬件设备；当分页机制未启用时，线性地址等于物理地址。\n物理地址该地址索引物理地址空间，是CPU提交到总线用于访问平台内存和硬件设备的最终地址。\n它和上面两个地址有如下关系。\n\n分段机制启用，分页未启用：逻辑地址 ——&gt; 线性地址 = 物理地址\n分段、分页机制同时启用：逻辑地址 ——&gt; 线性地址 ——&gt; 物理地址\n\n\n\n某些书籍中还有总线地址的叫法，这是因为给设备寄存器分配的物理地址和寄存器在设备上的地址是不同的（通常设备的寄存器都认为自己是从地址0开始的），两者之间存在一个映射关系，由设备的电子线路负责转换并对CPU透明。由于CPU用于访问设备的物理地址是设备寄存器展现给总线的地址，所以在x86下有时也称物理地址为总线地址。\n内存管理机制分段机制分段是一种朴素的内存管理机制，它将内存划分成起始地址（Base）和长度（Limit）描述的块，这些内存块就被称为“段”。\n分段机制由4个基本部分构成：逻辑地址、段选择寄存器、段描述符和段描述符表。其核心思想是：使用段描述符描述段的基地址、长度以及各种属性（读写属性、访问权限等）。当程序使用逻辑地址访问内存的某个部分时，CPU通过逻辑地址中的段选择符，索引段描述符表以得到该内存对应的段描述符，并检测程序的访问是否合法，如合法，根据段描述符中的基地址将逻辑地址转换为线性地址。\n\n分段机制的流程如下。\n分段机制\n\n段选择符（Segment Selector）段选择符是逻辑地址的一个组成部分，共16位，用于索引段描述表以获得该段对应的段描述符。\n段选择符\n\nIndex：段描述表的索引。TI：用于指明索引哪个段描述表。0为GDT，全局描述符表；1为LDT，本地描述符表。RPL：请求特权级（Requested Privilege Level，RPL），详情见段保护。\n\n\n段选择符作为逻辑地址的一部分，对程序是可见的。但通常段描述符的修改和分配由连接器和加载器完成，而不是应用程序本身。为了使CPU能够快速地获得段选择符，x86架构提供了6个段寄存器（segment register）用于存放在当前程序的各个段的段选择符。\n\nCS（code-segment，代码段）：存放代码段的段选择符。\nDS（data-segment，数据段）：存放数据段的段选择符。\nSS（stack-segment，栈段）：存放栈的段选择符。\nES、FS、GS：供程序自由使用，可以存放额外3个数据段的段选择符。\n\n通常程序只使用CS、DS、SS三个段寄存器。\n段描述符（Segment Descriptor）每个段描述符的长度是8字节，含有3个主要字段：段基地址、段限长和段属性。\n段描述符\n\n\nL: 64-bit code segment（IA-32e mode only）\nAVL: Available for use by system software\nBASE: Segment base address\nD/B: Default operation size(0 = 16-bit segment; 1 = 32-bit segment)\nDPL: Descriptor privilege level\nG: Granularity\nLIMIT: Segment limit\nP: Segment present\nS: Descriptor type(0 = system, 1 = code or data)\nTYPE: Segment type\n\n\n系统段描述符\n\n数据段描述符\n\n\nE: Expansion Direction\nW: Writable\nA: Accessed\n\n\n代码段描述符\n\n\nC: Conforming\nR: Readable\nA: Accessed\n\nLimit段限长字段Limit（Segment limit field）：用于指定段的长度。处理器会把段描述符中两个段限长字段组合成一个20位的值，并根据颗粒粒度标志G来指定段限长Limit的值的实际含义。\n\nG = 0，则Limit范围是1B~1MB，单位是1B。\nG = 1，则Limit范围是4KB~4GB，单位是4KB。\n\n根据段类型Type的段扩展方向标志E，处理器会以两种不同的方式使用Limit：\n\n对于向上扩展的段（expand-up segment，上扩段），逻辑地址中的偏移范围可以是从0到段限长值Limit。大于段限长Limit的偏移值将产生一般保护性异常（general-protection exception，SS段寄存器除外）或产生栈错误异常（stack-fault exception）。\n对于下扩段，减小Limit的值会在该段地址空间底部分配新的内存，而不是在顶部分配。\n\nIA-32架构的栈总是向下扩展的，因此这种实现凡是很适合堆栈。\nBase基础地址字段Base（Base address field）：该字段定义在4GB线性地址空间中一个段字节0所处的位置。处理器会把3个分立的基地址字段组合成32位的值。段基地址应该对齐16字节边界。16字节对齐不是必须的，但对齐在16字节边界上可以使得程序能发挥最大化性能。\nS描述符类型标示S（Descriptor type field）：用于指明一个段描述符是系统段描述符（S=0）还是代码或数据段描述符（S=1）。\nType段类型字段Type（Type field）：指定段或门（Gate）的类型，说明短的访问类型以及段的扩展方向。该字段的解释依赖于描述符类型标志S。\nDPL描述符特权级字段DPL（Descriptor privilege level）：用于指明描述符的特权级。特权级范围从0到3。0级特权级最高，3级最低。DPL用于控制对段的访问。\nP段存在标志P（Segemnt present）：用于支出一个段在内存中（P=1）还是不在内存中（P=0）。\n当一个段描述符的P为0时，那当把指向这个段描述符的选择符加载进寄存器将导致产生一个段不存在异常（segment-not-present execption）。内存管理软件可以使用这个标志来控制在某一给定时间实际需要把那个段加载进内存中。这个功能为虚拟存储提供了除分页机制以外的控制。\n当P标志为0时，操作系统可以自由使用格式中标注为可用（Available）的字段位置来保存自己的数据。\n\n\nD/BD/B标志（默认操作大小/默认栈指针大小和/或上界限，Default operation size/default stack pointer size and/or upper bound）：根据段描述符描述的是一个可执行代码段、下扩数据段还是一个堆栈段，这标志具有不同的功能。\n对于32位代码和数据段，这个标志应该总是设置为1；对于16位代买和数据段。这个标志设置为0。\n\n可执行代码段。此时这个标志位D标志并用于使用指出该段中指令引用有效和操作数的默认长度。如果该标志置位，则默认值是32位地址和32或32位或8位的操作数；如果该标志为0，则默认值是16位地址和16位或8位的操作数。指令前缀0x66可以用来选择非默认值的操作数大小；前缀0x67可用来选择非默认值的地址大小。\n栈段（由SS寄存器指向的数据段）。此时该标志为B标志，用于指明隐含堆栈操作（PUSH、POP或CALL）时的栈指针的大小。如果该标志置位，则使用32位栈指针并存放在ESP寄存器中；如果该标志为0，则使用16位栈指针并存放在SP寄存器中。如果堆栈段被设置成一个下扩数据段，这个B标志也同时指定了堆栈段的上界限。\n下扩数据段。此时该标志称为B标志，用于指明堆栈段的上界限。如果设置了该标志，则堆栈段的上界限是0xFFFFFFFF（4GB）；如果没有设置该标志，则堆栈段的上界限是0xFFFF（64KB）。\n\nG粒度标志G（granularity）：该字段用于确定段限长字段Limit值的单位。\n\nG为0，则Limit的单位是字节。\nG为1时，Limit的单位是4KB。\n\n这个标志不会影响基地址的单位，基地址的颗粒度总是单位字节。若设置了G标志，那么使用Limit来检查偏移值时，并不会检查偏移值的12位最低有效位。例如，当G=1时，Limit为0时，表明有效偏移值为0~4095。\nL64位代码段标志L（64-bits code segment）：在IA-32模式，第二个双字的第21字节指示一个代码的是否包含本地64位代码。L置1表示这个代码段的指令执行在64位模式，置0表示执行在兼容模式。如果L位被设置了，那么D标志一定要置0。当不处于IA-32模式时，和对于非代码段，这个位被保留并且总是应该被置0。\nAVL可用和保留位AVL（available and reserved bits）：段描述符第2个双字的第20个字节是否可供系统软件使用。\n段描述符表x86架构提供两种段描述表，全局段描述表（Global Descriptor Table，GDT）和本地段描述表（Local Descriptor Table，LDT）。\n系统至少有一个GDT可以被所有进程访问。相对的，系统中可以有一个或多个LDT，可以被某个进程私有，可以个被多个进程共享。GDT仅仅是内存中的一个数据结构，可以将它看作是一个数组，由基地址（Base）和长度（Limit）描述。与之相反，LDT是一个段，它需要一个段描述符来描述它。LDT的段描述符存放在GDT中，当系统中有多个LDT时，GDT必须有对应数量的段描述符。\n为了加速对GDT和LDT的访问，x86提供了GDTR寄存器和LDTR寄存器。它们的描述如下：\n\nGDTR：包括一个32位的基地址（Base）和一个16位长度（Limit）。\nLDTR：结构同段寄存器（包括对程序不可见的段描述符寄存器）。\n\n可以使用LGDT/SGDT指令对GDTR进行读取/存储，类似地，可以使用LLDT/SLDT对LDTR进行同样的操作。通常在进程切换时，LDTR中的值会被换成新进程对应的LDT的段描述符。\n索引段描述符表\n\nGDTR/LDTR为GDT/LDT提供基地址，段选择符的TI为确定索引GDT还是LDT。\n总结假设程序中某条语句访问了数据段：\n123456int a = 100;    // 全局变量int func() &#123;    int b;    b = a;    return b;&#125;\n程序从加载到变量a的逻辑地址转换为线性地址的过程如下：\n\n程序加载\n通过该进程LDT的段选择符索引GDT，获得LDT的段描述符，被加载到LDTR寄存器中。\n该进程的CS、DS、SS被加载入相应的段选择符。同时，CPU根据段选择符的TI字段，索引GDT/LDT，获得相应的段描述符并载入CS、DS、SS对应的不可见的段描述符寄存器。\n\n\n程序执行到b=a，需要从a所在的内存中取值，必须先把a的逻辑地址转换为线性地址。\n进行必要的属性、访问权限检查。\n从DS对应的段描述符寄存器中获得该段的基地址。\n将变量a的32位偏移量和描述符中的基地址相加，获得变量a的线性地址。\n\n\n\n分页机制分页是更加粒度化的内存管理机制，与分段机制将内存划分成为以基地址和长度描述的多个段进行管理不同，分页机制是用粒度化的单位“页”来管理线性地址空间和物理地址空间。x86架构下一个典型的页大小是4KB，则一个4GB的虚拟地址空间可以划分为1024 * 1024个页面。物理地址空间的划分同理。x86架构允许大于4KB的页面大小（如2MB、4MB）。\n同时，分页机制让现代操作系统中的虚拟内存机制成为可能，由于这种机制，一个页面可以同时存在于物理内存中，也可以存放在磁盘的交换区域（如Linux下的Swap分区，Windows下的虚拟内存文件）中，程序可以使用比机器物理内存更大的内存区域。\n分页机制的核心思想是通过页表将线性地址转换为物理地址，并配合旁路转换缓冲区（Translation Lookaside Buffer，TLB）来加速地址转换过程。\n\n\n操作系统在启动过程中，通过将CR0寄存器的PG位置1来启动分页机制。\n分页机制\n\n分页机制主要由页表、CR3寄存器和TLB三个部件组成。\n页表页表（Page Table）是用于将线性地址转换成物理地址的主要数据结构。\n一个地址对齐到页边界后的值称为页帧号（或页框架），它实际是该地址所在页面的基地址。线性地址对应的页帧号即虚拟页帧号（Virtual Frame Number，VFN），物理地址对应的页帧号即物理页帧号（Physical Frame Number，PFN）或机器页帧号（Machine Frame Number）。故也可以认为，页表是存储VFN到PFN映射的数据结构。\n4KB大小的页面使用两级页表，如下图所示。\n二级页表\n\n页目录项页目录项（Page Directory Entry）：包含页表的物理地址。页目录项存放在页目录（Page Directory）中，CPU使用线性地址的22 ~ 31位索引页目录，以获得该线性地址对应的页目录项。每个页目录为4B大小，故页目录占用一个4KB大小的物理页面，共包含1024的页目录项。\n\n页目录项\n\n\nAvail: Available for system programmer’s use\nG: Global page (Ingnored)\nPS: Page size (O Indl cates 4KBytes)\nO: Resrvered (set to O)\nA: Accessed\nPCD: Cache disabled\nPWT: Write-through\nU/S: User/Supervisor\nR/W: Read\nP: Present\n\n页表项页表项（Page Table Entry）：页表项包含该线性地址对应的PFN。页表项存放在页表（Page Table）中，CPU使用线性地址的12 ~ 21位索引页表，获得该线性地址对应的页表项。通过线性地址的0 ~ 11位偏移量和基地址相加，就可以得到线性地址对应的物理地址。页表项为4B大小，故页表项包含1024个页表项，占用1个4KB页面。\n页表项\n\n\nAvail: Available for system programmer’s use\nG: Global page (Ingnored)\nPAT: Page Table Attribute Index\nD: Dirty\nA: Accessed\nPCD: Cache disabled\nPWT: Write-through\nU/S: User/Supervisor\nR/W: Read\nP: Present\n\nP（Present）字段是虚拟内存的实现成为可能。\n\nP = 1：物理页面存在于物理内存中，CPU完成地址转换后，可直接访问该页面。\nP = 0：页面不在物理内存中，当CPU访问该页面时会产生一个缺页错误（Page Fault）并交由操作系统的缺页错误处理程序处理。通常操作系统会将存放在磁盘上面的页面调入物理内存，使访问可以继续。P = 0 时，页目录、页表项格式会变为下图的格式。此时1 ~ 31位供操作系统使用以记录物理页面在磁盘上的信息，通常是物理页面在磁盘上的位置。\n\nP=0时的页目录项、页表项\n\nCPU在索引页目录前，必须知道页目录所在的物理地址，该物理地址存放在CR3（Control Register 3）寄存器中，也称为页目录基地址寄存器（Page-directory base register，PDBR）。一个进程在运行前，必须将其页目录的基地址存入CR3。页目录的基地址必须对其到4K边界。\nTLB为了提高地址转换效率，x86架构使用TLB（旁路转换缓冲区，Translation Lookaside Buffer）对最近用到的页面映射进行缓存，当CPU访问某个线性地址，其所在页面的映射存在于TLB中时，无须查找页面即可进行地址转换。注意，TLB存放的不是线性地址到物理地址的转换，准确地说是，VFN到PFN的转换。也就是说，CPU从TLB获得一个线性地址对应的PFN后，仍然要和线性地址的偏移相加，才能得到最后的物理地址，而非直接从TLB获取物理地址。\nTLB作为缓存，其能存放的映射条目是有限的，当TLB中没有空闲条目可用时，替换哪一条旧目录由CPU决定。\nTLB也存在缓存一致性的问题，这主要是指TLB中的映射条目和页表中的映射条目的一致性。当操作系统对页表进行修改后，要负责对TLB中对应的条目或者整个TLB进行刷新。从软件角度，x86提供了两种方式刷新TLB：\n\n更新CR3：此操作可以导致TLB被整体刷新，TLB中所有映射条目失效（全局TLB除外）。操作系统将当前CR3中的值重新写回CR3以后刷新整个TLB。进程切换时，新进程的页目录基地址会写入CR3，使老进程在TLB中的条目失效。\nINVLPG指令：这是一种更细粒度的刷新，操作系统可以用它对TLB中单独的页目录项、页表项进行刷新。这通常是在操作系统修改页表后进行的（如分配/释放了页面）。\n\n总结CPU使用分页机制，将线性地址转换成物理地址的过程：\n\nCPU访问一个线性地址，映射在TLB中调到步骤6。如果映射不存在与TLB中，我们称一次TLB Miss（TLB缺失）发生，进行下一步。\n\n查找页表，页面在物理内存中跳到步骤4，不再进行下一步。\n\n操作系统中的缺页处理函数接管，通常会进行如下操作：\n\n将页面从磁盘复制到物理内存中。\n更改对应页表项，将P设置为1，并对其他字段进行相应设置。\n刷新TLB中对应的页表项。\n从缺页错误处理函数中返回。\n\n\n到这一步，页面已经存在在物理内存中，并且页表已经包含该映射。此时，重新执行引发TLB Miss指令。\n\nTLB Miss再次发生，CPU重新查页表，把对应的映射插入到TLB中。\n\n到这一步，TLB已经包含了该线性地址对应的PFN。 通过线性地址中的偏移部分和PFN相加，就得到了对应的物理地址。\n\n\nx86架构的基本运行环境三种基本模式实际上，x86有4种运行模式：实模式、保护模式、SMM模式（System Management Mode，系统管理模式）和虚拟8086模式。除SMM模式外，其他三种模式最为常见。\n\n实模式（Real Mode）：当CPU加电并经历最初的混沌状态后，首先进入的就是实模式，它是早期Intel 8086处理器工作的模式。在该模式下，逻辑地址转换后即为物理地址，CPU可以访问1MB的物理地址空间（实际上是1MB + 64KB）。操作系统或BIOS通常在该模式下准备必要的数据结构和初始化关键的寄存器，然后切换入保护模式。\n保护模式（Protect Mode）：操作系统运行时最常用的模式。该模式下，CPU的所有功能几乎都能得到使用，可以访问架构允许的所有物理地址空间（例如x86是4GB），接来下的讲解，如无特殊说明，都是基于保护模式进行的。\n虚拟8086模式（Virtual 8086 mode）：为了使早期的8086程序能在保护模式下运行，x86提供了虚拟8086模式。该模式可以让CPU在保护模式下为8086程序虚拟实模式的运行环境，使这些程序在执行时无须真正的从保护模式切换到实模式。\n\n基本寄存器组寄存器是软件操作CPU的最基本部件，x86架构的寄存器可以粗略分为以下几类。\n\n通用寄存器：共有8个32位的通用寄存器，例如常见的EAX、EDX等，用来保存程序运行时的临时变量、栈指针等数据。\n内存管理寄存器：包括段寄存器和描述符表寄存器。\nEFLAGS寄存器：32位寄存器，用来保存程序运行中的一些标志信息，如溢出、开启中断与否、分支跳转等信息。\nEIP寄存器：32位的寄存器，用来保存指向当前指令的地址。通常称该寄存器为PC指针。\n浮点运算寄存器：对于浮点运算，x86会通过一个浮点运算协处理器来处理。协处理器中包括8个80位的浮点数据寄存器，1个16位的控制寄存器，1个16位的状态寄存器，1个16位标志寄存器，1个11位的指令码寄存器，1个48位的浮点指令指针寄存器和1个48位的浮点数据指针寄存器。这些浮点运算寄存器为浮点运算提供了一个基本的运行环境。\n控制寄存器：x86提供了5个控制寄存器，分别是CR0 ~ CR4寄存器。这些控制寄存器决定了CPU运行的模式和特征等。\n其他寄存器：x86还提供了其他一些寄存器，包括8个调试寄存器（DR0 ~ DR7）、内存区域类型寄存器（MTRR）、机器检查寄存器（Machine Check Register）以及性能监控寄存器。\n\n权限控制权限控制是指CPU对资源进行分类，使不同权限的程序只能访问自身权限所允许访问的资源。操作系统的用户态和内核态之分就是最常见的权限控制，内核态程序具有最高权限，用户态程序具有最低权限。x86架构提供两种权限控制机制。\nx86架构提供两种权限控制机制——段保护和页保护。这两种机制分别对应内存管理中的段机制和分页机制。\n段保护段保护引入了3中属性对权限属性进行控制。\n\n当前权限级别（Current Privilege Level，CPL）：CPL表示当前运行的代码的权限。通过CS的0、1位记录代码的CPL值，CPL可以有0 ~ 3共4个级别，这是常说的Ring级别（实际上，Ring级别有更广阔的含义）。其中，Ring0对应CPL = 0，具有最高权限，操作系统的内核运行 在该权限；Ring3对应CPL = 3，用户程序运行在Ring3。CPL值越高权限越低。\n\n描述符权限级别（Descriptor Privilege Level，DPL）：DPL表示段和门（Gate）所具有的权限。它表示代码访问某个段或通过某个门是所需要的最低权限。例如，某个数据段描述符有DPL = 2，则只有CPL = 0、1、2的代码可以访问该数据段，CPL = 3的不能访问。\n\n所要求权限级别（Requested Privilege Lelve，RPL）：RPL比较特殊，它存在于段寄存器的0 ~ 1位（CS寄存器的0 ~ 1位是CPL），用于程序在访问段时增加一级检查。\n\n\n程序在访问一个段，要通过段寄存器得到段描述符，这样会产生2次检查，参与检查的3个属性分别是：程序本身的CPL、段寄存器的RPL、段描述符的DPL。CPL、DPL、RPL组合起来的情况有很多种，但只有当CPL &lt;= DPL且RPL &lt;= DPL时，访问才被允许，其余情况均被拒绝。通常可以把RPL设置成0来简化检查，此时，满足CPL &lt;= DPL访问即被允许。\n页保护页保护的思想比段保护简单，它通过在页目录项、页表项中引入一个User/Supervisor位，将页面（或整个页目录项）分成User和Supervisor两个特权级。该位为0时表示Supervisor模式，对应CPL = 0、1、2的情况；为1表示User模式，对应CPL = 3的情况。\n当程序运行在CPL = 0、1、2也就是Supervisor模式下时，可以访问所有页面；运行在CPL = 3下的程序处于User模式，只能访问User页面。\n中断与异常如果程序总是顺序执行，那么事情将变得非常简单。但事情往往和人们所期望的不太一样，中断和异常会打断顺序执行的程序流，转而转入一条完全不同的执行架构。\n中断架构中断提供给外部硬件设备一种“打断CPU当前执行任务，并响应自身服务”的手段。\n可编程中断控制器中断从设备发送到CPU需要由被称为“中断控制器”的部件转发（Message Signaled Interrupt，MSI，消息告知中断除外）。中断控制器发展至今，经历了PIC（Programmable Interrrupt Controller，可编程中断控制器）和APIC（Advanced Programmable Interrupt Controller，高级可编程中断控制器）两个阶段。\nPIC8259A芯片即常说的PIC，它具有IR0 ~ IR7共8个中断管脚连接外部设备。中断管脚具有优先级，其中IR0优先级最高，IR7最低。\nPIC系统架构\n\nPIC有如下三个重要的寄存器。\n\nIRR（Interrupt Request Register，中断请求寄存器）：共8位，对应IR0 ~ IR7这个8个中断管脚。某位置为1，代表收到对应管脚的中断但还没提交给CPU。\nISR（In Service Register，服务中断寄存器）：共8位。某位置为1，代表对应管脚的中断已经提交给CPU处理，但CPU还未处理完。\nIMR（Interrupt Mask Register，中断屏蔽寄存器）：共8位。某位置为1，对应的中断管脚被屏蔽。\n\n除此之外，PIC还有个一个EOI位，当CPU处理完一个中断时，通过写该位告知PIC中断处理完成。PIC向CPU递交中断的流程如下。\n\n一个或多个IR管脚上产生电平信号，若对应的中断没有被屏蔽，IRR中对应的位置被置为1。\nPIC拉高INT管脚通知CPU中断发生。\nCPU通过INTA管脚应答PIC，表示中断请求收到。\nPIC收到INTA应答后，将IRR中具有最高优先级的位清0，并设置ISR中对应的位。\nCPU通过INTA管脚第二次发出脉冲，PIC收到后计算最高优先级中断的vector，并将它提交到数据线上。\n等待CPU写EOI。收到EOI后，ISR中最高优先级的位被清0。如果PIC处于AEOI模式，当第二个INTA脉冲收到后，ISR中最高优先级的位自动清0。\n\nAPICPIC可以在UP（单处理器）平台上工作，但无法用于MP（多处理器）平台。为此，APIC应运而生。APIC由位于CPU中的本地高级可编程中断控制器（Local Advanced Programmable Interrupt Controller，LAPIC）和位于主板南桥中I/O高级可编程中断控制器（I/O Advanced Programmable Interrupt Controller，IOAPIC）两部分构成。\nAPIC系统架构\n\n其中，IOAPIC通常有24个不具有优先级的管脚，用于连接外部设备。当收到某个管脚的中断信号后，IOAPIC根据软件（通常是操作系统）设定的PRT（Programmable Redirection Table）表，查找到管脚对应的RTE（Redirection Table Entry，PRT的表项）。通过RTE的各个字段，格式化出一条包含该中断所有信息的中断消息，再由系统总线（老式的通过专门的APIC总线）发送给特定CPU的LAPIC，LAPIC收到消息后择机将中断递交给CPU处理。\n在LAPIC内部，也有类似IRR、ISR和EOI寄存器，其中IRR、ISR为256位，EOI为32位，它们的功能和PIC的大体类似。APIC系统中，中断的发起大致流程如下。\n\nIOAPIC收到某个管脚产生的中断信号。\n查找PRT表获得该管脚对应的RTE。根据RTE各字段格式化出一条中断消息，并确定发送给哪个（或多个）CPU的LAPIC。\n通过系统总线或APIC总线发送中断信息。\nLAPIC收到中断消息，判断是否自己接收。\n如确定接收，将IRR中对应的位置为1。同时确定此时是否将该中断交由CPU处理。\n如确定提交中断给CPU处理，从IRR获取最高优先级的中断，将ISR中对应的位置为1，并提交中断。对于edge触发中断，IRR中对应位此时清0。\nCPU处理完中断，软件写EOI寄存器告知中断处理完成，对于level触发中断，IRR中对应位此时清0.LAPIC可提交下一个中断。\n\n处理器间中断在MP（多处理器）平台上，多个CPU要协同工作，处理器间中断（Inter-processor Interrupt，IPI）提供CPU之间互相通信的手段，CPU可以通过LAPIC的ICR（Interrupt Command Register，中断命令寄存器）向指定的一个/多个CPU发送中断。\n中断的分类中断可以从多个方面进行分类。从中断源的角度来看，可以分为如下几类。\n\n外部中断：指连接在IOAPIC上设备产生的中断、LAPIC上连接的设备或LAPIC内部中断源产生的中断以及处理器间中断。\n可屏蔽中断：指可以通过某种方式（例如CLI命令、TPR）进行屏蔽的中断。与之对应的概念是不可屏蔽中断（non-maskable interrupt）。\n软件产生中断：指通过INT n指令产生的中断。\n\n这样的分类并非绝对，例如外部中断通常是可屏蔽中断，但也可能属于不可屏蔽中断。通常，根据外部中断的触发方式，又把它们分为如下几类。\n\nedge触发中断：指中断边沿方式触发（例如上升沿）。ISA设备、时钟设备多使用这种触发方式。\nlevel触发中断：指中断以电平方式触发，在中断程序应答设备前，该电平一直有效。PCI设备使用这种触发方式。\n\n中断的优先级在使用PIC的系统中，PIC的管脚决定了中断的优先级，连接IR0的设备具有最高优先级，连接IR7的设备优先级最低。在APIC系统中，IOAPIC的管脚不再具备优先级，设备的中断优先级由它所连接管脚对应RTE中的vector字段决定。vector是x86架构用于索引IDT表的下标，范围从0~255，值越大优先级越高。其中，32~255可以供外部中断使用。\n在现代操作系统中，有几个概念和vector常联系在一起使用。\n\nIRQ：PIC时代的产物，由于ISA设备通常是连接到固定的PIC管脚，所以说一个设备的IRQ实际上是指它连接的PIC管脚号。IRQ暗示中断优先级，例如IRQ0比IRQ3有更高的优先级。当进入APIC时代后，人们仍习惯用IRQ表示一个设备的中断号，但对于16以下的IRQ，它们可能不再与IOAPIC的管脚对应。\nGSI（Global System Interrupt）：ACPI引入的概念，它为系统中每个中断源指定一个唯一的中断号。IRQ和GSI在APIC系统中常常被混用，实际上对于15以上的IRQ，它和GSI相等。\n\n在这里，GSI和IRQ可以看作等同的概念，表示某个设备的中断号。它们与vector的关系由操作系统决定，通常是在设备驱动注册中断处理程序由操作系统分配。\n中断的屏蔽无论是在PIC收到中断信号后，还是LAPIC收到中断消息后，并不一定都是马上交给CPU处理的，这还要取决于CPU当前是否屏蔽中断（不可屏蔽中断除外）。当CPU屏蔽中断时，中断会被依附（pending）在PIC/LAPIC的IRR寄存器中，一旦CPU开启中断，会在第一时间响应PIC/LAPIC所依附的中断。CPU可以通过以下几种方法屏蔽/开启中断。\n\nCLI/STI指令：这是操作系统最常用的屏蔽/开启中断的方法。CLI指令将本CPU的EFLAGS寄存器的IF位清0，阻止接收中断；STI指令将IF位置为1，允许接收中断。这两条指令都只对当前CPU起作用，而不影响平台上的其他CPU。\nTPR寄存器：根据该寄存器值代表的优先级，部分屏蔽外部中断。\nPIC/IOPIC的中断屏蔽位：PIC可以通过IMR寄存器屏蔽对应管脚。IOAPIC可通过RTE中的mask位屏蔽对应管脚。该方法不会将中断依附（pending）到IRR，而是直接忽略，对于edge触发中断可能导致中断丢失。\n\nIDT表IDT表实际就是个大数组，用于存放各种“门”（中断门、陷阱门、任务门），这些“门”是中断和异常通往各自处理函数的入口。当一个中断或异常发生时，CPU用它们对应的vector号索引IDT表以获得对应的“门”。每个“门”占8B，x86最多有个256个vector，故IDT表长度最大为8 x 256 = 2048B。\nIDT表的基地址存放在IDTR寄存器中，该寄存器和GDTR类似，由一个基地址（Base）字段和长度（Limit）字段构成，通过LIDT/SIDT指令可以加载和存储IDTR寄存器。IDT表要求被对齐到8B边界以提高效率。\n中断门“门”是入口，中断门就是中断的入口。中断门实际上是一种段描述符，称为系统描述符（System Descriptor），由段描述符的S位控制。中断门的格式如下图所示。\n中断门\n\n其中，段选择符、偏移量字段可以看成一个逻辑地址，通过索引GDT将该逻辑地址转换成中断处理函数入口的线性地址。这里要注意的是DPL字段，很多操作系统吧门的DPL设置成0，而之前讲过，只有当CPL &lt;= DPL、CPL &lt;= RPL访问才被允许。这就引出一个问题：程序在用户态时（CPL = 3）发生中断，岂不是不能放过一个DPL = 0的中断门？实际上，中断门和陷阱门的DPL只在使用INT n指令引起中断/异常时才检查，硬件产生的中断/异常不检查。P字段表示该中断门是否有效，清0无效。\n中断门和陷阱门的唯一区别是程序通过中断门跳转后，EFLAGS寄存器的IF位自动清0，中断关闭。而陷阱门没有这样的效果。\n异常架构和中断相比，异常最大的不同在于它是在程序的执行过程中同步发生的。\n1234void main() &#123;    int a = 10;    a = a / 0;&#125;\n程序运行到a = a / 0一句时必然引起一个除0异常，但不能预料该程序在执行时是否会发生中断。异常根据产生的原因和严重程度可以分为如下三类。\n\n错误（Fault）：由某种错误情况引起，一般可以被错误处理程序纠正。错误发生时，处理器将控制权转移给对应的处理程序。例如，常见的缺页错误就属于此类。\n陷阱（Trap）：指在执行了一条特殊指令后引起的异常。例如，Linux中用于实现系统调用的INT 80指令就属于此类。\n终止（Abort）：指严重的不可恢复的错误，将导致程序终止的异常。例如MCA（Machine Check Architecture）。\n\n和中断门一样，陷阱门存放在IDT表中。异常发生后，CPU用该异常的vector号索引其对应的陷阱门。x86架构将vector 0~19预留给各个异常。\n陷阱门的格式如下图。\n陷阱门\n\n操作系统对中断/异常的处理流程虽然各个操作系统对于中断/异常处理实现不同，但基本流程遵循如下的顺序。一个中断/异常发生，打断当前正在执行的任务。\n\nCPU通过vector索引IDT表得到对应的“门”，并获得其处理函数的入口地址。\n程序跳转到处理函数执行，由于处理函数存放在CPL = 0的代码段，程序可能会发生权限提升。处理函数通常执行下列几个步骤。\n保存被打断任务的上下文，并开始执行处理函数。\n如果是中断，处理完成后需要写EOI寄存器（伪中断不需要）应答，异常不需要。\n恢复被打断的任务的上下文，准备返回。\n\n\n从中断/异常的处理函数返回，恢复被打断的任务，使其继续进行。\n\n进程\n“尽管表面上看起来程序和进程非常类似，但本质上它们却是截然不同的。程序是指一个静态的指令序列，而进程是一个容器，其中包含了当一个程序的特定实例所用到的各种资源”。\n\n进程是系统进行资源分配和调度的基本单位，是操作系统结构的基础。进程是各种资源的合集：通常一个进程包含下面几种资源。\n\n私有的线性地址空间：这是进程可以使用的线性地址的总和，其中内核部分可能和其他进程是共享的。\n可执行的程序：也就是前面说的二进制序列，包含代码和数据。\n一些已经获得的其他资源：如打开的文件、管道等。\n进程的权限：指进程的运行权限，例如在Linux中就有root用户和非root用户之分。\n进程的描述符：有的操作系统称为控制块，包含操作该进程的一些必要的信息，例如进程的ID号。\n\n上下文上下文就是程序（进程/中断）运行时所需要的寄存器的最小集合。这些寄存器的后面可能代表着程序运行的一类资源。例如，CR3寄存器就可以概括进程的私有线性地址空间（分页机制启动时）。\nx86架构下上下文包含哪些寄存器。\n\n通用寄存器组：即EAX、EBX、ECX、EDX、ESI、EDI这6个加上ESP（栈指针）、EBP（框架指针）。\n段相关寄存器组：CS、DS、SS，如果程序使用了ES等额外段寄存器，也要包括进来。\n标志寄存器：主要指EFLAGS寄存器。\n程序指针寄存器：EIP。\nGDT基地址：用于访问GDT，GDTR中内容。\nLDT段选择符：如果程序使用了私有的LDT，LDTR的内容。\nIDT基地址：用于访问IDT表，IDTR的内容。\n控制寄存器组：CR系列，表示当前程序运行的CPU控制状态。\n浮点相关寄存器组：用于浮点计算的一些寄存器组。\n一些特殊用途的寄存器：例如x86架构下的MSR（Model-Specific Register）。\n\n一个程序的上下文可能是上面列出内容的一个子集（例如进程），也可能是全部（例如虚拟机）。从程序员的观点看，上下文的概念有些微改变，通常对于上下文切换时不需要改变的寄存器，也可以说它不是该程序的上下文。例如进程切换时，GDTR中的内容不要改变，为了方便，通常在讲一个进程的上下文时不把GDTR算进去。在后面的内容中，包括虚拟机部分，提到上下文都是指在上下文切换时必须更改的寄存器的集合。\n上下文切换上下文切换是指程序从一种状态切换到另一种状态（例如用户态切换到内核态），或从一个程序切换到另一个程序（例如进程的切换）时，导致上下文相关寄存器值的变化行为。这种变化是指旧程序（切换前的程序）上下文相关寄存器的值被保存到内存中，新程序（切换后的程序）上下文相关寄存器的值被加载到寄存器中。在操作系统中，通常只有三种情况会发生上下文切换。\n\n用户态到内核态的切换：此时的上下文切换是因为进程的用户态和内核态运行在不同的Ring级别，对资源的访问权限不同，需要切换部分上下文。例如，从用户态的栈切换到内核态的栈。\n进程切换：由于一个CPU在同一时刻只能有一个进程运行，所以在新的进程运行前，需要把上下文相关寄存器的值换成新进程的相关值，例如把CR3换成新进程也目录的地址，EIP指向新进程运行的第一条指令。这通常是个全上下文的切换。\n中断上下文的切换：中断的处理函数运行在特殊的上下文环境，称为中断上下文。CPU处理一个中断时，不管当前CPU在运行一个进程，还是本身就在一个中断上下文中，都要切换到新中断的上下文。例如，更改栈指针、EIP变化等。这通常是部分上下文的切换，例如CR3寄存器的值就不需要更改。根据x86架构的特点，无论是Linux的硬中断机制，还是Windows、Solaris的中断线程化机制，处理中断必然经过一个中断上下文阶段，可能的情况如下。\n进程上下文 -&gt; 中断上下文（处理中断） -&gt; 进程上下文（中断返回执行）。\n进程上下文 -&gt; 中断上下文 -&gt; 新进程上下文（处理中断） -&gt; 进程上下文（最先被打断进程的上下文）。\n中断上下文 -&gt; 新中断上下文 -&gt; … …\n\n\n\nx86只有一种机制，即任务门（Task Gate）可以使中断的处理不经过中断上下文而直接进入进程上下文，但几乎没有操作系统使用。\n上下文切换通常有2个步骤：\n\n保存旧上下文：将被切换出去的程序（如一个被新进程代替的旧程序）或被切换出去的状态（如程序的用户态）的上下文相关寄存器的值保存在内存中。\n加载新上下文：将要运行的程序（如新进程）或新状态（如程序的内核态）运行需要的上下文相关寄存器的值从内存中读入，加载入对应寄存器中。\n\n需要注意的是，保存旧的上下文动作在x86架构下有时会由CPU自动完成一部分（例如中断发生时、使用TSS），但在现代操作系统中，通常是由软件完成的。\nI/O架构将计算机进行的任务进行一个粗略的分类，其实只有两种：CPU运算和I/O操作。I/O架构毫无疑问是现代计算机体系的重要组成部分。\nx86的I/O架构I/O（输入输出）是CPU访问外部设备的方法。设备通常是通过寄存器和设备RAM将自身的功能展现给CPU，CPU读写这些寄存器和RAM即可完成对设备的访问和操作。通过访问方式的不同，可以将x86架构的I/O分为如下两类。\n\nPort I/O（端口I/O）：即通过I/O端口访问设备寄存器。x86有65536（2^16）个8位的I/O端口，编号为0x0~0xFFFF。如果端口号看做访问设备端口的地址，那么这个65536个端口就构成了64KB的地址空间，称为I/O端口地址空间。与线性地址空间和物理地址空间不同，I/O端口地址空间是独立的，也就是说它并不是线性地址空间或物理地址空间的一部分。使用IN/OUT指令访问端口时，CPU通过一个特殊的管脚标识这是一次I/O端口访问，于是芯片组知道地址线上的地址是I/O端口号并进行相应操作。此外，2个或4个连续的8位I/O端口，可以组成16位或32位I/O端口。\n\nMMIO（Memory Map I/O，内存映射I/O）：即通过内存访问的形式访问设备寄存器或设备RAM。x86架构下，MMIO和Port I/O最大的不同是，MMIO要占用CPU的物理地址空间。它把设备的寄存器或设备RAM映射到物理地址空间某段地址，使用MOV这样的访存指令访问此段地址即可访问到映射的设备。很多CPU架构都没有Port I/O，采用统一的MMIO方式。由此可见，MMIO是一种更加先进的I/O访问方式。\n\n\n对于Port I/O，由于编译器不能产生IN/OUT指令，操作系统通常吧汇编命令封装成类似inb()、outb()这样的函数。对于MMIO，由于整个物理地址空间都会被映射到线性地址空间，程序访问I/O资源时，也要做线性地址到物理地址的转换。与普通物理地址到线性地址的映射不同，MMIO地址通常是不可缓存的（un-cacheable）。\nDMADMA（直接内存访问）是将CPU从I/O操作中解放出来的一种技术。如果设备向内存复制数据都经过CPU，则会消耗大量的CPU时间，不利于系统性能。通过DMA，驱动程序可以事先（或在需要的时候）设定一个内存地址，设备就可以在绕开CPU直接向内存中复制（或读取）数据。根据发起者不同，DMA可以被分为2种。\n\n同步DMA：是指DMA操作由软件发起。一般的流程是设备驱动在设定好需要被DMA访问的内存地址后，写某个寄存器来通知设备发起DMA。此时，设备会直接从该内存地址空间读取内容并操作。一个典型的例子就是声卡，当播放一段音频时，驱动将该音频存放的地址通知声卡，设备从内存直接读取数据并播放，完成后以一个中断通知驱动操作完成。\n\n异步DMA：是指DMA操作由设备发起。一般的流程是设备将数据直接复制到一个事先设定好的内存地址，再通过一个中断通知驱动程序。典型的例子就是网卡收包，当网卡接收到数据包后，会直接复制到驱动程序设定好的内存地址去，并以中断的形式通知网络包的到来。\n\n\n设备的DMA操作都是使用物理地址访问内存，不经过线性地址到物理地址的转换。但IOMMU（Input/Output Memory Management Unit，输入输出内存管理单元）出现后，这个情况就改变了。从驱动的角度来看，驱动要提供一片内存区域供设备访问，DMA要求这片内存区域在物理上是连续的。\n现代设备支持一种称为“分散————聚合（Scatter-Gather）”DMA的机制，允许驱动向设备提供不连续的物理内存。实际上，驱动是将一组以“起始地址——长度”为属性的内存描述符提供给设备，每个描述符描述了一块连续的物理内存，但连续两个描述符描述的内存不需要是连续的。从宏观上来看，通过这组内存描述符可以向设备提供一片不连续的内存区域；但从微观的角度看，DMA操作访问的仍然是连续的物理内存。\nPCI设备PCI总线无疑是总线中的王者。在它之前，各种平台都拥有自己特定的总线，例如x86的ISA总线、Power PC的VME总线。PCI出现后，由于速度快、具有动态配置功能和独立于CPU结构等特点，迅速被各种平台接受，成为一种通用的总线架构。\nPCI总线架构PCI总线是一种典型的树结构。把北桥中HOST-PCI桥看作根，总线中其他PCI-PCI桥、PCI-ISA桥（ISA总线转PCI总线桥）等桥设备和直接接PCI总线的设备看作节点，整个PCI架构可以概括成下图所示。\nPCI总线结构\n\n通过桥，PCI总线可以很容易地被扩展，并且与其他总线互相挂接，构成整个系统的总线网络。与HOST-PCI相连的总线被称为总线0，其他层次总线的编号，是在BIOS（或操作系统）枚举设备时确定的。\n设备标识符设备标识符可以看作是设备在PCI总线上的地址，它的格式如下图所示。\n设备标识符\n\n其中，8位的Bus字段代表设备所在的总线号，故系统最多有256条总线。Device字段表示设备号，代表在Bus所表示总线的某个设备。Function字段表示功能号，标识具体设备上的某个功能单元（逻辑设备）。\n一块PCI卡，它上面有两个独立的设备，这两个设备共享了一些电子线路，那么这两个设备就是这块PCI卡的两个功能单元。但从软件的角度来看，它们和两个独立接入PCI总线的设备无异。\n如同Function字段长度所暗示的，一个独立的PCI设备上最多有8个功能单元。Device和Function两个字段一般结合起来使用，表示一条总线上最多有256个设备。\n通常，用这三个字段的缩写BDF来代表设备标识符。\n当程序通过BDF访问某个设备时，先通过Bus字段选定特定的总线，再根据Device字段选定特定的设备，最后通过Function字段就可以选定特定的功能单元（逻辑设备）了。\nPCI配置空间PCI设备规范规定，设备的配置空间最多为256个字节，其中前64个字节的格式和用途是统一的。如下图所示。\nPCI配置空间\n\n\nBase Address Registers：基地址寄存器（PCI Bar）。它报告设备寄存器或设备RAM在I/O端口地址空间（或地址空间中）的地址。一改ISA设备通过跳线配置的不灵活的特点，地址是由软件（BIOS或操作系统）动态配置的。通常枚举PCI设备的软件（BIOS或操作系统）会在获得平台所有PCI设备后，根据设备数量，依照固定的算法为每个设备的PCI Bar分配I/O端口（或物理地址）。设备的电子线路负责把这些端口（或地址）映射到自身的寄存器（设备RAM）上，这样，CPU就可以通过端口号（Port I/O方式）、物理地址（MMIO方式）访问到设备了。使用哪种方式访问，由PCI Bar的最后一位表示。当该位为1时，表示是Port I/O方式；该位为0时，表示是MMIO方式。有些架构根本就没有Port I/O方式，全部采用MMIO。 根据访问目标性质不同，PCI Bar又可以划分为：\n\n可预取（Prefetchable）类型。这主要是设备RAM。由于RAM具有在每次操作后内容不自动改变的性质，所以可以使用预读机制。例如程序在读第N个字节的内容时，总线可能已经读出了第N + 1个字节的内容。当预读出的内容不需要时，只要简单地抛弃就可以了，不会有什么影响。\n不可预取（Non-Prefetchable）类型。这里主要指设备寄存器。寄存器和RAM有着不同的性质，有些寄存器本身就是设备的FIFO队列的接口。很有可能当一次读操作完成后，寄存器的值就改变了。如果使用预读机制，例如程序本身只读了寄存器的第一个字节，而总线却连续读入了4个字节，那么后面3个字节的内容可能就会改变，下次程序真正访问它们时，得到的就是错误的值。对于PCI Bar是否为预取类型，可以根据该PCI Bar的第3位判断，1为可预取，否则为不可预取。\n\n\n\n\nInterrupt Pin：中断针脚。PCI中断线的标准设计是4条：INTA、INTB、INTC和INTD，分别对应值0~3。该寄存器的值表示设备连接的是哪个中断针脚。\n\nInterrupt Line：设备的中断线。该寄存器只起一个保存作用，BIOS和操作系统和以自由使用它。BIOS通常用它保存设备所连的PIC/IOAPIC的管脚号。\n\n\nx86架构把I/O端口地址空间中的0xCF8~0xCFF段预留给PCI总线，用于访问设备的配置空间。其中，前32位的寄存器为“地址寄存器”，后32位为“值寄存器”。软件通过把设备的BDF和要访问的配置空间的字节偏移写入“地址寄存器”中，就可以通过“值寄存器”读写该配置空间了。\nPCI设备枚举过程PCI设备的枚举和资源分配（即配置PCI配置空间）通常是由BIOS完成的，并提供特殊的PCI设备枚举接口供保护模式下的操作系统使用，这些接口称为PCIBIOS。\n由于某些平台，例如嵌入式，是没有BIOS的，并且操作系统厂商对BIOS的可靠性也不信任，故某些操作系统也实现了自己的PCI设备枚举接口。无论是BIOS，还是操作系统，其枚举设备的过程都遵循着一般规律。\nPCI设备和总线一起构成了树结构，其中PCI-PCI桥（或PCI-ISA等其他桥）是子树的根节点，设备枚举的过程就是要在内存中建立一棵和实际总线情况向符合的设备树。枚举过程中最关键的步骤是发现PCI-PCI桥，这个可以通过PCI配置空间的Header Type字段判断，该字段为1时，表示为桥设备。\nPCI-PCI桥主要有三个属性。\n\nPrimary Bus：表示该桥所属的根总线。\nSecondary Bus：表示以该桥为根节点的子总线。\nSubordinate Bus：表示该桥为根的子树中，最大的总线号。\n\n下图说明三者的关系。\nPCI设备的枚举\n\n对于PCI-PCI桥1，其Primary Bus是总线0，Secondary Bus是总线1，而以它为根的总线中最大的总线号为2，所以其Subordinate Bus为总线2。\n设备枚举从根节点HOST-PCI桥开始，首先探测总线0上的各个设备。当探测到第一个桥设备时，为其分配Primary Bus号和Secondary Bus号，其中Secondary Bus号为1（即当前系统中最大总线号加1），Subordinate Bus号暂设为和Secondary Bus相同，当在子树中发现新总线后会动态调整该值接着以该桥为根节点，继续探测其下属总线，其过程和前面相同，发现第一个桥设备后则以其为根往下探测，如此反复直到所有子树都探测完毕。\n当PCI-PCI桥收到写入0xCF8中的BDF后，会将Bus字段与自身的Secondary Bus相比，相符则在下属总线上搜寻设备；如果不相符，但Bus值落在Subordinate Bus范围内，则把该地址传递给下属总线中各桥，否则不予理睬。\n通过这种方式，BIOS或操作系统可以枚举出总线上所有设备并为之分配资源，一旦PCI配置空间设定好，软件就可以直接通过PCI Bar访问设备了。\nPCI ExpressPCI Express的设计目标是用来代替之前广泛使用的PCI、PCI-X和AGP等总线标准，称为新一代通用、高速的IO互联标准，同时保持对PCI标准的软件兼容性。\nPCI Express架构PCI Express抛弃了PCI所采用的多个设备共享的并行的总线结构，转而使用了与网络协议类似的点对点的串行通信机制。多个PCI Express设备（Endpoint）通过交换器（Switch）相互连接。与PCI总线中的桥设备类似，通过交换器，可以搭建一个树形的PCI Express的拓扑结构。\n标准的PCI Express拓扑结构如下图。树的根节点是Root Complex，用来连接处理器、内存系统和IO系统，其作用类似PCI总线树中的HOST-PCI桥。\nPCI Express拓扑结构\n\nPCI Express的优点PCI Express比PCI总线拥有更高的带宽。串行通信机制可以让物理链路工作在很高的频率。点对点的通信方式使得链路两端的设备可以独占通信带宽，而且多个链路可以并发传输数据。\nPCI Express在于PCI总线迥异的硬件基础之上，构建了与PCI总线完全兼容的软件接口。PCI Express定义了基于数据包的分层通信协议，包括物理层（Physical Layer）、数据链路层（Data Link Layer）和事务层（Transaction Layer）。在事务层协议中，PCI Express定义了内存读写、IO读写、配置空间读写和消息事务。通过这些事务的定义，PCI Express可以实现所有的PCI总线事务。\nPCI Express将PCI总线的配置空间大小从256字节扩展到4KB字节，解决了PCI总线的配置空间过小的问题，可以容纳更多的设备功能配置。PCI Express还增加一种新的MMIO方法来访问扩充过的配置空间。为了保持兼容性，4KB字节配置空间中的前256字节仍然可以使用原来的方式访问。\nPCI Express除了保留了PCI总线的优点以外，还增加了诸如QoS服务、高级错误报告（AER）等新特性。软件可以通过PCI Express提供的软件接口来配置和使用这些新的功能。\n此外，PCI Express标准具有良好的扩充性。PCI-SIG的SR-IOV标准在PCI Express基础上做了扩展，支持该标准的设备可以动态地生成新的逻辑设备。DMA重映射可以利用PCI Express内存读写事务数据包中所包含的设备标识符合地址信息，为每个逻辑设备提供独立的地址转换。\n时钟在现代计算机架构中，时钟有着重要的地位，操作系统中的很多时间都是由时钟驱动的，例如进程调度、定时器等。\n时钟根据工作方式不同，可以分成如下两类。\n\n周期性时钟（Periodic Timer）：这是最常见的方式，时钟以固定频率产生时钟中断。通常，周期性时钟会有一个计数器，要么以固定值递减到0产生中断，例如PIT；要么固定增长，当达到某个阈值时产生中断，同时自动将阈值增加一个固定值，计数器继续递增，例如HPET。\n单次计时时钟（One-shot Timer）：大多数时钟都可以配置成这种方式，例如PIT、HPET。其工作方式和到达阈值产生中断的周期性时钟类似，不同的是产生中断后阈值不会自动增加，而是需要软件（通常是时钟中断处理函数）增加该阈值。这提供给软件动态调整下一次时钟中断到来时间的能力，使一些新技术，例如无滴答声内核（Tickless Kernel）的实现成为可能。\n\nx86平台的常用时钟PITPIT（Programmable Interrupt Timer或Programmable Interval Timer，可编程中断/间隔时钟）：随IBM PC平台产生，被广泛应用，其频率为1000Hz作用，即每次中断间隔约为1ms，通常接IRQ0，软件可以通过0x40~0x43 I/O端口进行操作。PIT是一种低精度的时钟，容易溢出（16位），已经渐渐被后来出现的高精度时钟取代。PIT支持周期性和单次计时两种工作方式。\nRTCRTC（Real Time Clock，实时时钟）：通常是和CMOS集成在一起的，由CMOS电池供电，故能在关机后继续计时。其频率范围在2~8192Hz，通常接IRQ8，软件可以通过0x70~0x71 I/O端口操作。RTC支持周期性和单次计时两种方式，此外，它还可以配置成没秒产生一次中断，具有闹钟功能。由于具有关机继续计时的功能，RTC常被用作为操作系统提供日期，即“年/月/日”。\nTSCTSC（Time Stamp Counter，时间戳计时器）：和普通计时器不同，它可以看作一个单调递增的计数器（64位），由x86架构引入的。其时钟频率和CPU频率相关，操作系统在使用前需要计算其频率，例如1GHz的TSC，其值每纳秒增加1。通过rdtsc指令，可以读取当前TSC的值。由于不产生时钟中断，故无所谓周期性和单次计时方式。\nLAPIC TimerLAPIC Timer：该时钟是根据LAPIC所在总线（系统总线或者APIC总线）频率产生的。32位，有如下两个特点。\n\n由于LAPIC是每个CPU一个，故其中断也是对于本地CPU的。\n可以通过寄存器配置，对总线周期进行不同的分频而产生不同频率的时钟中断。\n\nLAPIC Timer可配置成周期性和单次计时两种工作方式。\nHPETHPET（High Precision Event Timer，高精度时间时钟）：是Intel和微软共同开发的新型高精度时钟，其最低频率为10MHz，可以作为64位或32位时钟使用。HPET可以提供最多8个时钟，典型的实现至少有一个时钟可用。\nHPET的时钟通过一个主计数器，和32个比较器、匹配器一起，又可以被配置成32个子时钟（又称为channel），每个子时钟可以按不同频率产生不同的中断。例如，可以将一个子时钟配置成每毫秒产生一个IRQ8中断，另一个子时钟可以被配置成每微秒产生一个IRQ0中断。\nHPET可用于替代传统的PIT和RTC，此时平台的IRQ0、IRQ8中断被HPET占用。HPET支持周期性和单次计时两种工作方式。\n小结x86平台提供如此多的时钟，操作系统可以根据不同的需要使用其中的一个或多个。同时使用多个时钟带来的一个明显的缺点是过多的时钟中断会影响系统性能。所以，当有高精度时钟可用时，操作系统通常会禁用低精度时钟，并根据需要使用高精度时钟模拟低精度时钟。例如，可以用HPET代替PIT，并模拟RTC。\n操作系统的时钟观从操作系统的角度看，时钟的作用可以分为以下两类。\n\n提供统计值及驱动事件：提供统计值是指操作系统用时钟来维护一些必需的数据，例如，一个进程在用户态/内核态的时间，系统的日期、时间等。驱动事件是指驱动以时间为资源的程序，典型的就是进程。例如，分时操作系统为每个进程分配固定的时间片，调度时间片耗尽的进程睡眠，唤醒分配到新时间片的进程运行。\n维护定时器（Timer）：定时器是程序中最常用的组件，用于在某个时间到达后执行特定的操作。定时器大量运用于操作系统中，例如内核为I/O操作注册的超时定时器、操作系统提供给应用程序使用的定时器接口等。\n\n\n操作系统的时钟\n\n从上图可以看出，操作系统使用时钟的功能，是以时钟中断为基础的。\n操作系统中往往会对时钟架构进行封装以方便维护和使用，但从硬件的角度来看，时钟中断仍然是所有封装的基础，故虚拟化中对时钟的处理主要是提供准确的时钟中断以模仿硬件行为。","dateCreated":"2021-06-05T09:21:32+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2021-06-05T09:21:32+08:00","description":"x86架构及操作系统概述","headline":"x86架构及操作系统概述","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/","keywords":"x86架构, 操作系统","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="x86架构及操作系统概述">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="x86架构及操作系统概述">
+<meta property="og:url" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="x86架构及操作系统概述">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/address.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/linear.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/segment.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/segment_selector.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/segment_descriptor.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/system_segment_descriptor.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/data_segment_descriptor.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/code_segment_descriptor.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/segment_present.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/descriptor_table.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/page.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/page_table.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/page_directory_entry.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/page_table_entry.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/present.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/pic.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/apic.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/interrupt_gate.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/trap_gate.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/pci.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/device.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/pci_spec.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/pci_device.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/pcie.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/clock.png">
+<meta property="article:published_time" content="2021-06-05T01:21:32.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.131Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="x86架构">
+<meta property="article:tag" content="操作系统">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/images/address.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            x86架构及操作系统概述
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2021-06-05T09:21:32+08:00">
+	
+		    Jun 05, 2021
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#x86"><span class="toc-text">x86</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F"><span class="toc-text">操作系统</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#x86%E5%86%85%E5%AD%98%E6%9E%B6%E6%9E%84"><span class="toc-text">x86内存架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="toc-text">地址空间</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%A9%E7%90%86%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="toc-text">物理地址空间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E6%80%A7%E5%9C%B0%E5%9D%80%E7%A9%BA%E9%97%B4"><span class="toc-text">线性地址空间</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9C%B0%E5%9D%80"><span class="toc-text">地址</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%80%BB%E8%BE%91%E5%9C%B0%E5%9D%80"><span class="toc-text">逻辑地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E6%80%A7%E5%9C%B0%E5%9D%80"><span class="toc-text">线性地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%A9%E7%90%86%E5%9C%B0%E5%9D%80"><span class="toc-text">物理地址</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E6%9C%BA%E5%88%B6"><span class="toc-text">内存管理机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E6%AE%B5%E6%9C%BA%E5%88%B6"><span class="toc-text">分段机制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AE%B5%E9%80%89%E6%8B%A9%E7%AC%A6%EF%BC%88Segment-Selector%EF%BC%89"><span class="toc-text">段选择符（Segment Selector）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AE%B5%E6%8F%8F%E8%BF%B0%E7%AC%A6%EF%BC%88Segment-Descriptor%EF%BC%89"><span class="toc-text">段描述符（Segment Descriptor）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%AE%B5%E6%8F%8F%E8%BF%B0%E7%AC%A6%E8%A1%A8"><span class="toc-text">段描述符表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E9%A1%B5%E6%9C%BA%E5%88%B6"><span class="toc-text">分页机制</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%A1%B5%E8%A1%A8"><span class="toc-text">页表</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%A1%B5%E7%9B%AE%E5%BD%95%E9%A1%B9"><span class="toc-text">页目录项</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%A1%B5%E8%A1%A8%E9%A1%B9"><span class="toc-text">页表项</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#TLB"><span class="toc-text">TLB</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%80%BB%E7%BB%93-1"><span class="toc-text">总结</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#x86%E6%9E%B6%E6%9E%84%E7%9A%84%E5%9F%BA%E6%9C%AC%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83"><span class="toc-text">x86架构的基本运行环境</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E7%A7%8D%E5%9F%BA%E6%9C%AC%E6%A8%A1%E5%BC%8F"><span class="toc-text">三种基本模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E5%AF%84%E5%AD%98%E5%99%A8%E7%BB%84"><span class="toc-text">基本寄存器组</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9D%83%E9%99%90%E6%8E%A7%E5%88%B6"><span class="toc-text">权限控制</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%AE%B5%E4%BF%9D%E6%8A%A4"><span class="toc-text">段保护</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B5%E4%BF%9D%E6%8A%A4"><span class="toc-text">页保护</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E4%B8%8E%E5%BC%82%E5%B8%B8"><span class="toc-text">中断与异常</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E6%9E%B6%E6%9E%84"><span class="toc-text">中断架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8F%AF%E7%BC%96%E7%A8%8B%E4%B8%AD%E6%96%AD%E6%8E%A7%E5%88%B6%E5%99%A8"><span class="toc-text">可编程中断控制器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#PIC"><span class="toc-text">PIC</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#APIC"><span class="toc-text">APIC</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%84%E7%90%86%E5%99%A8%E9%97%B4%E4%B8%AD%E6%96%AD"><span class="toc-text">处理器间中断</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E7%9A%84%E5%88%86%E7%B1%BB"><span class="toc-text">中断的分类</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E7%9A%84%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-text">中断的优先级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E7%9A%84%E5%B1%8F%E8%94%BD"><span class="toc-text">中断的屏蔽</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#IDT%E8%A1%A8"><span class="toc-text">IDT表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E6%96%AD%E9%97%A8"><span class="toc-text">中断门</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%82%E5%B8%B8%E6%9E%B6%E6%9E%84"><span class="toc-text">异常架构</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E5%AF%B9%E4%B8%AD%E6%96%AD-%E5%BC%82%E5%B8%B8%E7%9A%84%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="toc-text">操作系统对中断&#x2F;异常的处理流程</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B"><span class="toc-text">进程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8A%E4%B8%8B%E6%96%87"><span class="toc-text">上下文</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8A%E4%B8%8B%E6%96%87%E5%88%87%E6%8D%A2"><span class="toc-text">上下文切换</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#I-O%E6%9E%B6%E6%9E%84"><span class="toc-text">I&#x2F;O架构</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#x86%E7%9A%84I-O%E6%9E%B6%E6%9E%84"><span class="toc-text">x86的I&#x2F;O架构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#DMA"><span class="toc-text">DMA</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#PCI%E8%AE%BE%E5%A4%87"><span class="toc-text">PCI设备</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#PCI%E6%80%BB%E7%BA%BF%E6%9E%B6%E6%9E%84"><span class="toc-text">PCI总线架构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E5%A4%87%E6%A0%87%E8%AF%86%E7%AC%A6"><span class="toc-text">设备标识符</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PCI%E9%85%8D%E7%BD%AE%E7%A9%BA%E9%97%B4"><span class="toc-text">PCI配置空间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PCI%E8%AE%BE%E5%A4%87%E6%9E%9A%E4%B8%BE%E8%BF%87%E7%A8%8B"><span class="toc-text">PCI设备枚举过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#PCI-Express"><span class="toc-text">PCI Express</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#PCI-Express%E6%9E%B6%E6%9E%84"><span class="toc-text">PCI Express架构</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#PCI-Express%E7%9A%84%E4%BC%98%E7%82%B9"><span class="toc-text">PCI Express的优点</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%97%B6%E9%92%9F"><span class="toc-text">时钟</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#x86%E5%B9%B3%E5%8F%B0%E7%9A%84%E5%B8%B8%E7%94%A8%E6%97%B6%E9%92%9F"><span class="toc-text">x86平台的常用时钟</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#PIT"><span class="toc-text">PIT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RTC"><span class="toc-text">RTC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#TSC"><span class="toc-text">TSC</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LAPIC-Timer"><span class="toc-text">LAPIC Timer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HPET"><span class="toc-text">HPET</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-text">小结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%97%B6%E9%92%9F%E8%A7%82"><span class="toc-text">操作系统的时钟观</span></a></li></ol></li></ol>
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><h2 id="x86"><a href="#x86" class="headerlink" title="x86"></a>x86</h2><p>1978年6月8日，Intel发布了新款16位微处理器“8086”，也同时开创了一个新时代：x86架构诞生了。x86指的是特定微处理器执行的一些计算机语言指令集，定义了芯片的基本使用规则，一如今天的x64、IA64等。</p>
+<h2 id="操作系统"><a href="#操作系统" class="headerlink" title="操作系统"></a>操作系统</h2><p>操作系统作为硬件平台上最重要的软件，对下负责管理平台硬件，对上向应用程序提供标准接口。操作系统中最重要的部分称为操作系统内核，运行在CPU最高的特权级上，可以访问系统的一切资源，称操作系统内核运行的状态为<span class="highlight-text primary">内核态</span>。应用程序通常运行在CPU最低的特权级上，只能访问部分资源，此种状态称为<span class="highlight-text primary">用户态</span>。</p>
+<h1 id="x86内存架构"><a href="#x86内存架构" class="headerlink" title="x86内存架构"></a>x86内存架构</h1><p>内存架构往往是硬件架构中最为复杂的部分。不夸张地说，理解了内存架构，就理解了现代计算机体系架构的大部分内容。</p>
+<h2 id="地址空间"><a href="#地址空间" class="headerlink" title="地址空间"></a>地址空间</h2><p>如果把内存比作一个大数组，地址就是这个数组的索引。与之类似，地址空间则是一个更大的数组，它是所有可用资源的集合，同样，地址是这个数组的索引。</p>
+<p>地址空间可以划分成物理地址空间和线性地址空间两种类型。</p>
+<h3 id="物理地址空间"><a href="#物理地址空间" class="headerlink" title="物理地址空间"></a>物理地址空间</h3><p>硬件平台可以粗略地划分成三个部分：CPU、内存和其他硬件设备。其中，CPU是平台的主导者，从CPU的角度来看，内存和其他硬件设备都是可以使用的资源。这些资源组合在一起，分布在CPU的物理地址空间内，CPU使用物理地址索引这些资源。物理地址空间的大小，由CPU实现的物理地址位数决定，物理地址位数和CPU处理数据的能力（CPU位数）没有必然联系。</p>
+<p>假设一个平台，CPU的物理地址空间为4GB，有512MB内存，其他硬件设备的I/O寄存器被映射到512MB的I/O地址内，则该平台的物理地址空间可能是这样划分的。<br><br></p>
+<div class="figure center" style="width:;"><img class="fig-img" src="images/address.png" alt=""></div>
+
+<p>从上图可以看出，512MB内存和I/O地址只占用物理地址空间的一部分，还有大部分处于空闲。有一个4GB大小的数组，其中1GB的元素具有有效值（512MB内存、512MB I/O地址），其他元素不存在。</p>
+<h3 id="线性地址空间"><a href="#线性地址空间" class="headerlink" title="线性地址空间"></a>线性地址空间</h3><p>一个平台只有一个物理地址空间，但是每个程序都认为自己独享整个平台的硬件资源，为了让多个程序能够相互隔离和使用物理地址空间的资源，<span class="highlight-text primary">线性地址空间</span>的概念被引入了。</p>
+<p>和物理地址空间一样，线性地址空间的大小取决于CPU实现的线性地址位数，例如实现了32位线性地址的CPU具有4GB大小的线性地址空间。</p>
+<div class="alert danger no-icon"><p>需要注意的是，线性地址空间的大小和物理地址空间的大小没有必然联系。</p>
+</div>
+
+<p>线性地址空间会被映射到物理地址空间某一部分或整个物理地址空间。CPU负责将线性地址转换成物理地址，使程序能够正确访问到该线性地址空间所映射到的物理地址空间。一个平台上可以有多个线性地址空间，在现代操作系统中，每个进程通常都拥有自己的私有线性地址空间。</p>
+<p>一个典型的线性地址空间构造如下。</p>
+<div class="figure center" style="width:;"><img class="fig-img" src="images/linear.png" alt=""></div>
+
+<h2 id="地址"><a href="#地址" class="headerlink" title="地址"></a>地址</h2><p>地址是访问地址空间的索引。根据访问的地址空间不同，索引可以分为线性地址和物理地址，但由于x86特殊的分段机制，还有一种额外的地址——逻辑地址。</p>
+<h3 id="逻辑地址"><a href="#逻辑地址" class="headerlink" title="逻辑地址"></a>逻辑地址</h3><p>该地址即程序直接使用的地址。例如下面的程序。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> a = <span class="number">1</span>;</span><br><span class="line"><span class="type">int</span> *p = &amp;a;</span><br></pre></td></tr></table></figure>
+<p>这里，指针变量p中存储的即是一个逻辑地址。<span class="highlight-text primary">逻辑地址由一个16位的段选择符和一个32位的偏移量（32位平台）构成。</span>在这例子中，指针变量p实际存储的是逻辑地址的偏移部分，该偏移对应的段选择符位于段寄存器中，并没有在程序中反映出来。</p>
+<h3 id="线性地址"><a href="#线性地址" class="headerlink" title="线性地址"></a>线性地址</h3><p>又称<span class="highlight-text primary">虚拟地址</span>，32位无符号整数。线性地址是逻辑地址转换后的结果，用于索引线性地址空间。当CPU使用分页机制时，线性地址必须转换成物理地址才能访问平台内存或硬件设备；当分页机制未启用时，线性地址等于物理地址。</p>
+<h3 id="物理地址"><a href="#物理地址" class="headerlink" title="物理地址"></a>物理地址</h3><p>该地址索引物理地址空间，是CPU提交到总线用于访问平台内存和硬件设备的最终地址。</p>
+<p>它和上面两个地址有如下关系。</p>
+<div class="alert danger no-icon"><ol>
+<li>分段机制启用，分页未启用：逻辑地址 ——&gt; 线性地址 = 物理地址</li>
+<li>分段、分页机制同时启用：逻辑地址 ——&gt; 线性地址 ——&gt; 物理地址</li>
+</ol>
+</div>
+
+<p>某些书籍中还有总线地址的叫法，这是因为给设备寄存器分配的物理地址和寄存器在设备上的地址是不同的（通常设备的寄存器都认为自己是从地址0开始的），两者之间存在一个映射关系，由设备的电子线路负责转换并对CPU透明。由于CPU用于访问设备的物理地址是设备寄存器展现给总线的地址，所以在x86下有时也称物理地址为总线地址。</p>
+<h2 id="内存管理机制"><a href="#内存管理机制" class="headerlink" title="内存管理机制"></a>内存管理机制</h2><h3 id="分段机制"><a href="#分段机制" class="headerlink" title="分段机制"></a>分段机制</h3><p>分段是一种朴素的内存管理机制，它将内存划分成起始地址（Base）和长度（Limit）描述的块，这些内存块就被称为“段”。</p>
+<span class="highlight-text primary">分段机制由4个基本部分构成：逻辑地址、段选择寄存器、段描述符和段描述符表。</span>其核心思想是：使用段描述符描述段的基地址、长度以及各种属性（读写属性、访问权限等）。当程序使用逻辑地址访问内存的某个部分时，CPU通过逻辑地址中的段选择符，索引段描述符表以得到该内存对应的段描述符，并检测程序的访问是否合法，如合法，根据段描述符中的基地址将逻辑地址转换为线性地址。
+
+<p>分段机制的流程如下。<br><br></p>
+<div class="figure center" style="width:80%;"><a class="fancybox" href="images/segment.png" title="分段机制" data-caption="分段机制" data-fancybox="default"><img class="fig-img" src="images/segment.png" style="width:80%;"alt="分段机制"></a><span class="caption">分段机制</span></div>
+
+<h4 id="段选择符（Segment-Selector）"><a href="#段选择符（Segment-Selector）" class="headerlink" title="段选择符（Segment Selector）"></a>段选择符（Segment Selector）</h4><p>段选择符是逻辑地址的一个组成部分，共16位，用于索引段描述表以获得该段对应的段描述符。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/segment_selector.png" title="段选择符" data-caption="段选择符" data-fancybox="default"><img class="fig-img" src="images/segment_selector.png" alt="段选择符"></a><span class="caption">段选择符</span></div>
+
+<div class="alert info no-icon"><p>Index：段描述表的索引。<br>TI：用于指明索引哪个段描述表。0为GDT，全局描述符表；1为LDT，本地描述符表。<br>RPL：请求特权级（Requested Privilege Level，RPL），详情见<a href="#%E6%AE%B5%E4%BF%9D%E6%8A%A4">段保护</a>。</p>
+</div>
+
+<p>段选择符作为逻辑地址的一部分，对程序是可见的。但通常段描述符的修改和分配由连接器和加载器完成，而不是应用程序本身。<br>为了使CPU能够快速地获得段选择符，x86架构提供了6个段寄存器（segment register）用于存放在当前程序的各个段的段选择符。</p>
+<ul>
+<li>CS（code-segment，代码段）：存放代码段的段选择符。</li>
+<li>DS（data-segment，数据段）：存放数据段的段选择符。</li>
+<li>SS（stack-segment，栈段）：存放栈的段选择符。</li>
+<li>ES、FS、GS：供程序自由使用，可以存放额外3个数据段的段选择符。</li>
+</ul>
+<p>通常程序只使用CS、DS、SS三个段寄存器。</p>
+<h4 id="段描述符（Segment-Descriptor）"><a href="#段描述符（Segment-Descriptor）" class="headerlink" title="段描述符（Segment Descriptor）"></a>段描述符（Segment Descriptor）</h4><p>每个段描述符的长度是8字节，含有3个主要字段：段基地址、段限长和段属性。<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/segment_descriptor.png" title="段描述符" data-caption="段描述符" data-fancybox="default"><img class="fig-img" src="images/segment_descriptor.png" alt="段描述符"></a><span class="caption">段描述符</span></div>
+
+<ul>
+<li>L: 64-bit code segment（IA-32e mode only）</li>
+<li>AVL: Available for use by system software</li>
+<li>BASE: Segment base address</li>
+<li>D/B: Default operation size(0 = 16-bit segment; 1 = 32-bit segment)</li>
+<li>DPL: Descriptor privilege level</li>
+<li>G: Granularity</li>
+<li>LIMIT: Segment limit</li>
+<li>P: Segment present</li>
+<li>S: Descriptor type(0 = system, 1 = code or data)</li>
+<li>TYPE: Segment type</li>
+</ul>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/system_segment_descriptor.png" title="系统段描述符" data-caption="系统段描述符" data-fancybox="default"><img class="fig-img" src="images/system_segment_descriptor.png" alt="系统段描述符"></a><span class="caption">系统段描述符</span></div>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/data_segment_descriptor.png" title="数据段描述符" data-caption="数据段描述符" data-fancybox="default"><img class="fig-img" src="images/data_segment_descriptor.png" alt="数据段描述符"></a><span class="caption">数据段描述符</span></div>
+
+<ul>
+<li>E: Expansion Direction</li>
+<li>W: Writable</li>
+<li>A: Accessed</li>
+</ul>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/code_segment_descriptor.png" title="代码段描述符" data-caption="代码段描述符" data-fancybox="default"><img class="fig-img" src="images/code_segment_descriptor.png" alt="代码段描述符"></a><span class="caption">代码段描述符</span></div>
+
+<ul>
+<li>C: Conforming</li>
+<li>R: Readable</li>
+<li>A: Accessed</li>
+</ul>
+<p><strong>Limit</strong><br>段限长字段Limit（Segment limit field）：用于指定段的长度。处理器会把段描述符中两个段限长字段组合成一个20位的值，并根据颗粒粒度标志G来指定段限长Limit的值的实际含义。</p>
+<ul>
+<li>G = 0，则Limit范围是1B~1MB，单位是1B。</li>
+<li>G = 1，则Limit范围是4KB~4GB，单位是4KB。</li>
+</ul>
+<p>根据段类型Type的段扩展方向标志E，处理器会以两种不同的方式使用Limit：</p>
+<ul>
+<li>对于向上扩展的段（expand-up segment，上扩段），逻辑地址中的偏移范围可以是从0到段限长值Limit。大于段限长Limit的偏移值将产生一般保护性异常（general-protection exception，SS段寄存器除外）或产生栈错误异常（stack-fault exception）。</li>
+<li>对于下扩段，减小Limit的值会在该段地址空间底部分配新的内存，而不是在顶部分配。</li>
+</ul>
+<p>IA-32架构的栈总是向下扩展的，因此这种实现凡是很适合堆栈。</p>
+<p><strong>Base</strong><br>基础地址字段Base（Base address field）：该字段定义在4GB线性地址空间中一个段字节0所处的位置。处理器会把3个分立的基地址字段组合成32位的值。段基地址应该对齐16字节边界。16字节对齐不是必须的，但对齐在16字节边界上可以使得程序能发挥最大化性能。</p>
+<p><strong>S</strong><br>描述符类型标示S（Descriptor type field）：用于指明一个段描述符是系统段描述符（S=0）还是代码或数据段描述符（S=1）。</p>
+<p><strong>Type</strong><br>段类型字段Type（Type field）：指定段或门（Gate）的类型，说明短的访问类型以及段的扩展方向。该字段的解释依赖于描述符类型标志S。</p>
+<p><strong>DPL</strong><br>描述符特权级字段DPL（Descriptor privilege level）：用于指明描述符的特权级。特权级范围从0到3。0级特权级最高，3级最低。DPL用于控制对段的访问。</p>
+<p><strong>P</strong><br>段存在标志P（Segemnt present）：用于支出一个段在内存中（P=1）还是不在内存中（P=0）。</p>
+<p>当一个段描述符的P为0时，那当把指向这个段描述符的选择符加载进寄存器将导致产生一个段不存在异常（segment-not-present execption）。内存管理软件可以使用这个标志来控制在某一给定时间实际需要把那个段加载进内存中。这个功能为虚拟存储提供了除分页机制以外的控制。</p>
+<p>当P标志为0时，操作系统可以自由使用格式中标注为可用（Available）的字段位置来保存自己的数据。<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/segment_present.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/segment_present.png" alt=""></a></div>
+
+<p><strong>D/B</strong><br>D/B标志（默认操作大小/默认栈指针大小和/或上界限，Default operation size/default stack pointer size and/or upper bound）：根据段描述符描述的是一个可执行代码段、下扩数据段还是一个堆栈段，这标志具有不同的功能。</p>
+<p>对于32位代码和数据段，这个标志应该总是设置为1；对于16位代买和数据段。这个标志设置为0。</p>
+<ul>
+<li>可执行代码段。此时这个标志位D标志并用于使用指出该段中指令引用有效和操作数的默认长度。如果该标志置位，则默认值是32位地址和32或32位或8位的操作数；如果该标志为0，则默认值是16位地址和16位或8位的操作数。指令前缀0x66可以用来选择非默认值的操作数大小；前缀0x67可用来选择非默认值的地址大小。</li>
+<li>栈段（由SS寄存器指向的数据段）。此时该标志为B标志，用于指明隐含堆栈操作（PUSH、POP或CALL）时的栈指针的大小。如果该标志置位，则使用32位栈指针并存放在ESP寄存器中；如果该标志为0，则使用16位栈指针并存放在SP寄存器中。如果堆栈段被设置成一个下扩数据段，这个B标志也同时指定了堆栈段的上界限。</li>
+<li>下扩数据段。此时该标志称为B标志，用于指明堆栈段的上界限。如果设置了该标志，则堆栈段的上界限是0xFFFFFFFF（4GB）；如果没有设置该标志，则堆栈段的上界限是0xFFFF（64KB）。</li>
+</ul>
+<p><strong>G</strong><br>粒度标志G（granularity）：该字段用于确定段限长字段Limit值的单位。</p>
+<ul>
+<li>G为0，则Limit的单位是字节。</li>
+<li>G为1时，Limit的单位是4KB。</li>
+</ul>
+<p>这个标志不会影响基地址的单位，基地址的颗粒度总是单位字节。若设置了G标志，那么使用Limit来检查偏移值时，并不会检查偏移值的12位最低有效位。例如，当G=1时，Limit为0时，表明有效偏移值为0~4095。</p>
+<p><strong>L</strong><br>64位代码段标志L（64-bits code segment）：在IA-32模式，第二个双字的第21字节指示一个代码的是否包含本地64位代码。L置1表示这个代码段的指令执行在64位模式，置0表示执行在兼容模式。如果L位被设置了，那么D标志一定要置0。当不处于IA-32模式时，和对于非代码段，这个位被保留并且总是应该被置0。</p>
+<p><strong>AVL</strong><br>可用和保留位AVL（available and reserved bits）：段描述符第2个双字的第20个字节是否可供系统软件使用。</p>
+<h4 id="段描述符表"><a href="#段描述符表" class="headerlink" title="段描述符表"></a>段描述符表</h4><p>x86架构提供两种段描述表，全局段描述表（Global Descriptor Table，GDT）和本地段描述表（Local Descriptor Table，LDT）。</p>
+<p>系统至少有一个GDT可以被所有进程访问。相对的，系统中可以有一个或多个LDT，可以被某个进程私有，可以个被多个进程共享。GDT仅仅是内存中的一个数据结构，可以将它看作是一个数组，由基地址（Base）和长度（Limit）描述。与之相反，LDT是一个段，它需要一个段描述符来描述它。LDT的段描述符存放在GDT中，当系统中有多个LDT时，GDT必须有对应数量的段描述符。</p>
+<p>为了加速对GDT和LDT的访问，x86提供了GDTR寄存器和LDTR寄存器。它们的描述如下：</p>
+<ul>
+<li>GDTR：包括一个32位的基地址（Base）和一个16位长度（Limit）。</li>
+<li>LDTR：结构同段寄存器（包括对程序不可见的段描述符寄存器）。</li>
+</ul>
+<p>可以使用LGDT/SGDT指令对GDTR进行读取/存储，类似地，可以使用LLDT/SLDT对LDTR进行同样的操作。通常在进程切换时，LDTR中的值会被换成新进程对应的LDT的段描述符。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/descriptor_table.png" title="索引段描述符表" data-caption="索引段描述符表" data-fancybox="default"><img class="fig-img" src="images/descriptor_table.png" alt="索引段描述符表"></a><span class="caption">索引段描述符表</span></div>
+
+<p>GDTR/LDTR为GDT/LDT提供基地址，段选择符的TI为确定索引GDT还是LDT。</p>
+<h4 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h4><p>假设程序中某条语句访问了数据段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> a = <span class="number">100</span>;    <span class="comment">// 全局变量</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">func</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">int</span> b;</span><br><span class="line">    b = a;</span><br><span class="line">    <span class="keyword">return</span> b;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>程序从加载到变量a的逻辑地址转换为线性地址的过程如下：</p>
+<ol>
+<li>程序加载<ol>
+<li>通过该进程LDT的段选择符索引GDT，获得LDT的段描述符，被加载到LDTR寄存器中。</li>
+<li>该进程的CS、DS、SS被加载入相应的段选择符。同时，CPU根据段选择符的TI字段，索引GDT/LDT，获得相应的段描述符并载入CS、DS、SS对应的不可见的段描述符寄存器。</li>
+</ol>
+</li>
+<li>程序执行到b=a，需要从a所在的内存中取值，必须先把a的逻辑地址转换为线性地址。<ol>
+<li>进行必要的属性、访问权限检查。</li>
+<li>从DS对应的段描述符寄存器中获得该段的基地址。</li>
+<li>将变量a的32位偏移量和描述符中的基地址相加，获得变量a的线性地址。</li>
+</ol>
+</li>
+</ol>
+<h3 id="分页机制"><a href="#分页机制" class="headerlink" title="分页机制"></a>分页机制</h3><p>分页是更加粒度化的内存管理机制，与分段机制将内存划分成为以基地址和长度描述的多个段进行管理不同，分页机制是用粒度化的单位“页”来管理线性地址空间和物理地址空间。x86架构下一个典型的页大小是4KB，则一个4GB的虚拟地址空间可以划分为1024 * 1024个页面。物理地址空间的划分同理。x86架构允许大于4KB的页面大小（如2MB、4MB）。</p>
+<p>同时，分页机制让现代操作系统中的虚拟内存机制成为可能，由于这种机制，一个页面可以同时存在于物理内存中，也可以存放在磁盘的交换区域（如Linux下的Swap分区，Windows下的虚拟内存文件）中，程序可以使用比机器物理内存更大的内存区域。</p>
+<div class="alert info no-icon"><p>分页机制的核心思想是通过页表将线性地址转换为物理地址，并配合旁路转换缓冲区（Translation Lookaside Buffer，TLB）来加速地址转换过程。</p>
+</div>
+
+<p>操作系统在启动过程中，通过将CR0寄存器的PG位置1来启动分页机制。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/page.png" title="分页机制" data-caption="分页机制" data-fancybox="default"><img class="fig-img" src="images/page.png" alt="分页机制"></a><span class="caption">分页机制</span></div>
+
+<p>分页机制主要由页表、CR3寄存器和TLB三个部件组成。</p>
+<h4 id="页表"><a href="#页表" class="headerlink" title="页表"></a>页表</h4><p>页表（Page Table）是用于将线性地址转换成物理地址的主要数据结构。</p>
+<p>一个地址对齐到页边界后的值称为页帧号（或页框架），它实际是该地址所在页面的基地址。线性地址对应的页帧号即虚拟页帧号（Virtual Frame Number，VFN），物理地址对应的页帧号即物理页帧号（Physical Frame Number，PFN）或机器页帧号（Machine Frame Number）。故也可以认为，页表是存储VFN到PFN映射的数据结构。</p>
+<p>4KB大小的页面使用两级页表，如下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/page_table.png" title="二级页表" data-caption="二级页表" data-fancybox="default"><img class="fig-img" src="images/page_table.png" alt="二级页表"></a><span class="caption">二级页表</span></div>
+
+<h4 id="页目录项"><a href="#页目录项" class="headerlink" title="页目录项"></a>页目录项</h4><p>页目录项（Page Directory Entry）：包含页表的物理地址。页目录项存放在页目录（Page Directory）中，CPU使用线性地址的22 ~ 31位索引页目录，以获得该线性地址对应的页目录项。每个页目录为4B大小，故页目录占用一个4KB大小的物理页面，共包含1024的页目录项。</p>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/page_directory_entry.png" title="页目录项" data-caption="页目录项" data-fancybox="default"><img class="fig-img" src="images/page_directory_entry.png" alt="页目录项"></a><span class="caption">页目录项</span></div>
+
+<ul>
+<li>Avail: Available for system programmer’s use</li>
+<li>G: Global page (Ingnored)</li>
+<li>PS: Page size (O Indl cates 4KBytes)</li>
+<li>O: Resrvered (set to O)</li>
+<li>A: Accessed</li>
+<li>PCD: Cache disabled</li>
+<li>PWT: Write-through</li>
+<li>U/S: User/Supervisor</li>
+<li>R/W: Read</li>
+<li>P: Present</li>
+</ul>
+<h4 id="页表项"><a href="#页表项" class="headerlink" title="页表项"></a>页表项</h4><p>页表项（Page Table Entry）：页表项包含该线性地址对应的PFN。页表项存放在页表（Page Table）中，CPU使用线性地址的12 ~ 21位索引页表，获得该线性地址对应的页表项。通过线性地址的0 ~ 11位偏移量和基地址相加，就可以得到线性地址对应的物理地址。页表项为4B大小，故页表项包含1024个页表项，占用1个4KB页面。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/page_table_entry.png" title="页表项" data-caption="页表项" data-fancybox="default"><img class="fig-img" src="images/page_table_entry.png" alt="页表项"></a><span class="caption">页表项</span></div>
+
+<ul>
+<li>Avail: Available for system programmer’s use</li>
+<li>G: Global page (Ingnored)</li>
+<li>PAT: Page Table Attribute Index</li>
+<li>D: Dirty</li>
+<li>A: Accessed</li>
+<li>PCD: Cache disabled</li>
+<li>PWT: Write-through</li>
+<li>U/S: User/Supervisor</li>
+<li>R/W: Read</li>
+<li>P: Present</li>
+</ul>
+<p>P（Present）字段是虚拟内存的实现成为可能。</p>
+<ol>
+<li>P = 1：物理页面存在于物理内存中，CPU完成地址转换后，可直接访问该页面。</li>
+<li>P = 0：页面不在物理内存中，当CPU访问该页面时会产生一个缺页错误（Page Fault）并交由操作系统的缺页错误处理程序处理。通常操作系统会将存放在磁盘上面的页面调入物理内存，使访问可以继续。P = 0 时，页目录、页表项格式会变为下图的格式。此时1 ~ 31位供操作系统使用以记录物理页面在磁盘上的信息，通常是物理页面在磁盘上的位置。</li>
+</ol>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/present.png" title="P=0时的页目录项、页表项" data-caption="P=0时的页目录项、页表项" data-fancybox="default"><img class="fig-img" src="images/present.png" alt="P=0时的页目录项、页表项"></a><span class="caption">P=0时的页目录项、页表项</span></div>
+
+<p>CPU在索引页目录前，必须知道页目录所在的物理地址，该物理地址存放在CR3（Control Register 3）寄存器中，也称为页目录基地址寄存器（Page-directory base register，PDBR）。一个进程在运行前，必须将其页目录的基地址存入CR3。页目录的基地址必须对其到4K边界。</p>
+<h4 id="TLB"><a href="#TLB" class="headerlink" title="TLB"></a>TLB</h4><p>为了提高地址转换效率，x86架构使用TLB（旁路转换缓冲区，Translation Lookaside Buffer）对最近用到的页面映射进行缓存，当CPU访问某个线性地址，其所在页面的映射存在于TLB中时，无须查找页面即可进行地址转换。注意，TLB存放的不是线性地址到物理地址的转换，准确地说是，VFN到PFN的转换。也就是说，CPU从TLB获得一个线性地址对应的PFN后，仍然要和线性地址的偏移相加，才能得到最后的物理地址，而非直接从TLB获取物理地址。</p>
+<p>TLB作为缓存，其能存放的映射条目是有限的，当TLB中没有空闲条目可用时，替换哪一条旧目录由CPU决定。</p>
+<p>TLB也存在缓存一致性的问题，这主要是指TLB中的映射条目和页表中的映射条目的一致性。当操作系统对页表进行修改后，要负责对TLB中对应的条目或者整个TLB进行刷新。从软件角度，x86提供了两种方式刷新TLB：</p>
+<ol>
+<li>更新CR3：此操作可以导致TLB被整体刷新，TLB中所有映射条目失效（全局TLB除外）。操作系统将当前CR3中的值重新写回CR3以后刷新整个TLB。进程切换时，新进程的页目录基地址会写入CR3，使老进程在TLB中的条目失效。</li>
+<li>INVLPG指令：这是一种更细粒度的刷新，操作系统可以用它对TLB中单独的页目录项、页表项进行刷新。这通常是在操作系统修改页表后进行的（如分配/释放了页面）。</li>
+</ol>
+<h4 id="总结-1"><a href="#总结-1" class="headerlink" title="总结"></a>总结</h4><p>CPU使用分页机制，将线性地址转换成物理地址的过程：</p>
+<ol>
+<li><p>CPU访问一个线性地址，映射在TLB中调到步骤6。如果映射不存在与TLB中，我们称一次TLB Miss（TLB缺失）发生，进行下一步。</p>
+</li>
+<li><p>查找页表，页面在物理内存中跳到步骤4，不再进行下一步。</p>
+</li>
+<li><p>操作系统中的缺页处理函数接管，通常会进行如下操作：</p>
+<ol>
+<li>将页面从磁盘复制到物理内存中。</li>
+<li>更改对应页表项，将P设置为1，并对其他字段进行相应设置。</li>
+<li>刷新TLB中对应的页表项。</li>
+<li>从缺页错误处理函数中返回。</li>
+</ol>
+</li>
+<li><p>到这一步，页面已经存在在物理内存中，并且页表已经包含该映射。此时，重新执行引发TLB Miss指令。</p>
+</li>
+<li><p>TLB Miss再次发生，CPU重新查页表，把对应的映射插入到TLB中。</p>
+</li>
+<li><p>到这一步，TLB已经包含了该线性地址对应的PFN。 通过线性地址中的偏移部分和PFN相加，就得到了对应的物理地址。</p>
+</li>
+</ol>
+<h1 id="x86架构的基本运行环境"><a href="#x86架构的基本运行环境" class="headerlink" title="x86架构的基本运行环境"></a>x86架构的基本运行环境</h1><h2 id="三种基本模式"><a href="#三种基本模式" class="headerlink" title="三种基本模式"></a>三种基本模式</h2><p>实际上，x86有4种运行模式：实模式、保护模式、SMM模式（System Management Mode，系统管理模式）和虚拟8086模式。除SMM模式外，其他三种模式最为常见。</p>
+<ul>
+<li>实模式（Real Mode）：当CPU加电并经历最初的混沌状态后，首先进入的就是实模式，它是早期Intel 8086处理器工作的模式。在该模式下，逻辑地址转换后即为物理地址，CPU可以访问1MB的物理地址空间（实际上是1MB + 64KB）。操作系统或BIOS通常在该模式下准备必要的数据结构和初始化关键的寄存器，然后切换入保护模式。</li>
+<li>保护模式（Protect Mode）：操作系统运行时最常用的模式。该模式下，CPU的所有功能几乎都能得到使用，可以访问架构允许的所有物理地址空间（例如x86是4GB），接来下的讲解，如无特殊说明，都是基于保护模式进行的。</li>
+<li>虚拟8086模式（Virtual 8086 mode）：为了使早期的8086程序能在保护模式下运行，x86提供了虚拟8086模式。该模式可以让CPU在保护模式下为8086程序虚拟实模式的运行环境，使这些程序在执行时无须真正的从保护模式切换到实模式。</li>
+</ul>
+<h2 id="基本寄存器组"><a href="#基本寄存器组" class="headerlink" title="基本寄存器组"></a>基本寄存器组</h2><p>寄存器是软件操作CPU的最基本部件，x86架构的寄存器可以粗略分为以下几类。</p>
+<ol>
+<li>通用寄存器：共有8个32位的通用寄存器，例如常见的EAX、EDX等，用来保存程序运行时的临时变量、栈指针等数据。</li>
+<li>内存管理寄存器：包括段寄存器和描述符表寄存器。</li>
+<li>EFLAGS寄存器：32位寄存器，用来保存程序运行中的一些标志信息，如溢出、开启中断与否、分支跳转等信息。</li>
+<li>EIP寄存器：32位的寄存器，用来保存指向当前指令的地址。通常称该寄存器为PC指针。</li>
+<li>浮点运算寄存器：对于浮点运算，x86会通过一个浮点运算协处理器来处理。协处理器中包括8个80位的浮点数据寄存器，1个16位的控制寄存器，1个16位的状态寄存器，1个16位标志寄存器，1个11位的指令码寄存器，1个48位的浮点指令指针寄存器和1个48位的浮点数据指针寄存器。这些浮点运算寄存器为浮点运算提供了一个基本的运行环境。</li>
+<li>控制寄存器：x86提供了5个控制寄存器，分别是CR0 ~ CR4寄存器。这些控制寄存器决定了CPU运行的模式和特征等。</li>
+<li>其他寄存器：x86还提供了其他一些寄存器，包括8个调试寄存器（DR0 ~ DR7）、内存区域类型寄存器（MTRR）、机器检查寄存器（Machine Check Register）以及性能监控寄存器。</li>
+</ol>
+<h1 id="权限控制"><a href="#权限控制" class="headerlink" title="权限控制"></a>权限控制</h1><p>权限控制是指CPU对资源进行分类，使不同权限的程序只能访问自身权限所允许访问的资源。操作系统的用户态和内核态之分就是最常见的权限控制，内核态程序具有最高权限，用户态程序具有最低权限。x86架构提供两种权限控制机制。</p>
+<p>x86架构提供两种权限控制机制——段保护和页保护。这两种机制分别对应内存管理中的段机制和分页机制。</p>
+<h2 id="段保护"><a href="#段保护" class="headerlink" title="段保护"></a>段保护</h2><p>段保护引入了3中属性对权限属性进行控制。</p>
+<ol>
+<li><p>当前权限级别（Current Privilege Level，CPL）：CPL表示当前运行的代码的权限。通过CS的0、1位记录代码的CPL值，CPL可以有0 ~ 3共4个级别，这是常说的Ring级别（实际上，Ring级别有更广阔的含义）。其中，Ring0对应CPL = 0，具有最高权限，操作系统的内核运行 在该权限；Ring3对应CPL = 3，用户程序运行在Ring3。CPL值越高权限越低。</p>
+</li>
+<li><p>描述符权限级别（Descriptor Privilege Level，DPL）：DPL表示段和门（Gate）所具有的权限。它表示代码访问某个段或通过某个门是所需要的最低权限。例如，某个数据段描述符有DPL = 2，则只有CPL = 0、1、2的代码可以访问该数据段，CPL = 3的不能访问。</p>
+</li>
+<li><p>所要求权限级别（Requested Privilege Lelve，RPL）：RPL比较特殊，它存在于段寄存器的0 ~ 1位（CS寄存器的0 ~ 1位是CPL），用于程序在访问段时增加一级检查。</p>
+</li>
+</ol>
+<p>程序在访问一个段，要通过段寄存器得到段描述符，这样会产生2次检查，参与检查的3个属性分别是：程序本身的CPL、段寄存器的RPL、段描述符的DPL。CPL、DPL、RPL组合起来的情况有很多种，但只有当CPL &lt;= DPL且RPL &lt;= DPL时，访问才被允许，其余情况均被拒绝。通常可以把RPL设置成0来简化检查，此时，满足CPL &lt;= DPL访问即被允许。</p>
+<h2 id="页保护"><a href="#页保护" class="headerlink" title="页保护"></a>页保护</h2><p>页保护的思想比段保护简单，它通过在页目录项、页表项中引入一个User/Supervisor位，将页面（或整个页目录项）分成User和Supervisor两个特权级。该位为0时表示Supervisor模式，对应CPL = 0、1、2的情况；为1表示User模式，对应CPL = 3的情况。</p>
+<p>当程序运行在CPL = 0、1、2也就是Supervisor模式下时，可以访问所有页面；运行在CPL = 3下的程序处于User模式，只能访问User页面。</p>
+<h1 id="中断与异常"><a href="#中断与异常" class="headerlink" title="中断与异常"></a>中断与异常</h1><p>如果程序总是顺序执行，那么事情将变得非常简单。但事情往往和人们所期望的不太一样，中断和异常会打断顺序执行的程序流，转而转入一条完全不同的执行架构。</p>
+<h2 id="中断架构"><a href="#中断架构" class="headerlink" title="中断架构"></a>中断架构</h2><p>中断提供给外部硬件设备一种“打断CPU当前执行任务，并响应自身服务”的手段。</p>
+<h3 id="可编程中断控制器"><a href="#可编程中断控制器" class="headerlink" title="可编程中断控制器"></a>可编程中断控制器</h3><p>中断从设备发送到CPU需要由被称为“中断控制器”的部件转发（Message Signaled Interrupt，MSI，消息告知中断除外）。中断控制器发展至今，经历了PIC（Programmable Interrrupt Controller，可编程中断控制器）和APIC（Advanced Programmable Interrupt Controller，高级可编程中断控制器）两个阶段。</p>
+<h4 id="PIC"><a href="#PIC" class="headerlink" title="PIC"></a>PIC</h4><p>8259A芯片即常说的PIC，它具有IR0 ~ IR7共8个中断管脚连接外部设备。中断管脚具有优先级，其中IR0优先级最高，IR7最低。</p>
+<div class="figure center" style="width:90%;"><a class="fancybox" href="images/pic.png" title="PIC系统架构" data-caption="PIC系统架构" data-fancybox="default"><img class="fig-img" src="images/pic.png" style="width:90%;"alt="PIC系统架构"></a><span class="caption">PIC系统架构</span></div>
+
+<p>PIC有如下三个重要的寄存器。</p>
+<ol>
+<li>IRR（Interrupt Request Register，中断请求寄存器）：共8位，对应IR0 ~ IR7这个8个中断管脚。某位置为1，代表收到对应管脚的中断但还没提交给CPU。</li>
+<li>ISR（In Service Register，服务中断寄存器）：共8位。某位置为1，代表对应管脚的中断已经提交给CPU处理，但CPU还未处理完。</li>
+<li>IMR（Interrupt Mask Register，中断屏蔽寄存器）：共8位。某位置为1，对应的中断管脚被屏蔽。</li>
+</ol>
+<p>除此之外，PIC还有个一个EOI位，当CPU处理完一个中断时，通过写该位告知PIC中断处理完成。PIC向CPU递交中断的流程如下。</p>
+<ol>
+<li>一个或多个IR管脚上产生电平信号，若对应的中断没有被屏蔽，IRR中对应的位置被置为1。</li>
+<li>PIC拉高INT管脚通知CPU中断发生。</li>
+<li>CPU通过INTA管脚应答PIC，表示中断请求收到。</li>
+<li>PIC收到INTA应答后，将IRR中具有最高优先级的位清0，并设置ISR中对应的位。</li>
+<li>CPU通过INTA管脚第二次发出脉冲，PIC收到后计算最高优先级中断的vector，并将它提交到数据线上。</li>
+<li>等待CPU写EOI。收到EOI后，ISR中最高优先级的位被清0。如果PIC处于AEOI模式，当第二个INTA脉冲收到后，ISR中最高优先级的位自动清0。</li>
+</ol>
+<h4 id="APIC"><a href="#APIC" class="headerlink" title="APIC"></a>APIC</h4><p>PIC可以在UP（单处理器）平台上工作，但无法用于MP（多处理器）平台。为此，APIC应运而生。APIC由位于CPU中的本地高级可编程中断控制器（Local Advanced Programmable Interrupt Controller，LAPIC）和位于主板南桥中I/O高级可编程中断控制器（I/O Advanced Programmable Interrupt Controller，IOAPIC）两部分构成。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/apic.png" title="APIC系统架构" data-caption="APIC系统架构" data-fancybox="default"><img class="fig-img" src="images/apic.png" alt="APIC系统架构"></a><span class="caption">APIC系统架构</span></div>
+
+<p>其中，IOAPIC通常有24个不具有优先级的管脚，用于连接外部设备。当收到某个管脚的中断信号后，IOAPIC根据软件（通常是操作系统）设定的PRT（Programmable Redirection Table）表，查找到管脚对应的RTE（Redirection Table Entry，PRT的表项）。通过RTE的各个字段，格式化出一条包含该中断所有信息的中断消息，再由系统总线（老式的通过专门的APIC总线）发送给特定CPU的LAPIC，LAPIC收到消息后择机将中断递交给CPU处理。</p>
+<p>在LAPIC内部，也有类似IRR、ISR和EOI寄存器，其中IRR、ISR为256位，EOI为32位，它们的功能和PIC的大体类似。APIC系统中，中断的发起大致流程如下。</p>
+<ol>
+<li>IOAPIC收到某个管脚产生的中断信号。</li>
+<li>查找PRT表获得该管脚对应的RTE。根据RTE各字段格式化出一条中断消息，并确定发送给哪个（或多个）CPU的LAPIC。</li>
+<li>通过系统总线或APIC总线发送中断信息。</li>
+<li>LAPIC收到中断消息，判断是否自己接收。</li>
+<li>如确定接收，将IRR中对应的位置为1。同时确定此时是否将该中断交由CPU处理。</li>
+<li>如确定提交中断给CPU处理，从IRR获取最高优先级的中断，将ISR中对应的位置为1，并提交中断。对于edge触发中断，IRR中对应位此时清0。</li>
+<li>CPU处理完中断，软件写EOI寄存器告知中断处理完成，对于level触发中断，IRR中对应位此时清0.LAPIC可提交下一个中断。</li>
+</ol>
+<h4 id="处理器间中断"><a href="#处理器间中断" class="headerlink" title="处理器间中断"></a>处理器间中断</h4><p>在MP（多处理器）平台上，多个CPU要协同工作，处理器间中断（Inter-processor Interrupt，IPI）提供CPU之间互相通信的手段，CPU可以通过LAPIC的ICR（Interrupt Command Register，中断命令寄存器）向指定的一个/多个CPU发送中断。</p>
+<h3 id="中断的分类"><a href="#中断的分类" class="headerlink" title="中断的分类"></a>中断的分类</h3><p>中断可以从多个方面进行分类。从中断源的角度来看，可以分为如下几类。</p>
+<ol>
+<li>外部中断：指连接在IOAPIC上设备产生的中断、LAPIC上连接的设备或LAPIC内部中断源产生的中断以及处理器间中断。</li>
+<li>可屏蔽中断：指可以通过某种方式（例如CLI命令、TPR）进行屏蔽的中断。与之对应的概念是不可屏蔽中断（non-maskable interrupt）。</li>
+<li>软件产生中断：指通过INT n指令产生的中断。</li>
+</ol>
+<p>这样的分类并非绝对，例如外部中断通常是可屏蔽中断，但也可能属于不可屏蔽中断。通常，根据外部中断的触发方式，又把它们分为如下几类。</p>
+<ol>
+<li>edge触发中断：指中断边沿方式触发（例如上升沿）。ISA设备、时钟设备多使用这种触发方式。</li>
+<li>level触发中断：指中断以电平方式触发，在中断程序应答设备前，该电平一直有效。PCI设备使用这种触发方式。</li>
+</ol>
+<h3 id="中断的优先级"><a href="#中断的优先级" class="headerlink" title="中断的优先级"></a>中断的优先级</h3><p>在使用PIC的系统中，PIC的管脚决定了中断的优先级，连接IR0的设备具有最高优先级，连接IR7的设备优先级最低。在APIC系统中，IOAPIC的管脚不再具备优先级，设备的中断优先级由它所连接管脚对应RTE中的vector字段决定。vector是x86架构用于索引IDT表的下标，范围从0~255，值越大优先级越高。其中，32~255可以供外部中断使用。</p>
+<p>在现代操作系统中，有几个概念和vector常联系在一起使用。</p>
+<ul>
+<li>IRQ：PIC时代的产物，由于ISA设备通常是连接到固定的PIC管脚，所以说一个设备的IRQ实际上是指它连接的PIC管脚号。IRQ暗示中断优先级，例如IRQ0比IRQ3有更高的优先级。当进入APIC时代后，人们仍习惯用IRQ表示一个设备的中断号，但对于16以下的IRQ，它们可能不再与IOAPIC的管脚对应。</li>
+<li>GSI（Global System Interrupt）：ACPI引入的概念，它为系统中每个中断源指定一个唯一的中断号。IRQ和GSI在APIC系统中常常被混用，实际上对于15以上的IRQ，它和GSI相等。</li>
+</ul>
+<p>在这里，GSI和IRQ可以看作等同的概念，表示某个设备的中断号。它们与vector的关系由操作系统决定，通常是在设备驱动注册中断处理程序由操作系统分配。</p>
+<h3 id="中断的屏蔽"><a href="#中断的屏蔽" class="headerlink" title="中断的屏蔽"></a>中断的屏蔽</h3><p>无论是在PIC收到中断信号后，还是LAPIC收到中断消息后，并不一定都是马上交给CPU处理的，这还要取决于CPU当前是否屏蔽中断（不可屏蔽中断除外）。当CPU屏蔽中断时，中断会被依附（pending）在PIC/LAPIC的IRR寄存器中，一旦CPU开启中断，会在第一时间响应PIC/LAPIC所依附的中断。CPU可以通过以下几种方法屏蔽/开启中断。</p>
+<ol>
+<li>CLI/STI指令：这是操作系统最常用的屏蔽/开启中断的方法。CLI指令将本CPU的EFLAGS寄存器的IF位清0，阻止接收中断；STI指令将IF位置为1，允许接收中断。这两条指令都只对当前CPU起作用，而不影响平台上的其他CPU。</li>
+<li>TPR寄存器：根据该寄存器值代表的优先级，部分屏蔽外部中断。</li>
+<li>PIC/IOPIC的中断屏蔽位：PIC可以通过IMR寄存器屏蔽对应管脚。IOAPIC可通过RTE中的mask位屏蔽对应管脚。该方法不会将中断依附（pending）到IRR，而是直接忽略，对于edge触发中断可能导致中断丢失。</li>
+</ol>
+<h3 id="IDT表"><a href="#IDT表" class="headerlink" title="IDT表"></a>IDT表</h3><p>IDT表实际就是个大数组，用于存放各种“门”（中断门、陷阱门、任务门），这些“门”是中断和异常通往各自处理函数的入口。当一个中断或异常发生时，CPU用它们对应的vector号索引IDT表以获得对应的“门”。每个“门”占8B，x86最多有个256个vector，故IDT表长度最大为8 x 256 = 2048B。</p>
+<p>IDT表的基地址存放在IDTR寄存器中，该寄存器和GDTR类似，由一个基地址（Base）字段和长度（Limit）字段构成，通过LIDT/SIDT指令可以加载和存储IDTR寄存器。IDT表要求被对齐到8B边界以提高效率。</p>
+<h3 id="中断门"><a href="#中断门" class="headerlink" title="中断门"></a>中断门</h3><p>“门”是入口，中断门就是中断的入口。中断门实际上是一种段描述符，称为系统描述符（System Descriptor），由段描述符的S位控制。中断门的格式如下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/interrupt_gate.png" title="中断门" data-caption="中断门" data-fancybox="default"><img class="fig-img" src="images/interrupt_gate.png" alt="中断门"></a><span class="caption">中断门</span></div>
+
+<p>其中，段选择符、偏移量字段可以看成一个逻辑地址，通过索引GDT将该逻辑地址转换成中断处理函数入口的线性地址。这里要注意的是DPL字段，很多操作系统吧门的DPL设置成0，而之前讲过，只有当CPL &lt;= DPL、CPL &lt;= RPL访问才被允许。这就引出一个问题：程序在用户态时（CPL = 3）发生中断，岂不是不能放过一个DPL = 0的中断门？实际上，中断门和陷阱门的DPL只在使用INT n指令引起中断/异常时才检查，硬件产生的中断/异常不检查。P字段表示该中断门是否有效，清0无效。</p>
+<p>中断门和陷阱门的唯一区别是程序通过中断门跳转后，EFLAGS寄存器的IF位自动清0，中断关闭。而陷阱门没有这样的效果。</p>
+<h2 id="异常架构"><a href="#异常架构" class="headerlink" title="异常架构"></a>异常架构</h2><p>和中断相比，异常最大的不同在于它是在程序的执行过程中同步发生的。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">main</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">int</span> a = <span class="number">10</span>;</span><br><span class="line">    a = a / <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>程序运行到a = a / 0一句时必然引起一个除0异常，但不能预料该程序在执行时是否会发生中断。异常根据产生的原因和严重程度可以分为如下三类。</p>
+<ol>
+<li>错误（Fault）：由某种错误情况引起，一般可以被错误处理程序纠正。错误发生时，处理器将控制权转移给对应的处理程序。例如，常见的缺页错误就属于此类。</li>
+<li>陷阱（Trap）：指在执行了一条特殊指令后引起的异常。例如，Linux中用于实现系统调用的INT 80指令就属于此类。</li>
+<li>终止（Abort）：指严重的不可恢复的错误，将导致程序终止的异常。例如MCA（Machine Check Architecture）。</li>
+</ol>
+<p>和中断门一样，陷阱门存放在IDT表中。异常发生后，CPU用该异常的vector号索引其对应的陷阱门。x86架构将vector 0~19预留给各个异常。</p>
+<p>陷阱门的格式如下图。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/trap_gate.png" title="陷阱门" data-caption="陷阱门" data-fancybox="default"><img class="fig-img" src="images/trap_gate.png" alt="陷阱门"></a><span class="caption">陷阱门</span></div>
+
+<h3 id="操作系统对中断-异常的处理流程"><a href="#操作系统对中断-异常的处理流程" class="headerlink" title="操作系统对中断/异常的处理流程"></a>操作系统对中断/异常的处理流程</h3><p>虽然各个操作系统对于中断/异常处理实现不同，但基本流程遵循如下的顺序。<br>一个中断/异常发生，打断当前正在执行的任务。</p>
+<ol>
+<li>CPU通过vector索引IDT表得到对应的“门”，并获得其处理函数的入口地址。</li>
+<li>程序跳转到处理函数执行，由于处理函数存放在CPL = 0的代码段，程序可能会发生权限提升。处理函数通常执行下列几个步骤。<ol>
+<li>保存被打断任务的上下文，并开始执行处理函数。</li>
+<li>如果是中断，处理完成后需要写EOI寄存器（伪中断不需要）应答，异常不需要。</li>
+<li>恢复被打断的任务的上下文，准备返回。</li>
+</ol>
+</li>
+<li>从中断/异常的处理函数返回，恢复被打断的任务，使其继续进行。</li>
+</ol>
+<h1 id="进程"><a href="#进程" class="headerlink" title="进程"></a>进程</h1><blockquote>
+<p>“尽管表面上看起来程序和进程非常类似，但本质上它们却是截然不同的。程序是指一个静态的指令序列，而进程是一个容器，其中包含了当一个程序的特定实例所用到的各种资源”。</p>
+</blockquote>
+<p>进程是系统进行资源分配和调度的基本单位，是操作系统结构的基础。进程是各种资源的合集：通常一个进程包含下面几种资源。</p>
+<ol>
+<li>私有的线性地址空间：这是进程可以使用的线性地址的总和，其中内核部分可能和其他进程是共享的。</li>
+<li>可执行的程序：也就是前面说的二进制序列，包含代码和数据。</li>
+<li>一些已经获得的其他资源：如打开的文件、管道等。</li>
+<li>进程的权限：指进程的运行权限，例如在Linux中就有root用户和非root用户之分。</li>
+<li>进程的描述符：有的操作系统称为控制块，包含操作该进程的一些必要的信息，例如进程的ID号。</li>
+</ol>
+<h2 id="上下文"><a href="#上下文" class="headerlink" title="上下文"></a>上下文</h2><p>上下文就是程序（进程/中断）运行时所需要的寄存器的最小集合。这些寄存器的后面可能代表着程序运行的一类资源。例如，CR3寄存器就可以概括进程的私有线性地址空间（分页机制启动时）。</p>
+<p>x86架构下上下文包含哪些寄存器。</p>
+<ol>
+<li>通用寄存器组：即EAX、EBX、ECX、EDX、ESI、EDI这6个加上ESP（栈指针）、EBP（框架指针）。</li>
+<li>段相关寄存器组：CS、DS、SS，如果程序使用了ES等额外段寄存器，也要包括进来。</li>
+<li>标志寄存器：主要指EFLAGS寄存器。</li>
+<li>程序指针寄存器：EIP。</li>
+<li>GDT基地址：用于访问GDT，GDTR中内容。</li>
+<li>LDT段选择符：如果程序使用了私有的LDT，LDTR的内容。</li>
+<li>IDT基地址：用于访问IDT表，IDTR的内容。</li>
+<li>控制寄存器组：CR系列，表示当前程序运行的CPU控制状态。</li>
+<li>浮点相关寄存器组：用于浮点计算的一些寄存器组。</li>
+<li>一些特殊用途的寄存器：例如x86架构下的MSR（Model-Specific Register）。</li>
+</ol>
+<p>一个程序的上下文可能是上面列出内容的一个子集（例如进程），也可能是全部（例如虚拟机）。从程序员的观点看，上下文的概念有些微改变，通常对于上下文切换时不需要改变的寄存器，也可以说它不是该程序的上下文。例如进程切换时，GDTR中的内容不要改变，为了方便，通常在讲一个进程的上下文时不把GDTR算进去。在后面的内容中，包括虚拟机部分，提到上下文都是指在上下文切换时必须更改的寄存器的集合。</p>
+<h2 id="上下文切换"><a href="#上下文切换" class="headerlink" title="上下文切换"></a>上下文切换</h2><p>上下文切换是指程序从一种状态切换到另一种状态（例如用户态切换到内核态），或从一个程序切换到另一个程序（例如进程的切换）时，导致上下文相关寄存器值的变化行为。这种变化是指旧程序（切换前的程序）上下文相关寄存器的值被保存到内存中，新程序（切换后的程序）上下文相关寄存器的值被加载到寄存器中。在操作系统中，通常只有三种情况会发生上下文切换。</p>
+<ol>
+<li>用户态到内核态的切换：此时的上下文切换是因为进程的用户态和内核态运行在不同的Ring级别，对资源的访问权限不同，需要切换部分上下文。例如，从用户态的栈切换到内核态的栈。</li>
+<li>进程切换：由于一个CPU在同一时刻只能有一个进程运行，所以在新的进程运行前，需要把上下文相关寄存器的值换成新进程的相关值，例如把CR3换成新进程也目录的地址，EIP指向新进程运行的第一条指令。这通常是个全上下文的切换。</li>
+<li>中断上下文的切换：中断的处理函数运行在特殊的上下文环境，称为中断上下文。CPU处理一个中断时，不管当前CPU在运行一个进程，还是本身就在一个中断上下文中，都要切换到新中断的上下文。例如，更改栈指针、EIP变化等。这通常是部分上下文的切换，例如CR3寄存器的值就不需要更改。根据x86架构的特点，无论是Linux的硬中断机制，还是Windows、Solaris的中断线程化机制，处理中断必然经过一个中断上下文阶段，可能的情况如下。<ol>
+<li>进程上下文 -&gt; 中断上下文（处理中断） -&gt; 进程上下文（中断返回执行）。</li>
+<li>进程上下文 -&gt; 中断上下文 -&gt; 新进程上下文（处理中断） -&gt; 进程上下文（最先被打断进程的上下文）。</li>
+<li>中断上下文 -&gt; 新中断上下文 -&gt; … …</li>
+</ol>
+</li>
+</ol>
+<p>x86只有一种机制，即任务门（Task Gate）可以使中断的处理不经过中断上下文而直接进入进程上下文，但几乎没有操作系统使用。</p>
+<p>上下文切换通常有2个步骤：</p>
+<ol>
+<li>保存旧上下文：将被切换出去的程序（如一个被新进程代替的旧程序）或被切换出去的状态（如程序的用户态）的上下文相关寄存器的值保存在内存中。</li>
+<li>加载新上下文：将要运行的程序（如新进程）或新状态（如程序的内核态）运行需要的上下文相关寄存器的值从内存中读入，加载入对应寄存器中。</li>
+</ol>
+<p>需要注意的是，保存旧的上下文动作在x86架构下有时会由CPU自动完成一部分（例如中断发生时、使用TSS），但在现代操作系统中，通常是由软件完成的。</p>
+<h1 id="I-O架构"><a href="#I-O架构" class="headerlink" title="I/O架构"></a>I/O架构</h1><p>将计算机进行的任务进行一个粗略的分类，其实只有两种：CPU运算和I/O操作。I/O架构毫无疑问是现代计算机体系的重要组成部分。</p>
+<h2 id="x86的I-O架构"><a href="#x86的I-O架构" class="headerlink" title="x86的I/O架构"></a>x86的I/O架构</h2><p>I/O（输入输出）是CPU访问外部设备的方法。设备通常是通过寄存器和设备RAM将自身的功能展现给CPU，CPU读写这些寄存器和RAM即可完成对设备的访问和操作。通过访问方式的不同，可以将x86架构的I/O分为如下两类。</p>
+<ol>
+<li><p>Port I/O（端口I/O）：即通过I/O端口访问设备寄存器。x86有65536（2^16）个8位的I/O端口，编号为0x0~0xFFFF。如果端口号看做访问设备端口的地址，那么这个65536个端口就构成了64KB的地址空间，称为I/O端口地址空间。与线性地址空间和物理地址空间不同，I/O端口地址空间是独立的，也就是说它并不是线性地址空间或物理地址空间的一部分。使用IN/OUT指令访问端口时，CPU通过一个特殊的管脚标识这是一次I/O端口访问，于是芯片组知道地址线上的地址是I/O端口号并进行相应操作。此外，2个或4个连续的8位I/O端口，可以组成16位或32位I/O端口。</p>
+</li>
+<li><p>MMIO（Memory Map I/O，内存映射I/O）：即通过内存访问的形式访问设备寄存器或设备RAM。x86架构下，MMIO和Port I/O最大的不同是，MMIO要占用CPU的物理地址空间。它把设备的寄存器或设备RAM映射到物理地址空间某段地址，使用MOV这样的访存指令访问此段地址即可访问到映射的设备。很多CPU架构都没有Port I/O，采用统一的MMIO方式。由此可见，MMIO是一种更加先进的I/O访问方式。</p>
+</li>
+</ol>
+<p>对于Port I/O，由于编译器不能产生IN/OUT指令，操作系统通常吧汇编命令封装成类似inb()、outb()这样的函数。对于MMIO，由于整个物理地址空间都会被映射到线性地址空间，程序访问I/O资源时，也要做线性地址到物理地址的转换。与普通物理地址到线性地址的映射不同，MMIO地址通常是不可缓存的（un-cacheable）。</p>
+<h2 id="DMA"><a href="#DMA" class="headerlink" title="DMA"></a>DMA</h2><p>DMA（直接内存访问）是将CPU从I/O操作中解放出来的一种技术。如果设备向内存复制数据都经过CPU，则会消耗大量的CPU时间，不利于系统性能。通过DMA，驱动程序可以事先（或在需要的时候）设定一个内存地址，设备就可以在绕开CPU直接向内存中复制（或读取）数据。根据发起者不同，DMA可以被分为2种。</p>
+<ol>
+<li><p>同步DMA：是指DMA操作由软件发起。一般的流程是设备驱动在设定好需要被DMA访问的内存地址后，写某个寄存器来通知设备发起DMA。此时，设备会直接从该内存地址空间读取内容并操作。一个典型的例子就是声卡，当播放一段音频时，驱动将该音频存放的地址通知声卡，设备从内存直接读取数据并播放，完成后以一个中断通知驱动操作完成。</p>
+</li>
+<li><p>异步DMA：是指DMA操作由设备发起。一般的流程是设备将数据直接复制到一个事先设定好的内存地址，再通过一个中断通知驱动程序。典型的例子就是网卡收包，当网卡接收到数据包后，会直接复制到驱动程序设定好的内存地址去，并以中断的形式通知网络包的到来。</p>
+</li>
+</ol>
+<p>设备的DMA操作都是使用物理地址访问内存，不经过线性地址到物理地址的转换。但IOMMU（Input/Output Memory Management Unit，输入输出内存管理单元）出现后，这个情况就改变了。从驱动的角度来看，驱动要提供一片内存区域供设备访问，DMA要求这片内存区域在物理上是连续的。</p>
+<p>现代设备支持一种称为“分散————聚合（Scatter-Gather）”DMA的机制，允许驱动向设备提供不连续的物理内存。实际上，驱动是将一组以“起始地址——长度”为属性的内存描述符提供给设备，每个描述符描述了一块连续的物理内存，但连续两个描述符描述的内存不需要是连续的。从宏观上来看，通过这组内存描述符可以向设备提供一片不连续的内存区域；但从微观的角度看，DMA操作访问的仍然是连续的物理内存。</p>
+<h2 id="PCI设备"><a href="#PCI设备" class="headerlink" title="PCI设备"></a>PCI设备</h2><p>PCI总线无疑是总线中的王者。在它之前，各种平台都拥有自己特定的总线，例如x86的ISA总线、Power PC的VME总线。PCI出现后，由于速度快、具有动态配置功能和独立于CPU结构等特点，迅速被各种平台接受，成为一种通用的总线架构。</p>
+<h3 id="PCI总线架构"><a href="#PCI总线架构" class="headerlink" title="PCI总线架构"></a>PCI总线架构</h3><p>PCI总线是一种典型的树结构。把北桥中HOST-PCI桥看作根，总线中其他PCI-PCI桥、PCI-ISA桥（ISA总线转PCI总线桥）等桥设备和直接接PCI总线的设备看作节点，整个PCI架构可以概括成下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/pci.png" title="PCI总线结构" data-caption="PCI总线结构" data-fancybox="default"><img class="fig-img" src="images/pci.png" alt="PCI总线结构"></a><span class="caption">PCI总线结构</span></div>
+
+<p>通过桥，PCI总线可以很容易地被扩展，并且与其他总线互相挂接，构成整个系统的总线网络。与HOST-PCI相连的总线被称为总线0，其他层次总线的编号，是在BIOS（或操作系统）枚举设备时确定的。</p>
+<h3 id="设备标识符"><a href="#设备标识符" class="headerlink" title="设备标识符"></a>设备标识符</h3><p>设备标识符可以看作是设备在PCI总线上的地址，它的格式如下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/device.png" title="设备标识符" data-caption="设备标识符" data-fancybox="default"><img class="fig-img" src="images/device.png" alt="设备标识符"></a><span class="caption">设备标识符</span></div>
+
+<p>其中，8位的Bus字段代表设备所在的总线号，故系统最多有256条总线。Device字段表示设备号，代表在Bus所表示总线的某个设备。Function字段表示功能号，标识具体设备上的某个功能单元（逻辑设备）。</p>
+<p>一块PCI卡，它上面有两个独立的设备，这两个设备共享了一些电子线路，那么这两个设备就是这块PCI卡的两个功能单元。但从软件的角度来看，它们和两个独立接入PCI总线的设备无异。</p>
+<p>如同Function字段长度所暗示的，一个独立的PCI设备上最多有8个功能单元。Device和Function两个字段一般结合起来使用，表示一条总线上最多有256个设备。</p>
+<p>通常，用这三个字段的缩写BDF来代表设备标识符。</p>
+<p>当程序通过BDF访问某个设备时，先通过Bus字段选定特定的总线，再根据Device字段选定特定的设备，最后通过Function字段就可以选定特定的功能单元（逻辑设备）了。</p>
+<h3 id="PCI配置空间"><a href="#PCI配置空间" class="headerlink" title="PCI配置空间"></a>PCI配置空间</h3><p>PCI设备规范规定，设备的配置空间最多为256个字节，其中前64个字节的格式和用途是统一的。如下图所示。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/pci_spec.png" title="PCI配置空间" data-caption="PCI配置空间" data-fancybox="default"><img class="fig-img" src="images/pci_spec.png" alt="PCI配置空间"></a><span class="caption">PCI配置空间</span></div>
+
+<ul>
+<li><p>Base Address Registers：基地址寄存器（PCI Bar）。<br>它报告设备寄存器或设备RAM在I/O端口地址空间（或地址空间中）的地址。一改ISA设备通过跳线配置的不灵活的特点，地址是由软件（BIOS或操作系统）动态配置的。<br>通常枚举PCI设备的软件（BIOS或操作系统）会在获得平台所有PCI设备后，根据设备数量，依照固定的算法为每个设备的PCI Bar分配I/O端口（或物理地址）。设备的电子线路负责把这些端口（或地址）映射到自身的寄存器（设备RAM）上，这样，CPU就可以通过端口号（Port I/O方式）、物理地址（MMIO方式）访问到设备了。使用哪种方式访问，由PCI Bar的最后一位表示。当该位为1时，表示是Port I/O方式；该位为0时，表示是MMIO方式。有些架构根本就没有Port I/O方式，全部采用MMIO。<br> 根据访问目标性质不同，PCI Bar又可以划分为：</p>
+<ol>
+<li>可预取（Prefetchable）类型。这主要是设备RAM。由于RAM具有在每次操作后内容不自动改变的性质，所以可以使用预读机制。例如程序在读第N个字节的内容时，总线可能已经读出了第N + 1个字节的内容。当预读出的内容不需要时，只要简单地抛弃就可以了，不会有什么影响。</li>
+<li>不可预取（Non-Prefetchable）类型。这里主要指设备寄存器。寄存器和RAM有着不同的性质，有些寄存器本身就是设备的FIFO队列的接口。很有可能当一次读操作完成后，寄存器的值就改变了。如果使用预读机制，例如程序本身只读了寄存器的第一个字节，而总线却连续读入了4个字节，那么后面3个字节的内容可能就会改变，下次程序真正访问它们时，得到的就是错误的值。<div class="alert no-icon info"><p>对于PCI Bar是否为预取类型，可以根据该PCI Bar的第3位判断，1为可预取，否则为不可预取。</p>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Interrupt Pin：中断针脚。PCI中断线的标准设计是4条：INTA、INTB、INTC和INTD，分别对应值0~3。该寄存器的值表示设备连接的是哪个中断针脚。</p>
+</li>
+<li><p>Interrupt Line：设备的中断线。该寄存器只起一个保存作用，BIOS和操作系统和以自由使用它。BIOS通常用它保存设备所连的PIC/IOAPIC的管脚号。</p>
+</li>
+</ul>
+<p>x86架构把I/O端口地址空间中的0xCF8~0xCFF段预留给PCI总线，用于访问设备的配置空间。其中，前32位的寄存器为“地址寄存器”，后32位为“值寄存器”。软件通过把设备的BDF和要访问的配置空间的字节偏移写入“地址寄存器”中，就可以通过“值寄存器”读写该配置空间了。</p>
+<h3 id="PCI设备枚举过程"><a href="#PCI设备枚举过程" class="headerlink" title="PCI设备枚举过程"></a>PCI设备枚举过程</h3><p>PCI设备的枚举和资源分配（即配置PCI配置空间）通常是由BIOS完成的，并提供特殊的PCI设备枚举接口供保护模式下的操作系统使用，这些接口称为PCIBIOS。</p>
+<p>由于某些平台，例如嵌入式，是没有BIOS的，并且操作系统厂商对BIOS的可靠性也不信任，故某些操作系统也实现了自己的PCI设备枚举接口。无论是BIOS，还是操作系统，其枚举设备的过程都遵循着一般规律。</p>
+<p>PCI设备和总线一起构成了树结构，其中PCI-PCI桥（或PCI-ISA等其他桥）是子树的根节点，设备枚举的过程就是要在内存中建立一棵和实际总线情况向符合的设备树。枚举过程中最关键的步骤是发现PCI-PCI桥，这个可以通过PCI配置空间的Header Type字段判断，该字段为1时，表示为桥设备。</p>
+<p>PCI-PCI桥主要有三个属性。</p>
+<ul>
+<li>Primary Bus：表示该桥所属的根总线。</li>
+<li>Secondary Bus：表示以该桥为根节点的子总线。</li>
+<li>Subordinate Bus：表示该桥为根的子树中，最大的总线号。</li>
+</ul>
+<p>下图说明三者的关系。<br><br></p>
+<div class="figure center" style="width:80%;"><a class="fancybox" href="images/pci_device.png" title="PCI设备的枚举" data-caption="PCI设备的枚举" data-fancybox="default"><img class="fig-img" src="images/pci_device.png" style="width:80%;"alt="PCI设备的枚举"></a><span class="caption">PCI设备的枚举</span></div>
+
+<p>对于PCI-PCI桥1，其Primary Bus是总线0，Secondary Bus是总线1，而以它为根的总线中最大的总线号为2，所以其Subordinate Bus为总线2。</p>
+<p>设备枚举从根节点HOST-PCI桥开始，首先探测总线0上的各个设备。当探测到第一个桥设备时，为其分配Primary Bus号和Secondary Bus号，其中Secondary Bus号为1（即当前系统中最大总线号加1），Subordinate Bus号暂设为和Secondary Bus相同，当在子树中发现新总线后会动态调整该值接着以该桥为根节点，继续探测其下属总线，其过程和前面相同，发现第一个桥设备后则以其为根往下探测，如此反复直到所有子树都探测完毕。</p>
+<p>当PCI-PCI桥收到写入0xCF8中的BDF后，会将Bus字段与自身的Secondary Bus相比，相符则在下属总线上搜寻设备；如果不相符，但Bus值落在Subordinate Bus范围内，则把该地址传递给下属总线中各桥，否则不予理睬。</p>
+<p>通过这种方式，BIOS或操作系统可以枚举出总线上所有设备并为之分配资源，一旦PCI配置空间设定好，软件就可以直接通过PCI Bar访问设备了。</p>
+<h3 id="PCI-Express"><a href="#PCI-Express" class="headerlink" title="PCI Express"></a>PCI Express</h3><p>PCI Express的设计目标是用来代替之前广泛使用的PCI、PCI-X和AGP等总线标准，称为新一代通用、高速的IO互联标准，同时保持对PCI标准的软件兼容性。</p>
+<h4 id="PCI-Express架构"><a href="#PCI-Express架构" class="headerlink" title="PCI Express架构"></a>PCI Express架构</h4><p>PCI Express抛弃了PCI所采用的多个设备共享的并行的总线结构，转而使用了与网络协议类似的点对点的串行通信机制。多个PCI Express设备（Endpoint）通过交换器（Switch）相互连接。与PCI总线中的桥设备类似，通过交换器，可以搭建一个树形的PCI Express的拓扑结构。</p>
+<p>标准的PCI Express拓扑结构如下图。树的根节点是Root Complex，用来连接处理器、内存系统和IO系统，其作用类似PCI总线树中的HOST-PCI桥。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/pcie.png" title="PCI Express拓扑结构" data-caption="PCI Express拓扑结构" data-fancybox="default"><img class="fig-img" src="images/pcie.png" alt="PCI Express拓扑结构"></a><span class="caption">PCI Express拓扑结构</span></div>
+
+<h4 id="PCI-Express的优点"><a href="#PCI-Express的优点" class="headerlink" title="PCI Express的优点"></a>PCI Express的优点</h4><p>PCI Express比PCI总线拥有更高的带宽。串行通信机制可以让物理链路工作在很高的频率。点对点的通信方式使得链路两端的设备可以独占通信带宽，而且多个链路可以并发传输数据。</p>
+<p>PCI Express在于PCI总线迥异的硬件基础之上，构建了与PCI总线完全兼容的软件接口。PCI Express定义了基于数据包的分层通信协议，包括物理层（Physical Layer）、数据链路层（Data Link Layer）和事务层（Transaction Layer）。在事务层协议中，PCI Express定义了内存读写、IO读写、配置空间读写和消息事务。通过这些事务的定义，PCI Express可以实现所有的PCI总线事务。</p>
+<p>PCI Express将PCI总线的配置空间大小从256字节扩展到4KB字节，解决了PCI总线的配置空间过小的问题，可以容纳更多的设备功能配置。PCI Express还增加一种新的MMIO方法来访问扩充过的配置空间。为了保持兼容性，4KB字节配置空间中的前256字节仍然可以使用原来的方式访问。</p>
+<p>PCI Express除了保留了PCI总线的优点以外，还增加了诸如QoS服务、高级错误报告（AER）等新特性。软件可以通过PCI Express提供的软件接口来配置和使用这些新的功能。</p>
+<p>此外，PCI Express标准具有良好的扩充性。PCI-SIG的SR-IOV标准在PCI Express基础上做了扩展，支持该标准的设备可以动态地生成新的逻辑设备。DMA重映射可以利用PCI Express内存读写事务数据包中所包含的设备标识符合地址信息，为每个逻辑设备提供独立的地址转换。</p>
+<h1 id="时钟"><a href="#时钟" class="headerlink" title="时钟"></a>时钟</h1><p>在现代计算机架构中，时钟有着重要的地位，操作系统中的很多时间都是由时钟驱动的，例如进程调度、定时器等。</p>
+<p>时钟根据工作方式不同，可以分成如下两类。</p>
+<ol>
+<li>周期性时钟（Periodic Timer）：这是最常见的方式，时钟以固定频率产生时钟中断。通常，周期性时钟会有一个计数器，要么以固定值递减到0产生中断，例如PIT；要么固定增长，当达到某个阈值时产生中断，同时自动将阈值增加一个固定值，计数器继续递增，例如HPET。</li>
+<li>单次计时时钟（One-shot Timer）：大多数时钟都可以配置成这种方式，例如PIT、HPET。其工作方式和到达阈值产生中断的周期性时钟类似，不同的是产生中断后阈值不会自动增加，而是需要软件（通常是时钟中断处理函数）增加该阈值。这提供给软件动态调整下一次时钟中断到来时间的能力，使一些新技术，例如无滴答声内核（Tickless Kernel）的实现成为可能。</li>
+</ol>
+<h2 id="x86平台的常用时钟"><a href="#x86平台的常用时钟" class="headerlink" title="x86平台的常用时钟"></a>x86平台的常用时钟</h2><h3 id="PIT"><a href="#PIT" class="headerlink" title="PIT"></a>PIT</h3><p>PIT（Programmable Interrupt Timer或Programmable Interval Timer，可编程中断/间隔时钟）：随IBM PC平台产生，被广泛应用，其频率为1000Hz作用，即每次中断间隔约为1ms，通常接IRQ0，软件可以通过0x40~0x43 I/O端口进行操作。PIT是一种低精度的时钟，容易溢出（16位），已经渐渐被后来出现的高精度时钟取代。PIT支持周期性和单次计时两种工作方式。</p>
+<h3 id="RTC"><a href="#RTC" class="headerlink" title="RTC"></a>RTC</h3><p>RTC（Real Time Clock，实时时钟）：通常是和CMOS集成在一起的，由CMOS电池供电，故能在关机后继续计时。其频率范围在2~8192Hz，通常接IRQ8，软件可以通过0x70~0x71 I/O端口操作。RTC支持周期性和单次计时两种方式，此外，它还可以配置成没秒产生一次中断，具有闹钟功能。由于具有关机继续计时的功能，RTC常被用作为操作系统提供日期，即“年/月/日”。</p>
+<h3 id="TSC"><a href="#TSC" class="headerlink" title="TSC"></a>TSC</h3><p>TSC（Time Stamp Counter，时间戳计时器）：和普通计时器不同，它可以看作一个单调递增的计数器（64位），由x86架构引入的。其时钟频率和CPU频率相关，操作系统在使用前需要计算其频率，例如1GHz的TSC，其值每纳秒增加1。通过rdtsc指令，可以读取当前TSC的值。由于不产生时钟中断，故无所谓周期性和单次计时方式。</p>
+<h3 id="LAPIC-Timer"><a href="#LAPIC-Timer" class="headerlink" title="LAPIC Timer"></a>LAPIC Timer</h3><p>LAPIC Timer：该时钟是根据LAPIC所在总线（系统总线或者APIC总线）频率产生的。32位，有如下两个特点。</p>
+<ol>
+<li>由于LAPIC是每个CPU一个，故其中断也是对于本地CPU的。</li>
+<li>可以通过寄存器配置，对总线周期进行不同的分频而产生不同频率的时钟中断。</li>
+</ol>
+<p>LAPIC Timer可配置成周期性和单次计时两种工作方式。</p>
+<h3 id="HPET"><a href="#HPET" class="headerlink" title="HPET"></a>HPET</h3><p>HPET（High Precision Event Timer，高精度时间时钟）：是Intel和微软共同开发的新型高精度时钟，其最低频率为10MHz，可以作为64位或32位时钟使用。HPET可以提供最多8个时钟，典型的实现至少有一个时钟可用。</p>
+<p>HPET的时钟通过一个主计数器，和32个比较器、匹配器一起，又可以被配置成32个子时钟（又称为channel），每个子时钟可以按不同频率产生不同的中断。例如，可以将一个子时钟配置成每毫秒产生一个IRQ8中断，另一个子时钟可以被配置成每微秒产生一个IRQ0中断。</p>
+<p>HPET可用于替代传统的PIT和RTC，此时平台的IRQ0、IRQ8中断被HPET占用。HPET支持周期性和单次计时两种工作方式。</p>
+<h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>x86平台提供如此多的时钟，操作系统可以根据不同的需要使用其中的一个或多个。同时使用多个时钟带来的一个明显的缺点是过多的时钟中断会影响系统性能。所以，当有高精度时钟可用时，操作系统通常会禁用低精度时钟，并根据需要使用高精度时钟模拟低精度时钟。例如，可以用HPET代替PIT，并模拟RTC。</p>
+<h2 id="操作系统的时钟观"><a href="#操作系统的时钟观" class="headerlink" title="操作系统的时钟观"></a>操作系统的时钟观</h2><p>从操作系统的角度看，时钟的作用可以分为以下两类。</p>
+<ol>
+<li>提供统计值及驱动事件：提供统计值是指操作系统用时钟来维护一些必需的数据，例如，一个进程在用户态/内核态的时间，系统的日期、时间等。驱动事件是指驱动以时间为资源的程序，典型的就是进程。例如，分时操作系统为每个进程分配固定的时间片，调度时间片耗尽的进程睡眠，唤醒分配到新时间片的进程运行。</li>
+<li>维护定时器（Timer）：定时器是程序中最常用的组件，用于在某个时间到达后执行特定的操作。定时器大量运用于操作系统中，例如内核为I/O操作注册的超时定时器、操作系统提供给应用程序使用的定时器接口等。</li>
+</ol>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/clock.png" title="操作系统的时钟" data-caption="操作系统的时钟" data-fancybox="default"><img class="fig-img" src="images/clock.png" alt="操作系统的时钟"></a><span class="caption">操作系统的时钟</span></div>
+
+<p>从上图可以看出，操作系统使用时钟的功能，是以时钟中断为基础的。</p>
+<p>操作系统中往往会对时钟架构进行封装以方便维护和使用，但从硬件的角度来看，时钟中断仍然是所有封装的基础，故虚拟化中对时钟的处理主要是提供准确的时钟中断以模仿硬件行为。</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/x86%E6%9E%B6%E6%9E%84/" rel="tag">x86架构</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" rel="tag">操作系统</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/07/09/%E6%9C%89%E8%B6%A3%E7%9A%84%E4%BB%A3%E7%A0%81%E5%A4%B4%E9%83%A8%E6%B3%A8%E9%87%8A/"
+                    data-tooltip="有趣的代码头部注释"
+                    aria-label="PREVIOUS: 有趣的代码头部注释"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/05/24/Nova%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Nova源码分析（一）"
+                    aria-label="NEXT: Nova源码分析（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/&amp;title=x86架构及操作系统概述"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2021/06/05/x86架构及操作系统/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/07/09/%E6%9C%89%E8%B6%A3%E7%9A%84%E4%BB%A3%E7%A0%81%E5%A4%B4%E9%83%A8%E6%B3%A8%E9%87%8A/"
+                    data-tooltip="有趣的代码头部注释"
+                    aria-label="PREVIOUS: 有趣的代码头部注释"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2021/05/24/Nova%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Nova源码分析（一）"
+                    aria-label="NEXT: Nova源码分析（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/&amp;title=x86架构及操作系统概述"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/&amp;title=x86架构及操作系统概述"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2021/06/05/x86%E6%9E%B6%E6%9E%84%E5%8F%8A%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

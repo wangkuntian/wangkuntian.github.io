@@ -1,0 +1,811 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Understand Neutron（二） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"分布式路由\n\n\n\nOpenStack用户会发现，按照Neutron原先的设计，所有网络服务都在网络节点上进行，这意味着大量的流量和处理，给网络节点带来了很大的压力。这些处理的核心是路由器服务。任何需要跨子网的访问都需要路由器进行路由。\n为了降低网络节点的负载，同时提高可扩展性，OpenStack自Juno版本开始正式引入了分布式路由（Distributed Virtual Router，DVR）特性（用户可以选择使用与否），来让计算节点自己来处理原先的大量的东西流量和非SNAT南北流量（有floating IP的vm和外面的通信）。\n这样网络节点只需要处理一部分的SNAT（无floating IP的vm和外面的通信）流量，大大降低了负载和整个系统对网络节点的依赖。很自然的，FWaaS也可以放在计算节点上。\nDHCP服务、VPN服务目前仍然需要集中在网络节点上进行。\n\n\n典型场景从网络的访问看，涉及到路由服务的至少是需要跨子网的访问，又包括是否是同一机器、是否是涉及到外网（东西向vs南北向）。\n\n\n\n方向\n同一机器\n不同机器\n\n\n\n东西\n本地网桥处理\n本地东西路由器\n\n\n南北\n本地南北路由器floating转发\n网络节点SNAT转发\n\n\n东西向东西向意味着租户同一个数据中心内不同子网之间的相互访问。\n同一机器对于同一主机的不同子网之间访问，路由器直接在br-int上转发即可，不需要经过外部网桥。\n不同机器\n如图所示，租户T1的两台虚机VM1（计算节点1）和VM4（计算节点2）分别属于不同的子网，位于不同的计算节点。\nVM1要访问VM4，由计算节点1上的IR1起到路由器功能。返程的网包，则由计算节点2上的路由器IR2起作用。两个路由器的ID、内部接口、功能等其实都是一样的。即同一个路由器，但是实际上在多个计算节点上同时存在。\nVM1 -&gt; BR-INT -&gt; IR1 -&gt; BR-INT -&gt; BR-TUN（Node 1） -&gt; BR-TUN（Node 2）-&gt; VM4\n\n\n这里可能有人会想到，多台同样的路由器，如果都暴露在外部网络上，会出现冲突。例如当VM1的请求包离开计算节点1时，带的源mac是路由器目标接口的mac，而这个mac在计算节点2上的路由器上同样存在。\n因此，需要拦截路由器对外的暴露信息。一个是让每个路由器只应答本机的mac请求；另一个是绝对不让带着路由器mac地址的包直接扔出去。实现在br-int上进行拦截，修改其源mac为tunnel端口的mac。同样的，计算节点2在br-int上拦截源mac为这个tunnel端口的mac，替换为正常的子网网关的mac，直接扔给目标虚拟机所在的主机。\n南北向无floating IP这种情况（即SNAT）下，跟传统模式很类似。外部访问内部子网。\n\n租户T2在外部，通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。\n外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1\n\n\n\n反过来，租户T2内部子网的VM1试图访问外部网络，则仍然经过网络节点上的T2-SNAT路由器。\nT2-VM1 -&gt; BR-INT（Node1） -&gt; IR2 -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Network Node） -&gt; BR-INT -&gt; T2-SNAT -&gt; BR-EX -&gt; 外网\n\n\n为何这种情况下必须从网络节点走？\n这是因为，对于外部网络来说，看到的都是外部接口的地址，这个地址只有一个。\n当然，如果以后每个计算节点上都可以带有这样一个SNAT默认外部地址的话，这种情况下的流量也是可以直接从计算节点出去的。\n\n\n有floating IP\n这种情况下，计算节点上的专门负责的外部路由器将负责进行转发，即计算节点1上的IR2和计算节点2上的IR1。\nT1-VM2 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网\nT1-VM4 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网\n\n\n网络节点服务基本没变，除了L3服务需要配置为dvr_snat模式。\n命名空间上会多一个专门的snat-xxx命名空间，处理来自计算节点的无floating IP的南北向流量。\n计算节点需要额外启用l3_agent（dvr模式），以及metadata agent。\n其实，跟传统情况下的网络节点十分类似。每一个东西向路由器有自己的命名空间，负责跨子网的转发。另外，多一个floating路由器，专门负责经由floating地址的南北向转发。\n东西流量\n如上图所示，租户两个子网，红色和绿色，分别有VM1和VM2，位于节点CN1和CN2上。\nVM1访问VM2的网包步骤如下，整个过程IP保持不变。\n\n原始包，VM1访问VM2，目的mac为本地（红色子网）的路由器网关接口R1 Red mac。\n经过BR-INT-CN1转发，该网包通过本地（红色子网）网关接口扔给本地路由器R1。\nR1根据路由规则，经过到绿色子网的接口发出，此时网包的源mac地址改为绿色子网的网关接口R1 Green mac，目的mac改为VM2 mac，并带上绿色子网的本地vlan tag。\n网包发给BR-TUN-CN1进行Tunnel，扔出去之前，将源mac替换为跟节点相关的特定mac DVR CN1 mac，之后带着目标子网（绿色子网）的外部Tunnel id扔出去（实现可以为vlan、vxlan、gre等，功能都是一样的）。\n节点CN2的网桥BR-TUN-CN2会从Tunnel收到这个包，解封包，并带上本地vlan tag，最终抵达网桥BR-INT-CN2。\nBR-INT-CN2上替换网包的源mac（此时为DVR-CN1-mac）为本地路由器的绿色子网网关接口，然后发给VM2。\n\n南北流量\n所不同的是，单独有一个qfloat-XXX路由器（也在一个独立命名空间中）来负责处理带有floating IP的南北向流量。\n\n流表规则为了实现上面描述的功能需要下面几种流表规则。\n所有对网关的arp request不能出到外部网络在tunnel网桥上看到的一律丢弃。\n123DVR PROCESS Table 1 (New table for dvr):table=1, prioity=4, dl_vlan=red1-L-vlan, dl_type=arp, ar_tpa=r1-red-ip actions:droptable=1, prioity=4, dl_vlan=grn1-L-vlan, dl_type=arp, ar_tpa=r1-grn-ip actions:drop\n\n所有发往网关的包也不能出到外部网络在tunnel网桥上看到的一律丢弃。\n123DVR PROCESS Table 1 (New table for dvr):table=1, prioity=2, dl_vlan=red2-L-vlan, dl_dst=r1-red-mac actions:droptable=1, prioity=2, dl_vlan=grn2-L-vlan, dl_dst=r1-grn-mac actions:drop\n\n所有从路由器接口路由出去的包，需要修改源mac为特殊mac在tunnel网桥上进行处理。\n123DVR PROCESS Table 1 (New table for dvr):table=1, prioity=2, dl_vlan=red2-L-vlan, dl_src=r1-red-mac actions:mod_dl_src=dvr-cn1-mac, resubmit(,2)table=1, prioity=2, dl_vlan=grn2-L-vlan, dl_src=r1-grn-mac actions:mod_dl_src=dvr-cn1-mac, resubmit(,2)\n\n收到外部特殊源mac的包要修改为正确的路由器接口mac在intergration网桥上进行处理。\n1234567Table 0:(Local switching table)table=0, priority=2, in_port=patch-tun, dl_src=dvr-cn1-mac actions:goto table 1 table=0, priority=1, actions:output-&gt;NORMALTable 1:(DVR_TO_LOCALMAC table)table=1, priority=2, dl_vlan=grn2-L-vlan, nw_dst=grn-subnet actions:strip_vlan, mod_dl_src=r1-grn-MAC, output-&gt;port-vm2table=1, priority=1 actions:drop\n\n其他采用L2 pre-population技术，提前把相关计算节点的地址关系放到本地的FDB表中，减少外部广播。\n在integration网桥上，采用组表来调整规则顺序等。\n12Table 1:(DVR_TO_LOCALMAC table)table=1, priority=2, dl_vlan=grn2-L-vlan, nw_dst=grn-subnet actions:strip_vlan, mod_dl_src=r1-grn-mac, output-&gt;port-vm2\n\n注意事项允许有个多个同样的网关存在于多个计算节点（同一个子网跨多个物理节点导致）的情况，保证：\n\n要让本地的请求找到本地的路由器；\n要避免路由器的接口mac地址直接暴露到外部网络上。\n\n\n\n要解决这两个问题，首先是合理处理好本地的ARP请求，让本地对网关的请求拦截发给本地的路由器。同时，路由器路由后的网包，发到外部网络之前，先用一个跟节点绑定的特殊mac替换掉源mac。这个mac地址是控制器为每一个计算节点单独分配的唯一地址。\n\n\n配置要启动DVR，比较简单，分别在各个节点的网络配置文件上做如下修改或添加。\nNeutron Server/etc/neutron/neutron.conf\n1router_distributed = True\n\nL3 Agent/etc/neutron/l3_agent.ini\n1agent_mode = [dvr_snat | dvr | legacy ]\n网络节点上配置为dvr_snat，计算节点上配置为dvr。\nL2 Agent/etc/neutron/plugins/ml2/ml2_conf.ini\n123456mechanism_drivers = openvswitch, linuxbridge, l2population[agent]l2_population = Truetunnel_types = vxlanenable_distributed_routing = True\n\n实现细节添加路由器接口","dateCreated":"2018-11-12T10:31:41+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-11-12T10:31:41+08:00","description":"分布式路由","headline":"Understand Neutron（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="分布式路由">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Understand Neutron（二）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="分布式路由">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/dvr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/dvr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/dvr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/dvr.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/east-west.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/south-north.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/floating-ip.png">
+<meta property="article:published_time" content="2018-11-12T02:31:41.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.103Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/dvr.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Understand Neutron（二）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-11-12T10:31:41+08:00">
+	
+		    Nov 12, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>分布式路由</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B8%E5%9E%8B%E5%9C%BA%E6%99%AF"><span class="toc-text">典型场景</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%9C%E8%A5%BF%E5%90%91"><span class="toc-text">东西向</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%90%8C%E4%B8%80%E6%9C%BA%E5%99%A8"><span class="toc-text">同一机器</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%B8%8D%E5%90%8C%E6%9C%BA%E5%99%A8"><span class="toc-text">不同机器</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%97%E5%8C%97%E5%90%91"><span class="toc-text">南北向</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%97%A0floating-IP"><span class="toc-text">无floating IP</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%9C%89floating-IP"><span class="toc-text">有floating IP</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E8%8A%82%E7%82%B9"><span class="toc-text">网络节点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%9C%E8%A5%BF%E6%B5%81%E9%87%8F"><span class="toc-text">东西流量</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%97%E5%8C%97%E6%B5%81%E9%87%8F"><span class="toc-text">南北流量</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E8%A7%84%E5%88%99"><span class="toc-text">流表规则</span></a><ol class="toc-child"><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E5%AF%B9%E7%BD%91%E5%85%B3%E7%9A%84arp-request%E4%B8%8D%E8%83%BD%E5%87%BA%E5%88%B0%E5%A4%96%E9%83%A8%E7%BD%91%E7%BB%9C"><span class="toc-text">所有对网关的arp request不能出到外部网络</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E5%8F%91%E5%BE%80%E7%BD%91%E5%85%B3%E7%9A%84%E5%8C%85%E4%B9%9F%E4%B8%8D%E8%83%BD%E5%87%BA%E5%88%B0%E5%A4%96%E9%83%A8%E7%BD%91%E7%BB%9C"><span class="toc-text">所有发往网关的包也不能出到外部网络</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%89%80%E6%9C%89%E4%BB%8E%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3%E8%B7%AF%E7%94%B1%E5%87%BA%E5%8E%BB%E7%9A%84%E5%8C%85%EF%BC%8C%E9%9C%80%E8%A6%81%E4%BF%AE%E6%94%B9%E6%BA%90mac%E4%B8%BA%E7%89%B9%E6%AE%8Amac"><span class="toc-text">所有从路由器接口路由出去的包，需要修改源mac为特殊mac</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E6%94%B6%E5%88%B0%E5%A4%96%E9%83%A8%E7%89%B9%E6%AE%8A%E6%BA%90mac%E7%9A%84%E5%8C%85%E8%A6%81%E4%BF%AE%E6%94%B9%E4%B8%BA%E6%AD%A3%E7%A1%AE%E7%9A%84%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3mac"><span class="toc-text">收到外部特殊源mac的包要修改为正确的路由器接口mac</span></a></li><li class="toc-item toc-level-6"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a></li></ol></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"><span class="toc-text">注意事项</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE"><span class="toc-text">配置</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron-Server"><span class="toc-text">Neutron Server</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#L3-Agent"><span class="toc-text">L3 Agent</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#L2-Agent"><span class="toc-text">L2 Agent</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-text">实现细节</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E8%B7%AF%E7%94%B1%E5%99%A8%E6%8E%A5%E5%8F%A3"><span class="toc-text">添加路由器接口</span></a></li></ol></li></ol></li></ol>
+
+<p>OpenStack用户会发现，按照Neutron原先的设计，所有网络服务都在网络节点上进行，这意味着大量的流量和处理，给网络节点带来了很大的压力。这些处理的核心是路由器服务。任何需要跨子网的访问都需要路由器进行路由。</p>
+<p>为了降低网络节点的负载，同时提高可扩展性，OpenStack自Juno版本开始正式引入了分布式路由（Distributed Virtual Router，DVR）特性（用户可以选择使用与否），来让计算节点自己来处理原先的大量的东西流量和非SNAT南北流量（有floating IP的vm和外面的通信）。</p>
+<p>这样网络节点只需要处理一部分的SNAT（无floating IP的vm和外面的通信）流量，大大降低了负载和整个系统对网络节点的依赖。很自然的，FWaaS也可以放在计算节点上。</p>
+<div class="alert info no-icon"><p>DHCP服务、VPN服务目前仍然需要集中在网络节点上进行。</p>
+</div>
+
+<h3 id="典型场景"><a href="#典型场景" class="headerlink" title="典型场景"></a>典型场景</h3><p>从网络的访问看，涉及到路由服务的至少是需要跨子网的访问，又包括是否是同一机器、是否是涉及到外网（东西向vs南北向）。</p>
+<table>
+<thead>
+<tr>
+<th align="center">方向</th>
+<th align="center">同一机器</th>
+<th align="center">不同机器</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">东西</td>
+<td align="center">本地网桥处理</td>
+<td align="center">本地东西路由器</td>
+</tr>
+<tr>
+<td align="center">南北</td>
+<td align="center">本地南北路由器floating转发</td>
+<td align="center">网络节点SNAT转发</td>
+</tr>
+</tbody></table>
+<h4 id="东西向"><a href="#东西向" class="headerlink" title="东西向"></a>东西向</h4><p>东西向意味着租户同一个数据中心内不同子网之间的相互访问。</p>
+<h5 id="同一机器"><a href="#同一机器" class="headerlink" title="同一机器"></a>同一机器</h5><p>对于同一主机的不同子网之间访问，路由器直接在br-int上转发即可，不需要经过外部网桥。</p>
+<h5 id="不同机器"><a href="#不同机器" class="headerlink" title="不同机器"></a>不同机器</h5><p><img src="images/dvr.png" alt="DVR"></p>
+<p>如图所示，租户T1的两台虚机VM1（计算节点1）和VM4（计算节点2）分别属于不同的子网，位于不同的计算节点。</p>
+<p>VM1要访问VM4，由计算节点1上的IR1起到路由器功能。返程的网包，则由计算节点2上的路由器IR2起作用。两个路由器的ID、内部接口、功能等其实都是一样的。即同一个路由器，但是实际上在多个计算节点上同时存在。</p>
+<div class="alert info no-icon"><p>VM1 -&gt; BR-INT -&gt; IR1 -&gt; BR-INT -&gt; BR-TUN（Node 1） -&gt; BR-TUN（Node 2）-&gt; VM4</p>
+</div>
+
+<p>这里可能有人会想到，多台同样的路由器，如果都暴露在外部网络上，会出现冲突。例如当VM1的请求包离开计算节点1时，带的源mac是路由器目标接口的mac，而这个mac在计算节点2上的路由器上同样存在。</p>
+<p>因此，需要拦截路由器对外的暴露信息。一个是让每个路由器只应答本机的mac请求；另一个是绝对不让带着路由器mac地址的包直接扔出去。实现在br-int上进行拦截，修改其源mac为tunnel端口的mac。同样的，计算节点2在br-int上拦截源mac为这个tunnel端口的mac，替换为正常的子网网关的mac，直接扔给目标虚拟机所在的主机。</p>
+<h4 id="南北向"><a href="#南北向" class="headerlink" title="南北向"></a>南北向</h4><h5 id="无floating-IP"><a href="#无floating-IP" class="headerlink" title="无floating IP"></a>无floating IP</h5><p>这种情况（即SNAT）下，跟传统模式很类似。外部访问内部子网。</p>
+<p><img src="images/dvr.png" alt="DVR"></p>
+<p>租户T2在外部，通过默认的SNAT网关访问内部子网的VM1。此时，网络节点上的T2-SNAT起到路由器的作用。</p>
+<div class="alert info no-icon"><p>外网 -&gt; BR-EX（Network Node）-&gt; T2-SNAT -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Node 1） -&gt; BR-INT -&gt; T2-VM1</p>
+</div>
+
+<p><img src="images/dvr.png" alt="DVR"></p>
+<p>反过来，租户T2内部子网的VM1试图访问外部网络，则仍然经过网络节点上的T2-SNAT路由器。</p>
+<div class="alert info no-icon"><p>T2-VM1 -&gt; BR-INT（Node1） -&gt; IR2 -&gt; BR-INT -&gt; BR-TUN -&gt; BR-TUN（Network Node） -&gt; BR-INT -&gt; T2-SNAT -&gt; BR-EX -&gt; 外网</p>
+</div>
+
+<div class="alert warning no-icon"><p>为何这种情况下必须从网络节点走？</p>
+<p>这是因为，对于外部网络来说，看到的都是外部接口的地址，这个地址只有一个。</p>
+<p>当然，如果以后每个计算节点上都可以带有这样一个SNAT默认外部地址的话，这种情况下的流量也是可以直接从计算节点出去的。</p>
+</div>
+
+<h5 id="有floating-IP"><a href="#有floating-IP" class="headerlink" title="有floating IP"></a>有floating IP</h5><p><img src="images/dvr.png" alt="DVR"></p>
+<p>这种情况下，计算节点上的专门负责的外部路由器将负责进行转发，即计算节点1上的IR2和计算节点2上的IR1。</p>
+<div class="alert info no-icon"><p>T1-VM2 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网</p>
+<p>T1-VM4 -&gt; BR-INT -&gt; IR2 -&gt; Floating IP -&gt; BR-EX -&gt; 外网</p>
+</div>
+
+<h3 id="网络节点"><a href="#网络节点" class="headerlink" title="网络节点"></a>网络节点</h3><p>服务基本没变，除了L3服务需要配置为dvr_snat模式。</p>
+<p>命名空间上会多一个专门的snat-xxx命名空间，处理来自计算节点的无floating IP的南北向流量。</p>
+<h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><p>需要额外启用l3_agent（dvr模式），以及metadata agent。</p>
+<p>其实，跟传统情况下的网络节点十分类似。每一个东西向路由器有自己的命名空间，负责跨子网的转发。另外，多一个floating路由器，专门负责经由floating地址的南北向转发。</p>
+<h4 id="东西流量"><a href="#东西流量" class="headerlink" title="东西流量"></a>东西流量</h4><p><img src="images/east-west.png" alt="EAST-WEST"></p>
+<p>如上图所示，租户两个子网，红色和绿色，分别有VM1和VM2，位于节点CN1和CN2上。</p>
+<p>VM1访问VM2的网包步骤如下，整个过程IP保持不变。</p>
+<ol>
+<li>原始包，VM1访问VM2，目的mac为本地（红色子网）的路由器网关接口R1 Red mac。</li>
+<li>经过BR-INT-CN1转发，该网包通过本地（红色子网）网关接口扔给本地路由器R1。</li>
+<li>R1根据路由规则，经过到绿色子网的接口发出，此时网包的源mac地址改为绿色子网的网关接口R1 Green mac，目的mac改为VM2 mac，并带上绿色子网的本地vlan tag。</li>
+<li>网包发给BR-TUN-CN1进行Tunnel，扔出去之前，将源mac替换为跟节点相关的特定mac DVR CN1 mac，之后带着目标子网（绿色子网）的外部Tunnel id扔出去（实现可以为vlan、vxlan、gre等，功能都是一样的）。</li>
+<li>节点CN2的网桥BR-TUN-CN2会从Tunnel收到这个包，解封包，并带上本地vlan tag，最终抵达网桥BR-INT-CN2。</li>
+<li>BR-INT-CN2上替换网包的源mac（此时为DVR-CN1-mac）为本地路由器的绿色子网网关接口，然后发给VM2。</li>
+</ol>
+<h4 id="南北流量"><a href="#南北流量" class="headerlink" title="南北流量"></a>南北流量</h4><p><img src="images/south-north.png" alt="South-North"></p>
+<p>所不同的是，单独有一个qfloat-XXX路由器（也在一个独立命名空间中）来负责处理带有floating IP的南北向流量。</p>
+<p><img src="images/floating-ip.png" alt="Floating-IP"></p>
+<h5 id="流表规则"><a href="#流表规则" class="headerlink" title="流表规则"></a>流表规则</h5><p>为了实现上面描述的功能需要下面几种流表规则。</p>
+<h6 id="所有对网关的arp-request不能出到外部网络"><a href="#所有对网关的arp-request不能出到外部网络" class="headerlink" title="所有对网关的arp request不能出到外部网络"></a>所有对网关的arp request不能出到外部网络</h6><p>在tunnel网桥上看到的一律丢弃。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">DVR PROCESS Table 1 (New table for dvr):</span><br><span class="line">table=1, prioity=4, dl_vlan=red1-L-vlan, dl_type=arp, ar_tpa=r1-red-ip actions:drop</span><br><span class="line">table=1, prioity=4, dl_vlan=grn1-L-vlan, dl_type=arp, ar_tpa=r1-grn-ip actions:drop</span><br></pre></td></tr></table></figure>
+
+<h6 id="所有发往网关的包也不能出到外部网络"><a href="#所有发往网关的包也不能出到外部网络" class="headerlink" title="所有发往网关的包也不能出到外部网络"></a>所有发往网关的包也不能出到外部网络</h6><p>在tunnel网桥上看到的一律丢弃。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">DVR PROCESS Table 1 (New table for dvr):</span><br><span class="line">table=1, prioity=2, dl_vlan=red2-L-vlan, dl_dst=r1-red-mac actions:drop</span><br><span class="line">table=1, prioity=2, dl_vlan=grn2-L-vlan, dl_dst=r1-grn-mac actions:drop</span><br></pre></td></tr></table></figure>
+
+<h6 id="所有从路由器接口路由出去的包，需要修改源mac为特殊mac"><a href="#所有从路由器接口路由出去的包，需要修改源mac为特殊mac" class="headerlink" title="所有从路由器接口路由出去的包，需要修改源mac为特殊mac"></a>所有从路由器接口路由出去的包，需要修改源mac为特殊mac</h6><p>在tunnel网桥上进行处理。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">DVR PROCESS Table 1 (New table for dvr):</span><br><span class="line">table=1, prioity=2, dl_vlan=red2-L-vlan, dl_src=r1-red-mac actions:mod_dl_src=dvr-cn1-mac, resubmit(,2)</span><br><span class="line">table=1, prioity=2, dl_vlan=grn2-L-vlan, dl_src=r1-grn-mac actions:mod_dl_src=dvr-cn1-mac, resubmit(,2)</span><br></pre></td></tr></table></figure>
+
+<h6 id="收到外部特殊源mac的包要修改为正确的路由器接口mac"><a href="#收到外部特殊源mac的包要修改为正确的路由器接口mac" class="headerlink" title="收到外部特殊源mac的包要修改为正确的路由器接口mac"></a>收到外部特殊源mac的包要修改为正确的路由器接口mac</h6><p>在intergration网桥上进行处理。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Table 0:(Local switching table)</span><br><span class="line">table=0, priority=2, in_port=patch-tun, dl_src=dvr-cn1-mac actions:goto table 1 </span><br><span class="line">table=0, priority=1, actions:output-&gt;NORMAL</span><br><span class="line"></span><br><span class="line">Table 1:(DVR_TO_LOCALMAC table)</span><br><span class="line">table=1, priority=2, dl_vlan=grn2-L-vlan, nw_dst=grn-subnet actions:strip_vlan, mod_dl_src=r1-grn-MAC, output-&gt;port-vm2</span><br><span class="line">table=1, priority=1 actions:drop</span><br></pre></td></tr></table></figure>
+
+<h6 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h6><p>采用L2 pre-population技术，提前把相关计算节点的地址关系放到本地的FDB表中，减少外部广播。</p>
+<p>在integration网桥上，采用组表来调整规则顺序等。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Table 1:(DVR_TO_LOCALMAC table)</span><br><span class="line">table=1, priority=2, dl_vlan=grn2-L-vlan, nw_dst=grn-subnet actions:strip_vlan, mod_dl_src=r1-grn-mac, output-&gt;port-vm2</span><br></pre></td></tr></table></figure>
+
+<h4 id="注意事项"><a href="#注意事项" class="headerlink" title="注意事项"></a>注意事项</h4><div class="alert warning no-icon"><p>允许有个多个同样的网关存在于多个计算节点（同一个子网跨多个物理节点导致）的情况，保证：</p>
+<ul>
+<li>要让本地的请求找到本地的路由器；</li>
+<li>要避免路由器的接口mac地址直接暴露到外部网络上。</li>
+</ul>
+</div>
+
+<div class="alert info no-icon"><p>要解决这两个问题，首先是合理处理好本地的ARP请求，让本地对网关的请求拦截发给本地的路由器。<br>同时，路由器路由后的网包，发到外部网络之前，先用一个跟节点绑定的特殊mac替换掉源mac。这个mac地址是控制器为每一个计算节点单独分配的唯一地址。</p>
+</div>
+
+<h3 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h3><p>要启动DVR，比较简单，分别在各个节点的网络配置文件上做如下修改或添加。</p>
+<h4 id="Neutron-Server"><a href="#Neutron-Server" class="headerlink" title="Neutron Server"></a>Neutron Server</h4><p>/etc/neutron/neutron.conf</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">router_distributed = True</span><br></pre></td></tr></table></figure>
+
+<h4 id="L3-Agent"><a href="#L3-Agent" class="headerlink" title="L3 Agent"></a>L3 Agent</h4><p>/etc/neutron/l3_agent.ini</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">agent_mode = [dvr_snat | dvr | legacy ]</span><br></pre></td></tr></table></figure>
+<p>网络节点上配置为dvr_snat，计算节点上配置为dvr。</p>
+<h4 id="L2-Agent"><a href="#L2-Agent" class="headerlink" title="L2 Agent"></a>L2 Agent</h4><p>/etc/neutron/plugins/ml2/ml2_conf.ini</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">mechanism_drivers = openvswitch, linuxbridge, l2population</span><br><span class="line"></span><br><span class="line">[agent]</span><br><span class="line">l2_population = True</span><br><span class="line">tunnel_types = vxlan</span><br><span class="line">enable_distributed_routing = True</span><br></pre></td></tr></table></figure>
+
+<h4 id="实现细节"><a href="#实现细节" class="headerlink" title="实现细节"></a>实现细节</h4><h5 id="添加路由器接口"><a href="#添加路由器接口" class="headerlink" title="添加路由器接口"></a>添加路由器接口</h5>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/20/Neutron%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91/"
+                    data-tooltip="Neutron端口转发"
+                    aria-label="PREVIOUS: Neutron端口转发"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（五）二层网络服务实现原理"
+                    aria-label="NEXT: 深入浅出Neutron（五）二层网络服务实现原理"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Understand Neutron（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/11/12/Understand-Neutron（二）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/11/20/Neutron%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91/"
+                    data-tooltip="Neutron端口转发"
+                    aria-label="PREVIOUS: Neutron端口转发"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/26/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%BA%94%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（五）二层网络服务实现原理"
+                    aria-label="NEXT: 深入浅出Neutron（五）二层网络服务实现原理"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Understand Neutron（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Understand Neutron（二）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/11/12/Understand-Neutron%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

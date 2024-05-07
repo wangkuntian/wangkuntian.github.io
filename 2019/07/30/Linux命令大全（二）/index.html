@@ -1,0 +1,812 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Linux命令大全（二）ss和netstat - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Linux">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"ss命令和netstat命令比较\n\n\n\n\nnetstat命令详解\nnetstat命令：用于显示各种网络相关信息，如网络连接，路由表，接口状态，无效连接，组播成员等等。\nnetstat命令是net-tools软件包中的一员。\n\n\nnetstat –help12345678910111213141516171819202122232425262728293031323334root@controller-1:~# netstat --helpusage: netstat [-vWeenNcCF] [&lt;Af&gt;] -r         netstat &#123;-V|--version|-h|--help&#125;       netstat [-vWnNcaeol] [&lt;Socket&gt; ...]       netstat &#123; [-vWeenNac] -i | [-cWnNe] -M | -s &#125;        -r, --route              display routing table        -i, --interfaces         display interface table        -g, --groups             display multicast group memberships        -s, --statistics         display networking statistics (like SNMP)        -M, --masquerade         display masqueraded connections        -v, --verbose            be verbose        -W, --wide               don&#x27;t truncate IP addresses        -n, --numeric            don&#x27;t resolve names        --numeric-hosts          don&#x27;t resolve host names        --numeric-ports          don&#x27;t resolve port names        --numeric-users          don&#x27;t resolve user names        -N, --symbolic           resolve hardware names        -e, --extend             display other/more information        -p, --programs           display PID/Program name for sockets        -c, --continuous         continuous listing        -l, --listening          display listening server sockets        -a, --all, --listening   display all sockets (default: connected)        -o, --timers             display timers        -F, --fib                display Forwarding Information Base (default)        -C, --cache              display routing cache instead of FIB  &lt;Socket&gt;=&#123;-t|--tcp&#125; &#123;-u|--udp&#125; &#123;-w|--raw&#125; &#123;-x|--unix&#125; --ax25 --ipx --netrom  &lt;AF&gt;=Use &#x27;-6|-4&#x27; or &#x27;-A &lt;af&gt;&#x27; or &#x27;--&lt;af&gt;&#x27;; default: inet  List of possible address families (which support routing):    inet (DARPA Internet) inet6 (IPv6) ax25 (AMPR AX.25)    netrom (AMPR NET/ROM) ipx (Novell IPX) ddp (Appletalk DDP)    x25 (CCITT X.25)\n状态netstat中的各种状态\n123456789101112131415161718192021CLOSED         初始（无连接）状态。LISTEN         侦听状态，等待远程机器的连接请求。SYN_SEND       在TCP三次握手期间，client发送了SYN包后，进入SYN_SEND状态，等待对方的ACK包。SYN_RECV       在TCP三次握手期间，server收到SYN包后，进入SYN_RECV状态。ESTABLISHED    完成TCP三次握手后，client进入ESTABLISHED状态。此时，TCP连接已经建立，可以进行通信。FIN_WAIT_1     在TCP四次挥手时，主动关闭端发送FIN包后，进入FIN_WAIT_1状态。CLOSE_WAIT     在TCP四次挥手期间，被动关闭端收到FIN包后，进入CLOSE_WAIT状态。LAST_ACK       在TCP四次挥手时，被动关闭端发送FIN包后，进入LAST_ACK状态，等待对方的ACK包。FIN_WAIT_2     在TCP四次挥手时，主动关闭端收到ACK包后，进入FIN_WAIT_2状态。TIME_WAIT      在TCP四次挥手时，主动关闭端发送了ACK包之后，进入TIME_WAIT状态，等待最多MSL时间，让被动关闭端收到ACK包。CLOSING        在TCP四次挥手期间，主动关闭端发送了FIN包后，没有收到对应的ACK包，却收到对方的FIN包，此时，进入CLOSING状态。 主动连接端可能的状态有：    CLOSED        SYN_SEND        ESTABLISHED主动关闭端可能的状态有：    FIN_WAIT_1    FIN_WAIT_2      TIME_WAIT被动连接端可能的状态有：    LISTEN        SYN_RECV        ESTABLISHED被动关闭端可能的状态有：    CLOSE_WAIT    LAST_ACK        CLOSED 在Linux下，如果连接数比较大，可以使用效率更高的ss来替代netstat。\n\n示例netstat -ltunp\n123456789101112root@controller-1:~# netstat -tlunpActive Internet connections (only servers)Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program nametcp        0      0 0.0.0.0:41055           0.0.0.0:*               LISTEN      143994/beam.smptcp        0      0 2.3.2.52:6815           0.0.0.0:*               LISTEN      12005/ceph-osdtcp        0      0 2.3.3.54:4000           0.0.0.0:*               LISTEN      1659249/httpdtcp        0      0 2.3.3.54:9696           0.0.0.0:*               LISTEN      1277924/python2.7tcp        0      0 2.3.3.54:6080           0.0.0.0:*               LISTEN      2740184/pythontcp        0      0 2.3.3.54:4001           0.0.0.0:*               LISTEN      3016399/httpdtcp        0      0 2.3.3.54:4002           0.0.0.0:*               LISTEN      2925101/httpdtcp        0      0 2.3.2.52:6789           0.0.0.0:*               LISTEN      17296/ceph-montcp        0      0 2.3.3.54:8774           0.0.0.0:*               LISTEN      2896223/python\n\nProto：数据包的协议，分为UDP和TCP。Recv-Q：表示收到的数据已经在本地接收缓存，但是还没有被进程取走的数据包数量。Send-Q：对方没有收到的数据包或者没有Ack回复的，加上本地缓冲区的数据包数量。Local Address：本地IP:端口。Foregin Address：远程主机IP:端口。表远程主机使用IP，通过端口连接到本机。State：连接状态。主要是已经建立连接（ESTABLISHED）和监听（LISTEN）两种状态。PID/Program name：进程ID和进程命令。\n\n\nnetstat -an\n12345678910111213141516netstat -anActive Internet connections (servers and established)Proto Recv-Q Send-Q Local Address           Foreign Address         Statetcp        0      0 0.0.0.0:41055           0.0.0.0:*               LISTENtcp        0      0 2.3.2.52:6815           0.0.0.0:*               LISTENtcp        0      0 2.3.3.54:4000           0.0.0.0:*               LISTENtcp        0      0 2.3.3.54:9696           0.0.0.0:*               LISTENActive UNIX domain sockets (servers and established)Proto RefCnt Flags       Type       State         I-Node   Pathunix  2      [ ACC ]     STREAM     LISTENING     67754    @cib_rounix  2      [ ACC ]     STREAM     LISTENING     62296    @quorumunix  2      [ ACC ]     STREAM     LISTENING     69170    @crmdunix  2      [ ]         DGRAM                    18705    /var/lib/haproxy/dev/logunix  2      [ ACC ]     STREAM     LISTENING     82414    private/tlsmgrunix  2      [ ACC ]     STREAM     LISTENING     63035    @lrmdunix  2      [ ACC ]     STREAM     LISTENING     166781368 /run/httpd/wsgi.8.0.1.sock\nSocket套接字的输出Proto：协议，一般为unix。RecCnt：连接到此Socket的进程数量。Flags：连接标识。Type：Socket访问类型。State：连接状态。主要是已经建立连接（ESTABLISHED）和监听（LISTEN）两种状态。I-Node：程序文件的i节点。Path：Socket程序的路径，或者相关数据的输出路径。\n\n\nss命令详解ss是Socket Statistics的缩写。\n\nss命令可以用来获取socket统计信息。它可以显示和netstat类似的内容。\nss命令是iproute2软件包中的一员。\n\nss –help123456789101112131415161718192021222324252627282930313233root@controller-1:~# ss --helpUsage: ss [ OPTIONS ]       ss [ OPTIONS ] [ FILTER ]   -h, --help\t\tthis message   -V, --version\toutput version information   -n, --numeric\tdon&#x27;t resolve service names   -r, --resolve       resolve host names   -a, --all\t\tdisplay all sockets   -l, --listening\tdisplay listening sockets   -o, --options       show timer information   -e, --extended      show detailed socket information   -m, --memory        show socket memory usage   -p, --processes\tshow process using socket   -i, --info\t\tshow internal TCP information   -s, --summary\tshow socket usage summary   -b, --bpf           show bpf filter socket information   -4, --ipv4          display only IP version 4 sockets   -6, --ipv6          display only IP version 6 sockets   -0, --packet\tdisplay PACKET sockets   -t, --tcp\t\tdisplay only TCP sockets   -u, --udp\t\tdisplay only UDP sockets   -d, --dccp\t\tdisplay only DCCP sockets   -w, --raw\t\tdisplay only RAW sockets   -x, --unix\t\tdisplay only Unix domain sockets   -f, --family=FAMILY display sockets of type FAMILY   -A, --query=QUERY, --socket=QUERY       QUERY := &#123;all|inet|tcp|udp|raw|unix|packet|netlink&#125;[,QUERY]   -D, --diag=FILE     Dump raw information about TCP sockets to FILE   -F, --filter=FILE   read filter information from FILE       FILTER := [ state TCP-STATE ] [ EXPRESSION ]\n\n示例ss -s查看当前服务器的网络连接数。\n123456789101112root@controller-1:~# ss -sTotal: 24160 (kernel 24511)TCP:   12865 (estab 4719, closed 7888, orphaned 0, synrecv 0, timewait 2780/0), ports 0Transport Total     IP        IPv6*\t  24511     -         -RAW\t  0         0         0UDP\t  48        17        31TCP\t  4977      4971      6INET\t  5025      4988      37FRAG\t  0         0         0\n\nss -l查看所有打开的网络端口。\n12345678root@controller-1:~# ss -l | moreNetid  State      Recv-Q Send-Q   Local Address:Port       Peer Address:Portnl     UNCONN     0      0                 rtnl:-1582816811               0:0nl     UNCONN     0      0                 rtnl:ntpd/16466                *nl     UNCONN     0      0                 rtnl:dockerd/2249                *nl     UNCONN     0      0                 rtnl:kernel                 *nl     UNCONN     0      0                 rtnl:-728964520               0:0nl     UNCONN     0      0                 rtnl:ovs-vswitchd/3996               0:0\n\n12345ss -a    # 列出所有网络连接ss -at   # 查看TCP Socketss -au   # 查看UDP Socketss -aw   # 查看RAW Socketss -ax   #查看UNIX Socket\n\nnetstat和ss区别ss命令可以用来获取socket统计信息，它可以显示和netstat类似的内容。ss的优势在于它能够显示更多详细的有关TCP和连接状态的信息，而且比netstat更快更高效。原因如下：\n\nnetstat是遍历/proc下面每个PID目录，ss直接读/proc/net下面的统计信息。所以ss执行的时候消耗资源以及消耗的时间都比netstat少很多。\n当服务器的socket连接数量变得非常大时，无论使用netstat命令还是直接cat /proc/net/tcp，执行速度都会很慢。\nss快速的秘诀是采用了TCP协议栈中的tcp_diag。tcp_diag是一个用于分析统计的模块，可以获得Linux内核中第一手信息，这就确保了ss的快捷高效。\n\nnetstat和ss之间替换命令命令替换\n\n\n原命令\n新命令\n作用\n\n\n\nnetstat -a\nss\n网络连接\n\n\nnetstat -r\nip route\n路由表\n\n\nnetstat -i\nip -s link\n统计接口\n\n\nnetstat -M\nss\n伪连接\n\n\nnetstat -g\nip maddr\n组播成员\n\n\n软件包替换\n\n\nnet-tools（淘汰）\niproute2\n用途\n\n\n\nifconfig\nip addr，ip link\n地址和链路配置\n\n\nroute\nip route\n路由表\n\n\narp\nip neigh\narp表\n\n\nvconfig\nip link\nVLAN\n\n\niptunnel\nip tunnel\n隧道\n\n\nipmaddr\nip maddr\n组播\n\n\nnetstat\nss\n统计\n\n\n","dateCreated":"2019-07-30T16:10:04+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2019-07-30T16:10:04+08:00","description":"ss命令和netstat命令比较","headline":"Linux命令大全（二）ss和netstat","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Linux","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="ss命令和netstat命令比较">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Linux命令大全（二）ss和netstat">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="ss命令和netstat命令比较">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/netstat.png">
+<meta property="article:published_time" content="2019-07-30T08:10:04.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.959Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/netstat.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Linux命令大全（二）ss和netstat
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-07-30T16:10:04+08:00">
+	
+		    Jul 30, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>ss命令和netstat命令比较</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#netstat%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3"><span class="toc-text">netstat命令详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#netstat-%E2%80%93help"><span class="toc-text">netstat –help</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%8A%B6%E6%80%81"><span class="toc-text">状态</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ss%E5%91%BD%E4%BB%A4%E8%AF%A6%E8%A7%A3"><span class="toc-text">ss命令详解</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#ss-%E2%80%93help"><span class="toc-text">ss –help</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B-1"><span class="toc-text">示例</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#netstat%E5%92%8Css%E5%8C%BA%E5%88%AB"><span class="toc-text">netstat和ss区别</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#netstat%E5%92%8Css%E4%B9%8B%E9%97%B4%E6%9B%BF%E6%8D%A2%E5%91%BD%E4%BB%A4"><span class="toc-text">netstat和ss之间替换命令</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%91%BD%E4%BB%A4%E6%9B%BF%E6%8D%A2"><span class="toc-text">命令替换</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%BD%AF%E4%BB%B6%E5%8C%85%E6%9B%BF%E6%8D%A2"><span class="toc-text">软件包替换</span></a></li></ol></li></ol></li></ol>
+
+<h3 id="netstat命令详解"><a href="#netstat命令详解" class="headerlink" title="netstat命令详解"></a>netstat命令详解</h3><ul>
+<li>netstat命令：用于显示各种网络相关信息，如网络连接，路由表，接口状态，无效连接，组播成员等等。</li>
+<li>netstat命令是net-tools软件包中的一员。</li>
+</ul>
+<p><img src="images/netstat.png" alt="netstat"></p>
+<h4 id="netstat-–help"><a href="#netstat-–help" class="headerlink" title="netstat –help"></a>netstat –help</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~# netstat --help</span><br><span class="line">usage: netstat [-vWeenNcCF] [<span class="tag">&lt;<span class="name">Af</span>&gt;</span>] -r         netstat &#123;-V|--version|-h|--help&#125;</span><br><span class="line">       netstat [-vWnNcaeol] [<span class="tag">&lt;<span class="name">Socket</span>&gt;</span> ...]</span><br><span class="line">       netstat &#123; [-vWeenNac] -i | [-cWnNe] -M | -s &#125;</span><br><span class="line"></span><br><span class="line">        -r, --route              display routing table</span><br><span class="line">        -i, --interfaces         display interface table</span><br><span class="line">        -g, --groups             display multicast group memberships</span><br><span class="line">        -s, --statistics         display networking statistics (like SNMP)</span><br><span class="line">        -M, --masquerade         display masqueraded connections</span><br><span class="line"></span><br><span class="line">        -v, --verbose            be verbose</span><br><span class="line">        -W, --wide               don&#x27;t truncate IP addresses</span><br><span class="line">        -n, --numeric            don&#x27;t resolve names</span><br><span class="line">        --numeric-hosts          don&#x27;t resolve host names</span><br><span class="line">        --numeric-ports          don&#x27;t resolve port names</span><br><span class="line">        --numeric-users          don&#x27;t resolve user names</span><br><span class="line">        -N, --symbolic           resolve hardware names</span><br><span class="line">        -e, --extend             display other/more information</span><br><span class="line">        -p, --programs           display PID/Program name for sockets</span><br><span class="line">        -c, --continuous         continuous listing</span><br><span class="line"></span><br><span class="line">        -l, --listening          display listening server sockets</span><br><span class="line">        -a, --all, --listening   display all sockets (default: connected)</span><br><span class="line">        -o, --timers             display timers</span><br><span class="line">        -F, --fib                display Forwarding Information Base (default)</span><br><span class="line">        -C, --cache              display routing cache instead of FIB</span><br><span class="line"></span><br><span class="line">  <span class="tag">&lt;<span class="name">Socket</span>&gt;</span>=&#123;-t|--tcp&#125; &#123;-u|--udp&#125; &#123;-w|--raw&#125; &#123;-x|--unix&#125; --ax25 --ipx --netrom</span><br><span class="line">  <span class="tag">&lt;<span class="name">AF</span>&gt;</span>=Use &#x27;-6|-4&#x27; or &#x27;-A <span class="tag">&lt;<span class="name">af</span>&gt;</span>&#x27; or &#x27;--<span class="tag">&lt;<span class="name">af</span>&gt;</span>&#x27;; default: inet</span><br><span class="line">  List of possible address families (which support routing):</span><br><span class="line">    inet (DARPA Internet) inet6 (IPv6) ax25 (AMPR AX.25)</span><br><span class="line">    netrom (AMPR NET/ROM) ipx (Novell IPX) ddp (Appletalk DDP)</span><br><span class="line">    x25 (CCITT X.25)</span><br></pre></td></tr></table></figure>
+<h4 id="状态"><a href="#状态" class="headerlink" title="状态"></a>状态</h4><p>netstat中的各种状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">CLOSED         初始（无连接）状态。</span><br><span class="line">LISTEN         侦听状态，等待远程机器的连接请求。</span><br><span class="line"></span><br><span class="line">SYN_SEND       在TCP三次握手期间，client发送了SYN包后，进入SYN_SEND状态，等待对方的ACK包。</span><br><span class="line">SYN_RECV       在TCP三次握手期间，server收到SYN包后，进入SYN_RECV状态。</span><br><span class="line">ESTABLISHED    完成TCP三次握手后，client进入ESTABLISHED状态。此时，TCP连接已经建立，可以进行通信。</span><br><span class="line"></span><br><span class="line">FIN_WAIT_1     在TCP四次挥手时，主动关闭端发送FIN包后，进入FIN_WAIT_1状态。</span><br><span class="line">CLOSE_WAIT     在TCP四次挥手期间，被动关闭端收到FIN包后，进入CLOSE_WAIT状态。</span><br><span class="line">LAST_ACK       在TCP四次挥手时，被动关闭端发送FIN包后，进入LAST_ACK状态，等待对方的ACK包。</span><br><span class="line">FIN_WAIT_2     在TCP四次挥手时，主动关闭端收到ACK包后，进入FIN_WAIT_2状态。</span><br><span class="line">TIME_WAIT      在TCP四次挥手时，主动关闭端发送了ACK包之后，进入TIME_WAIT状态，等待最多MSL时间，让被动关闭端收到ACK包。</span><br><span class="line">CLOSING        在TCP四次挥手期间，主动关闭端发送了FIN包后，没有收到对应的ACK包，却收到对方的FIN包，此时，进入CLOSING状态。</span><br><span class="line"></span><br><span class="line"> </span><br><span class="line">主动连接端可能的状态有：    CLOSED        SYN_SEND        ESTABLISHED</span><br><span class="line">主动关闭端可能的状态有：    FIN_WAIT_1    FIN_WAIT_2      TIME_WAIT</span><br><span class="line">被动连接端可能的状态有：    LISTEN        SYN_RECV        ESTABLISHED</span><br><span class="line">被动关闭端可能的状态有：    CLOSE_WAIT    LAST_ACK        CLOSED</span><br><span class="line"> </span><br><span class="line">在Linux下，如果连接数比较大，可以使用效率更高的ss来替代netstat。</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h4><p>netstat -ltunp</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># netstat -tlunp</span></span><br><span class="line">Active Internet connections (only servers)</span><br><span class="line">Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name</span><br><span class="line">tcp        0      0 0.0.0.0:41055           0.0.0.0:*               LISTEN      143994/beam.smp</span><br><span class="line">tcp        0      0 2.3.2.52:6815           0.0.0.0:*               LISTEN      12005/ceph-osd</span><br><span class="line">tcp        0      0 2.3.3.54:4000           0.0.0.0:*               LISTEN      1659249/httpd</span><br><span class="line">tcp        0      0 2.3.3.54:9696           0.0.0.0:*               LISTEN      1277924/python2.7</span><br><span class="line">tcp        0      0 2.3.3.54:6080           0.0.0.0:*               LISTEN      2740184/python</span><br><span class="line">tcp        0      0 2.3.3.54:4001           0.0.0.0:*               LISTEN      3016399/httpd</span><br><span class="line">tcp        0      0 2.3.3.54:4002           0.0.0.0:*               LISTEN      2925101/httpd</span><br><span class="line">tcp        0      0 2.3.2.52:6789           0.0.0.0:*               LISTEN      17296/ceph-mon</span><br><span class="line">tcp        0      0 2.3.3.54:8774           0.0.0.0:*               LISTEN      2896223/python</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>Proto：数据包的协议，分为UDP和TCP。<br>Recv-Q：表示收到的数据已经在本地接收缓存，但是还没有被进程取走的数据包数量。<br>Send-Q：对方没有收到的数据包或者没有Ack回复的，加上本地缓冲区的数据包数量。<br>Local Address：本地IP:端口。<br>Foregin Address：远程主机IP:端口。表远程主机使用IP，通过端口连接到本机。<br>State：连接状态。主要是已经建立连接（ESTABLISHED）和监听（LISTEN）两种状态。<br>PID/Program name：进程ID和进程命令。</p>
+</div>
+
+<p>netstat -an</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">netstat -an</span><br><span class="line">Active Internet connections (servers and established)</span><br><span class="line">Proto Recv-Q Send-Q Local Address           Foreign Address         State</span><br><span class="line">tcp        0      0 0.0.0.0:41055           0.0.0.0:*               LISTEN</span><br><span class="line">tcp        0      0 2.3.2.52:6815           0.0.0.0:*               LISTEN</span><br><span class="line">tcp        0      0 2.3.3.54:4000           0.0.0.0:*               LISTEN</span><br><span class="line">tcp        0      0 2.3.3.54:9696           0.0.0.0:*               LISTEN</span><br><span class="line">Active UNIX domain sockets (servers and established)</span><br><span class="line">Proto RefCnt Flags       Type       State         I-Node   Path</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     67754    @cib_ro</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     62296    @quorum</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     69170    @crmd</span><br><span class="line">unix  2      [ ]         DGRAM                    18705    /var/lib/haproxy/dev/log</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     82414    private/tlsmgr</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     63035    @lrmd</span><br><span class="line">unix  2      [ ACC ]     STREAM     LISTENING     166781368 /run/httpd/wsgi.8.0.1.sock</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>Socket套接字的输出<br>Proto：协议，一般为unix。<br>RecCnt：连接到此Socket的进程数量。<br>Flags：连接标识。<br>Type：Socket访问类型。<br>State：连接状态。主要是已经建立连接（ESTABLISHED）和监听（LISTEN）两种状态。<br>I-Node：程序文件的i节点。<br>Path：Socket程序的路径，或者相关数据的输出路径。</p>
+</div>
+
+<h3 id="ss命令详解"><a href="#ss命令详解" class="headerlink" title="ss命令详解"></a>ss命令详解</h3><p>ss是Socket Statistics的缩写。</p>
+<ul>
+<li>ss命令可以用来获取socket统计信息。它可以显示和netstat类似的内容。</li>
+<li>ss命令是iproute2软件包中的一员。</li>
+</ul>
+<h4 id="ss-–help"><a href="#ss-–help" class="headerlink" title="ss –help"></a>ss –help</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~# ss --help</span><br><span class="line">Usage: ss [ OPTIONS ]</span><br><span class="line">       ss [ OPTIONS ] [ FILTER ]</span><br><span class="line">   -h, --help		this message</span><br><span class="line">   -V, --version	output version information</span><br><span class="line">   -n, --numeric	don&#x27;t resolve service names</span><br><span class="line">   -r, --resolve       resolve host names</span><br><span class="line">   -a, --all		display all sockets</span><br><span class="line">   -l, --listening	display listening sockets</span><br><span class="line">   -o, --options       show timer information</span><br><span class="line">   -e, --extended      show detailed socket information</span><br><span class="line">   -m, --memory        show socket memory usage</span><br><span class="line">   -p, --processes	show process using socket</span><br><span class="line">   -i, --info		show internal TCP information</span><br><span class="line">   -s, --summary	show socket usage summary</span><br><span class="line">   -b, --bpf           show bpf filter socket information</span><br><span class="line"></span><br><span class="line">   -4, --ipv4          display only IP version 4 sockets</span><br><span class="line">   -6, --ipv6          display only IP version 6 sockets</span><br><span class="line">   -0, --packet	display PACKET sockets</span><br><span class="line">   -t, --tcp		display only TCP sockets</span><br><span class="line">   -u, --udp		display only UDP sockets</span><br><span class="line">   -d, --dccp		display only DCCP sockets</span><br><span class="line">   -w, --raw		display only RAW sockets</span><br><span class="line">   -x, --unix		display only Unix domain sockets</span><br><span class="line">   -f, --family=FAMILY display sockets of type FAMILY</span><br><span class="line"></span><br><span class="line">   -A, --query=QUERY, --socket=QUERY</span><br><span class="line">       QUERY := &#123;all|inet|tcp|udp|raw|unix|packet|netlink&#125;[,QUERY]</span><br><span class="line"></span><br><span class="line">   -D, --diag=FILE     Dump raw information about TCP sockets to FILE</span><br><span class="line">   -F, --filter=FILE   read filter information from FILE</span><br><span class="line">       FILTER := [ state TCP-STATE ] [ EXPRESSION ]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例-1"><a href="#示例-1" class="headerlink" title="示例"></a>示例</h4><p>ss -s<br>查看当前服务器的网络连接数。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># ss -s</span></span><br><span class="line">Total: 24160 (kernel 24511)</span><br><span class="line">TCP:   12865 (estab 4719, closed 7888, orphaned 0, synrecv 0, timewait 2780/0), ports 0</span><br><span class="line"></span><br><span class="line">Transport Total     IP        IPv6</span><br><span class="line">*	  24511     -         -</span><br><span class="line">RAW	  0         0         0</span><br><span class="line">UDP	  48        17        31</span><br><span class="line">TCP	  4977      4971      6</span><br><span class="line">INET	  5025      4988      37</span><br><span class="line">FRAG	  0         0         0</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>ss -l<br>查看所有打开的网络端口。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># ss -l | more</span></span><br><span class="line">Netid  State      Recv-Q Send-Q   Local Address:Port       Peer Address:Port</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:-1582816811               0:0</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:ntpd/16466                *</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:dockerd/2249                *</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:kernel                 *</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:-728964520               0:0</span><br><span class="line"><span class="built_in">nl</span>     UNCONN     0      0                 rtnl:ovs-vswitchd/3996               0:0</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ss -a    <span class="comment"># 列出所有网络连接</span></span><br><span class="line">ss -at   <span class="comment"># 查看TCP Socket</span></span><br><span class="line">ss -au   <span class="comment"># 查看UDP Socket</span></span><br><span class="line">ss -aw   <span class="comment"># 查看RAW Socket</span></span><br><span class="line">ss -ax   <span class="comment">#查看UNIX Socket</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="netstat和ss区别"><a href="#netstat和ss区别" class="headerlink" title="netstat和ss区别"></a>netstat和ss区别</h3><p>ss命令可以用来获取socket统计信息，它可以显示和netstat类似的内容。<br>ss的优势在于它能够显示更多详细的有关TCP和连接状态的信息，而且比netstat更快更高效。原因如下：</p>
+<ol>
+<li>netstat是遍历/proc下面每个PID目录，ss直接读/proc/net下面的统计信息。所以ss执行的时候消耗资源以及消耗的时间都比netstat少很多。</li>
+<li>当服务器的socket连接数量变得非常大时，无论使用netstat命令还是直接cat /proc/net/tcp，执行速度都会很慢。</li>
+<li>ss快速的秘诀是采用了TCP协议栈中的tcp_diag。tcp_diag是一个用于分析统计的模块，可以获得Linux内核中第一手信息，这就确保了ss的快捷高效。</li>
+</ol>
+<h4 id="netstat和ss之间替换命令"><a href="#netstat和ss之间替换命令" class="headerlink" title="netstat和ss之间替换命令"></a>netstat和ss之间替换命令</h4><h5 id="命令替换"><a href="#命令替换" class="headerlink" title="命令替换"></a>命令替换</h5><table>
+<thead>
+<tr>
+<th align="left">原命令</th>
+<th align="left">新命令</th>
+<th align="left">作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">netstat -a</td>
+<td align="left">ss</td>
+<td align="left">网络连接</td>
+</tr>
+<tr>
+<td align="left">netstat -r</td>
+<td align="left">ip route</td>
+<td align="left">路由表</td>
+</tr>
+<tr>
+<td align="left">netstat -i</td>
+<td align="left">ip -s link</td>
+<td align="left">统计接口</td>
+</tr>
+<tr>
+<td align="left">netstat -M</td>
+<td align="left">ss</td>
+<td align="left">伪连接</td>
+</tr>
+<tr>
+<td align="left">netstat -g</td>
+<td align="left">ip maddr</td>
+<td align="left">组播成员</td>
+</tr>
+</tbody></table>
+<h5 id="软件包替换"><a href="#软件包替换" class="headerlink" title="软件包替换"></a>软件包替换</h5><table>
+<thead>
+<tr>
+<th align="left">net-tools（淘汰）</th>
+<th align="left">iproute2</th>
+<th align="left">用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">ifconfig</td>
+<td align="left">ip addr，ip link</td>
+<td align="left">地址和链路配置</td>
+</tr>
+<tr>
+<td align="left">route</td>
+<td align="left">ip route</td>
+<td align="left">路由表</td>
+</tr>
+<tr>
+<td align="left">arp</td>
+<td align="left">ip neigh</td>
+<td align="left">arp表</td>
+</tr>
+<tr>
+<td align="left">vconfig</td>
+<td align="left">ip link</td>
+<td align="left">VLAN</td>
+</tr>
+<tr>
+<td align="left">iptunnel</td>
+<td align="left">ip tunnel</td>
+<td align="left">隧道</td>
+</tr>
+<tr>
+<td align="left">ipmaddr</td>
+<td align="left">ip maddr</td>
+<td align="left">组播</td>
+</tr>
+<tr>
+<td align="left">netstat</td>
+<td align="left">ss</td>
+<td align="left">统计</td>
+</tr>
+</tbody></table>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Linux/" rel="tag">Linux</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/30/Linux-Performance-Tools/"
+                    data-tooltip="Linux Performance Tools"
+                    aria-label="PREVIOUS: Linux Performance Tools"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/18/Python%E4%B9%8B%E7%A6%85/"
+                    data-tooltip="Python之禅"
+                    aria-label="NEXT: Python之禅"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Linux命令大全（二）ss和netstat"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/07/30/Linux命令大全（二）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/30/Linux-Performance-Tools/"
+                    data-tooltip="Linux Performance Tools"
+                    aria-label="PREVIOUS: Linux Performance Tools"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/18/Python%E4%B9%8B%E7%A6%85/"
+                    data-tooltip="Python之禅"
+                    aria-label="NEXT: Python之禅"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Linux命令大全（二）ss和netstat"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Linux命令大全（二）ss和netstat"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/07/30/Linux%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

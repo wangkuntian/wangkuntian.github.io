@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack漫游指南--Cinder - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,Cinder">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\nVolumeDeviceNotFound实例Hard Reboot后，出现VolumeDeviceNotFound的错误。\n查看计算节点上，nova-compute的日志。 \n1nova.compute.manager [req-1c2e36df-c5ff-49aa-9893-6046cd0cbfeb b29311c34edb4f179092e81cbee10682 8e4be2cb25084defb5a9f0128afd5291 - default default] [instance: d17a8b0f-759c-4f54-b265-64fc16986710] Cannot reboot instance: Volume device not found at .: os_brick.exception.VolumeDeviceNotFound: Volume device not found at .\n\n解决方法\n确定实例挂载卷的ID。\n1234567openstack server show d17a8b0f-759c-4f54-b265-64fc16986710 -c volumes_attached+------------------+-------------------------------------------+| Field            | Value                                     |+------------------+-------------------------------------------+| volumes_attached | id=&#x27;f870fcdb-209c-4877-8de4-1b7683b98548&#x27; |+------------------+-------------------------------------------+\n\n存储节点查看对应的物理设备是否被创建。\n1234# f870fcdb-209c-4877-8de4-1b7683b98548是volume的ID。lsblk | grep f870fcdb--209c--4877--8de4--1b7683b98548├─cinder--volumes-volume--f870fcdb--209c--4877--8de4--1b7683b98548 252:101  0   150G  0 lvm  ├─cinder--volumes-volume--f870fcdb--209c--4877--8de4--1b7683b98548 252:101  0   150G  0 lvm\n卷对应物理设备就是。\n1ls /dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n在存储节点上查看iSCSI资源。\n1targetcli ls\n得到下面的结果。\n12345678| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ... [TPGs: 1]| | o- tpg1 ................................................ [no-gen-acls, auth per-acl]| |   o- acls ................................................................ [ACLs: 1]| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ......... [1-way auth, Mapped LUNs: 0]| |   o- luns ................................................................ [LUNs: 0]| |   o- portals .......................................................... [Portals: 1]| |     o- 10.10.15.14:3260 ....................................................... [OK]\n从上面的结果可以看到acls（ACL，Access Control Lists，访问控制列表）是正常的，但luns（LUN，Logical Unit Number，逻辑单元号）中没有数据。\n\n新建backstores\n1234targetcli \\/backstores/block create \\ name=iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 \\dev=/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n新建lun\n1234targetcli \\/iscsi/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548/tpg1/luns \\ create  \\/backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548\n也可以使用cinder-rtstool，更加方便。\n1cinder-rtstool create /backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n再次查看，已经正常。\n123456789| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................... [TPGs: 1]| | o- tpg1 ............................................................................ [no-gen-acls, auth per-acl]| |   o- acls ............................................................................................ [ACLs: 1]| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ..................................... [1-way auth, Mapped LUNs: 1]| |   |   o- mapped_lun0 ... [lun0 block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (rw)]| |   o- luns ............................................................................................ [LUNs: 1]| |   | o- lun0  [block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548) (default_tg_pt_gp)]| |   o- portals ...................................................................................... [Portals: 1]  |   | o- 10.10.15.14:3260 ................................................................................... [OK]\n\n最后重启实例。\n1openstack server reboot --hard ce979e29-198d-498b-b2e3-c0cab6c82c98\n\n\n\n简单脚本\n123456789101112131415volume=$1if [[ -z vlolume ]]; then  echo &quot;empty volume id&quot;  exit 1fitargetcli \\/backstores/block create \\ name=iqn.2010-10.org.openstack:volume-$&#123;volume&#125; \\dev=/dev/cinder-volumes/volume-$&#123;volume&#125;targetcli \\/iscsi/iqn.2010-10.org.openstack:volume-$&#123;volume&#125;/tpg1/luns \\ create \\/backstores/block/iqn.2010-10.org.openstack:volume-$&#123;volume&#125;\n\niSCSI Login negotiation failedvolume删除后，存储节点的日志里依旧会报错。\n12Jan 17 10:14:22 compute3 kernel: Unable to locate Target IQN: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb in Storage NodeJan 17 10:14:22 compute3 kernel: iSCSI Login negotiation failed.\n\n解决方法到各个节点中执行iscsiadm命令，查看是否存在相应的session。\n1234567[root@compute2 ~] iscsiadm -m session -P 3 | grep c6774132Target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb (non-flash)# 将session退出[root@compute2 ~] iscsiadm -m node -T iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb -p 10.10.15.14:3260 --logoutLogging out of session [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260]Logout of [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260] successful.\n\n12345678910set -x -evolume_id=9ef6d658-104a-4b59-9c20-3046dd8dfc9aauth_user=XeL9sNhAKNFumZ7Nmai5auth_password=FWcRnkPJ9XUF7qTC#initiator_name=iqn.2016-04.com.open-iscsi:c81e0b7d0c7initiator_name=iqn.2016-04.com.open-iscsi:928262e4d53cinder-rtstool create /dev/cinder-volumes/volume-$volume_id \\iqn.2010-10.org.openstack:volume-$volume_id $auth_user $auth_password False -p3260 -a10.10.15.14cinder-rtstool add-initiator iqn.2010-10.org.openstack:volume-$volume_id $auth_user $auth_password $initiator_name\n123456iscsiadm -m discovery -t sendtargets -p 10.10.15.14target_iqniscsiadm -m node -T iqn.2010-10.org.openstack:volume-9ef6d658-104a-4b59-9c20-3046dd8dfc9a -p 10.10.15.14 -l\n编辑/var/lib/iscsi/nodes/iqn.2010-10.org.openstack:volume-9ef6d658-104a-4b59-9c20-3046dd8dfc9a/10.10.15.14,3260,1/default \n123node.session.auth.authmethod = CHAPnode.session.auth.username = XeL9sNhAKNFumZ7Nmai5node.session.auth.password = FWcRnkPJ9XUF7qTC\n1systemctl restart iscsi.service","dateCreated":"2023-09-25T09:40:41+08:00","dateModified":"2024-05-07T10:27:47+08:00","datePublished":"2023-09-25T09:40:41+08:00","description":"OpenStack中的Cinder","headline":"OpenStack漫游指南--Cinder","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/","keywords":"OpenStack, Cinder","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="OpenStack中的Cinder">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack漫游指南--Cinder">
+<meta property="og:url" content="https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack中的Cinder">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2023-09-25T01:40:41.000Z">
+<meta property="article:modified_time" content="2024-05-07T02:27:47.320Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="Cinder">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack漫游指南--Cinder
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2023-09-25T09:40:41+08:00">
+	
+		    Sep 25, 2023
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#VolumeDeviceNotFound"><span class="toc-text">VolumeDeviceNotFound</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%B3%95"><span class="toc-text">解决方法</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#iSCSI-Login-negotiation-failed"><span class="toc-text">iSCSI Login negotiation failed</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%B3%95-1"><span class="toc-text">解决方法</span></a></li></ol></li></ol>
+
+<h1 id="VolumeDeviceNotFound"><a href="#VolumeDeviceNotFound" class="headerlink" title="VolumeDeviceNotFound"></a>VolumeDeviceNotFound</h1><p>实例Hard Reboot后，出现VolumeDeviceNotFound的错误。</p>
+<p>查看计算节点上，nova-compute的日志。 </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova.compute.manager [req-1c2e36df-c5ff-49aa-9893-6046cd0cbfeb b29311c34edb4f179092e81cbee10682 8e4be2cb25084defb5a9f0128afd5291 - default default] [instance: d17a8b0f-759c-4f54-b265-64fc16986710] Cannot reboot instance: Volume device not found at .: os_brick.exception.VolumeDeviceNotFound: Volume device not found at .</span><br></pre></td></tr></table></figure>
+
+<h2 id="解决方法"><a href="#解决方法" class="headerlink" title="解决方法"></a>解决方法</h2><ol>
+<li><p>确定实例挂载卷的ID。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openstack server show d17a8b0f-759c-4f54-b265-64fc16986710 -c volumes_attached</span><br><span class="line">+------------------+-------------------------------------------+</span><br><span class="line">| Field            | Value                                     |</span><br><span class="line">+------------------+-------------------------------------------+</span><br><span class="line">| volumes_attached | <span class="built_in">id</span>=<span class="string">&#x27;f870fcdb-209c-4877-8de4-1b7683b98548&#x27;</span> |</span><br><span class="line">+------------------+-------------------------------------------+</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>存储节点查看对应的物理设备是否被创建。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># f870fcdb-209c-4877-8de4-1b7683b98548是volume的ID。</span></span><br><span class="line">lsblk | grep f870fcdb--209c--4877--8de4--1b7683b98548</span><br><span class="line">├─cinder--volumes-volume--f870fcdb--209c--4877--8de4--1b7683b98548 252:101  0   150G  0 lvm  </span><br><span class="line">├─cinder--volumes-volume--f870fcdb--209c--4877--8de4--1b7683b98548 252:101  0   150G  0 lvm</span><br></pre></td></tr></table></figure>
+<p>卷对应物理设备就是。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">ls</span> /dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在存储节点上查看iSCSI资源。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">targetcli <span class="built_in">ls</span></span><br></pre></td></tr></table></figure>
+<p>得到下面的结果。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ... [TPGs: 1]</span><br><span class="line">| | o- tpg1 ................................................ [no-gen-acls, auth per-acl]</span><br><span class="line">| |   o- acls ................................................................ [ACLs: 1]</span><br><span class="line">| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ......... [1-way auth, Mapped LUNs: 0]</span><br><span class="line">| |   o- luns ................................................................ [LUNs: 0]</span><br><span class="line">| |   o- portals .......................................................... [Portals: 1]</span><br><span class="line">| |     o- 10.10.15.14:3260 ....................................................... [OK]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>从上面的结果可以看到acls（ACL，Access Control Lists，访问控制列表）是正常的，但luns（LUN，Logical Unit Number，逻辑单元号）中没有数据。</p>
+</li>
+<li><p>新建backstores</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">targetcli \</span><br><span class="line">/backstores/block create \ </span><br><span class="line">name=iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 \</span><br><span class="line">dev=/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建lun</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">targetcli \</span><br><span class="line">/iscsi/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548/tpg1/luns \ </span><br><span class="line">create  \</span><br><span class="line">/backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+<p>也可以使用cinder-rtstool，更加方便。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cinder-rtstool create /backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>再次查看，已经正常。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................... [TPGs: 1]</span><br><span class="line">| | o- tpg1 ............................................................................ [no-gen-acls, auth per-acl]</span><br><span class="line">| |   o- acls ............................................................................................ [ACLs: 1]</span><br><span class="line">| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ..................................... [1-way auth, Mapped LUNs: 1]</span><br><span class="line">| |   |   o- mapped_lun0 ... [lun0 block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (rw)]</span><br><span class="line">| |   o- luns ............................................................................................ [LUNs: 1]</span><br><span class="line">| |   | o- lun0  [block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548) (default_tg_pt_gp)]</span><br><span class="line">| |   o- portals ...................................................................................... [Portals: 1]</span><br><span class="line">  |   | o- 10.10.15.14:3260 ................................................................................... [OK]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>最后重启实例。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack server reboot --hard ce979e29-198d-498b-b2e3-c0cab6c82c98</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>简单脚本</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">volume=<span class="variable">$1</span></span><br><span class="line"><span class="keyword">if</span> [[ -z vlolume ]]; <span class="keyword">then</span></span><br><span class="line">  <span class="built_in">echo</span> <span class="string">&quot;empty volume id&quot;</span></span><br><span class="line">  <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">targetcli \</span><br><span class="line">/backstores/block create \ </span><br><span class="line">name=iqn.2010-10.org.openstack:volume-<span class="variable">$&#123;volume&#125;</span> \</span><br><span class="line">dev=/dev/cinder-volumes/volume-<span class="variable">$&#123;volume&#125;</span></span><br><span class="line"></span><br><span class="line">targetcli \</span><br><span class="line">/iscsi/iqn.2010-10.org.openstack:volume-<span class="variable">$&#123;volume&#125;</span>/tpg1/luns \ </span><br><span class="line">create \</span><br><span class="line">/backstores/block/iqn.2010-10.org.openstack:volume-<span class="variable">$&#123;volume&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="iSCSI-Login-negotiation-failed"><a href="#iSCSI-Login-negotiation-failed" class="headerlink" title="iSCSI Login negotiation failed"></a>iSCSI Login negotiation failed</h1><p>volume删除后，存储节点的日志里依旧会报错。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Jan 17 10:14:22 compute3 kernel: Unable to locate Target IQN: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb in Storage Node</span><br><span class="line">Jan 17 10:14:22 compute3 kernel: iSCSI Login negotiation failed.</span><br></pre></td></tr></table></figure>
+
+<h2 id="解决方法-1"><a href="#解决方法-1" class="headerlink" title="解决方法"></a>解决方法</h2><p>到各个节点中执行iscsiadm命令，查看是否存在相应的session。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@compute2 ~] iscsiadm -m session -P 3 | grep c6774132</span><br><span class="line">Target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb (non-flash)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 将session退出</span></span><br><span class="line">[root@compute2 ~] iscsiadm -m node -T iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb -p 10.10.15.14:3260 --<span class="built_in">logout</span></span><br><span class="line">Logging out of session [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260]</span><br><span class="line">Logout of [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260] successful.</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> -x -e</span><br><span class="line">volume_id=9ef6d658-104a-4b59-9c20-3046dd8dfc9a</span><br><span class="line">auth_user=XeL9sNhAKNFumZ7Nmai5</span><br><span class="line">auth_password=FWcRnkPJ9XUF7qTC</span><br><span class="line"><span class="comment">#initiator_name=iqn.2016-04.com.open-iscsi:c81e0b7d0c7</span></span><br><span class="line">initiator_name=iqn.2016-04.com.open-iscsi:928262e4d53</span><br><span class="line">cinder-rtstool create /dev/cinder-volumes/volume-<span class="variable">$volume_id</span> \</span><br><span class="line">iqn.2010-10.org.openstack:volume-<span class="variable">$volume_id</span> <span class="variable">$auth_user</span> <span class="variable">$auth_password</span> False -p3260 -a10.10.15.14</span><br><span class="line"></span><br><span class="line">cinder-rtstool add-initiator iqn.2010-10.org.openstack:volume-<span class="variable">$volume_id</span> <span class="variable">$auth_user</span> <span class="variable">$auth_password</span> <span class="variable">$initiator_name</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">iscsiadm -m discovery -t sendtargets -p 10.10.15.14</span><br><span class="line"></span><br><span class="line">target_iqn</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">iscsiadm -m node -T iqn.2010-10.org.openstack:volume-9ef6d658-104a-4b59-9c20-3046dd8dfc9a -p 10.10.15.14 -l</span><br></pre></td></tr></table></figure>
+<p>编辑/var/lib/iscsi/nodes/iqn.2010-10.org.openstack:volume-9ef6d658-104a-4b59-9c20-3046dd8dfc9a/10.10.15.14,3260,1/default </p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">node.session.auth.authmethod</span> = CHAP</span><br><span class="line"><span class="attr">node.session.auth.username</span> = XeL9sNhAKNFumZ7Nmai5</span><br><span class="line"><span class="attr">node.session.auth.password</span> = FWcRnkPJ9XUF7qTC</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart iscsi.service</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Cinder/" rel="tag">Cinder</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/12/15/OpenEuler-Summit%E5%A4%A7%E4%BC%9A/"
+                    data-tooltip="OpenEuler Summit大会"
+                    aria-label="PREVIOUS: OpenEuler Summit大会"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--监控篇"
+                    aria-label="NEXT: OpenStack漫游指南--监控篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/&amp;title=OpenStack漫游指南--Cinder"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2023/09/25/OpenStack漫游指南-Cinder/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/12/15/OpenEuler-Summit%E5%A4%A7%E4%BC%9A/"
+                    data-tooltip="OpenEuler Summit大会"
+                    aria-label="PREVIOUS: OpenEuler Summit大会"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    data-tooltip="OpenStack漫游指南--监控篇"
+                    aria-label="NEXT: OpenStack漫游指南--监控篇"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/&amp;title=OpenStack漫游指南--Cinder"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/&amp;title=OpenStack漫游指南--Cinder"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

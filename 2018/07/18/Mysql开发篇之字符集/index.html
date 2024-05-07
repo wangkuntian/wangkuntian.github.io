@@ -1,0 +1,857 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Mysql开发篇之字符集 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Mysql,字符集">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"字符集就是一套文字符号及其编码、比较规则的集合。\n\n\n常用字符集\n\n\n字符集\n是否定长\n编码方式\n其他说明\n\n\n\nACSII\n是\n单字节7位编码\n最早的奠基性字符集\n\n\nISO-8859-1/latin 1\n是\n单字节8位编码\n西欧字符集，经常用来转码\n\n\nGB 2312-80\n是\n双字节编码\n早期标准\b，不推荐使用\n\n\nGBK\n是\n双字节编码\n不是国标，但是支持的系统不少\n\n\nGB 18030\n否\n2字节或4字节编码\n数据库支持的少见\n\n\nUTF-32\n是\n4字节编码\nUS-4原始编码，目前很少采用\n\n\nUSC-2\n是\n2字节编码\nWindows\b 2000\b内部使用\n\n\nUTF-16\n否\n2字节或4字节编码\n\bJava和Windows XP/BT内部使用\n\n\n\b UTF-8\n否\n1~4字节编码\n互联网和UNIX/L\binux广泛支持的Unicode字符集；Mysql Server也\b使用UTF-8\n\n\n选择合适的字符集\n满足应用支持语言的需求。如果要处理各种各样的文字，或者将发布到不同语言的国家或地区，就应该选择Unicode字符集。对Mysql来说，目前就是UTF-8。\n\n如果涉及到已有数据的导入，就要充分考虑数据库字符集对已有数据的兼容性。\n\n如果数据库只需要支持一般中文，数据量\b很大，性能要求也很高，那就选择双汉字定长编码的中文字符集，比如GBK。因为，相对于UTF-8而言，GBK比较“小”，每个汉字只占2个字节，而UTF-8汉字编码需要3个字节，减少磁盘I/O、数据库Cache以及网络传输的时间，提高性能。相反，如果应用主要处理\b英文字符，仅少量汉字数据，那么选择UTF-8更好，因为GBK、UCS-2、UTF-16的西文字符\b编码都是2个字符，会造成不必要的开销。\n\n如果数据库需要做大量的字符运算，如比较、排序等，那么选择定长字符集可能更好，因为定长字符集的处理速度要比变长字符集的处理速度更快。\n\n如果所有客户端程序都支持相同的字符集，则应该优先选择该字符集作为数据库字符集。这样可以避免因字符集转换带来的性能开销和数据损失。\n\n\nMysql支持的字符集Myql服务器可以指定多种字符集，在同一台服务器、同一个数据库甚至同一个表的不同字段都可以指定不同的字符集，相比Oracle等其他\b数据库管理系统，在同一个数据库只能使用相同的字符集，Mysql灵活性更高。\n\n查看所有可用的字符集\b1mysql&gt; show character set;\n\n查看所有的字符集和该字符集默认的校对规则1mysql&gt; desc information_schema.character_set;\n校对规则(Collation)Mysql的字符集包括字符集(Character)和校对规则(Collation)两个概念。字符集定义Mysql存储字符串的方式，校对规则用来定义比较字符串的方式。字符集和校对规则是一对多的关系。\b每个字符集至少对应一个校对规则。\n\n查看校对规则1mysql&gt; show Collation like &#x27;字符集名%&#x27;;\n命名约定以\b其相关的字符集名开始，通常包括一个语言名，并且以_ci(大小写不敏感)、_cs(大小写敏感)或_bin(二元，即比较是基于字符\b编码的值而与language无关)结束。\n\n\nMysql字符集设置Mysql字符集和校对规则有4个级别的默认设置：服务器级、数据库级、表级、字段级。\n\n服务器字符集和校对规则服务器字符集和校对规则可以在Mysql服务启动时确定，也可以在启动选项中指定，或者在编译时指定。\n\nmy.conf中设置\n123[mysqld]character-set-server = utf8collation-server = utf8_general_ci\n启动选项中指定\n1mysqld --character-set-server = utf8\n编译时指定\n1shell&gt; cmake . -deafult_charset = utf8\n如果没有指定\b服务器字符集，那么默认使用latin\b1作为服务器字符集。\n\n查看当前服务器的字符集\n1234567mysql&gt; show variables like &#x27;character_set_server&#x27;;+----------------------+-------+| Variable_name        | Value |+----------------------+-------+| character_set_server | utf8  |+----------------------+-------+1 row in set (0.01 sec)\n查看当前服务器的校对规则\n1234567mysql&gt; show variables like &#x27;collation_server&#x27;;+------------------+-----------------+| Variable_name    | Value           |+------------------+-----------------+| collation_server | utf8_general_ci |+------------------+-----------------+1 row in set (0.00 sec)\n\n\n数据库字符集和校对规则数据库的字符集和校对规则在创建数据库的时候指定，也可以在创建完数据库后通过alter database命令进行修改。\n需要注意的是，如果数据库存在数据，因为修改字符集并不能将已有的数据按照新的字符集进行存放，所以不能通过修改数据库的字符集直接修改数据内容。\n\n\n\n设置数据库字符集的规则\n\n如果指定了字符集和校对规则，则使用指定的字符集和校对规则。\n如果制定了字符集没有指定校对规则，则使用指定字符集的默认校对规则。\n如果指定了校对规则没有指定字符集，则字符集使用与该校对规则关联的字符集。\n如果没有指定字符集也没有指定校对规则，则使用服务器字符集和校对规则作为数据库的字符集和校对规则。\n推荐在创建数据库时明确指定字符集和校对规则，避免受到默认值的影响。\n\n\n查看当前数据库的字符集\n1234567mysql&gt; show variables like &#x27;character_set_database&#x27;;+------------------------+-------+| Variable_name          | Value |+------------------------+-------+| character_set_database | utf8  |+------------------------+-------+1 row in set (0.03 sec)\n\n查看当前数据库的校对规则\n1234567mysql&gt; show variables like &#x27;collation_database&#x27;;+--------------------+-----------------+| Variable_name      | Value           |+--------------------+-----------------+| collation_database | utf8_general_ci |+--------------------+-----------------+1 row in set (0.01 sec)\n\n\n表字符集和校对规则表的字符集和校对规则在创建表的时候指定，可以通过alter table命令进行修改，同样，如果表中有记录，修改字符集对原有的记录并没有影响，不会按照新的字符集进行存放。表中字段仍然使用原来的字符集。\n\n设置表的字符集的规则\n\n如果指定了字符集和校对规则，使用指定的字符集和校对规则。\n如果指定了字符集没有指定校对规则，使用指定字符集的默认校对规则。\n如果指定了校对规则但未指定字符集，则字符集使用与该校对规则关联的字符集。\n如果没有指定字符集和校对规则，使用数据库字符集和校对规则最为表的字符集和校对规则。\n\n推荐在创建表的时候明确指明字符集和校对规则，以避免受到默认值的影响。\n\n\n显示表的字符集和校对规则\n1mysql&gt; show create table &lt;tablename&gt;;\n\n\n列字符集和校对规则Mysql可以定义列级别的字符集和校对规则，主要是针对相同的表不同字符需要使用不同的字符集的情况。列字符集和校对规则的定义可以在创建表时指定，或者在修改表时调整，如果在创建表的时候没有特别指定字符集和校对规则，则默认使用表的字符集和校对规则。\n\n连接字符集和校对规则上面4种设置方式，确定的是数据保存的字符集和校对规则，对于实际的应用访问来说，还存在客户端和服务器之间交互的字符集和校对规则的设置。对于客户端和服务器的交互操作，Mysql提供了3个不同的参数：character_set_client、character_set_connection和character_set_results,分别代表客户端、连接和返回结果的字符集。\n通常情况下，这3个参数应该是相同的，才可以保证用户写入的数据可以正确的读出，特别是对于中文字符，不同的写入字符集和返回结果字符集将导致写入的记录不能正确读出。\n\n\n  通常情况下，不会单独地设置这三个参数，可以通过以下命令设置连接的字符串和校对规则。\n  1set names &lt;character_set&gt;;\n  需要在每次数据库连接后都执行这个命令。\n\n\n  另个更简便的方法，是在my.conf中设置。\n  12[mysql]default-character-set=&lt;character_set&gt;\n\n\n\n字符集的修改如果在应用开始阶段没有正确地设置字符集，在运行一段时间后才发现不能满足要求需要调整，又不想丢弃这段时间的数据，那么就需要进行字符集的修改。\n字符集的修改操作不能直接通过“alter database character set ”或者“alter table  character set ”命令进行，这两个命令都没有更新已有记录的字符集，而只是对新创建的表或者记录生效。\n\n已有记录的字符集调整，需要先将数据导出，经过适当调整重新导入后才可完成。\n","dateCreated":"2018-07-18T17:00:00+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2018-07-18T17:00:00+08:00","description":"字符集就是一套文字符号及其编码、比较规则的集合。","headline":"Mysql开发篇之字符集","image":["covers/LOL/Vayne/Firecracker-Vayne-2.jpg","covers/LOL/Vayne/Firecracker-Vayne-2.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/","keywords":"Mysql, 字符集","thumbnailUrl":"covers/LOL/Vayne/Firecracker-Vayne-2.jpg"}</script>
+    <meta name="description" content="字符集就是一套文字符号及其编码、比较规则的集合。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Mysql开发篇之字符集">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="字符集就是一套文字符号及其编码、比较规则的集合。">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-07-18T09:00:00.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.959Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Mysql">
+<meta property="article:tag" content="字符集">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/covers/LOL/Vayne/Firecracker-Vayne-2.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/covers/LOL/Vayne/Firecracker-Vayne-2.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/covers/LOL/Vayne/Firecracker-Vayne-2.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/covers/LOL/Vayne/Firecracker-Vayne-2.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Vayne/Firecracker-Vayne-2.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Mysql开发篇之字符集
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-07-18T17:00:00+08:00">
+	
+		    Jul 18, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Firecracker Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>字符集就是一套文字符号及其编码、比较规则的集合。</p>
+<span id="more"></span>
+
+<h3 id="常用字符集"><a href="#常用字符集" class="headerlink" title="常用字符集"></a>常用字符集</h3><table>
+<thead>
+<tr>
+<th align="left">字符集</th>
+<th align="center">是否定长</th>
+<th align="left">编码方式</th>
+<th align="left">其他说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">ACSII</td>
+<td align="center">是</td>
+<td align="left">单字节7位编码</td>
+<td align="left">最早的奠基性字符集</td>
+</tr>
+<tr>
+<td align="left">ISO-8859-1/latin 1</td>
+<td align="center">是</td>
+<td align="left">单字节8位编码</td>
+<td align="left">西欧字符集，经常用来转码</td>
+</tr>
+<tr>
+<td align="left">GB 2312-80</td>
+<td align="center">是</td>
+<td align="left">双字节编码</td>
+<td align="left">早期标准，不推荐使用</td>
+</tr>
+<tr>
+<td align="left">GBK</td>
+<td align="center">是</td>
+<td align="left">双字节编码</td>
+<td align="left">不是国标，但是支持的系统不少</td>
+</tr>
+<tr>
+<td align="left">GB 18030</td>
+<td align="center">否</td>
+<td align="left">2字节或4字节编码</td>
+<td align="left">数据库支持的少见</td>
+</tr>
+<tr>
+<td align="left">UTF-32</td>
+<td align="center">是</td>
+<td align="left">4字节编码</td>
+<td align="left">US-4原始编码，目前很少采用</td>
+</tr>
+<tr>
+<td align="left">USC-2</td>
+<td align="center">是</td>
+<td align="left">2字节编码</td>
+<td align="left">Windows 2000内部使用</td>
+</tr>
+<tr>
+<td align="left">UTF-16</td>
+<td align="center">否</td>
+<td align="left">2字节或4字节编码</td>
+<td align="left">Java和Windows XP/BT内部使用</td>
+</tr>
+<tr>
+<td align="left"> UTF-8</td>
+<td align="center">否</td>
+<td align="left">1~4字节编码</td>
+<td align="left">互联网和UNIX/Linux广泛支持的Unicode字符集；Mysql Server也使用UTF-8</td>
+</tr>
+</tbody></table>
+<h3 id="选择合适的字符集"><a href="#选择合适的字符集" class="headerlink" title="选择合适的字符集"></a>选择合适的字符集</h3><ol>
+<li><p>满足应用支持语言的需求。如果要处理各种各样的文字，或者将发布到不同语言的国家或地区，就应该选择Unicode字符集。对Mysql来说，目前就是UTF-8。</p>
+</li>
+<li><p>如果涉及到已有数据的导入，就要充分考虑数据库字符集对已有数据的兼容性。</p>
+</li>
+<li><p>如果数据库只需要支持一般中文，数据量很大，性能要求也很高，那就选择双汉字定长编码的中文字符集，比如GBK。因为，相对于UTF-8而言，GBK比较“小”，每个汉字只占2个字节，而UTF-8汉字编码需要3个字节，减少磁盘I/O、数据库Cache以及网络传输的时间，提高性能。相反，如果应用主要处理英文字符，仅少量汉字数据，那么选择UTF-8更好，因为GBK、UCS-2、UTF-16的西文字符编码都是2个字符，会造成不必要的开销。</p>
+</li>
+<li><p>如果数据库需要做大量的字符运算，如比较、排序等，那么选择定长字符集可能更好，因为定长字符集的处理速度要比变长字符集的处理速度更快。</p>
+</li>
+<li><p>如果所有客户端程序都支持相同的字符集，则应该优先选择该字符集作为数据库字符集。这样可以避免因字符集转换带来的性能开销和数据损失。</p>
+</li>
+</ol>
+<h3 id="Mysql支持的字符集"><a href="#Mysql支持的字符集" class="headerlink" title="Mysql支持的字符集"></a>Mysql支持的字符集</h3><p>Myql服务器可以指定多种字符集，在同一台服务器、同一个数据库甚至同一个表的不同字段都可以指定不同的字符集，相比Oracle等其他数据库管理系统，在同一个数据库只能使用相同的字符集，Mysql灵活性更高。</p>
+<ul>
+<li><h4 id="查看所有可用的字符集"><a href="#查看所有可用的字符集" class="headerlink" title="查看所有可用的字符集"></a>查看所有可用的字符集</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show character <span class="built_in">set</span>;</span><br></pre></td></tr></table></figure>
+</li>
+<li><h4 id="查看所有的字符集和该字符集默认的校对规则"><a href="#查看所有的字符集和该字符集默认的校对规则" class="headerlink" title="查看所有的字符集和该字符集默认的校对规则"></a>查看所有的字符集和该字符集默认的校对规则</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; desc information_schema.character_set;</span><br></pre></td></tr></table></figure>
+<h3 id="校对规则-Collation"><a href="#校对规则-Collation" class="headerlink" title="校对规则(Collation)"></a>校对规则(Collation)</h3><p>Mysql的字符集包括<strong>字符集</strong>(Character)和<strong>校对规则</strong>(Collation)两个概念。字符集定义Mysql存储字符串的方式，校对规则用来定义比较字符串的方式。字符集和校对规则是一对多的关系。每个字符集至少对应一个校对规则。</p>
+</li>
+<li><h4 id="查看校对规则"><a href="#查看校对规则" class="headerlink" title="查看校对规则"></a><strong>查看校对规则</strong></h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show Collation like <span class="string">&#x27;字符集名%&#x27;</span>;</span><br></pre></td></tr></table></figure></li>
+<li><h4 id="命名约定"><a href="#命名约定" class="headerlink" title="命名约定"></a><strong>命名约定</strong></h4><p>以其相关的字符集名开始，通常包括一个语言名，并且以_ci(大小写不敏感)、_cs(大小写敏感)或_bin(二元，即比较是基于字符编码的值而与language无关)结束。</p>
+</li>
+</ul>
+<h3 id="Mysql字符集设置"><a href="#Mysql字符集设置" class="headerlink" title="Mysql字符集设置"></a>Mysql字符集设置</h3><p>Mysql字符集和校对规则有4个级别的默认设置：服务器级、数据库级、表级、字段级。</p>
+<ul>
+<li><h4 id="服务器字符集和校对规则"><a href="#服务器字符集和校对规则" class="headerlink" title="服务器字符集和校对规则"></a>服务器字符集和校对规则</h4><p>服务器字符集和校对规则可以在Mysql服务启动时确定，也可以在启动选项中指定，或者在编译时指定。</p>
+<ul>
+<li><p><strong>my.conf中设置</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[mysqld]</span><br><span class="line">character-set-server = utf8</span><br><span class="line">collation-server = utf8_general_ci</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>启动选项中指定</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqld --character-set-server = utf8</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>编译时指定</strong></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">shell&gt; </span><span class="language-bash">cmake . -deafult_charset = utf8</span></span><br></pre></td></tr></table></figure>
+<p>如果没有指定服务器字符集，那么默认使用latin1作为服务器字符集。</p>
+</li>
+<li><p><strong>查看当前服务器的字符集</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like <span class="string">&#x27;character_set_server&#x27;</span>;</span><br><span class="line">+----------------------+-------+</span><br><span class="line">| Variable_name        | Value |</span><br><span class="line">+----------------------+-------+</span><br><span class="line">| character_set_server | utf8  |</span><br><span class="line">+----------------------+-------+</span><br><span class="line">1 row <span class="keyword">in</span> <span class="built_in">set</span> (0.01 sec)</span><br></pre></td></tr></table></figure></li>
+<li><p><strong>查看当前服务器的校对规则</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like <span class="string">&#x27;collation_server&#x27;</span>;</span><br><span class="line">+------------------+-----------------+</span><br><span class="line">| Variable_name    | Value           |</span><br><span class="line">+------------------+-----------------+</span><br><span class="line">| collation_server | utf8_general_ci |</span><br><span class="line">+------------------+-----------------+</span><br><span class="line">1 row <span class="keyword">in</span> <span class="built_in">set</span> (0.00 sec)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h4 id="数据库字符集和校对规则"><a href="#数据库字符集和校对规则" class="headerlink" title="数据库字符集和校对规则"></a>数据库字符集和校对规则</h4><p>数据库的字符集和校对规则在创建数据库的时候指定，也可以在创建完数据库后通过alter database命令进行修改。</p>
+<div class="alert warning no-icon"><p>需要注意的是，如果数据库存在数据，因为修改字符集并不能将已有的数据按照新的字符集进行存放，所以不能通过修改数据库的字符集直接修改数据内容。</p>
+</div>
+
+<ul>
+<li><p><strong>设置数据库字符集的规则</strong></p>
+<ol>
+<li>如果指定了字符集和校对规则，则使用指定的字符集和校对规则。</li>
+<li>如果制定了字符集没有指定校对规则，则使用指定字符集的默认校对规则。</li>
+<li>如果指定了校对规则没有指定字符集，则字符集使用与该校对规则关联的字符集。</li>
+<li>如果没有指定字符集也没有指定校对规则，则使用服务器字符集和校对规则作为数据库的字符集和校对规则。</li>
+<li>推荐在创建数据库时明确指定字符集和校对规则，避免受到默认值的影响。</li>
+</ol>
+</li>
+<li><p><strong>查看当前数据库的字符集</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like <span class="string">&#x27;character_set_database&#x27;</span>;</span><br><span class="line">+------------------------+-------+</span><br><span class="line">| Variable_name          | Value |</span><br><span class="line">+------------------------+-------+</span><br><span class="line">| character_set_database | utf8  |</span><br><span class="line">+------------------------+-------+</span><br><span class="line">1 row <span class="keyword">in</span> <span class="built_in">set</span> (0.03 sec)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p><strong>查看当前数据库的校对规则</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show variables like <span class="string">&#x27;collation_database&#x27;</span>;</span><br><span class="line">+--------------------+-----------------+</span><br><span class="line">| Variable_name      | Value           |</span><br><span class="line">+--------------------+-----------------+</span><br><span class="line">| collation_database | utf8_general_ci |</span><br><span class="line">+--------------------+-----------------+</span><br><span class="line">1 row <span class="keyword">in</span> <span class="built_in">set</span> (0.01 sec)</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h4 id="表字符集和校对规则"><a href="#表字符集和校对规则" class="headerlink" title="表字符集和校对规则"></a>表字符集和校对规则</h4><p>表的字符集和校对规则在创建表的时候指定，可以通过alter table命令进行修改，同样，如果表中有记录，修改字符集对原有的记录并没有影响，不会按照新的字符集进行存放。表中字段仍然使用原来的字符集。</p>
+<ul>
+<li><p><strong>设置表的字符集的规则</strong></p>
+<ol>
+<li>如果指定了字符集和校对规则，使用指定的字符集和校对规则。</li>
+<li>如果指定了字符集没有指定校对规则，使用指定字符集的默认校对规则。</li>
+<li>如果指定了校对规则但未指定字符集，则字符集使用与该校对规则关联的字符集。</li>
+<li>如果没有指定字符集和校对规则，使用数据库字符集和校对规则最为表的字符集和校对规则。</li>
+</ol>
+<div class="alert info"><p>推荐在创建表的时候明确指明字符集和校对规则，以避免受到默认值的影响。</p>
+</div>
+</li>
+<li><p><strong>显示表的字符集和校对规则</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql&gt; show create table &lt;tablename&gt;;</span><br></pre></td></tr></table></figure></li>
+</ul>
+</li>
+<li><h4 id="列字符集和校对规则"><a href="#列字符集和校对规则" class="headerlink" title="列字符集和校对规则"></a>列字符集和校对规则</h4><p>Mysql可以定义列级别的字符集和校对规则，主要是针对相同的表不同字符需要使用不同的字符集的情况。<br>列字符集和校对规则的定义可以在创建表时指定，或者在修改表时调整，如果在创建表的时候没有特别指定字符集和校对规则，则默认使用表的字符集和校对规则。</p>
+</li>
+<li><h4 id="连接字符集和校对规则"><a href="#连接字符集和校对规则" class="headerlink" title="连接字符集和校对规则"></a>连接字符集和校对规则</h4><p>上面4种设置方式，确定的是数据保存的字符集和校对规则，对于实际的应用访问来说，还存在客户端和服务器之间交互的字符集和校对规则的设置。<br>对于客户端和服务器的交互操作，Mysql提供了3个不同的参数：character_set_client、character_set_connection和character_set_results,分别代表客户端、连接和返回结果的字符集。</p>
+<div class="alert warning no-icon"><p>通常情况下，这3个参数应该是相同的，才可以保证用户写入的数据可以正确的读出，特别是对于中文字符，不同的写入字符集和返回结果字符集将导致写入的记录不能正确读出。</p>
+</div>
+
+<p>  通常情况下，不会单独地设置这三个参数，可以通过以下命令设置连接的字符串和校对规则。</p>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set names &lt;character_set&gt;;</span><br></pre></td></tr></table></figure>
+  <div class="alert info"><p>需要在每次数据库连接后都执行这个命令。</p>
+</div>
+
+<p>  另个更简便的方法，是在my.conf中设置。</p>
+  <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[mysql]</span><br><span class="line">default-character-set=&lt;character_set&gt;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h3 id="字符集的修改"><a href="#字符集的修改" class="headerlink" title="字符集的修改"></a>字符集的修改</h3><p>如果在应用开始阶段没有正确地设置字符集，在运行一段时间后才发现不能满足要求需要调整，又不想丢弃这段时间的数据，那么就需要进行字符集的修改。</p>
+<div class="alert warning no-icon"><p>字符集的修改操作不能直接通过“alter database character set <character_set>”或者“alter table <tablename> character set <character_set>”命令进行，这两个命令都没有更新已有记录的字符集，而只是对新创建的表或者记录生效。</p>
+</div>
+<p>已有记录的字符集调整，需要先将数据导出，经过适当调整重新导入后才可完成。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Mysql/" rel="tag">Mysql</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E5%AD%97%E7%AC%A6%E9%9B%86/" rel="tag">字符集</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
+                    data-tooltip="Mysql基础篇之SQL基础"
+                    aria-label="PREVIOUS: Mysql基础篇之SQL基础"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    data-tooltip="Mysql开发篇之选择合适的数据类型"
+                    aria-label="NEXT: Mysql开发篇之选择合适的数据类型"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/&amp;title=Mysql开发篇之字符集"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/07/18/Mysql开发篇之字符集/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/26/Mysql%E5%9F%BA%E7%A1%80%E7%AF%87%E4%B9%8BSQL%E5%9F%BA%E7%A1%80/"
+                    data-tooltip="Mysql基础篇之SQL基础"
+                    aria-label="PREVIOUS: Mysql基础篇之SQL基础"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    data-tooltip="Mysql开发篇之选择合适的数据类型"
+                    aria-label="NEXT: Mysql开发篇之选择合适的数据类型"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/&amp;title=Mysql开发篇之字符集"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/&amp;title=Mysql开发篇之字符集"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

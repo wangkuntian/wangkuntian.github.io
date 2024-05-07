@@ -1,0 +1,1045 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>iptables详解 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="iptables">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n\n相关概念防火墙从逻辑上讲。 防火墙可以分为主机防火墙和网络防火墙。\n\n主机防火墙：主要针对单个主机进行防护。\n\n网络防火墙：往往处于网络入口边缘，针对网络入口进行防护，服务于防火墙背后的本地局域网。\n\n\n网络防火墙和主机防火墙并不冲突，可以理解为，网络防火墙主外（集体），主机防火墙主内（个人）。\n\n\n从物理上讲，防火墙可以分为硬件防火墙和软件防火墙。\n\n硬件防火墙：在硬件级别实现部分防火墙功能，另一部分功能基于软件实现，性能高，成本高。\n软件防火墙：应用软件处理逻辑运行于通用硬件平台之上的防火墙，性能低，成本低。\n\nnetfilter/iptablesiptables不是真正的防火墙，我们可以把它理解为一个客户端代理，用户通过iptables，将用户的安全设定执行到对应的“安全框架”中，这个“安全框架”才是真正的防火墙，这个框架的名字叫netfilter。\nnetfilter才是防火墙真正的安全框架（framework），netfilter位于内核空间。iptables其实是一个命令行工具，位于用户空间，我们用这个工具操作真正的框架。\nnetfilter/iptables（下文中简称iptables）组成Linux平台下的包过滤防火墙，与大多数的Linux软件一样，这个包过滤防火墙是免费的，它可以代替昂贵的商业防火墙解决方案，完成包过滤、封包重定向和网络地址转换（NAT）等功能。\nnetfilter是Linux操作系统核心层内部的一个数据包处理模块。它具有以下功能：\n\n网络地址转换（Network Address Translate）。\n数据包内容修改。\n数据包过滤的防火墙功能。\n\niptables基础规则iptables是按照规则办事的。规则（rule）就是网络管理员预定义的条件，规则一般定义为“如果数据包头符合这样的条件，就这样处理这个数据包”。规则存储在内核空间的信息包过滤表中，这些规则分别指定了源地址、目的地址、传输协议（如TCP、UDP、ICMP）和服务类型（如HTTP、FTP和SMTP）等。当数据包与规则匹配时，iptables就会根据规则所定义的方法来处理这些数据包，如放行（accept）、拒绝（reject）和丢弃（drop）等。配置防火墙的主要工作就是添加、修改和删除这些规则。\n当客户端访问服务器的web服务时，客户端发送报文到网卡，而tcp/ip协议栈是属于内核的一部分，所以，客户端的信息会通过内核的TCP协议传输到用户空间中的web服务中，而此时，客户端报文的目标终点为web服务所监听的套接字（IP:Port）上，当web服务需要响应客户端请求时，web服务发出的响应报文的目标终点则为客户端。这个时候，web服务所监听的IP与端口发而变成了原点，netfilter才是真正的防火墙，它是内核的一部分，所以，如果我们想要防火墙起作用，则需要在内核中设置关卡，所有进出的报文都必须通过这些关卡，经过检查后，符合放行条件的才能放行，符合阻拦条件的则需要被阻拦，于是就出现了input关卡和output关卡，而这些关卡在iptables中称为“链”。\n\n\n\n报文的流向：到达本机某进程的报文：prerouting -&gt; input。由本机转发的报文：prerouting -&gt; forward -&gt; postrouting。由本机的某进程发出的报文（通常为响应报文）：output -&gt; postrouting。\n\n\n匹配条件匹配条件分为基本匹配条件与扩展匹配条件。\n\n基本匹配条件：源地址Source IP，目标地址 Destination IP。\n扩展匹配条件：源端口 Source Port，目标端口 Destination Port。\n\n处理动作\naccept：允许数据包通过。\ndrop：直接丢弃数据包，不给任何回应消息。\nreject：拒绝数据包通过，必要时会给数据发送端一个响应的信息，客户端刚请求就会收到拒绝的信息。\nsnat：源地址转换，解决内网用户用同一个公网地址上网的问题。\nmasquerade：是snat的一种特殊形式，适用于动态的、临时会变的ip上。\ndnat：目标地址转换。\nredirect：在本机做端口映射。\nlog：在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是除了记录以外不对数据包做任何操作，仍然让下一条规则去匹配。\n\n链多个规则形成链。\n链\n\n\n表把具有相同功能的规则的集合叫做“表”，所以，不同功能的规则，我们可以放置在不同的表中进行管理。iptables为我们定义了4种表。\n\nfilter表： 负责过滤功能，防火墙；内核模块：iptables_filter。\nnat表：network address translation，网络地址转换功能；内核模块：iptable_nat。\nmangle表：拆解报文，做出修改，并重新封装；iptable_mangle。\nraw表：关闭nat表启用的连接追踪机制；iptable_raw。\n\n链和表的关系每个链中的规则都存在哪些表。prerouting的规则可以存在于：raw表、mangle表、nat表。input的规则可以存在于：mangle表、filter表。forward的规则可以存在于：mangle表、filter表。output的规则可以存在于：raw表、mangle表、nat表、filter表。postrouting的规则可以存在于：mangle表、nat表。\n\n\n链中规则的执行优先级：raw表 &gt; mangle表 &gt; nat表 &gt; filter表\n\n\n表\n\n数据经过防火墙的流程\n\niptables命令查看对应表的规则1iptables -t [表名] -L\n\n-t，指定要操作的表；省略“-t”时，默认操作filter表。-L，表示列出规则。\n\n\n查看指定表的指定链的规则1iptables -t [表名] -L [链名]\n查看filter表中INPUT链的规则\n1iptables -vL INPUT\n\n\n-v，查看详细信息。\n\n\npkts：对应规则匹配到的报文个数。bytes：对应匹配到报文包的大小总和。target：规则对应的target，往往表示对应的“动作”，即规则匹配完成后需要采取的措施。prot：表示规则对应的协议，是否只针对某些协议应用此规则。opt：表示规则对应的选项。in：表示数据包由哪个接口（网卡）流入，我们可以设置通过哪块网卡流入的报文需要匹配当前规则。out：表示数据包由哪个接口（网卡）流出，我们可以设置通过哪块网卡流出的报文需要匹配当前规则。source：表示规则对应的源头地址。可以是一个IP，也可以是一个网段。destination：表示规则对应的目的地址。可以是一个IP，也可以是一个网段。\n\n\n显示IP地址1iptables -nvL INPUT\n\n\n-n，表示不对IP地址进行名称反解，直接显示IP地址。\n\n\n显示行号1iptables -nvL INPUT --line-numbers\n\n\n–line-numbers，显示行号。\n\n\n（policy ACCEPT 26381 packets, 2993K bytes）policy ACCEPT表示图中INPUT的链的默认动作为ACCEPT。默认接收通过INPUT的所请求。packets表示当前链默认策略匹配到的包的数量。bytes表示当前链默认策略匹配到的所有的包的大小总和。\n\n\n精确计数1iptables -nvxL INPUT\n\n\n\n-x，精确计数。\n\n\n\n增加规则主机A的IP地址为：10.211.55.11主机B的IP地址为：10.211.55.2\n插入规则给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。\n1iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP\n\n\n-t，指定表；不使用-t时，默认操作filter表。-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）\n\n\nping测试，没有通过，规则起作用。\n\n\n追加规则给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT\n\n\n\n-t，指定表；不使用-t时，默认操作filter表。-A，表示追加到哪条链。（最后一个）-s，指明匹配条件的源地址。-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）\n\n\nping测试，依旧没有通过，规则没有起作用。\n\n\n给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。\n1iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT\n\n\nping测试，通过，规则起作用。\n\n\n规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。\n\n\n删除规则根据规则的编号删除规则查看filter表中INPUT链中的规则。\n1iptables --line -vnL INPUT\n\n\n删除第3条规则。\n1iptables -D INPUT 3\n\n\n-D，表示删除指定链中的某条规则。\n\n\n根据具体匹配条件与动作删除规则删除源地址为10.211.55.2，动作为ACCEPT的规则。\n1iptables -D INPUT -s 10.211.55.2 -j ACCEPT\n\n\n删除指定表中的所有规则。\n1iptables -t [表名] -F\n\n修改规则\n\n修改规则中的动作从DROP改为REJECT。\n1iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT\n\n\n-R INPUT 1，表示修改INPUT链中的第1条规则。\n\n\n必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。\n\n\nping测试。\n\n\n指定默认策略修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。\n1iptables -t filter -P INPUT DROP\n\n\n-P INPUT DROP，将表中INPUT链的默认策略改为DROP。\n\n\n保存规则1iptables-save\n\n规则匹配源地址12iptables -t filter -I INPUT -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -s 192.168.1.0/24 -j DROP\n-s，用于匹配报文的源地址，可以同时指定多个源地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n\n1iptables -t filter -I INPUT ! -s 192.168.1.0/24 -j ACCEPT\n!，用于匹配条件取反。上面的规则匹配的是，只要源地址不是192.168.1.0/24网段的就会执行接受动作。\n\n\n目的地址12iptables -t filter -I INPUT -d 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -d 192.168.1.0/24 -j DROP\n-d，用于匹配报文的目的地址，可以同时指定多个目的地址，每个IP地址用逗号隔开，也可以指定一个网段。\n\n\n协议类型12iptables -t filter -I INPUT -p tcp -s 192.168.1.111,192.168.1.112 -j DROPiptables -t filter -I INPUT -p udp -s 192.168.1.0/24 -j DROP\n-p，用于匹配报文的协议类型，可以匹配的协议类型tcp、udp、udplite、icmp、esp、ah、sctp等。\n\n\n网卡接口1iptables -t filter -I INPUT -p icmp -i enth4 -j DROP\n-i，用于匹配报文要从哪个网卡接口流入本机。由于匹配条件只是用于匹配报文流入的网卡，所以在OUTPUT链与POSTROUTING链中不能使用此选项。\n\n\n1iptables -t filter -I INPUT -p icmp -O enth4 -j DROP\n\n-o，用于匹配报文要从哪个网卡接口流出本机。由于匹配条件只是用于匹配报文流入的网卡，所以在INPUT链与PREROUTING链中不能使用此选项。\n\n\n扩展匹配tcp1iptables -t filter -I OUTPUT -d 192.168.1.111 -p tcp -m tcp --sport 22 -j REJECT\n-p，指定协议。-m，指定扩展模块。–sport，source-port，指定源端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 22:25 -j REJECT\n\n-p，指定协议。-m，指定扩展模块。–dport，destination-port，指定目的端口。22:25，表示22、23、24、25端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 80: -j REJECT\n\n80:，表示80端口到之后的所有的端口（直到65535）。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport :22 -j REJECT\n\n:22，表示从0端口到22端口。\n\n\n–tcp-flags–tcp-flags，指的就是tcp头中的标志位，可以匹配tcp报文的头部的标志位，然后根据标识位的实际情况实现访问控制的功能。\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN -j REJECT\n匹配到第一次握手的报文。\n\n\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK -j REJECT\n匹配到第二次握手的报文。\n\n\n还可以用ALL表示SYN,ACK,FIN,RST,URG,PSH。\n12iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN -j REJECTiptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN,ACK -j REJECT\n\n–syn选项，匹配tcp第一次握手。\n1iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT\n\nmultiporttcp模块中的–sport或者–dport可以指定一个连续的端口范围，但是无法同时指定多个离散的、不连续的端口。\nmultiport模块中的–sports扩展条件可以同时指定多个离散的源端口。multiport模块中的–dports扩展条件可以同时指定多个离散的目的端口。\n\n\n1iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m multiport --dport 22,36,80 -j DROP\n\nmultiport模块只能用于tcp协议和udp协议，配合-p tcp或者-p udp使用。\n\n\niprange在不使用任何扩展模块下，可以使用-s或者-d即匹配报文的源地址和目的地址，而且在指定IP地址时，可以同时指定多个IP地址，每个IP地址之间用逗号隔开；但是，-s或者-d选项不能一次性地指定一段连续的IP地址范围。\niprange可以指定一段连续的IP地址范围。\n12iptables -t filter -I INPUT -m iprange --src-range 192.168.1.111-192.168.1.146 -j DROPiptables -t filter -I INPUT -m iprange --dst-range 192.168.1.111-192.168.1.146 -j DROP\n\n–src-range，源地址范围。–dst-range，目的地址范围。\n\n\nstringstring扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配规则。\n1iptables -t filter -I INPUT -m string --algo bm --string &quot;Hello World&quot; -j ACCEPT\n\n–algo，用于指定匹配算法，可选算法有bm和kmp，必须选项，所以不用纠结选择哪个算法，但是必须指定一个。–string，用于指定需要匹配的字符串。\n\n\ntimetime扩展模块，可以根据时间段匹配报文，如果报文到达的时间在规定时间范围以内，则符合匹配条件。\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --timestart 09:00:00 --timestop 18:00:00 -j REJECT\n–timestart，指定开始时间。–timestop，指定结束时间。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --weekdays 6,7 -j REJECT\n–weekdays，指定每个星期的具体哪一天，可以同时指定多个，用逗号隔开。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --monthdays 22,23 -j REJECT\n–monthdays，指定每个月的哪一天。\n\n\n1iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --datestart 2018-12-01 --datestop 2018-12-25 -j REJECT\n–datestart，日期开始。–datestop，日期结束。\n\n\n–weekdays和–monthdays可以使用“!”取反，其他选项不可以。\n\n\nconnlimitconnlimit扩展模块，可以限制每个IP地址同时链接到server端的链接数量。不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 -j REJECT\n\n–conlimit-above 2，表示限制每个IP的链接数量上限为2。-p tcp –dport 22，限制每个客户端IP的ssh并发链接数量不能高于2。\n\n\n1iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 --connlimit-mask 24 -j REJECT\n\n–connlimit-mask 24，表示某个C类网段。mask表示掩码；24转换成点分十进制就是255.255.255.0。所以，上面的规则表示，一个最多包含254个IP的C类网络中，同时最多只能有2个ssh客户端连接到当前服务器。\n\n\nlimitlimit扩展模块，可以对报文到达的速率进行限制（限制单位时间内流入的包的数量）。\n1iptables -t filter -I INPUT -p icmp -m limit 10/minute -j ACCEPT\n\n\n–limit 10/minute -j ACCEPT，表示每分钟最多放行10个包，相当于每6秒最多放行一个包。\n\n\nping测试。\n\n\n配置的规则没有起作用，ping请求的速率完全没有发生任何变化。这是因为，上面的规则每6秒放行一个包，那么iptables就会计时，每6秒一个轮次，到第6秒时，到达的报文就会匹配到对应的规则，执行ACCEPT。那么，在第6秒之前到达的包，则无法被上述规则匹配到。之前总结过，报文会匹配链中的每条规则，如果没有任何一条规则匹配到，则匹配默认动作（链的默认策略）。INPUT链的默认策略是ACCEPT。\n\n\n我们有两种方法修改。一是，修改INPUT链的默认策略；二是，再增加一条规则。\n1iptables -t filter -A INPUT -p icmp -j REJECT\n\n\nping测试。\n\n\n前5个ping包没有受到限制，之后的ping包已经开始受到规则的限制。\n\n\nlimit模块采用令牌桶算法。上面的情况可以这样想象，有一个木桶，木桶里放了5块令牌，而且这个木桶最多也只能放下5块令牌，所有报文如果想要出关入关，必须要持有木桶中的令牌才行。这个木桶每隔6秒钟就会产生一块新的令牌，如果此时，木桶的令牌不足5块，那么新生成的令牌就会放在木桶中，超过5块，新生成的令牌就会被丢弃。如果此时有5个报文想要入关，那么这5个报文就会去木桶里找令牌，正好一人一个，快乐地入关了。此时木桶空了，再想有报文想要入关已经没有对应的令牌可以使用，只好等待6秒，新的令牌生成，报文拿着新生成的令牌入关。如果很长一段时间没有新的报文想要入关，木桶里的令牌又会慢慢积攒起来，直到到达5个令牌，直到有人使用它。\n\n\n–limit，用于指定多长时间生成一个新的令牌。–limit-brust，用于指定木桶中最多存放几个令牌。\n\n\n\n\n上面的例子表示，令牌桶最多放3个令牌，每分钟生成10个令牌。\n\n\n–limit，可以选择的时间单位有多种，如 /second、/minute、/hour、/day。\n","dateCreated":"2018-10-18T14:24:44+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-10-18T14:24:44+08:00","description":"iptables详解","headline":"iptables详解","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/","keywords":"iptables","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="iptables详解">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="iptables详解">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="iptables详解">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/rules.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/links.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/tables.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-vL.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-nvL.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-nvL-line.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-nvxL.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-i-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-a.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-i-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-vnL-line.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-d.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-d-s-j.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-nvL-line-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-r.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-p.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-limit.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-5.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-a-p-j.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/ping-6.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/iptables-limit-brust.png">
+<meta property="article:published_time" content="2018-10-18T06:24:44.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.107Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="iptables">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/rules.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            iptables详解
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-10-18T14:24:44+08:00">
+	
+		    Oct 18, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%9B%B8%E5%85%B3%E6%A6%82%E5%BF%B5"><span class="toc-text">相关概念</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">防火墙</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#netfilter-iptables"><span class="toc-text">netfilter&#x2F;iptables</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#iptables%E5%9F%BA%E7%A1%80"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%84%E5%88%99"><span class="toc-text">规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8C%B9%E9%85%8D%E6%9D%A1%E4%BB%B6"><span class="toc-text">匹配条件</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%84%E7%90%86%E5%8A%A8%E4%BD%9C"><span class="toc-text">处理动作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%93%BE"><span class="toc-text">链</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A8"><span class="toc-text">表</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%93%BE%E5%92%8C%E8%A1%A8%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-text">链和表的关系</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E7%BB%8F%E8%BF%87%E9%98%B2%E7%81%AB%E5%A2%99%E7%9A%84%E6%B5%81%E7%A8%8B"><span class="toc-text">数据经过防火墙的流程</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#iptables%E5%91%BD%E4%BB%A4"><span class="toc-text">iptables命令</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E5%AF%B9%E5%BA%94%E8%A1%A8%E7%9A%84%E8%A7%84%E5%88%99"><span class="toc-text">查看对应表的规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%8C%87%E5%AE%9A%E8%A1%A8%E7%9A%84%E6%8C%87%E5%AE%9A%E9%93%BE%E7%9A%84%E8%A7%84%E5%88%99"><span class="toc-text">查看指定表的指定链的规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%BE%E7%A4%BAIP%E5%9C%B0%E5%9D%80"><span class="toc-text">显示IP地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%BE%E7%A4%BA%E8%A1%8C%E5%8F%B7"><span class="toc-text">显示行号</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B2%BE%E7%A1%AE%E8%AE%A1%E6%95%B0"><span class="toc-text">精确计数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%A2%9E%E5%8A%A0%E8%A7%84%E5%88%99"><span class="toc-text">增加规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8F%92%E5%85%A5%E8%A7%84%E5%88%99"><span class="toc-text">插入规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%BD%E5%8A%A0%E8%A7%84%E5%88%99"><span class="toc-text">追加规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E8%A7%84%E5%88%99"><span class="toc-text">删除规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B9%E6%8D%AE%E8%A7%84%E5%88%99%E7%9A%84%E7%BC%96%E5%8F%B7%E5%88%A0%E9%99%A4%E8%A7%84%E5%88%99"><span class="toc-text">根据规则的编号删除规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A0%B9%E6%8D%AE%E5%85%B7%E4%BD%93%E5%8C%B9%E9%85%8D%E6%9D%A1%E4%BB%B6%E4%B8%8E%E5%8A%A8%E4%BD%9C%E5%88%A0%E9%99%A4%E8%A7%84%E5%88%99"><span class="toc-text">根据具体匹配条件与动作删除规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BF%AE%E6%94%B9%E8%A7%84%E5%88%99"><span class="toc-text">修改规则</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%87%E5%AE%9A%E9%BB%98%E8%AE%A4%E7%AD%96%E7%95%A5"><span class="toc-text">指定默认策略</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BF%9D%E5%AD%98%E8%A7%84%E5%88%99"><span class="toc-text">保存规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%84%E5%88%99%E5%8C%B9%E9%85%8D"><span class="toc-text">规则匹配</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E5%9C%B0%E5%9D%80"><span class="toc-text">源地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9B%AE%E7%9A%84%E5%9C%B0%E5%9D%80"><span class="toc-text">目的地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%8F%E8%AE%AE%E7%B1%BB%E5%9E%8B"><span class="toc-text">协议类型</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BD%91%E5%8D%A1%E6%8E%A5%E5%8F%A3"><span class="toc-text">网卡接口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%A9%E5%B1%95%E5%8C%B9%E9%85%8D"><span class="toc-text">扩展匹配</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#tcp"><span class="toc-text">tcp</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E2%80%93tcp-flags"><span class="toc-text">–tcp-flags</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#multiport"><span class="toc-text">multiport</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#iprange"><span class="toc-text">iprange</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#string"><span class="toc-text">string</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#time"><span class="toc-text">time</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#connlimit"><span class="toc-text">connlimit</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#limit"><span class="toc-text">limit</span></a></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="相关概念"><a href="#相关概念" class="headerlink" title="相关概念"></a>相关概念</h1><h2 id="防火墙"><a href="#防火墙" class="headerlink" title="防火墙"></a>防火墙</h2><p>从逻辑上讲。 防火墙可以分为主机防火墙和网络防火墙。</p>
+<ul>
+<li><p>主机防火墙：主要针对单个主机进行防护。</p>
+</li>
+<li><p>网络防火墙：往往处于网络入口边缘，针对网络入口进行防护，服务于防火墙背后的本地局域网。</p>
+</li>
+</ul>
+<div class="alert info no-icon"><p>网络防火墙和主机防火墙并不冲突，可以理解为，网络防火墙主外（集体），主机防火墙主内（个人）。</p>
+</div>
+
+<p>从物理上讲，防火墙可以分为硬件防火墙和软件防火墙。</p>
+<ul>
+<li>硬件防火墙：在硬件级别实现部分防火墙功能，另一部分功能基于软件实现，性能高，成本高。</li>
+<li>软件防火墙：应用软件处理逻辑运行于通用硬件平台之上的防火墙，性能低，成本低。</li>
+</ul>
+<h1 id="netfilter-iptables"><a href="#netfilter-iptables" class="headerlink" title="netfilter/iptables"></a>netfilter/iptables</h1><p>iptables不是真正的防火墙，我们可以把它理解为一个客户端代理，用户通过iptables，将用户的安全设定执行到对应的“安全框架”中，这个“安全框架”才是真正的防火墙，这个框架的名字叫netfilter。</p>
+<p>netfilter才是防火墙真正的安全框架（framework），netfilter位于内核空间。<br>iptables其实是一个命令行工具，位于用户空间，我们用这个工具操作真正的框架。</p>
+<p>netfilter/iptables（下文中简称iptables）组成Linux平台下的包过滤防火墙，与大多数的Linux软件一样，这个包过滤防火墙是免费的，它可以代替昂贵的商业防火墙解决方案，完成包过滤、封包重定向和网络地址转换（NAT）等功能。</p>
+<p>netfilter是Linux操作系统核心层内部的一个数据包处理模块。它具有以下功能：</p>
+<ol>
+<li>网络地址转换（Network Address Translate）。</li>
+<li>数据包内容修改。</li>
+<li>数据包过滤的防火墙功能。</li>
+</ol>
+<h1 id="iptables基础"><a href="#iptables基础" class="headerlink" title="iptables基础"></a>iptables基础</h1><h2 id="规则"><a href="#规则" class="headerlink" title="规则"></a>规则</h2><p>iptables是按照规则办事的。规则（rule）就是网络管理员预定义的条件，规则一般定义为“如果数据包头符合这样的条件，就这样处理这个数据包”。规则存储在内核空间的信息包过滤表中，这些规则分别指定了源地址、目的地址、传输协议（如TCP、UDP、ICMP）和服务类型（如HTTP、FTP和SMTP）等。<br>当数据包与规则匹配时，iptables就会根据规则所定义的方法来处理这些数据包，如放行（accept）、拒绝（reject）和丢弃（drop）等。配置防火墙的主要工作就是添加、修改和删除这些规则。</p>
+<p>当客户端访问服务器的web服务时，客户端发送报文到网卡，而tcp/ip协议栈是属于内核的一部分，所以，客户端的信息会通过内核的TCP协议传输到用户空间中的web服务中，而此时，客户端报文的目标终点为web服务所监听的套接字（IP:Port）上，当web服务需要响应客户端请求时，web服务发出的响应报文的目标终点则为客户端。这个时候，web服务所监听的IP与端口发而变成了原点，netfilter才是真正的防火墙，它是内核的一部分，所以，如果我们想要防火墙起作用，则需要在内核中设置关卡，所有进出的报文都必须通过这些关卡，经过检查后，符合放行条件的才能放行，符合阻拦条件的则需要被阻拦，于是就出现了input关卡和output关卡，而<span class="highlight-text danger">这些关卡在iptables中称为“链”。</span></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/rules.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/rules.png" alt=""></a></div>
+<br>
+
+<div class="alert info no-icon"><p>报文的流向：<br>到达本机某进程的报文：prerouting -&gt; input。<br>由本机转发的报文：prerouting -&gt; forward -&gt; postrouting。<br>由本机的某进程发出的报文（通常为响应报文）：output -&gt; postrouting。</p>
+</div>
+
+<h3 id="匹配条件"><a href="#匹配条件" class="headerlink" title="匹配条件"></a>匹配条件</h3><p>匹配条件分为基本匹配条件与扩展匹配条件。</p>
+<ul>
+<li>基本匹配条件：源地址Source IP，目标地址 Destination IP。</li>
+<li>扩展匹配条件：源端口 Source Port，目标端口 Destination Port。</li>
+</ul>
+<h3 id="处理动作"><a href="#处理动作" class="headerlink" title="处理动作"></a>处理动作</h3><ul>
+<li><strong>accept</strong>：允许数据包通过。</li>
+<li><strong>drop</strong>：直接丢弃数据包，不给任何回应消息。</li>
+<li><strong>reject</strong>：拒绝数据包通过，必要时会给数据发送端一个响应的信息，客户端刚请求就会收到拒绝的信息。</li>
+<li><strong>snat</strong>：源地址转换，解决内网用户用同一个公网地址上网的问题。</li>
+<li><strong>masquerade</strong>：是<strong>snat</strong>的一种特殊形式，适用于动态的、临时会变的ip上。</li>
+<li><strong>dnat</strong>：目标地址转换。</li>
+<li><strong>redirect</strong>：在本机做端口映射。</li>
+<li><strong>log</strong>：在/var/log/messages文件中记录日志信息，然后将数据包传递给下一条规则，也就是除了记录以外不对数据包做任何操作，仍然让下一条规则去匹配。</li>
+</ul>
+<h2 id="链"><a href="#链" class="headerlink" title="链"></a>链</h2><p>多个规则形成链。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/links.png" title="链" data-caption="链" data-fancybox="default"><img class="fig-img" src="images/links.png" alt="链"></a><span class="caption">链</span></div>
+
+
+<h2 id="表"><a href="#表" class="headerlink" title="表"></a>表</h2><p>把具有相同功能的规则的集合叫做“表”，所以，不同功能的规则，我们可以放置在不同的表中进行管理。<br>iptables为我们定义了4种表。</p>
+<ul>
+<li><strong>filter</strong>表： 负责过滤功能，防火墙；内核模块：iptables_filter。</li>
+<li><strong>nat</strong>表：network address translation，网络地址转换功能；内核模块：iptable_nat。</li>
+<li><strong>mangle</strong>表：拆解报文，做出修改，并重新封装；iptable_mangle。</li>
+<li><strong>raw</strong>表：关闭nat表启用的连接追踪机制；iptable_raw。</li>
+</ul>
+<h2 id="链和表的关系"><a href="#链和表的关系" class="headerlink" title="链和表的关系"></a>链和表的关系</h2><div class="alert info no-icon"><p>每个链中的规则都存在哪些表。<br><strong>prerouting</strong>的规则可以存在于：<strong>raw</strong>表、<strong>mangle</strong>表、<strong>nat</strong>表。<br><strong>input</strong>的规则可以存在于：<strong>mangle</strong>表、<strong>filter</strong>表。<br><strong>forward</strong>的规则可以存在于：<strong>mangle</strong>表、<strong>filter</strong>表。<br><strong>output</strong>的规则可以存在于：<strong>raw</strong>表、<strong>mangle</strong>表、<strong>nat</strong>表、<strong>filter</strong>表。<br><strong>postrouting</strong>的规则可以存在于：<strong>mangle</strong>表、<strong>nat</strong>表。</p>
+</div>
+
+<div class="alert info no-icon"><p>链中规则的执行优先级：<br>raw表 &gt; mangle表 &gt; nat表 &gt; filter表</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/tables.png" title="表" data-caption="表" data-fancybox="default"><img class="fig-img" src="images/tables.png" alt="表"></a><span class="caption">表</span></div>
+
+<h2 id="数据经过防火墙的流程"><a href="#数据经过防火墙的流程" class="headerlink" title="数据经过防火墙的流程"></a>数据经过防火墙的流程</h2><div class="figure center" style="width:;"><a class="fancybox" href="images/iptables.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables.png" alt=""></a></div>
+
+<h1 id="iptables命令"><a href="#iptables命令" class="headerlink" title="iptables命令"></a>iptables命令</h1><h2 id="查看对应表的规则"><a href="#查看对应表的规则" class="headerlink" title="查看对应表的规则"></a>查看对应表的规则</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -L</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>-t，指定要操作的表；省略“-t”时，默认操作filter表。<br>-L，表示列出规则。</p>
+</div>
+
+<h2 id="查看指定表的指定链的规则"><a href="#查看指定表的指定链的规则" class="headerlink" title="查看指定表的指定链的规则"></a>查看指定表的指定链的规则</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -L [链名]</span><br></pre></td></tr></table></figure>
+<p>查看filter表中INPUT链的规则</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -vL INPUT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-vL.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-vL.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-v，查看详细信息。</p>
+</div>
+
+<div class="alert info no-icon"><p><strong>pkts</strong>：对应规则匹配到的报文个数。<br><strong>bytes</strong>：对应匹配到报文包的大小总和。<br><strong>target</strong>：规则对应的target，往往表示对应的“动作”，即规则匹配完成后需要采取的措施。<br><strong>prot</strong>：表示规则对应的协议，是否只针对某些协议应用此规则。<br><strong>opt</strong>：表示规则对应的选项。<br><strong>in</strong>：表示数据包由哪个接口（网卡）流入，我们可以设置通过哪块网卡流入的报文需要匹配当前规则。<br><strong>out</strong>：表示数据包由哪个接口（网卡）流出，我们可以设置通过哪块网卡流出的报文需要匹配当前规则。<br><strong>source</strong>：表示规则对应的源头地址。可以是一个IP，也可以是一个网段。<br><strong>destination</strong>：表示规则对应的目的地址。可以是一个IP，也可以是一个网段。</p>
+</div>
+
+<h3 id="显示IP地址"><a href="#显示IP地址" class="headerlink" title="显示IP地址"></a>显示IP地址</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvL INPUT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-nvL.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-nvL.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-n，表示不对IP地址进行名称反解，直接显示IP地址。</p>
+</div>
+
+<h3 id="显示行号"><a href="#显示行号" class="headerlink" title="显示行号"></a>显示行号</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvL INPUT --line-numbers</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-nvL-line.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-nvL-line.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>–line-numbers，显示行号。</p>
+</div>
+
+<div class="alert info no-icon"><p>（policy ACCEPT 26381 packets, 2993K bytes）<br><strong>policy ACCEPT</strong>表示图中INPUT的链的默认动作为<strong>ACCEPT</strong>。默认接收通过INPUT的所请求。<br><strong>packets</strong>表示当前链默认策略匹配到的包的数量。<br><strong>bytes</strong>表示当前链默认策略匹配到的所有的包的大小总和。</p>
+</div>
+
+<h3 id="精确计数"><a href="#精确计数" class="headerlink" title="精确计数"></a>精确计数</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -nvxL INPUT</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-nvxL.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-nvxL.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-x，精确计数。</p>
+</div>
+
+
+<h2 id="增加规则"><a href="#增加规则" class="headerlink" title="增加规则"></a>增加规则</h2><p>主机A的IP地址为：10.211.55.11<br>主机B的IP地址为：10.211.55.2</p>
+<h3 id="插入规则"><a href="#插入规则" class="headerlink" title="插入规则"></a>插入规则</h3><p>给主机A的filter表的INPUT链插入一条规则，拒绝接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I [行号] INPUT -s 10.211.55.2 -j DROP</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-i-1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-i-1.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-I，表示插入到哪条链。（默认第一个，有行号n的话，插入第n行）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（DROP 丢弃）</p>
+</div>
+
+<p>ping测试，没有通过，规则起作用。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ping-1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ping-1.png" alt=""></a></div>
+
+<h3 id="追加规则"><a href="#追加规则" class="headerlink" title="追加规则"></a>追加规则</h3><p>给主机A的filter表的INPUT链追加一条规则，接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-a.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-a.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-t，指定表；不使用-t时，默认操作filter表。<br>-A，表示追加到哪条链。（最后一个）<br>-s，指明匹配条件的源地址。<br>-j，表示当匹配条件被满足时，所对应的动作。（ACCEPT 接受）</p>
+</div>
+
+<p>ping测试，依旧没有通过，规则没有起作用。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ping-2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ping-2.png" alt=""></a></div>
+
+<p>给主机A的filter表的INPUT链插入一条规则，接受所有从主机B发送的数据。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-i-2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-i-2.png" alt=""></a></div>
+
+<p>ping测试，通过，规则起作用。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ping-3.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ping-3.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>规则的顺序很重要，如果报文被前面的规则匹配到，iptables则会对报文执行对应的动作，即使后面的规则也能匹配到当前的报文，也没有机会对报文执行相应的动作。</p>
+</div>
+
+<h2 id="删除规则"><a href="#删除规则" class="headerlink" title="删除规则"></a>删除规则</h2><h3 id="根据规则的编号删除规则"><a href="#根据规则的编号删除规则" class="headerlink" title="根据规则的编号删除规则"></a>根据规则的编号删除规则</h3><p>查看filter表中INPUT链中的规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables --line -vnL INPUT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-vnL-line.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-vnL-line.png" alt=""></a></div>
+
+<p>删除第3条规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT 3</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-d.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-d.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-D，表示删除指定链中的某条规则。</p>
+</div>
+
+<h3 id="根据具体匹配条件与动作删除规则"><a href="#根据具体匹配条件与动作删除规则" class="headerlink" title="根据具体匹配条件与动作删除规则"></a>根据具体匹配条件与动作删除规则</h3><p>删除源地址为10.211.55.2，动作为ACCEPT的规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -D INPUT -s 10.211.55.2 -j ACCEPT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-d-s-j.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-d-s-j.png" alt=""></a></div>
+
+<p>删除指定表中的所有规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t [表名] -F</span><br></pre></td></tr></table></figure>
+
+<h2 id="修改规则"><a href="#修改规则" class="headerlink" title="修改规则"></a>修改规则</h2><div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-nvL-line-1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-nvL-line-1.png" alt=""></a></div>
+
+<p>修改规则中的动作从DROP改为REJECT。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -R INPUT 1 -s 10.211.55.2 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-r.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-r.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-R INPUT 1，表示修改INPUT链中的第1条规则。</p>
+</div>
+
+<div class="alert warning no-icon"><p>必须指定源地址，否则修改规则中的源地址会自动变为0.0.0.0/0（此IP表示匹配所有网段的IP地址）。</p>
+</div>
+
+<p>ping测试。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/ping-4.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/ping-4.png" alt=""></a></div>
+
+<h3 id="指定默认策略"><a href="#指定默认策略" class="headerlink" title="指定默认策略"></a>指定默认策略</h3><p>修改filter表INPUT链中的默认规则，从ACCEPT改为DROP。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -P INPUT DROP</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/iptables-p.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables-p.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>-P INPUT DROP，将表中INPUT链的默认策略改为DROP。</p>
+</div>
+
+<h2 id="保存规则"><a href="#保存规则" class="headerlink" title="保存规则"></a>保存规则</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables-save</span><br></pre></td></tr></table></figure>
+
+<h2 id="规则匹配"><a href="#规则匹配" class="headerlink" title="规则匹配"></a>规则匹配</h2><h3 id="源地址"><a href="#源地址" class="headerlink" title="源地址"></a>源地址</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -s 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>-s，用于匹配报文的源地址，可以同时指定多个源地址，每个IP地址用逗号隔开，也可以指定一个网段。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT ! -s 192.168.1.0/24 -j ACCEPT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>!，用于匹配条件取反。<br>上面的规则匹配的是，只要源地址不是192.168.1.0/24网段的就会执行接受动作。</p>
+</div>
+
+<h3 id="目的地址"><a href="#目的地址" class="headerlink" title="目的地址"></a>目的地址</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -d 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -d 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>-d，用于匹配报文的目的地址，可以同时指定多个目的地址，每个IP地址用逗号隔开，也可以指定一个网段。</p>
+</div>
+
+<h3 id="协议类型"><a href="#协议类型" class="headerlink" title="协议类型"></a>协议类型</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -s 192.168.1.111,192.168.1.112 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -p udp -s 192.168.1.0/24 -j DROP</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>-p，用于匹配报文的协议类型，可以匹配的协议类型tcp、udp、udplite、icmp、esp、ah、sctp等。</p>
+</div>
+
+<h3 id="网卡接口"><a href="#网卡接口" class="headerlink" title="网卡接口"></a>网卡接口</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -i enth4 -j DROP</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>-i，用于匹配报文要从哪个网卡接口流入本机。由于匹配条件只是用于匹配报文流入的网卡，所以在OUTPUT链与POSTROUTING链中不能使用此选项。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -O enth4 -j DROP</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>-o，用于匹配报文要从哪个网卡接口流出本机。由于匹配条件只是用于匹配报文流入的网卡，所以在INPUT链与PREROUTING链中不能使用此选项。</p>
+</div>
+
+<h3 id="扩展匹配"><a href="#扩展匹配" class="headerlink" title="扩展匹配"></a>扩展匹配</h3><h4 id="tcp"><a href="#tcp" class="headerlink" title="tcp"></a>tcp</h4><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -d 192.168.1.111 -p tcp -m tcp --sport 22 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>-p，指定协议。<br>-m，指定扩展模块。<br>–sport，source-port，指定源端口。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 22:25 -j REJECT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>-p，指定协议。<br>-m，指定扩展模块。<br>–dport，destination-port，指定目的端口。<br>22:25，表示22、23、24、25端口。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport 80: -j REJECT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>80:，表示80端口到之后的所有的端口（直到65535）。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m tcp --dport :22 -j REJECT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>:22，表示从0端口到22端口。</p>
+</div>
+
+<h4 id="–tcp-flags"><a href="#–tcp-flags" class="headerlink" title="–tcp-flags"></a>–tcp-flags</h4><p>–tcp-flags，指的就是tcp头中的标志位，可以匹配tcp报文的头部的标志位，然后根据标识位的实际情况实现访问控制的功能。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>匹配到第一次握手的报文。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>匹配到第二次握手的报文。</p>
+</div>
+
+<p>还可以用ALL表示SYN,ACK,FIN,RST,URG,PSH。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN -j REJECT</span><br><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --tcp-flags ALL SYN,ACK -j REJECT</span><br></pre></td></tr></table></figure>
+
+<p>–syn选项，匹配tcp第一次握手。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p tcp -m tcp --dport 22 --syn -j REJECT</span><br></pre></td></tr></table></figure>
+
+<h4 id="multiport"><a href="#multiport" class="headerlink" title="multiport"></a>multiport</h4><p>tcp模块中的–sport或者–dport可以指定一个连续的端口范围，但是无法同时指定多个离散的、不连续的端口。</p>
+<div class="alert danger no-icon"><p>multiport模块中的–sports扩展条件可以同时指定多个离散的源端口。<br>multiport模块中的–dports扩展条件可以同时指定多个离散的目的端口。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -s 192.168.1.111 -p tcp -m multiport --dport 22,36,80 -j DROP</span><br></pre></td></tr></table></figure>
+
+<div class="alert warning no-icon"><p>multiport模块只能用于tcp协议和udp协议，配合-p tcp或者-p udp使用。</p>
+</div>
+
+<h4 id="iprange"><a href="#iprange" class="headerlink" title="iprange"></a>iprange</h4><p>在不使用任何扩展模块下，可以使用-s或者-d即匹配报文的源地址和目的地址，而且在指定IP地址时，可以同时指定多个IP地址，每个IP地址之间用逗号隔开；但是，-s或者-d选项不能一次性地指定一段连续的IP地址范围。</p>
+<p>iprange可以指定一段连续的IP地址范围。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -m iprange --src-range 192.168.1.111-192.168.1.146 -j DROP</span><br><span class="line">iptables -t filter -I INPUT -m iprange --dst-range 192.168.1.111-192.168.1.146 -j DROP</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>–src-range，源地址范围。<br>–dst-range，目的地址范围。</p>
+</div>
+
+<h4 id="string"><a href="#string" class="headerlink" title="string"></a>string</h4><p>string扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -m string --algo bm --string &quot;Hello World&quot; -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>–algo，用于指定匹配算法，可选算法有bm和kmp，必须选项，所以不用纠结选择哪个算法，但是必须指定一个。<br>–string，用于指定需要匹配的字符串。</p>
+</div>
+
+<h4 id="time"><a href="#time" class="headerlink" title="time"></a>time</h4><p>time扩展模块，可以根据时间段匹配报文，如果报文到达的时间在规定时间范围以内，则符合匹配条件。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --timestart 09:00:00 --timestop 18:00:00 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>–timestart，指定开始时间。<br>–timestop，指定结束时间。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --weekdays 6,7 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>–weekdays，指定每个星期的具体哪一天，可以同时指定多个，用逗号隔开。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --monthdays 22,23 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>–monthdays，指定每个月的哪一天。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I OUTPUT -p tcp --dport 80 -m time --datestart 2018-12-01 --datestop 2018-12-25 -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>–datestart，日期开始。<br>–datestop，日期结束。</p>
+</div>
+
+<div class="alert warning no-icon"><p>–weekdays和–monthdays可以使用“!”取反，其他选项不可以。</p>
+</div>
+
+<h4 id="connlimit"><a href="#connlimit" class="headerlink" title="connlimit"></a>connlimit</h4><p>connlimit扩展模块，可以限制每个IP地址同时链接到server端的链接数量。不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 -j REJECT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>–conlimit-above 2，表示限制每个IP的链接数量上限为2。<br>-p tcp –dport 22，限制每个客户端IP的ssh并发链接数量不能高于2。</p>
+</div>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -I INPUT -p tcp --dport 22 -m connlimit --connlimit-above 2 --connlimit-mask 24 -j REJECT</span><br></pre></td></tr></table></figure>
+
+<div class="alert danger no-icon"><p>–connlimit-mask 24，表示某个C类网段。mask表示掩码；24转换成点分十进制就是255.255.255.0。<br>所以，上面的规则表示，一个最多包含254个IP的C类网络中，同时最多只能有2个ssh客户端连接到当前服务器。</p>
+</div>
+
+<h4 id="limit"><a href="#limit" class="headerlink" title="limit"></a>limit</h4><p>limit扩展模块，可以对报文到达的速率进行限制（限制单位时间内流入的包的数量）。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -I INPUT -p icmp -m limit 10/minute -j ACCEPT</span><br></pre></td></tr></table></figure>
+<div class="figure facnybox center" style="width:;"><img class="fig-img" src="images/iptables-limit.png" alt=""></div>
+
+<div class="alert danger no-icon"><p>–limit 10/minute -j ACCEPT，表示每分钟最多放行10个包，相当于每6秒最多放行一个包。</p>
+</div>
+
+<p>ping测试。</p>
+<div class="figure facnybox center" style="width:;"><img class="fig-img" src="images/ping-5.png" alt=""></div>
+
+<div class="alert info no-icon"><p>配置的规则没有起作用，ping请求的速率完全没有发生任何变化。<br>这是因为，上面的规则每6秒放行一个包，那么iptables就会计时，每6秒一个轮次，到第6秒时，到达的报文就会匹配到对应的规则，执行ACCEPT。<br>那么，在第6秒之前到达的包，则无法被上述规则匹配到。<br>之前总结过，报文会匹配链中的每条规则，如果没有任何一条规则匹配到，则匹配默认动作（链的默认策略）。INPUT链的默认策略是ACCEPT。</p>
+</div>
+
+<p>我们有两种方法修改。一是，修改INPUT链的默认策略；二是，再增加一条规则。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -p icmp -j REJECT</span><br></pre></td></tr></table></figure>
+<div class="figure facnybox center" style="width:;"><img class="fig-img" src="images/iptables-a-p-j.png" alt=""></div>
+
+<p>ping测试。</p>
+<div class="figure facnybox center" style="width:;"><img class="fig-img" src="images/ping-6.png" alt=""></div>
+
+<div class="alert info no-icon"><p>前5个ping包没有受到限制，之后的ping包已经开始受到规则的限制。</p>
+</div>
+
+<div class="alert info no-icon"><p>limit模块采用令牌桶算法。<br>上面的情况可以这样想象，有一个木桶，木桶里放了5块令牌，而且这个木桶最多也只能放下5块令牌，所有报文如果想要出关入关，必须要持有木桶中的令牌才行。这个木桶每隔6秒钟就会产生一块新的令牌，如果此时，木桶的令牌不足5块，那么新生成的令牌就会放在木桶中，超过5块，新生成的令牌就会被丢弃。如果此时有5个报文想要入关，那么这5个报文就会去木桶里找令牌，正好一人一个，快乐地入关了。此时木桶空了，再想有报文想要入关已经没有对应的令牌可以使用，只好等待6秒，新的令牌生成，报文拿着新生成的令牌入关。如果很长一段时间没有新的报文想要入关，木桶里的令牌又会慢慢积攒起来，直到到达5个令牌，直到有人使用它。</p>
+</div>
+
+<div class="alert info no-icon"><p>–limit，用于指定多长时间生成一个新的令牌。<br>–limit-brust，用于指定木桶中最多存放几个令牌。</p>
+</div>
+<br>
+<div class="figure facnybox center" style="width:;"><img class="fig-img" src="images/iptables-limit-brust.png" alt=""></div>
+
+<div class="alert info no-icon"><p>上面的例子表示，令牌桶最多放3个令牌，每分钟生成10个令牌。</p>
+</div>
+
+<div class="alert danger no-icon"><p>–limit，可以选择的时间单位有多种，如 /second、/minute、/hour、/day。</p>
+</div>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/iptables/" rel="tag">iptables</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Open vSwitch（二）"
+                    aria-label="PREVIOUS: Open vSwitch（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/16/%E5%90%BE%E7%88%B1%E6%95%85%E4%B9%A1/"
+                    data-tooltip="吾爱故乡"
+                    aria-label="NEXT: 吾爱故乡"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/&amp;title=iptables详解"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/10/18/iptables详解/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Open vSwitch（二）"
+                    aria-label="PREVIOUS: Open vSwitch（二）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/16/%E5%90%BE%E7%88%B1%E6%95%85%E4%B9%A1/"
+                    data-tooltip="吾爱故乡"
+                    aria-label="NEXT: 吾爱故乡"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/&amp;title=iptables详解"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/&amp;title=iptables详解"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

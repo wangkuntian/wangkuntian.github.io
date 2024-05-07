@@ -1,0 +1,756 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>舌尖上的Gnocchi - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Gnocchi">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"美味的gnocchi\n\n\n\n\n简介Gnocchi - Metric as a ServiceGnocchi是一个多租户时间序列、计量和资源数据库。Gnocchi设计用于超大规模计量数据的存储，同时向操作者和用户提供对度量和资源信息的访问。\nGnocchi采用独特的时间序列存储方法：它不是存储原始数据点，而是在存储之前聚合它们。此内置功能与大多数其他时间序列数据库不同，后者通常支持此机制作为可选项并在查询时计算聚合（平均值，最小值等）。\n架构\ngnocchi-api提供HTTP REST API。\ngnocchi-statsdStatsd是一个网络守护程序，它侦听使用TCP或UDP通过网络发送的统计信息，然后聚合发送到另一个后端。\ngnocchi-statsd可以监听通过网络发送的指标。\ngnocchi-metricd异步处理的守护进程，gnocchi-metricd对后台接收的数据执行操作（系统计算、度量标准清理等）。\n存储引擎\n文件\nCeph（首选）\nOpenStack Swift\nAmazon S3\nRedis\n\n索引驱动程序\nPostgreSQL（首选）\nMySQL（至少5.6.4）该索引器负责存储所有的resource、archive-policy和metric的索引，以及他们的定义、类型和属性。该索引器还负责将resource与metric和resource关系连接起来。\n\n概念Resource资源。\n1gnocchi resource list\n\nResource types资源类型。\n1gnocchi resource list-types\n\n当把某个resource删除后，gnocchi会自动创建一个同名的resource，需要重启ceilometer-collector服务。这时，每个metric的arivce-policy是lancer。\n\n\nMetric度量，归属于resource。\n1gnocchi metric list\n\n创建一个metric。\n1234gnocchi metric create \\--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\--archive-policy-name low \\cpu_util\n\n删除一个metric。\n1gnocchi metric delete [metric-id]\n当把resource的某个metric删除后，gnocchi会自动创建一个同名的metric，但是arivce-policy是默认的（low）。\n\n\nMeasures测量数据，归属于metric。\n123456gnocchi measures show \\--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \\--start 2019-02-14T01:00 \\--stop 2019-02-14T02:00 \\--granularity 300 \\cpu_util\n\nArchive policy1gnocchi archive-policy list\n\npoints，存储的点的数量。granularity，监控的时间间隔。timespan，保留时间。\n\n\n创建archive-policy时，只需指定granularity和points，它们的乘积即为timespan。\n\n\n设置archive-policy和granularitygnocchi使用基于Carbonara库的自定义文件格式。在gnocchi中，时间序列是点的集合，其中点是在时间序列的寿命中的给定测量或样本。\n12345678# 时间序列大小（字节） = 点数 x 8.04字节（最坏情况下）size in bytes = number of points x 8.04 bytes# 1个小时的监控数据，采集密度是60s，那就是 60 * 60 / 60 = 60 个点number of points = timespan / granularity# 储存1年的数据，采集密度是5ssize in bytes = (365 * 24 * 60 * 60) / 5 * 8.04 = 49459507.2 bytes = 48300.3 KiB = 47.2 MiB\n\n最好情况下一个点存储大小为0.05字节。\n\n\n\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152root@controller-1:~# gnocchi resource show fd290506-c699-4cdc-ad9b-2b9f4b12674d+-----------------------+---------------------------------------------------------------------+| Field                 | Value                                                               |+-----------------------+---------------------------------------------------------------------+| created_by_project_id | 5ffb4613c041442eaae3eccd804b11d9                                    || created_by_user_id    | 16621a6651c34393a31b16517fb17a7a                                    || creator               | 16621a6651c34393a31b16517fb17a7a:5ffb4613c041442eaae3eccd804b11d9   || ended_at              | None                                                                || id                    | fd290506-c699-4cdc-ad9b-2b9f4b12674d                                || metrics               | compute.instance.booting.time: 671e67f8-8249-4de2-84e7-b77ec1927155 ||                       | cpu.delta: dbe591a5-3e0f-4465-a207-388d1fc6f761                     ||                       | cpu: 20789923-e460-4a10-9c5b-7615fb12db11                           ||                       | cpu_l3_cache: 626140fb-8ace-4729-8a0f-74de80cf568c                  ||                       | cpu_util: ffd347c5-a6ca-4ff6-aeca-294f73fa6b97                      ||                       | disk.allocation: 9b66cfef-de30-4c1a-b211-3edecd8a3f23               ||                       | disk.capacity: 5c090c0c-29c4-4ca3-b34a-c28bc482e2a2                 ||                       | disk.ephemeral.size: 1905d62e-a344-49b4-8838-d19cc2b3c563           ||                       | disk.iops: 1f952ba9-bdf1-4b6c-8744-85bdc1363c71                     ||                       | disk.latency: 091d6a58-643a-4a4b-9704-22d56c996787                  ||                       | disk.read.bytes.rate: 694195e6-b1a6-44ef-bd29-7b2ece1d572e          ||                       | disk.read.bytes: 30de5d7f-fd6b-4531-8ba9-ebba37b9c0e8               ||                       | disk.read.requests.rate: 42c9622f-c58b-44c2-842e-e909e918416b       ||                       | disk.read.requests: f977ad89-d41e-42c5-88f0-c357af5d8677            ||                       | disk.root.size: 85401671-d1db-4e95-b3c0-451416c6e6b7                ||                       | disk.usage: 97dda3d5-576d-4118-8b6d-1f70d402f74e                    ||                       | disk.write.bytes.rate: d9998f52-857c-4d9e-9039-dd570de80904         ||                       | disk.write.bytes: a39ca5da-6ca7-4459-af75-66a06d117198              ||                       | disk.write.requests.rate: 52f7b037-473a-4efc-afc6-d4cbbdcaebc9      ||                       | disk.write.requests: b8a52bc2-5de2-4a17-b449-adb56c32884a           ||                       | mem_util: 1c6456a8-9c2b-452d-ba15-a40faa78cb42                      ||                       | memory.bandwidth.local: 0dc1a66e-df18-4610-9fa5-a15299c169a6        ||                       | memory.bandwidth.total: 07a87bef-0da0-4be9-9cbe-64fa30334750        ||                       | memory.resident: 707531fa-89e6-4322-9bb1-3556e0fa3196               ||                       | memory.swap.in: b0cc0461-26b7-41fe-8dbd-a8b0620984ef                ||                       | memory.swap.out: 97cca793-95ec-448a-90f7-1361ad254ea9               ||                       | memory.usage: 2121df06-f186-48bd-9929-644e585aaf50                  ||                       | memory: 2406f042-7bca-43fe-b6e9-d57a63732d61                        ||                       | network_in_rate: daea496e-9ceb-4f75-b124-ad94d0f2b9de               ||                       | network_out_rate: e870932d-8947-4c29-81a7-63a98ffd2a22              ||                       | perf.cache.misses: dbbb673b-72ed-4a1f-a759-6aa52987b71f             ||                       | perf.cache.references: 5379d928-5948-4a82-a8d3-845db286ce8f         ||                       | perf.cpu.cycles: a712218f-a2e4-45f1-8bad-14796c14a58e               ||                       | perf.instructions: 8df2679b-2711-4746-a9e8-855de1b84725             ||                       | vcpus: 8dd43cbf-ea64-434e-940c-ccf3c26df23d                         || original_resource_id  | fd290506-c699-4cdc-ad9b-2b9f4b12674d                                || project_id            | b223504128254d55a1a3558fdefadf41                                    || revision_end          | None                                                                || revision_start        | 2019-02-19T07:13:27.311826+00:00                                    || started_at            | 2019-02-12T09:05:25.564433+00:00                                    || type                  | instance                                                            || user_id               | 349d2ac614954a72a748119da4c7e5b0                                    |+-----------------------+---------------------------------------------------------------------+","dateCreated":"2019-01-21T15:41:17+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2019-01-21T15:41:17+08:00","description":"美味的gnocchi","headline":"舌尖上的Gnocchi","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/","keywords":"Gnocchi","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="美味的gnocchi">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="舌尖上的Gnocchi">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="美味的gnocchi">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/architecture.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/resource.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/resource-types.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/metric-list.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/measures-show.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/archive-policy.png">
+<meta property="article:published_time" content="2019-01-21T07:41:17.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.331Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Gnocchi">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/images/architecture.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            舌尖上的Gnocchi
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-01-21T15:41:17+08:00">
+	
+		    Jan 21, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>美味的gnocchi</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%80%E4%BB%8B"><span class="toc-text">简介</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%B6%E6%9E%84"><span class="toc-text">架构</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#gnocchi-api"><span class="toc-text">gnocchi-api</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#gnocchi-statsd"><span class="toc-text">gnocchi-statsd</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#gnocchi-metricd"><span class="toc-text">gnocchi-metricd</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AD%98%E5%82%A8%E5%BC%95%E6%93%8E"><span class="toc-text">存储引擎</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B4%A2%E5%BC%95%E9%A9%B1%E5%8A%A8%E7%A8%8B%E5%BA%8F"><span class="toc-text">索引驱动程序</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E5%BF%B5"><span class="toc-text">概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Resource"><span class="toc-text">Resource</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Resource-types"><span class="toc-text">Resource types</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Metric"><span class="toc-text">Metric</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Measures"><span class="toc-text">Measures</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Archive-policy"><span class="toc-text">Archive policy</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AEarchive-policy%E5%92%8Cgranularity"><span class="toc-text">设置archive-policy和granularity</span></a></li></ol></li></ol></li></ol>
+
+<h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>Gnocchi - Metric as a Service<br>Gnocchi是一个多租户时间序列、计量和资源数据库。Gnocchi设计用于超大规模计量数据的存储，同时向操作者和用户提供对度量和资源信息的访问。</p>
+<p>Gnocchi采用独特的时间序列存储方法：它不是存储原始数据点，而是在存储之前聚合它们。此内置功能与大多数其他时间序列数据库不同，后者通常支持此机制作为可选项并在查询时计算聚合（平均值，最小值等）。</p>
+<h3 id="架构"><a href="#架构" class="headerlink" title="架构"></a>架构</h3><p><img src="images/architecture.png" alt="architecture"></p>
+<h4 id="gnocchi-api"><a href="#gnocchi-api" class="headerlink" title="gnocchi-api"></a>gnocchi-api</h4><p>提供HTTP REST API。</p>
+<h4 id="gnocchi-statsd"><a href="#gnocchi-statsd" class="headerlink" title="gnocchi-statsd"></a>gnocchi-statsd</h4><p>Statsd是一个网络守护程序，它侦听使用TCP或UDP通过网络发送的统计信息，然后聚合发送到另一个后端。</p>
+<p>gnocchi-statsd可以监听通过网络发送的指标。</p>
+<h4 id="gnocchi-metricd"><a href="#gnocchi-metricd" class="headerlink" title="gnocchi-metricd"></a>gnocchi-metricd</h4><p>异步处理的守护进程，gnocchi-metricd对后台接收的数据执行操作（系统计算、度量标准清理等）。</p>
+<h4 id="存储引擎"><a href="#存储引擎" class="headerlink" title="存储引擎"></a>存储引擎</h4><ul>
+<li>文件</li>
+<li>Ceph（首选）</li>
+<li>OpenStack Swift</li>
+<li>Amazon S3</li>
+<li>Redis</li>
+</ul>
+<h4 id="索引驱动程序"><a href="#索引驱动程序" class="headerlink" title="索引驱动程序"></a>索引驱动程序</h4><ul>
+<li>PostgreSQL（首选）</li>
+<li>MySQL（至少5.6.4）<br>该索引器负责存储所有的resource、archive-policy和metric的索引，以及他们的定义、类型和属性。<br>该索引器还负责将resource与metric和resource关系连接起来。</li>
+</ul>
+<h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><h4 id="Resource"><a href="#Resource" class="headerlink" title="Resource"></a>Resource</h4><p>资源。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list</span><br></pre></td></tr></table></figure>
+<p><img src="images/resource.png" alt="resource"></p>
+<h4 id="Resource-types"><a href="#Resource-types" class="headerlink" title="Resource types"></a>Resource types</h4><p>资源类型。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi resource list-types</span><br></pre></td></tr></table></figure>
+<p><img src="images/resource-types.png" alt="resource-types"></p>
+<div class="alert no-icon danger"><p>当把某个resource删除后，gnocchi会自动创建一个同名的resource，需要重启ceilometer-collector服务。<br>这时，每个metric的arivce-policy是lancer。</p>
+</div>
+
+<h4 id="Metric"><a href="#Metric" class="headerlink" title="Metric"></a>Metric</h4><p>度量，归属于resource。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric list</span><br></pre></td></tr></table></figure>
+<p><img src="images/metric-list.png" alt="metric-list"></p>
+<p>创建一个metric。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric create \</span><br><span class="line">--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \</span><br><span class="line">--archive-policy-name low \</span><br><span class="line">cpu_util</span><br></pre></td></tr></table></figure>
+
+<p>删除一个metric。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi metric delete [metric-id]</span><br></pre></td></tr></table></figure>
+<div class="alert no-icon danger"><p>当把resource的某个metric删除后，gnocchi会自动创建一个同名的metric，但是arivce-policy是默认的（low）。</p>
+</div>
+
+<h4 id="Measures"><a href="#Measures" class="headerlink" title="Measures"></a>Measures</h4><p>测量数据，归属于metric。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">gnocchi measures show \</span><br><span class="line">--resource-id c05ea85d-d60c-4a0c-9d0c-e4d1594995e0 \</span><br><span class="line">--start 2019-02-14T01:00 \</span><br><span class="line">--stop 2019-02-14T02:00 \</span><br><span class="line">--granularity 300 \</span><br><span class="line">cpu_util</span><br></pre></td></tr></table></figure>
+<p><img src="images/measures-show.png" alt="measures-show"></p>
+<h4 id="Archive-policy"><a href="#Archive-policy" class="headerlink" title="Archive policy"></a>Archive policy</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gnocchi archive-policy list</span><br></pre></td></tr></table></figure>
+<p><img src="images/archive-policy.png" alt="archive-policy"></p>
+<div class="alert no-icon info"><p>points，存储的点的数量。<br>granularity，监控的时间间隔。<br>timespan，保留时间。</p>
+</div>
+
+<div class="alert no-icon danger"><p>创建archive-policy时，只需指定granularity和points，它们的乘积即为timespan。</p>
+</div>
+
+<h5 id="设置archive-policy和granularity"><a href="#设置archive-policy和granularity" class="headerlink" title="设置archive-policy和granularity"></a>设置archive-policy和granularity</h5><p>gnocchi使用基于Carbonara库的自定义文件格式。在gnocchi中，时间序列是点的集合，其中点是在时间序列的寿命中的给定测量或样本。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 时间序列大小（字节） = 点数 x 8.04字节（最坏情况下）</span></span><br><span class="line">size <span class="keyword">in</span> <span class="built_in">bytes</span> = number of points x <span class="number">8.04</span> <span class="built_in">bytes</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 1个小时的监控数据，采集密度是60s，那就是 60 * 60 / 60 = 60 个点</span></span><br><span class="line">number of points = timespan / granularity</span><br><span class="line"></span><br><span class="line"><span class="comment"># 储存1年的数据，采集密度是5s</span></span><br><span class="line">size <span class="keyword">in</span> <span class="built_in">bytes</span> = (<span class="number">365</span> * <span class="number">24</span> * <span class="number">60</span> * <span class="number">60</span>) / <span class="number">5</span> * <span class="number">8.04</span> = <span class="number">49459507.2</span> <span class="built_in">bytes</span> = <span class="number">48300.3</span> KiB = <span class="number">47.2</span> MiB</span><br></pre></td></tr></table></figure>
+
+<div class="alert no-icon info"><p>最好情况下一个点存储大小为0.05字节。</p>
+</div>
+
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line">root@controller-1:~<span class="comment"># gnocchi resource show fd290506-c699-4cdc-ad9b-2b9f4b12674d</span></span><br><span class="line">+-----------------------+---------------------------------------------------------------------+</span><br><span class="line">| Field                 | Value                                                               |</span><br><span class="line">+-----------------------+---------------------------------------------------------------------+</span><br><span class="line">| created_by_project_id | 5ffb4613c041442eaae3eccd804b11d9                                    |</span><br><span class="line">| created_by_user_id    | 16621a6651c34393a31b16517fb17a7a                                    |</span><br><span class="line">| creator               | 16621a6651c34393a31b16517fb17a7a:5ffb4613c041442eaae3eccd804b11d9   |</span><br><span class="line">| ended_at              | None                                                                |</span><br><span class="line">| <span class="built_in">id</span>                    | fd290506-c699-4cdc-ad9b-2b9f4b12674d                                |</span><br><span class="line">| metrics               | compute.instance.booting.time: 671e67f8-8249-4de2-84e7-b77ec1927155 |</span><br><span class="line">|                       | cpu.delta: dbe591a5-3e0f-4465-a207-388d1fc6f761                     |</span><br><span class="line">|                       | cpu: 20789923-e460-4a10-9c5b-7615fb12db11                           |</span><br><span class="line">|                       | cpu_l3_cache: 626140fb-8ace-4729-8a0f-74de80cf568c                  |</span><br><span class="line">|                       | cpu_util: ffd347c5-a6ca-4ff6-aeca-294f73fa6b97                      |</span><br><span class="line">|                       | disk.allocation: 9b66cfef-de30-4c1a-b211-3edecd8a3f23               |</span><br><span class="line">|                       | disk.capacity: 5c090c0c-29c4-4ca3-b34a-c28bc482e2a2                 |</span><br><span class="line">|                       | disk.ephemeral.size: 1905d62e-a344-49b4-8838-d19cc2b3c563           |</span><br><span class="line">|                       | disk.iops: 1f952ba9-bdf1-4b6c-8744-85bdc1363c71                     |</span><br><span class="line">|                       | disk.latency: 091d6a58-643a-4a4b-9704-22d56c996787                  |</span><br><span class="line">|                       | disk.read.bytes.rate: 694195e6-b1a6-44ef-bd29-7b2ece1d572e          |</span><br><span class="line">|                       | disk.read.bytes: 30de5d7f-fd6b-4531-8ba9-ebba37b9c0e8               |</span><br><span class="line">|                       | disk.read.requests.rate: 42c9622f-c58b-44c2-842e-e909e918416b       |</span><br><span class="line">|                       | disk.read.requests: f977ad89-d41e-42c5-88f0-c357af5d8677            |</span><br><span class="line">|                       | disk.root.size: 85401671-d1db-4e95-b3c0-451416c6e6b7                |</span><br><span class="line">|                       | disk.usage: 97dda3d5-576d-4118-8b6d-1f70d402f74e                    |</span><br><span class="line">|                       | disk.write.bytes.rate: d9998f52-857c-4d9e-9039-dd570de80904         |</span><br><span class="line">|                       | disk.write.bytes: a39ca5da-6ca7-4459-af75-66a06d117198              |</span><br><span class="line">|                       | disk.write.requests.rate: 52f7b037-473a-4efc-afc6-d4cbbdcaebc9      |</span><br><span class="line">|                       | disk.write.requests: b8a52bc2-5de2-4a17-b449-adb56c32884a           |</span><br><span class="line">|                       | mem_util: 1c6456a8-9c2b-452d-ba15-a40faa78cb42                      |</span><br><span class="line">|                       | memory.bandwidth.local: 0dc1a66e-df18-4610-9fa5-a15299c169a6        |</span><br><span class="line">|                       | memory.bandwidth.total: 07a87bef-0da0-4be9-9cbe-64fa30334750        |</span><br><span class="line">|                       | memory.resident: 707531fa-89e6-4322-9bb1-3556e0fa3196               |</span><br><span class="line">|                       | memory.swap.in: b0cc0461-26b7-41fe-8dbd-a8b0620984ef                |</span><br><span class="line">|                       | memory.swap.out: 97cca793-95ec-448a-90f7-1361ad254ea9               |</span><br><span class="line">|                       | memory.usage: 2121df06-f186-48bd-9929-644e585aaf50                  |</span><br><span class="line">|                       | memory: 2406f042-7bca-43fe-b6e9-d57a63732d61                        |</span><br><span class="line">|                       | network_in_rate: daea496e-9ceb-4f75-b124-ad94d0f2b9de               |</span><br><span class="line">|                       | network_out_rate: e870932d-8947-4c29-81a7-63a98ffd2a22              |</span><br><span class="line">|                       | perf.cache.misses: dbbb673b-72ed-4a1f-a759-6aa52987b71f             |</span><br><span class="line">|                       | perf.cache.references: 5379d928-5948-4a82-a8d3-845db286ce8f         |</span><br><span class="line">|                       | perf.cpu.cycles: a712218f-a2e4-45f1-8bad-14796c14a58e               |</span><br><span class="line">|                       | perf.instructions: 8df2679b-2711-4746-a9e8-855de1b84725             |</span><br><span class="line">|                       | vcpus: 8dd43cbf-ea64-434e-940c-ccf3c26df23d                         |</span><br><span class="line">| original_resource_id  | fd290506-c699-4cdc-ad9b-2b9f4b12674d                                |</span><br><span class="line">| project_id            | b223504128254d55a1a3558fdefadf41                                    |</span><br><span class="line">| revision_end          | None                                                                |</span><br><span class="line">| revision_start        | 2019-02-19T07:13:27.311826+00:00                                    |</span><br><span class="line">| started_at            | 2019-02-12T09:05:25.564433+00:00                                    |</span><br><span class="line">| <span class="built_in">type</span>                  | instance                                                            |</span><br><span class="line">| user_id               | 349d2ac614954a72a748119da4c7e5b0                                    |</span><br><span class="line">+-----------------------+---------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Gnocchi/" rel="tag">Gnocchi</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    data-tooltip="Ceilometer和Gnocchi"
+                    aria-label="PREVIOUS: Ceilometer和Gnocchi"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    data-tooltip="这，就是Ceilometer！"
+                    aria-label="NEXT: 这，就是Ceilometer！"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/&amp;title=舌尖上的Gnocchi"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/01/21/舌尖上的Gnocchi/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/02/14/Ceilometer%E5%92%8CGnocchi/"
+                    data-tooltip="Ceilometer和Gnocchi"
+                    aria-label="PREVIOUS: Ceilometer和Gnocchi"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/01/21/%E8%BF%99%EF%BC%8C%E5%B0%B1%E6%98%AFCeilometer%EF%BC%81/"
+                    data-tooltip="这，就是Ceilometer！"
+                    aria-label="NEXT: 这，就是Ceilometer！"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/&amp;title=舌尖上的Gnocchi"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/&amp;title=舌尖上的Gnocchi"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/01/21/%E8%88%8C%E5%B0%96%E4%B8%8A%E7%9A%84Gnocchi/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

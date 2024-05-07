@@ -1,0 +1,913 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Python面试问题汇总 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Python">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\nPython语言特性类变量和实例变量类变量\n\n是可在类的所有实例之间共享的值（也就是说，它们不是单独分配给每个实例的）。\n\n例如下例中，num_of_instance 就是类变量，用于跟踪存在着多少个Test 的实例。\n实例变量\n\n实例化之后，每个实例单独拥有的变量。\n\n12345678910111213class Test(object):      num_of_instance = 0      def __init__(self, name):          self.name = name          Test.num_of_instance += 1    if __name__ == &#x27;__main__&#x27;:      print Test.num_of_instance   # 0    t1 = Test(&#x27;wkt&#x27;)      print Test.num_of_instance   # 1    t2 = Test(&#x27;hy&#x27;)      print t1.name , t1.num_of_instance  # wkt 2    print t2.name , t2.num_of_instance  # hy 2\n\n补充\n1234567891011121314151617181920class Student(object):    name = &quot;hy&quot;s1 = Student()s2 = Student()s1.name = &quot;wkt&quot;print s1.name  # wktprint s2.name  # hyprint Student.name  # hyclass Teacher:    students = []t1 = Teacher()t2 = Teacher()t1.students.append(1)print t1.students  # [1]print t2.students  # [1]print Teacher.students  # [1]\nmetaclass\nobject是所有类的超类，而且type也是继承自object；所有对象创建自type，而且object也是type的实例。\nobject和type是python中的两个源对象，事实上，它们是互相依赖对方来定义，所以它们不能分开而论。\n通过这两个源对象可以繁育出一堆对象：list、tuple、dict等。元类就是这些类的类，这些类是元类的实例。\nmetaclass是type的子类，通过替换type的__call__运算符重载机制，“超越变形”正常的类。\n\nPython自省自省就是面向对象的语言所写程序在运行时，所能知道对象的类型。运行时能获得对象的类型。比如type()、dir()、getattr()、hasattr()、isinstance()\n__new__和__init__区别\n__new__是一个静态方法，而__init__是一个实例方法。\n__new__方法会返回一个创建的实例，而__init__什么都不会返回。\n只有在__new__返回一个cls的实例后，__init__才会被调用。\n当创建一个新实例时调用__new__，初始化一个实例时调用__init__。\n\n__metaclass__是创建类时起作用，所以我们可以分别使用__metaclass__、__new__和__init__来分别在类创建，实例创建和实例初始化的时候做一些小手脚.\n单例模式\n使用__new__方法\n123456789class Singleton(object):    def __new__(cls, *args, **kw):        if not hasattr(cls, &#x27;_instance&#x27;)            orig = super(Singleton, cls)            cls._instance = orig.__new__(cls, *args, **kw)        return cls._instanceclass Test(Singleton):    pass\n\n装饰器\n1234567891011def singleton(cls):    instances = &#123;&#125;    def get_instance(*args, **kw)        if cls not in instances:            instances[cls] = cls(*arg, **kw)        return instances[cls]    return get_instance@singletonclass Test:    pass\n\nimport\n123456789# singleton.pyclass My_Singleton(object):    passmy_singleton = My_Singleton()# usefrom singleton import my_singleton\n\n\n\nGIL线程全局锁线程全局锁（Global Interpreter Lock），Python为了保证线程安全而采取的独立线程运行的限制，一个核只能在同一时间运行一个线程。Python中的多线程是假的多线程，Python解释器虽然可以开启多个线程，但同一时间只有一个线程能在解释器中执行，而做到这一点正是由于GIL锁的存在，它的存在使得CPU资源同一时间只会给一个线程使用。\n解决办法就是多进程和协程（协程也只是单CPU，但是能减少切换代价而提升性能）。\n线程锁线程锁是由于在进程进行数据操作时要保证数据操作的安全性（同一进程中线程之间可以共用信息，如果同时对数据进行操作，则会出现公共数据错误）。\n进程和线程进程是资源（CPU、内存）分配的基本单位，它是执行程序是的一个实例。程序运行时系统会创建一个进程，并为它分配资源，然后把该进程放入进程就绪队列，进程调度器选中它的时候就会为它分配CPU时间，程序开始真正运行。\n线程是程序执行时的最小单位，它是进程的执行流，是CPU调度和分派的基本单位，一个进程可以由多个线程组成，线程间共享进程的所有资源，每个进程都有自己的堆栈和局部变量。线程由CPU独立调度执行，在多CPU环境下就允许多个线程同时运行。同样多线程也可以实现并发操作，每个请求分配一个线程来处理。\n区别\n\n进程是资源分配的最小单位，线程是程序执行的最小单位。\n进程有自己的独立空间，每启动一个进程，系统就会为它分配地址空间，建立数据表来维护代码段、堆栈段和数据段，这种操作非常昂贵。而线程是共享进程中的数据的，使用相同的地址空间，因此CPU切换一个线程的花费远比进程要小很多，同时创建一个线程的开销也比进程要小很多。\n线程之间的通信更方便，同一进程下的线程共享全局变量、静态变量等数据，而进程之间的通信需要以通信的方式（IPC）进行。不过如何处理好同步与互斥是编写多线程程序的难点。\n多进程程序更健壮，多线程程序只要有一个线程死掉，整个进程也死掉了，而一个进程死掉并不会对另外一个进程造成影响，因为进程有自己独立的地址空间。\n\n使用场景IO密集型的程序，可以使用多线程提高程序整体效率（socket server 网络并发）。程序是CPU密集型的，使用Python的多线程是无法提升效率的，使用多进程来实现。\nCPU密集型（CPU-bound）\nCPU密集型也叫计算密集型，指的是系统的硬盘、内存性能相对CPU要好很多，此时，系统运作大部分的状况是CPU Loading 100%，CPU要读/写I/O(硬盘/内存)，\nI/O在很短的时间就可以完成，而CPU还有许多运算要处理，CPU Loading很高。\n\n\nIO密集型（I/O bound）\nIO密集型指的是系统的CPU性能相对硬盘、内存要好很多，此时，系统运作，大部分的状况是CPU在等I/O (硬盘/内存) 的读/写操作，此时CPU Loading并不高\nI/O bound的程序一般在达到性能极限时，CPU占用率仍然较低。这可能是因为任务本身需要大量I/O操作，而pipeline做得不是很好，没有充分利用处理器能力\n\n\n进程间通信方式\n管道\n信号量\n消息队列\nSocket\n共享内存\n信号协程协程是一种用户态的轻量级线程，即线程是由用户程序自己控制调度的。\n\n优点：\n\n协程的开销更小，属于程序级别的切换，操作系统完全感知不到，因而更加轻量级。\n单线程内就能实现并发的效率，最大限度的利用CPU。\n\n缺点\n\n协程的本质是单线程下，无法利用多核，可以是一个程序开启多个进程，每个进程开启多个线程，每个线程开启协程。\n协程是单个线程，因而一旦协程出现阻塞，将会阻塞整个线程。\n\n特点\n\n必须在只有一个单线程里实现并发。\n修改共享数据不需加锁。\n用户程序里自己保存多个控制流的上下文栈。\n一个协程遇到IO操作自动切换到其它协程。\n\n应用场景yield\n\n提高并发。\n\n并行和并发并行（parallel）指在同一时刻，有多条指令在多个处理器上同时执行。所以无论从微观还是从宏观来看，二者都是一起执行的。\n并发(concurrency)：指在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个进程快速交替的执行。\nPython垃圾回收机制Python GC主要使用引用计数（Reference Counting）来跟踪和回收垃圾。在引用计数的基础上，通过“标记-清除”（Mark and Sweep）解决容器对象可能产生的循环引用问题，通过“分代回收”（Generation Collection）以空间换时间的方法提高垃圾回收效率。\n\n引用计数PyObject是每个对象必须有的内容，其中ob_refcnt就是作为引用计数。当一个对象有新的引用是，它的ob_refcnt就会增加，当引用它的对象被删除，它的ob_refcnt就会被减少。引用计数为0时，该对象生命就结束了。\n\n优点：\n\n简单\n实时性\n\n缺点：\n\n维护引用计数消耗资源\n循环引用\n\n\n标记-清除机制基本思路是先按需分配，等到没有空闲内存的时候从寄存器和程序栈上的引用出发，遍历以对象为节点、以引用为边构成的图，把所有可以访问到的对象打上标记，然后清扫一遍内存空间，把所有没有标记的对象释放。\n\n分代技术分代回收的整体思想是：将系统中的所有内存块根据其存活时间划分为不同的集合，每一个集合就成为一个“代”，垃圾手机频率随着“代”的存活时间的增大而减小，存活时间通常利用经过几次垃圾回收来度量。\n\n\nPython默认定义了三代对象集合，索引数越大，对象存活越长。\n举例： 当某些内存块M经过了3次垃圾收集的清洗之后还存活时，我们就将内存块M划到一个集合A中去，而新分配的内存都划分到集合B中去。当垃圾收集开始工作时，大多数情况都只对集合B进行垃圾回收，而对集合A进行垃圾回收要隔相当长一段时间后才进行，这就使得垃圾收集机制需要处理的内存少了，效率自然就提高了。在这个过程中，集合B中的某些内存块由于存活时间长而会被转移到集合A中，当然，集合A中实际上也存在一些垃圾，这些垃圾的回收会因为这种分代的机制而被延迟。\nPython的魔法方法魔法方法就是可以给你的类增加魔力的特殊方法，如果你的对象实现（重载）了这些方法中的某一个，那么这个方法就会在特殊的情况下被Python所调用，它们通常是两个下划线包围起来命名的（比如__init__、__len__）\n\n\n\n浅拷贝是拷贝一层，深层次的对象级别的就拷贝引用；深拷贝是拷贝多层，每一级别的数据都会拷贝出来；\n可变类型和不可变类型可变类型，是指变量所指向的内存地址处的值是可以被改变的。\n可变类型：Set（集合）、List（列表）、Dict（字典）\n不可变类型，是指变量所指向的内存地址处的值是不可被改变的。\n不可变类型：Number（数字）、String（字符串）、Tuple（元组）\n闭包闭包的特点就是内部函数引用了外部函数中的变量。\n判断是否是闭包函数函数名.__closure__在函数式闭包函数时，返回一个cell对象的元组；不是闭包时，返回None。\n装饰器装饰器（Decorator），能在代码运行期间动态增加功能。\n示例123456789101112131415161718192021import timeimport functoolsdef cost(func):    @functools.wraps(func)    def wrapper(*args, **kwargs):        t1 = time.time()        result = func(*args, **kwargs)        t2 = time.time()        print(&#x27;cost: %s ms&#x27;, func.__name__, (t2 - t1) * 1000)        return result    return wrapper@costdef add(x, y):    print(&#x27;calling add function&#x27;)    return x + y# add(1, 2) 相当于执行 cost(add)(1, 2)\n\n带参数的装饰器12345678910111213141516171819202122232425262728import timeimport functoolsdef cost(cost=True):    def decorator(func):        @functools.wraps(func)        def wrapper(*args, **kwargs):            print(&#x27;calling decorated function&#x27;)            t1 = time.time()            result = func(*args, **kwargs)            t2 = time.time()            if cost:                print(&#x27;%s function cost: %s ms&#x27; % (func.__name__, (t2 - t1) * 1000))            return result        return wrapper    return decorator@cost()def add(x, y):    print(&#x27;calling add function&#x27;)    return x + y# add(1, 2) 相当于执行 cost(timeout=2)(add)(1, 2)\n\n偏函数functools.partial的作用就是，把设置某个函数的默认值，返回一个新的函数，调用这个新函数会更简单。\n123456789import functoolsdef add(x, y):    return x + ynew_add = functools.partial(add, 100)new_add(20) # 120\n\n迭代Python的for循环不仅可以用在list或tuple上，还可以作用在其他可迭代对象上。\nlist这种数据类型虽然有下标，但很多其他数据类型是没有下标的，但是，只要是可迭代对象，无论有无下标，都可以迭代，比如dict就可以迭代。\ndict的存储不是按照list的方式顺序排列，所以，迭代出的结果顺序很可能不一样。\n默认情况下，dict迭代的是key。\n\n\n判断可迭代通过collections模块的Iterable类型判断。\n123from collections import Iterableisinstance(&#x27;abc&#x27;, Iterable)\n\n生成器在Python中，这种一边循环一边计算的机制，称为生成器：generator。\n数据库mysql事务事务主要用于处理操作量大、复杂度高的数据。\n事务是一个最小的不可再分的工作单元；通常一个事务对应一个完整的业务。\nACID事务四大特征（ACID）\n\n原子性（Atomicity）：指一个事务是一个不可分割的工作单位，其中的操作要么都做，要么都不做；如果事务中一个sql语句执行失败，则已执行的语句也必须回滚，数据库退回到事务前的状态。\n一致性（Consistency）：事务执行结束后，数据库的完整性约束没有被破坏，事务执行的前后都是合法的数据状态。\n隔离性（Isolation）：事务内部的操作与其他事务是隔离的，并发执行的各个事务之间不能互相干扰。严格的隔离性，对应了事务隔离级别中的Serializable (可串行化)。\n持久性（Durability）：事务一旦提交，它对数据库的改变就应该是永久性的。接下来的其他操作或故障不应该对其有任何影响。\n\n事务的隔离性锁机制隔离性要求同一时刻只能有一个事务对数据进行写操作，InnoDB通过锁机制来保证这一点。\n锁可以分为表锁、行锁以及其他位于二者之间的锁。\n表锁在操作数据时会锁定整张表，并发性能较差；行锁则只锁定需要操作的数据，并发性能好。但是由于加锁本身需要消耗资源(获得锁、检查锁、释放锁等都需要消耗资源)，因此在锁定数据较多情况下使用表锁可以节省大量资源。MySQL中不同的存储引擎支持的锁是不一样的，例如MyIsam只支持表锁，而InnoDB同时支持表锁和行锁，且出于性能考虑，绝大多数情况下使用的都是行锁。\n隔离级别\nread uncommitted，读未提交。脏读：可能。不可重复读：可能。幻读：可能。\n\nread committed，读已提交。脏读：不可能。不可重复读：可能。幻读：可能。\n\nrepeatable read，可重重复读。脏读：不可能。不可重复读：不可能。幻读：可能。\n\nserializable，可串行化。脏读：不可能。不可重复读：不可能。幻读：不可能。\n\n\n脏读：当前事务(A)中可以读到其他事务(B)未提交的数据（脏数据）。\n\n\n不可重复读：在事务A中先后两次读取同一个数据，两次读取的结果不一样，这种现象称为不可重复读。\n脏读与不可重复读的区别在于：前者读到的是其他事务未提交的数据，后者读到的是其他事务已提交的数据\n\n\n幻读：在事务A中按照某个条件先后两次查询数据库，两次查询结果的条数不同，这种现象称为幻读。\n不可重复读与幻读的区别可以通俗的理解为：前者是数据变了，后者是数据的行数变了\n\n\noracle默认的隔离级别是读已提交。mysql默认的隔离级别是可重复读。\n\n\n多并发并发修改同一记录时，避免更新丢失，要么在应用层加锁，要么在缓存加锁，要么在数据库层使用乐观锁，使用version作为更新依据。如果每次访问冲突概率小于20%，推荐使用乐观锁，否则使用悲观锁。乐观锁的重试次数不得小于3次。\n乐观锁和悲观锁乐观锁乐观锁顾名思义就是在操作时很乐观，认为操作不会产生并发问题(不会有其他线程对数据进行修改)，因此不会上锁。但是在更新时会判断其他线程在这之前有没有对数据进行修改，一般会使用版本号机制或CAS(compare and swap)算法实现。\n版本号机制\n取出记录时，获取当前version\n更新时，带上这个version\n执行更新时， set version = newVersion where version = oldVersion\n如果version不对，就更新失败\n\n核心SQL\n1update table set name = &#x27;Aron&#x27;, version = version + 1 where id = #&#123;id&#125; and version = #&#123;version&#125;;  \n\nCAS算法乐观锁的另一种技术技术，当多个线程尝试使用CAS同时更新同一个变量时，只有其中一个线程能更新变量的值，而其它线程都失败，失败的线程并不会被挂起，而是被告知这次竞争中失败，并可以再次尝试。\n悲观锁总是假设最坏的情况，每次取数据时都认为其他线程会修改，所以都会加（悲观）锁。一旦加锁，不同线程同时执行时,只能有一个线程执行，其他的线程在入口处等待，直到锁被释放。\n悲观锁在MySQL、Java有广泛的使用：MySQL的读锁、写锁、行锁等，Java的synchronized关键字。\n总结读的多，冲突几率小，乐观锁。写的多，冲突几率大，悲观锁。\n锁锁是Python提供给我们能够自行操控线程切换的一种手段，使用锁可以让线程的切换变的有序。一旦线程的切换变的有序后，各个线程之间对数据的访问、修改就变的可控，所以若要保证线程安全，就必须使用锁。\nthreading模块中提供了5种最常见的锁，下面是按照功能进行划分：\n同步锁：lock（一次只能放行一个）递归锁：rlock（一次只能放行一个）条件锁：condition（一次可以放行任意个）事件锁：event（一次全部放行）信号量锁：semaphore（一次可以放行特定个）\nLock() 同步锁\n同步锁\n互斥锁\n\n\n互斥指的是某一资源同一时刻仅能有一个访问者对其进行访问，具有唯一性和排他性，但是互斥无法限制访问者对资源的访问顺序，即访问是无序的。\n同步是指在互斥的基础上（大多数情况），通过其他机制实现访问者对资源的有序访问。\n同步其实已经实现了互斥，是互斥的一种更为复杂的实现，因为它在互斥的基础上实现了有序访问的特点。\n\n同步锁一次只能放行一个线程，一个被加锁的线程在运行时不会将执行权交出去，只有当该线程被解锁时才会将执行权通过系统调度交由其他线程。\n对于同步锁来说，一次acquire()必须对应一次release()，不能出现连续重复使用多次acquire()后再重复使用多次release()的操作，这样会引起死锁造成程序的阻塞，完全不动了。\nRLock() 递归锁递归锁是同步锁的一个升级版本，在同步锁的基础上可以做到连续重复使用多次acquire()后再重复使用多次release()的操作，但是一定要注意加锁次数和解锁次数必须一致，否则也将引发死锁现象。\nRLock递归锁，递归锁的实现非常简单，它的内部会维护着一个计数器，当计数器不为0的时候该线程不能被I/O操作和时间轮询机制切换。\nCondition() 条件锁条件锁是在递归锁的基础上增加了能够暂停线程运行的功能。并且我们可以使用wait()与notify()来控制线程执行的个数。\nCondition条件锁的内部其实是有两把锁的，一把底层锁（同步锁）一把高级锁(递归锁)。\n低层锁的解锁方式有两种，使用wait()方法会暂时解开底层锁同时加上一把高级锁，只有当接收到别的线程里的notfiy()后才会解开高级锁和重新上锁低层锁，也就是说条件锁底层是根据同步锁和递归锁的不断切换来进行实现的。\nEvent() 事件锁事件锁是基于条件锁来做的，它与条件锁的区别在于一次只能放行全部，不能放行任意个数量的子线程继续运行。\nSemaphore() 信号量锁信号量锁也是根据条件锁来做的，它与条件锁和事件锁的区别如下：\n\n条件锁：一次可以放行任意个处于“等待”状态的线程\n事件锁：一次可以放行全部的处于“等待”状态的线程\n信号量锁：通过规定，成批的放行特定个处于“上锁”状态的线程\n","dateCreated":"2020-02-21T10:53:07+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2020-02-21T10:53:07+08:00","description":"Python面试问题汇总","headline":"Python面试问题汇总","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/","keywords":"Python","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Python面试问题汇总">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Python面试问题汇总">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Python面试问题汇总">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/images/magic_method_1.png">
+<meta property="article:published_time" content="2020-02-21T02:53:07.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.099Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Python">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/images/magic_method_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Python面试问题汇总
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-02-21T10:53:07+08:00">
+	
+		    Feb 21, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Python%E8%AF%AD%E8%A8%80%E7%89%B9%E6%80%A7"><span class="toc-text">Python语言特性</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%B1%BB%E5%8F%98%E9%87%8F%E5%92%8C%E5%AE%9E%E4%BE%8B%E5%8F%98%E9%87%8F"><span class="toc-text">类变量和实例变量</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#metaclass"><span class="toc-text">metaclass</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python%E8%87%AA%E7%9C%81"><span class="toc-text">Python自省</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#new-%E5%92%8C-init-%E5%8C%BA%E5%88%AB"><span class="toc-text">__new__和__init__区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F"><span class="toc-text">单例模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#GIL%E7%BA%BF%E7%A8%8B%E5%85%A8%E5%B1%80%E9%94%81"><span class="toc-text">GIL线程全局锁</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E9%94%81"><span class="toc-text">线程锁</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B"><span class="toc-text">进程和线程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-text">使用场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E9%97%B4%E9%80%9A%E4%BF%A1%E6%96%B9%E5%BC%8F"><span class="toc-text">进程间通信方式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8D%8F%E7%A8%8B"><span class="toc-text">协程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-text">应用场景</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B9%B6%E8%A1%8C%E5%92%8C%E5%B9%B6%E5%8F%91"><span class="toc-text">并行和并发</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E6%9C%BA%E5%88%B6"><span class="toc-text">Python垃圾回收机制</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Python%E7%9A%84%E9%AD%94%E6%B3%95%E6%96%B9%E6%B3%95"><span class="toc-text">Python的魔法方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%8F%AF%E5%8F%98%E7%B1%BB%E5%9E%8B%E5%92%8C%E4%B8%8D%E5%8F%AF%E5%8F%98%E7%B1%BB%E5%9E%8B"><span class="toc-text">可变类型和不可变类型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%97%AD%E5%8C%85"><span class="toc-text">闭包</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A4%E6%96%AD%E6%98%AF%E5%90%A6%E6%98%AF%E9%97%AD%E5%8C%85%E5%87%BD%E6%95%B0"><span class="toc-text">判断是否是闭包函数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A3%85%E9%A5%B0%E5%99%A8"><span class="toc-text">装饰器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A4%BA%E4%BE%8B"><span class="toc-text">示例</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B8%A6%E5%8F%82%E6%95%B0%E7%9A%84%E8%A3%85%E9%A5%B0%E5%99%A8"><span class="toc-text">带参数的装饰器</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%81%8F%E5%87%BD%E6%95%B0"><span class="toc-text">偏函数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%AD%E4%BB%A3"><span class="toc-text">迭代</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A4%E6%96%AD%E5%8F%AF%E8%BF%AD%E4%BB%A3"><span class="toc-text">判断可迭代</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%94%9F%E6%88%90%E5%99%A8"><span class="toc-text">生成器</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%BA%93"><span class="toc-text">数据库</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#mysql"><span class="toc-text">mysql</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BA%8B%E5%8A%A1"><span class="toc-text">事务</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#ACID"><span class="toc-text">ACID</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BA%8B%E5%8A%A1%E7%9A%84%E9%9A%94%E7%A6%BB%E6%80%A7"><span class="toc-text">事务的隔离性</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%94%81%E6%9C%BA%E5%88%B6"><span class="toc-text">锁机制</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB"><span class="toc-text">隔离级别</span></a></li></ol></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%9A%E5%B9%B6%E5%8F%91"><span class="toc-text">多并发</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B9%90%E8%A7%82%E9%94%81%E5%92%8C%E6%82%B2%E8%A7%82%E9%94%81"><span class="toc-text">乐观锁和悲观锁</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%90%E8%A7%82%E9%94%81"><span class="toc-text">乐观锁</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%89%88%E6%9C%AC%E5%8F%B7%E6%9C%BA%E5%88%B6"><span class="toc-text">版本号机制</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CAS%E7%AE%97%E6%B3%95"><span class="toc-text">CAS算法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%82%B2%E8%A7%82%E9%94%81"><span class="toc-text">悲观锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-text">总结</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%94%81"><span class="toc-text">锁</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Lock-%E5%90%8C%E6%AD%A5%E9%94%81"><span class="toc-text">Lock() 同步锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#RLock-%E9%80%92%E5%BD%92%E9%94%81"><span class="toc-text">RLock() 递归锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Condition-%E6%9D%A1%E4%BB%B6%E9%94%81"><span class="toc-text">Condition() 条件锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Event-%E4%BA%8B%E4%BB%B6%E9%94%81"><span class="toc-text">Event() 事件锁</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Semaphore-%E4%BF%A1%E5%8F%B7%E9%87%8F%E9%94%81"><span class="toc-text">Semaphore() 信号量锁</span></a></li></ol></li></ol>
+
+<h1 id="Python语言特性"><a href="#Python语言特性" class="headerlink" title="Python语言特性"></a>Python语言特性</h1><h2 id="类变量和实例变量"><a href="#类变量和实例变量" class="headerlink" title="类变量和实例变量"></a>类变量和实例变量</h2><p><strong>类变量</strong></p>
+<blockquote>
+<p>是可在类的所有实例之间共享的值（也就是说，它们不是单独分配给每个实例的）。</p>
+</blockquote>
+<p>例如下例中，num_of_instance 就是类变量，用于跟踪存在着多少个Test 的实例。</p>
+<p><strong>实例变量</strong></p>
+<blockquote>
+<p>实例化之后，每个实例单独拥有的变量。</p>
+</blockquote>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Test</span>(<span class="title class_ inherited__">object</span>):  </span><br><span class="line">    num_of_instance = <span class="number">0</span>  </span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__init__</span>(<span class="params">self, name</span>):  </span><br><span class="line">        self.name = name  </span><br><span class="line">        Test.num_of_instance += <span class="number">1</span>  </span><br><span class="line">  </span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:  </span><br><span class="line">    <span class="built_in">print</span> Test.num_of_instance   <span class="comment"># 0</span></span><br><span class="line">    t1 = Test(<span class="string">&#x27;wkt&#x27;</span>)  </span><br><span class="line">    <span class="built_in">print</span> Test.num_of_instance   <span class="comment"># 1</span></span><br><span class="line">    t2 = Test(<span class="string">&#x27;hy&#x27;</span>)  </span><br><span class="line">    <span class="built_in">print</span> t1.name , t1.num_of_instance  <span class="comment"># wkt 2</span></span><br><span class="line">    <span class="built_in">print</span> t2.name , t2.num_of_instance  <span class="comment"># hy 2</span></span><br></pre></td></tr></table></figure>
+
+<p>补充</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Student</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    name = <span class="string">&quot;hy&quot;</span></span><br><span class="line"></span><br><span class="line">s1 = Student()</span><br><span class="line">s2 = Student()</span><br><span class="line">s1.name = <span class="string">&quot;wkt&quot;</span></span><br><span class="line"><span class="built_in">print</span> s1.name  <span class="comment"># wkt</span></span><br><span class="line"><span class="built_in">print</span> s2.name  <span class="comment"># hy</span></span><br><span class="line"><span class="built_in">print</span> Student.name  <span class="comment"># hy</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Teacher</span>:</span><br><span class="line">    students = []</span><br><span class="line"></span><br><span class="line">t1 = Teacher()</span><br><span class="line">t2 = Teacher()</span><br><span class="line">t1.students.append(<span class="number">1</span>)</span><br><span class="line"><span class="built_in">print</span> t1.students  <span class="comment"># [1]</span></span><br><span class="line"><span class="built_in">print</span> t2.students  <span class="comment"># [1]</span></span><br><span class="line"><span class="built_in">print</span> Teacher.students  <span class="comment"># [1]</span></span><br></pre></td></tr></table></figure>
+<h2 id="metaclass"><a href="#metaclass" class="headerlink" title="metaclass"></a>metaclass</h2><ul>
+<li>object是所有类的超类，而且type也是继承自object；所有对象创建自type，而且object也是type的实例。</li>
+<li>object和type是python中的两个源对象，事实上，它们是互相依赖对方来定义，所以它们不能分开而论。</li>
+<li>通过这两个源对象可以繁育出一堆对象：list、tuple、dict等。元类就是这些类的类，这些类是元类的实例。</li>
+<li>metaclass是type的子类，通过替换type的__call__运算符重载机制，“超越变形”正常的类。</li>
+</ul>
+<h2 id="Python自省"><a href="#Python自省" class="headerlink" title="Python自省"></a>Python自省</h2><p>自省就是面向对象的语言所写程序在运行时，所能知道对象的类型。运行时能获得对象的类型。比如type()、dir()、getattr()、hasattr()、isinstance()</p>
+<h2 id="new-和-init-区别"><a href="#new-和-init-区别" class="headerlink" title="__new__和__init__区别"></a>__new__和__init__区别</h2><ol>
+<li>__new__是一个静态方法，而__init__是一个实例方法。</li>
+<li>__new__方法会返回一个创建的实例，而__init__什么都不会返回。</li>
+<li>只有在__new__返回一个cls的实例后，__init__才会被调用。</li>
+<li>当创建一个新实例时调用__new__，初始化一个实例时调用__init__。</li>
+</ol>
+<p>__metaclass__是创建类时起作用，所以我们可以分别使用__metaclass__、__new__和__init__来分别在类创建，实例创建和实例初始化的时候做一些小手脚.</p>
+<h2 id="单例模式"><a href="#单例模式" class="headerlink" title="单例模式"></a>单例模式</h2><ol>
+<li><p>使用__new__方法</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">Singleton</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">__new__</span>(<span class="params">cls, *args, **kw</span>):</span><br><span class="line">        <span class="keyword">if</span> <span class="keyword">not</span> <span class="built_in">hasattr</span>(cls, <span class="string">&#x27;_instance&#x27;</span>)</span><br><span class="line">            orig = <span class="built_in">super</span>(Singleton, cls)</span><br><span class="line">            cls._instance = orig.__new__(cls, *args, **kw)</span><br><span class="line">        <span class="keyword">return</span> cls._instance</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Test</span>(<span class="title class_ inherited__">Singleton</span>):</span><br><span class="line">    <span class="keyword">pass</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>装饰器</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">singleton</span>(<span class="params">cls</span>):</span><br><span class="line">    instances = &#123;&#125;</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">get_instance</span>(<span class="params">*args, **kw</span>)</span><br><span class="line">        <span class="keyword">if</span> cls <span class="keyword">not</span> <span class="keyword">in</span> instances:</span><br><span class="line">            instances[cls] = cls(*arg, **kw)</span><br><span class="line">        <span class="keyword">return</span> instances[cls]</span><br><span class="line">    <span class="keyword">return</span> get_instance</span><br><span class="line"></span><br><span class="line"><span class="meta">@singleton</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">Test</span>:</span><br><span class="line">    <span class="keyword">pass</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>import</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># singleton.py</span></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">My_Singleton</span>(<span class="title class_ inherited__">object</span>):</span><br><span class="line">    <span class="keyword">pass</span></span><br><span class="line"></span><br><span class="line">my_singleton = My_Singleton()</span><br><span class="line"></span><br><span class="line"><span class="comment"># use</span></span><br><span class="line"><span class="keyword">from</span> singleton <span class="keyword">import</span> my_singleton</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h2 id="GIL线程全局锁"><a href="#GIL线程全局锁" class="headerlink" title="GIL线程全局锁"></a>GIL线程全局锁</h2><p>线程全局锁（Global Interpreter Lock），Python为了保证线程安全而采取的独立线程运行的限制，一个核只能在同一时间运行一个线程。Python中的多线程是假的多线程，Python解释器虽然可以开启多个线程，但同一时间只有一个线程能在解释器中执行，而做到这一点正是由于GIL锁的存在，它的存在使得CPU资源同一时间只会给一个线程使用。</p>
+<p>解决办法就是多进程和协程（协程也只是单CPU，但是能减少切换代价而提升性能）。</p>
+<h3 id="线程锁"><a href="#线程锁" class="headerlink" title="线程锁"></a>线程锁</h3><p>线程锁是由于在进程进行数据操作时要保证数据操作的安全性（同一进程中线程之间可以共用信息，如果同时对数据进行操作，则会出现公共数据错误）。</p>
+<h2 id="进程和线程"><a href="#进程和线程" class="headerlink" title="进程和线程"></a>进程和线程</h2><p>进程是资源（CPU、内存）分配的基本单位，它是执行程序是的一个实例。程序运行时系统会创建一个进程，并为它分配资源，然后把该进程放入进程就绪队列，进程调度器选中它的时候就会为它分配CPU时间，程序开始真正运行。</p>
+<p>线程是程序执行时的最小单位，它是进程的执行流，是CPU调度和分派的基本单位，一个进程可以由多个线程组成，线程间共享进程的所有资源，每个进程都有自己的堆栈和局部变量。线程由CPU独立调度执行，在多CPU环境下就允许多个线程同时运行。同样多线程也可以实现并发操作，每个请求分配一个线程来处理。</p>
+<p>区别</p>
+<ol>
+<li>进程是资源分配的最小单位，线程是程序执行的最小单位。</li>
+<li>进程有自己的独立空间，每启动一个进程，系统就会为它分配地址空间，建立数据表来维护代码段、堆栈段和数据段，这种操作非常昂贵。而线程是共享进程中的数据的，使用相同的地址空间，因此CPU切换一个线程的花费远比进程要小很多，同时创建一个线程的开销也比进程要小很多。</li>
+<li>线程之间的通信更方便，同一进程下的线程共享全局变量、静态变量等数据，而进程之间的通信需要以通信的方式（IPC）进行。不过如何处理好同步与互斥是编写多线程程序的难点。</li>
+<li>多进程程序更健壮，多线程程序只要有一个线程死掉，整个进程也死掉了，而一个进程死掉并不会对另外一个进程造成影响，因为进程有自己独立的地址空间。</li>
+</ol>
+<h3 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h3><p>IO密集型的程序，可以使用多线程提高程序整体效率（socket server 网络并发）。程序是CPU密集型的，使用Python的多线程是无法提升效率的，使用多进程来实现。</p>
+<div class="alert info no-icon"><p>CPU密集型（CPU-bound）</p>
+<p>CPU密集型也叫计算密集型，指的是系统的硬盘、内存性能相对CPU要好很多，此时，系统运作大部分的状况是CPU Loading 100%，CPU要读/写I/O(硬盘/内存)，</p>
+<p>I/O在很短的时间就可以完成，而CPU还有许多运算要处理，CPU Loading很高。</p>
+</div>
+
+<div class="alert info no-icon"><p>IO密集型（I/O bound）</p>
+<p>IO密集型指的是系统的CPU性能相对硬盘、内存要好很多，此时，系统运作，大部分的状况是CPU在等I/O (硬盘/内存) 的读/写操作，此时CPU Loading并不高</p>
+<p>I/O bound的程序一般在达到性能极限时，CPU占用率仍然较低。这可能是因为任务本身需要大量I/O操作，而pipeline做得不是很好，没有充分利用处理器能力</p>
+</div>
+
+<h2 id="进程间通信方式"><a href="#进程间通信方式" class="headerlink" title="进程间通信方式"></a>进程间通信方式</h2><ol>
+<li>管道</li>
+<li>信号量</li>
+<li>消息队列</li>
+<li>Socket</li>
+<li>共享内存</li>
+<li>信号<h2 id="协程"><a href="#协程" class="headerlink" title="协程"></a>协程</h2>协程是一种用户态的轻量级线程，即线程是由用户程序自己控制调度的。</li>
+</ol>
+<p>优点：</p>
+<ol>
+<li>协程的开销更小，属于程序级别的切换，操作系统完全感知不到，因而更加轻量级。</li>
+<li>单线程内就能实现并发的效率，最大限度的利用CPU。</li>
+</ol>
+<p>缺点</p>
+<ol>
+<li>协程的本质是单线程下，无法利用多核，可以是一个程序开启多个进程，每个进程开启多个线程，每个线程开启协程。</li>
+<li>协程是单个线程，因而一旦协程出现阻塞，将会阻塞整个线程。</li>
+</ol>
+<p>特点</p>
+<ol>
+<li>必须在只有一个单线程里实现并发。</li>
+<li>修改共享数据不需加锁。</li>
+<li>用户程序里自己保存多个控制流的上下文栈。</li>
+<li>一个协程遇到IO操作自动切换到其它协程。</li>
+</ol>
+<h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><p>yield</p>
+<ol>
+<li>提高并发。</li>
+</ol>
+<h2 id="并行和并发"><a href="#并行和并发" class="headerlink" title="并行和并发"></a>并行和并发</h2><p>并行（parallel）指在同一时刻，有多条指令在多个处理器上同时执行。所以无论从微观还是从宏观来看，二者都是一起执行的。</p>
+<p>并发(concurrency)：指在同一时刻只能有一条指令执行，但多个进程指令被快速的轮换执行，使得在宏观上具有多个进程同时执行的效果，但在微观上并不是同时执行的，只是把时间分成若干段，使多个进程快速交替的执行。</p>
+<h2 id="Python垃圾回收机制"><a href="#Python垃圾回收机制" class="headerlink" title="Python垃圾回收机制"></a>Python垃圾回收机制</h2><p>Python GC主要使用引用计数（Reference Counting）来跟踪和回收垃圾。在引用计数的基础上，通过“标记-清除”（Mark and Sweep）解决容器对象可能产生的循环引用问题，通过“分代回收”（Generation Collection）以空间换时间的方法提高垃圾回收效率。</p>
+<ul>
+<li>引用计数<br>PyObject是每个对象必须有的内容，其中ob_refcnt就是作为引用计数。当一个对象有新的引用是，它的ob_refcnt就会增加，当引用它的对象被删除，它的ob_refcnt就会被减少。引用计数为0时，该对象生命就结束了。</li>
+</ul>
+<p>优点：</p>
+<ol>
+<li>简单</li>
+<li>实时性</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li>维护引用计数消耗资源</li>
+<li>循环引用</li>
+</ol>
+<ul>
+<li><p>标记-清除机制<br>基本思路是先按需分配，等到没有空闲内存的时候从寄存器和程序栈上的引用出发，遍历以对象为节点、以引用为边构成的图，把所有可以访问到的对象打上标记，然后清扫一遍内存空间，把所有没有标记的对象释放。</p>
+</li>
+<li><p>分代技术<br>分代回收的整体思想是：将系统中的所有内存块根据其存活时间划分为不同的集合，每一个集合就成为一个“代”，垃圾手机频率随着“代”的存活时间的增大而减小，存活时间通常利用经过几次垃圾回收来度量。</p>
+</li>
+</ul>
+<p>Python默认定义了三代对象集合，索引数越大，对象存活越长。</p>
+<p>举例： 当某些内存块M经过了3次垃圾收集的清洗之后还存活时，我们就将内存块M划到一个集合A中去，而新分配的内存都划分到集合B中去。当垃圾收集开始工作时，大多数情况都只对集合B进行垃圾回收，而对集合A进行垃圾回收要隔相当长一段时间后才进行，这就使得垃圾收集机制需要处理的内存少了，效率自然就提高了。在这个过程中，集合B中的某些内存块由于存活时间长而会被转移到集合A中，当然，集合A中实际上也存在一些垃圾，这些垃圾的回收会因为这种分代的机制而被延迟。</p>
+<h2 id="Python的魔法方法"><a href="#Python的魔法方法" class="headerlink" title="Python的魔法方法"></a>Python的魔法方法</h2><p>魔法方法就是可以给你的类增加魔力的特殊方法，如果你的对象实现（重载）了这些方法中的某一个，那么这个方法就会在特殊的情况下被Python所调用，它们通常是两个下划线包围起来命名的（比如__init__、__len__）<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/magic_method_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/magic_method_1.png" alt=""></a></div>
+
+
+<p>浅拷贝是拷贝一层，深层次的对象级别的就拷贝引用；深拷贝是拷贝多层，每一级别的数据都会拷贝出来；</p>
+<h2 id="可变类型和不可变类型"><a href="#可变类型和不可变类型" class="headerlink" title="可变类型和不可变类型"></a>可变类型和不可变类型</h2><p>可变类型，是指变量所指向的内存地址处的值是可以被改变的。</p>
+<p>可变类型：Set（集合）、List（列表）、Dict（字典）</p>
+<p>不可变类型，是指变量所指向的内存地址处的值是不可被改变的。</p>
+<p>不可变类型：Number（数字）、String（字符串）、Tuple（元组）</p>
+<h2 id="闭包"><a href="#闭包" class="headerlink" title="闭包"></a>闭包</h2><p>闭包的特点就是内部函数引用了外部函数中的变量。</p>
+<h3 id="判断是否是闭包函数"><a href="#判断是否是闭包函数" class="headerlink" title="判断是否是闭包函数"></a>判断是否是闭包函数</h3><p>函数名.__closure__在函数式闭包函数时，返回一个cell对象的元组；不是闭包时，返回None。</p>
+<h2 id="装饰器"><a href="#装饰器" class="headerlink" title="装饰器"></a>装饰器</h2><p>装饰器（Decorator），能在代码运行期间动态增加功能。</p>
+<h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> functools</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cost</span>(<span class="params">func</span>):</span><br><span class="line"><span class="meta">    @functools.wraps(<span class="params">func</span>)</span></span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">wrapper</span>(<span class="params">*args, **kwargs</span>):</span><br><span class="line">        t1 = time.time()</span><br><span class="line">        result = func(*args, **kwargs)</span><br><span class="line">        t2 = time.time()</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">&#x27;cost: %s ms&#x27;</span>, func.__name__, (t2 - t1) * <span class="number">1000</span>)</span><br><span class="line">        <span class="keyword">return</span> result</span><br><span class="line">    <span class="keyword">return</span> wrapper</span><br><span class="line"></span><br><span class="line"><span class="meta">@cost</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">x, y</span>):</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&#x27;calling add function&#x27;</span>)</span><br><span class="line">    <span class="keyword">return</span> x + y</span><br><span class="line"></span><br><span class="line"><span class="comment"># add(1, 2) 相当于执行 cost(add)(1, 2)</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="带参数的装饰器"><a href="#带参数的装饰器" class="headerlink" title="带参数的装饰器"></a>带参数的装饰器</h3><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> time</span><br><span class="line"><span class="keyword">import</span> functools</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cost</span>(<span class="params">cost=<span class="literal">True</span></span>):</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">decorator</span>(<span class="params">func</span>):</span><br><span class="line"><span class="meta">        @functools.wraps(<span class="params">func</span>)</span></span><br><span class="line">        <span class="keyword">def</span> <span class="title function_">wrapper</span>(<span class="params">*args, **kwargs</span>):</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">&#x27;calling decorated function&#x27;</span>)</span><br><span class="line">            t1 = time.time()</span><br><span class="line">            result = func(*args, **kwargs)</span><br><span class="line">            t2 = time.time()</span><br><span class="line">            <span class="keyword">if</span> cost:</span><br><span class="line">                <span class="built_in">print</span>(<span class="string">&#x27;%s function cost: %s ms&#x27;</span> % (func.__name__, (t2 - t1) * <span class="number">1000</span>))</span><br><span class="line">            <span class="keyword">return</span> result</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> wrapper</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> decorator</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="meta">@cost()</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">x, y</span>):</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&#x27;calling add function&#x27;</span>)</span><br><span class="line">    <span class="keyword">return</span> x + y</span><br><span class="line"></span><br><span class="line"><span class="comment"># add(1, 2) 相当于执行 cost(timeout=2)(add)(1, 2)</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h2 id="偏函数"><a href="#偏函数" class="headerlink" title="偏函数"></a>偏函数</h2><p>functools.partial的作用就是，把设置某个函数的默认值，返回一个新的函数，调用这个新函数会更简单。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> functools</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">x, y</span>):</span><br><span class="line">    <span class="keyword">return</span> x + y</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">new_add = functools.partial(add, <span class="number">100</span>)</span><br><span class="line">new_add(<span class="number">20</span>) <span class="comment"># 120</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="迭代"><a href="#迭代" class="headerlink" title="迭代"></a>迭代</h2><p>Python的for循环不仅可以用在list或tuple上，还可以作用在其他可迭代对象上。</p>
+<p>list这种数据类型虽然有下标，但很多其他数据类型是没有下标的，但是，只要是可迭代对象，无论有无下标，都可以迭代，比如dict就可以迭代。</p>
+<div class="alert info no-icon"><p>dict的存储不是按照list的方式顺序排列，所以，迭代出的结果顺序很可能不一样。</p>
+<p>默认情况下，dict迭代的是key。</p>
+</div>
+
+<h3 id="判断可迭代"><a href="#判断可迭代" class="headerlink" title="判断可迭代"></a>判断可迭代</h3><p>通过collections模块的Iterable类型判断。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> collections <span class="keyword">import</span> Iterable</span><br><span class="line"></span><br><span class="line"><span class="built_in">isinstance</span>(<span class="string">&#x27;abc&#x27;</span>, Iterable)</span><br></pre></td></tr></table></figure>
+
+<h2 id="生成器"><a href="#生成器" class="headerlink" title="生成器"></a>生成器</h2><p>在Python中，这种一边循环一边计算的机制，称为生成器：generator。</p>
+<h1 id="数据库"><a href="#数据库" class="headerlink" title="数据库"></a>数据库</h1><h2 id="mysql"><a href="#mysql" class="headerlink" title="mysql"></a>mysql</h2><h3 id="事务"><a href="#事务" class="headerlink" title="事务"></a>事务</h3><p>事务主要用于处理操作量大、复杂度高的数据。</p>
+<p>事务是一个最小的不可再分的工作单元；通常一个事务对应一个完整的业务。</p>
+<h4 id="ACID"><a href="#ACID" class="headerlink" title="ACID"></a>ACID</h4><p>事务四大特征（ACID）</p>
+<ul>
+<li>原子性（Atomicity）：指一个事务是一个不可分割的工作单位，其中的操作要么都做，要么都不做；如果事务中一个sql语句执行失败，则已执行的语句也必须回滚，数据库退回到事务前的状态。</li>
+<li>一致性（Consistency）：事务执行结束后，数据库的完整性约束没有被破坏，事务执行的前后都是合法的数据状态。</li>
+<li>隔离性（Isolation）：事务内部的操作与其他事务是隔离的，并发执行的各个事务之间不能互相干扰。严格的隔离性，对应了事务隔离级别中的Serializable (可串行化)。</li>
+<li>持久性（Durability）：事务一旦提交，它对数据库的改变就应该是永久性的。接下来的其他操作或故障不应该对其有任何影响。</li>
+</ul>
+<h4 id="事务的隔离性"><a href="#事务的隔离性" class="headerlink" title="事务的隔离性"></a>事务的隔离性</h4><h5 id="锁机制"><a href="#锁机制" class="headerlink" title="锁机制"></a>锁机制</h5><p>隔离性要求同一时刻只能有一个事务对数据进行写操作，InnoDB通过锁机制来保证这一点。</p>
+<p>锁可以分为表锁、行锁以及其他位于二者之间的锁。</p>
+<p>表锁在操作数据时会锁定整张表，并发性能较差；行锁则只锁定需要操作的数据，并发性能好。但是由于加锁本身需要消耗资源(获得锁、检查锁、释放锁等都需要消耗资源)，因此在锁定数据较多情况下使用表锁可以节省大量资源。MySQL中不同的存储引擎支持的锁是不一样的，例如MyIsam只支持表锁，而InnoDB同时支持表锁和行锁，且出于性能考虑，绝大多数情况下使用的都是行锁。</p>
+<h5 id="隔离级别"><a href="#隔离级别" class="headerlink" title="隔离级别"></a>隔离级别</h5><ul>
+<li><p>read uncommitted，读未提交。<br>脏读：可能。<br>不可重复读：可能。<br>幻读：可能。</p>
+</li>
+<li><p>read committed，读已提交。<br>脏读：不可能。<br>不可重复读：可能。<br>幻读：可能。</p>
+</li>
+<li><p>repeatable read，可重重复读。<br>脏读：不可能。<br>不可重复读：不可能。<br>幻读：可能。</p>
+</li>
+<li><p>serializable，可串行化。<br>脏读：不可能。<br>不可重复读：不可能。<br>幻读：不可能。</p>
+</li>
+</ul>
+<div class="alert info no-icon"><p>脏读：当前事务(A)中可以读到其他事务(B)未提交的数据（脏数据）。</p>
+</div>
+
+<div class="alert info no-icon"><p>不可重复读：在事务A中先后两次读取同一个数据，两次读取的结果不一样，这种现象称为不可重复读。</p>
+<p>脏读与不可重复读的区别在于：前者读到的是其他事务未提交的数据，后者读到的是其他事务已提交的数据</p>
+</div>
+
+<div class="alert info no-icon"><p>幻读：在事务A中按照某个条件先后两次查询数据库，两次查询结果的条数不同，这种现象称为幻读。</p>
+<p>不可重复读与幻读的区别可以通俗的理解为：前者是数据变了，后者是数据的行数变了</p>
+</div>
+
+<div class="alert danger no-icon"><p>oracle默认的隔离级别是读已提交。<br>mysql默认的隔离级别是可重复读。</p>
+</div>
+
+<h1 id="多并发"><a href="#多并发" class="headerlink" title="多并发"></a>多并发</h1><p>并发修改同一记录时，避免更新丢失，要么在应用层加锁，要么在缓存加锁，要么在数据库层使用乐观锁，使用version作为更新依据。如果每次访问冲突概率小于20%，推荐使用乐观锁，否则使用悲观锁。乐观锁的重试次数不得小于3次。</p>
+<h1 id="乐观锁和悲观锁"><a href="#乐观锁和悲观锁" class="headerlink" title="乐观锁和悲观锁"></a>乐观锁和悲观锁</h1><h2 id="乐观锁"><a href="#乐观锁" class="headerlink" title="乐观锁"></a>乐观锁</h2><p>乐观锁顾名思义就是在操作时很乐观，认为操作不会产生并发问题(不会有其他线程对数据进行修改)，因此不会上锁。但是在更新时会判断其他线程在这之前有没有对数据进行修改，一般会使用版本号机制或CAS(compare and swap)算法实现。</p>
+<h3 id="版本号机制"><a href="#版本号机制" class="headerlink" title="版本号机制"></a>版本号机制</h3><ol>
+<li>取出记录时，获取当前version</li>
+<li>更新时，带上这个version</li>
+<li>执行更新时， set version = newVersion where version = oldVersion</li>
+<li>如果version不对，就更新失败</li>
+</ol>
+<p>核心SQL</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">update</span> <span class="keyword">table</span> <span class="keyword">set</span> name <span class="operator">=</span> <span class="string">&#x27;Aron&#x27;</span>, version <span class="operator">=</span> version <span class="operator">+</span> <span class="number">1</span> <span class="keyword">where</span> id <span class="operator">=</span> #&#123;id&#125; <span class="keyword">and</span> version <span class="operator">=</span> #&#123;version&#125;;  </span><br></pre></td></tr></table></figure>
+
+<h3 id="CAS算法"><a href="#CAS算法" class="headerlink" title="CAS算法"></a>CAS算法</h3><p>乐观锁的另一种技术技术，当多个线程尝试使用CAS同时更新同一个变量时，只有其中一个线程能更新变量的值，而其它线程都失败，失败的线程并不会被挂起，而是被告知这次竞争中失败，并可以再次尝试。</p>
+<h2 id="悲观锁"><a href="#悲观锁" class="headerlink" title="悲观锁"></a>悲观锁</h2><p>总是假设最坏的情况，每次取数据时都认为其他线程会修改，所以都会加（悲观）锁。一旦加锁，不同线程同时执行时,只能有一个线程执行，其他的线程在入口处等待，直到锁被释放。</p>
+<p>悲观锁在MySQL、Java有广泛的使用：MySQL的读锁、写锁、行锁等，Java的synchronized关键字。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>读的多，冲突几率小，乐观锁。<br>写的多，冲突几率大，悲观锁。</p>
+<h1 id="锁"><a href="#锁" class="headerlink" title="锁"></a>锁</h1><p>锁是Python提供给我们能够自行操控线程切换的一种手段，使用锁可以让线程的切换变的有序。<br>一旦线程的切换变的有序后，各个线程之间对数据的访问、修改就变的可控，所以若要保证线程安全，就必须使用锁。</p>
+<p>threading模块中提供了5种最常见的锁，下面是按照功能进行划分：</p>
+<p>同步锁：lock（一次只能放行一个）<br>递归锁：rlock（一次只能放行一个）<br>条件锁：condition（一次可以放行任意个）<br>事件锁：event（一次全部放行）<br>信号量锁：semaphore（一次可以放行特定个）</p>
+<h2 id="Lock-同步锁"><a href="#Lock-同步锁" class="headerlink" title="Lock() 同步锁"></a>Lock() 同步锁</h2><ul>
+<li>同步锁</li>
+<li>互斥锁</li>
+</ul>
+<ol>
+<li>互斥指的是某一资源同一时刻仅能有一个访问者对其进行访问，具有唯一性和排他性，但是互斥无法限制访问者对资源的访问顺序，即访问是无序的。</li>
+<li>同步是指在互斥的基础上（大多数情况），通过其他机制实现访问者对资源的有序访问。</li>
+<li>同步其实已经实现了互斥，是互斥的一种更为复杂的实现，因为它在互斥的基础上实现了有序访问的特点。</li>
+</ol>
+<p>同步锁一次只能放行一个线程，一个被加锁的线程在运行时不会将执行权交出去，只有当该线程被解锁时才会将执行权通过系统调度交由其他线程。</p>
+<p>对于同步锁来说，一次acquire()必须对应一次release()，不能出现连续重复使用多次acquire()后再重复使用多次release()的操作，这样会引起死锁造成程序的阻塞，完全不动了。</p>
+<h2 id="RLock-递归锁"><a href="#RLock-递归锁" class="headerlink" title="RLock() 递归锁"></a>RLock() 递归锁</h2><p>递归锁是同步锁的一个升级版本，在同步锁的基础上可以做到连续重复使用多次acquire()后再重复使用多次release()的操作，但是一定要注意加锁次数和解锁次数必须一致，否则也将引发死锁现象。</p>
+<p>RLock递归锁，递归锁的实现非常简单，它的内部会维护着一个计数器，当计数器不为0的时候该线程不能被I/O操作和时间轮询机制切换。</p>
+<h2 id="Condition-条件锁"><a href="#Condition-条件锁" class="headerlink" title="Condition() 条件锁"></a>Condition() 条件锁</h2><p>条件锁是在递归锁的基础上增加了能够暂停线程运行的功能。并且我们可以使用wait()与notify()来控制线程执行的个数。</p>
+<p>Condition条件锁的内部其实是有两把锁的，一把底层锁（同步锁）一把高级锁(递归锁)。</p>
+<p>低层锁的解锁方式有两种，使用wait()方法会暂时解开底层锁同时加上一把高级锁，只有当接收到别的线程里的notfiy()后才会解开高级锁和重新上锁低层锁，也就是说条件锁底层是根据同步锁和递归锁的不断切换来进行实现的。</p>
+<h2 id="Event-事件锁"><a href="#Event-事件锁" class="headerlink" title="Event() 事件锁"></a>Event() 事件锁</h2><p>事件锁是基于条件锁来做的，它与条件锁的区别在于一次只能放行全部，不能放行任意个数量的子线程继续运行。</p>
+<h2 id="Semaphore-信号量锁"><a href="#Semaphore-信号量锁" class="headerlink" title="Semaphore() 信号量锁"></a>Semaphore() 信号量锁</h2><p>信号量锁也是根据条件锁来做的，它与条件锁和事件锁的区别如下：</p>
+<ul>
+<li>条件锁：一次可以放行任意个处于“等待”状态的线程</li>
+<li>事件锁：一次可以放行全部的处于“等待”状态的线程</li>
+<li>信号量锁：通过规定，成批的放行特定个处于“上锁”状态的线程</li>
+</ul>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Python/" rel="tag">Python</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="NEXT: OpenTracing"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/&amp;title=Python面试问题汇总"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/02/21/Python面试问题汇总/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="PREVIOUS: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/11/18/OpenTracing/"
+                    data-tooltip="OpenTracing"
+                    aria-label="NEXT: OpenTracing"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/&amp;title=Python面试问题汇总"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/&amp;title=Python面试问题汇总"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/02/21/Python%E9%9D%A2%E8%AF%95%E9%97%AE%E9%A2%98%E6%B1%87%E6%80%BB/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

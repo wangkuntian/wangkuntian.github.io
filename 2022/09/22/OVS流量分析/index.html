@@ -1,0 +1,840 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OVS流量分析 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OVS,网络">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\nDHCP流量分析DHCP客户端从DHCP服务器获取IP地址，主要通过四个阶段进行：\n\n发现阶段，即DHCP客户端寻找DHCP服务器的阶段。客户端以广播方式发送DHCP-DISCOVER报文。\n提供阶段，即DHCP服务器提供IP地址的阶段。DHCP服务器接收到客户端的DHCP-DISCOVER报文后，根据IP地址分配的优先次序选出一个IP地址，与其他参数一起通过DHCP-OFFER报文发送给客户端。\n选择阶段，即DHCP客户端选择IP地址的阶段。如果有多台DHCP服务器向该客户端发来DHCP-OFFER 报文，客户端只接受第一个收到的DHCP-OFFER报文，然后以广播方式发送DHCP-REQUEST报文，该报文中包含DHCP服务器在DHCP-OFFER报文中分配的IP地址。\n确认阶段，即DHCP服务器确认IP地址的阶段。DHCP服务器收到DHCP客户端发来的DHCP-REQUEST 报文后，只有DHCP客户端选择的服务器会进行如下操作：如果确认将地址分配给该客户端，则返回DHCP-ACK报文；否则返回DHCP-NAK报文，表明地址不能分配给该客户端。\n\n一般的，DHCP服务器分配给客户端的IP地址具有一定的租借期限(除自动分配的IP地址)，该租借期限称为租约。当租借期满后服务器会收回该IP地址。如果DHCP客户端希望继续使用该地址，则DHCP客户端需要申请延长IP地址租约。\n\n在DHCP客户端的IP地址租约期限达到一半左右时间时，DHCP客户端会向为它分配IP地址的DHCP服务器单播发送DHCP-REQUEST报文，以进行IP租约的更新。\n如果客户端可以继续使用此IP地址，则DHCP服务器回应DHCP-ACK报文，通知DHCP客户端已经获得新IP租约；如果此IP地址不可以再分配给该客户端，则DHCP服务器回应DHCP-NAK报文，通知DHCP客户端不能获得新的租约。\n\n下面主要针对申请延长IP地址租约的情况，做出流量的分析。\n环境云主机网卡\n123456789ip aens4: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc fq_codel state UP group default qlen 1000    link/ether fa:16:3e:01:c2:a6 brd ff:ff:ff:ff:ff:ff    altname enp0s4    inet 172.16.0.193/24 brd 172.16.0.255 scope global dynamic noprefixroute ens4       valid_lft 85908sec preferred_lft 85908sec    inet6 fe80::61e4:d0ce:a45c:94ef/64 scope link noprefixroute       valid_lft forever preferred_lft forever\n\n云主机port\n123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051// openstack port show da24f6b9-4f66-488c-bab0-0bd5a9862f0a -f json&#123;  &quot;admin_state_up&quot;: true,  &quot;allowed_address_pairs&quot;: [],  &quot;binding_host_id&quot;: &quot;compute1&quot;,  &quot;binding_profile&quot;: &#123;&#125;,  &quot;binding_vif_details&quot;: &#123;    &quot;connectivity&quot;: &quot;l2&quot;,    &quot;port_filter&quot;: true,    &quot;ovs_hybrid_plug&quot;: true,    &quot;datapath_type&quot;: &quot;system&quot;,    &quot;bridge_name&quot;: &quot;br-int&quot;  &#125;,  &quot;binding_vif_type&quot;: &quot;ovs&quot;,  &quot;binding_vnic_type&quot;: &quot;normal&quot;,  &quot;created_at&quot;: &quot;2022-09-26T01:34:07Z&quot;,  &quot;data_plane_status&quot;: null,  &quot;description&quot;: &quot;&quot;,  &quot;device_id&quot;: &quot;30a57936-d0b4-446a-82df-41eb9681e8cc&quot;,  &quot;device_owner&quot;: &quot;compute:nova&quot;,  &quot;dns_assignment&quot;: null,  &quot;dns_domain&quot;: null,  &quot;dns_name&quot;: null,  &quot;extra_dhcp_opts&quot;: [],  &quot;fixed_ips&quot;: [    &#123;      &quot;subnet_id&quot;: &quot;c4758750-17c5-494a-88c5-ebac4558777e&quot;,      &quot;ip_address&quot;: &quot;172.16.0.193&quot;    &#125;  ],  &quot;id&quot;: &quot;da24f6b9-4f66-488c-bab0-0bd5a9862f0a&quot;,  &quot;ip_allocation&quot;: null,  &quot;mac_address&quot;: &quot;fa:16:3e:01:c2:a6&quot;,  &quot;name&quot;: &quot;&quot;,  &quot;network_id&quot;: &quot;7b6c69b5-bfa5-4145-901c-26979103da77&quot;,  &quot;numa_affinity_policy&quot;: null,  &quot;port_security_enabled&quot;: true,  &quot;project_id&quot;: &quot;8e4be2cb25084defb5a9f0128afd5291&quot;,  &quot;propagate_uplink_status&quot;: null,  &quot;qos_network_policy_id&quot;: null,  &quot;qos_policy_id&quot;: null,  &quot;resource_request&quot;: null,  &quot;revision_number&quot;: 5,  &quot;security_group_ids&quot;: [    &quot;238bde14-5bbe-4924-9ef2-3a689353148f&quot;  ],  &quot;status&quot;: &quot;ACTIVE&quot;,  &quot;tags&quot;: [],  &quot;trunk_details&quot;: null,  &quot;updated_at&quot;: &quot;2022-09-26T01:41:04Z&quot;&#125;\n\n云主机网络ID\n123&#123;    &quot;network_id&quot;: &quot;7b6c69b5-bfa5-4145-901c-26979103da77&quot;&#125;\n\nDHCP的网络命名空间以及网络设备。\n123456789101112131415ip netns exec qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 ip a1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00    inet 127.0.0.1/8 scope host lo       valid_lft forever preferred_lft forever    inet6 ::1/128 scope host       valid_lft forever preferred_lft forever66: tap7b7a17cf-0e: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UNKNOWN group default qlen 1000    link/ether fa:16:3e:a4:6f:40 brd ff:ff:ff:ff:ff:ff    inet 172.16.0.2/24 brd 172.16.0.255 scope global tap7b7a17cf-0e       valid_lft forever preferred_lft forever    inet6 fe80::a9fe:a9fe/64 scope link dadfailed tentative       valid_lft forever preferred_lft forever    inet6 fe80::f816:3eff:fea4:6f40/64 scope link       valid_lft forever preferred_lft forever\n\n由port的ID可以得知。\n123456789101112131415161718192021# linux网桥qbrda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UP group default qlen 1000    link/ether b6:99:35:a2:2a:ea brd ff:ff:ff:ff:ff:ff# ovs上的portqvoda24f6b9-4f@qvbda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master ovs-system state UP group default qlen 1000    link/ether 6e:17:ad:a7:83:d3 brd ff:ff:ff:ff:ff:ff    inet6 fe80::6c17:adff:fea7:83d3/64 scope link       valid_lft forever preferred_lft forever# linux网桥上的devqvbda24f6b9-4f@qvoda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master qbrda24f6b9-4f state UP group default qlen 1000    link/ether b6:99:35:a2:2a:ea brd ff:ff:ff:ff:ff:ff    inet6 fe80::b499:35ff:fea2:2aea/64 scope link       valid_lft forever preferred_lft forever# tap设备tapda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc fq_codel master qbrda24f6b9-4f state UNKNOWN group default qlen 1000    link/ether fe:16:3e:01:c2:a6 brd ff:ff:ff:ff:ff:ff    inet6 fe80::fc16:3eff:fe01:c2a6/64 scope link       valid_lft forever preferred_lft forever\n\n利用ovs-vsctl命令查看qvoda24f6b9-4f相关信息。\n1234567ovs-vsctl showBridge br-int    Port qvoda24f6b9-4f        # tag就是vlan tag        tag: 9        Interface qvoda24f6b9-4f\n\n流量分析云主机内使用dhclient命令发送dhcp请求。\n1dhclient ens4\n\nRequest阶段DHCP客户端向服务端发送DHCP REQUEST报文，流量从云主机流向DHCP服务器。\n计算节点抓包请求对计算节点上的tap设备进行tcpdump抓包。\n123456tcpdump -i tapda24f6b9-4f udp -nlistening on tapda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes09:55:23.628102 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 30009:55:23.633056 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363\n\nfe:16:3e:01:c2:a6是云主机网卡的MAC地址。\n\n\n然后在linux网桥上抓包。\n123456tcpdump -i qbrda24f6b9-4f udp -nlistening on qbrda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes09:56:28.704214 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 30009:56:28.707607 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363\n\n在linux网桥的设备上抓包。\n123456tcpdump -i qvbda24f6b9-4f udp -nlistening on qvbda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes09:57:23.918547 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 30009:57:23.921620 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363\n\n然后在ovs上的port上抓包。\n123456tcpdump -i qvoda24f6b9-4f udp -nlistening on qvoda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes09:58:06.299939 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 30009:58:06.303494 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363\n\nbr-int流表分析dhcp请求进入ovs网桥br-int上，利用ovs命令查看br-int的流表。\n1ovs-ofctl dump-flows br-int\n\nbr-int流表如下（已省略部分规则）。\nTable 0123456cookie=0x7cf0a52c49ad76d9, duration=1096.467s, table=0, n_packets=0, n_bytes=0, priority=10,icmp6,in_port=&quot;qvoda24f6b9-4f&quot;,icmp_type=136 actions=resubmit(,24)cookie=0x7cf0a52c49ad76d9, duration=1096.463s, table=0, n_packets=5, n_bytes=210, priority=10,arp,in_port=&quot;qvoda24f6b9-4f&quot; actions=resubmit(,24)cookie=0x7cf0a52c49ad76d9, duration=1096.483s, table=0, n_packets=84, n_bytes=8876, priority=9,in_port=&quot;qvoda24f6b9-4f&quot; actions=resubmit(,25)\n\nin_port，匹配进入ovs网桥的端口，这里是qvoda24f6b9-4f。dhcp报文使用的是udp协议，所以按照流表规则应该发送到Table 25。\n\n\nTable 2512cookie=0x7cf0a52c49ad76d9, duration=1096.493s, table=25, n_packets=70, n_bytes=6828, priority=2,in_port=&quot;qvoda24f6b9-4f&quot;,dl_src=fa:16:3e:01:c2:a6 actions=resubmit(,60)\n\ndl_src，匹配源MAC地址，这里是fa:16:3e:01:c2:a6，也就是云主机的MAC地址。按照流表规则应该发送到Table 60。\n\n\nTable 601cookie=0x7cf0a52c49ad76d9, duration=241159.738s, table=60, n_packets=5071109852, n_bytes=3104632181631, priority=3 actions=NORMAL\n\n按照流表规则进行Normal处理，也就是将报文从br-int上的patch-tun发出。\n\n\nbr-tun流表分析紧接上面说的，报文从br-int上的patch-tun发出，由于patch-tun和patch-int这对veth pair的存在，报文自然而然发送到br-tun的patch-int上。\n12345678910111213ovs-vsctl showBridge br-int\tPort patch-tun        Interface patch-tun            type: patch            options: &#123;peer=patch-int&#125;Bridge br-tun\tPort patch-int        Interface patch-int            type: patch            options: &#123;peer=patch-tun&#125;\n\n查看br-tun的流表。\n1ovs-ofctl dump-flows br-tun\n\nbr-tun流表如下（已省略部分规则）。\nTable 01cookie=0xc8bd5b0435a0830b, duration=6952.218s, table=0, n_packets=540130006, n_bytes=318000930632, priority=1,in_port=&quot;patch-int&quot; actions=resubmit(,2)\n\nin_port，匹配上文提到的patch-int。按照流表规则应该发送到Table 2。\n\n\nTable 2123cookie=0xc8bd5b0435a0830b, duration=6952.216s, table=2, n_packets=866663, n_bytes=36404220, priority=1,arp,dl_dst=ff:ff:ff:ff:ff:ff actions=resubmit(,21)cookie=0xc8bd5b0435a0830b, duration=6952.214s, table=2, n_packets=536889805, n_bytes=317711303942, priority=0,dl_dst=00:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,20)cookie=0xc8bd5b0435a0830b, duration=6952.213s, table=2, n_packets=2373536, n_bytes=253222354, priority=0,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,22)\n\ndl_dst，匹配以太网的MAC地址。其中00:00:00:00:00:00/01:00:00:00:00:00，代表的是单播，也就是一对一。01:00:00:00:00:00/01:00:00:00:00:00，代表的是广播。\ndhcp是客户机先向搜索消息广播到本地子网的广播地址上，所以按照流表规则应该发送到Table 22。\n\n\nTable 221cookie=0xc8bd5b0435a0830b, duration=9138.161s, table=22, n_packets=99, n_bytes=9602, priority=1,dl_vlan=9 actions=strip_vlan,load:0x8-&gt;NXM_NX_TUN_ID[],output:&quot;vxlan-0a0a0f0b&quot;\n\n之前提到过br-int上qvo0f93358c-9e的tag是9，恰好对应vlan的id，所以报文会从vxlan-0a0a0f0b发出。\n同时这里会有一个VNI，也就是vxlan的ID，是8。\n\n\nvxlan-0a0a0f0b是br-tun上的一个port。\n12345Bridge br-tun    Port vxlan-0a0a0f0b        Interface vxlan-0a0a0f0b            type: vxlan            options: &#123;df_default=&quot;true&quot;, egress_pkt_mark=&quot;0&quot;, in_key=flow, local_ip=&quot;10.10.15.12&quot;, out_key=flow, remote_ip=&quot;10.10.15.11&quot;&#125;\n\n控制节点上面报文发送到控制节点的br-tun上面。\n查看br-tun的port。\n1234567ovs-vsctl showBridge br-tun    Port vxlan-0a0a0f0c        Interface vxlan-0a0a0f0c            type: vxlan            options: &#123;df_default=&quot;true&quot;, egress_pkt_mark=&quot;0&quot;, in_key=flow, local_ip=&quot;10.10.15.11&quot;, out_key=flow, remote_ip=&quot;10.10.15.12&quot;&#125;\n\n可以看到报文由vxlan-0a0a0f0c进入br-tun。\nbr-tun流表查看br-tun流表\n1ovs-ofctl dump-flows br-tun\n\nbr-tun流表如下（已省略部分规则）。\nTable 012cookie=0x2f0e5558da81d9b, duration=3888857.445s, table=0, n_packets=6460187689, n_bytes=3882347621874, priority=1,in_port=&quot;vxlan-0a0a0f0c&quot; actions=resubmit(,4)\nin_port，匹配进入br-tun的port，这里是vxlan-0a0a0f0c，所以报文转发到Table 4。\n\n\nTable 412cookie=0x2f0e5558da81d9b, duration=3888868.347s, table=4, n_packets=10248912, n_bytes=2724392934, priority=1,tun_id=0x8 actions=mod_vlan_vid:15,resubmit(,10)\ntun_id，匹配vxlan的ID，VNI，就是在计算节点br-tun流表Table 22中所加入的vxlan id是8。现将报文的vlan ID改为15，再将其转发给Table 10。\n\n\nTable 10table 10的流表规则有且只有一条，就是修改Table 20的流表规则，同时将报文从patch-int发出。\n12cookie=0x2f0e5558da81d9b, duration=3888896.210s, table=10, n_packets=14070316277, n_bytes=9137771262107, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0x2f0e5558da81d9b,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:OXM_OF_IN_PORT[]),output:&quot;patch-int&quot;\n\nactions=learn(table=20…），表示将学习到的流表放入Table 20。NXM_OF_VLAN_TCI[0..11]，记录当前数据包的VLAN_ID作为match中的VLAN_ID，也就是上文提到的15。NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，记录当前数据包的源MAC地址作为match中的目的MAC地址。load:0-&gt;NXM_OF_VLAN_TCI[]，表示action中要去掉VLAN_ID。load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[]，表示action中要封装隧道，隧道ID为当前隧道ID。output:NXM_OF_IN_PORT[]，表示action中的输出，输出端口为当前数据包的输入端口。\n\n\n\nbr-int流表由于patch-int和patch-tun这对veth pair的存在，所以报文由path-tun进入br-int。\n查看br-int流表\n1ovs-ofctl dump-flows br-int\n\nbr-int流表如下（已省略部分规则）。\nTable 012cookie=0xa39f8d6fcda0e990, duration=3933781.023s, table=0, n_packets=17446431423, n_bytes=14674327912459, priority=0 actions=resubmit(,60)\n\n将报文发送给Table 60。\n\n\nTable 6012cookie=0xa39f8d6fcda0e990, duration=3933781.022s, table=60, n_packets=33187444161, n_bytes=26145058466699, priority=3 actions=NORMAL\n\n报文执行Normal，就是按照vlan id正常转发，也就是将报文发送给vlan ID是15的port。\n\n\nDHCP网络命名空间上面说到报文发送给vlan ID是15的port，查看br-int上的port，可以得到tap7b7a17cf-0e。\n1234567ovs-vsctl show Bridge br-int    Port tap7b7a17cf-0e        tag: 15        Interface tap7b7a17cf-0e            type: internal\n\ntap7b7a17cf-0e其实就是ovs在dhcp网络命名空间中创建的一块虚拟网卡。DHCP的网络命名空间以及网络设备。\n123456789ip netns exec qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 ip a66: tap7b7a17cf-0e: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UNKNOWN group default qlen 1000    link/ether fa:16:3e:a4:6f:40 brd ff:ff:ff:ff:ff:ff    inet 172.16.0.2/24 brd 172.16.0.255 scope global tap7b7a17cf-0e       valid_lft forever preferred_lft forever    inet6 fe80::a9fe:a9fe/64 scope link dadfailed tentative       valid_lft forever preferred_lft forever    inet6 fe80::f816:3eff:fea4:6f40/64 scope link       valid_lft forever preferred_lft forever\n\n我们可以在tap7b7a17cf-0e设备上抓取DHCP的报文。\n123456ip netns exec qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 tcpdump -i tap7b7a17cf-0e udp -nlistening on tap7b7a17cf-0e, link-type EN10MB (Ethernet), capture size 262144 bytes10:19:35.234314 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:f0:6c:c9, length 30010:19:35.236297 IP 172.16.0.2.bootps &gt; 172.16.0.77.bootpc: BOOTP/DHCP, Reply, length 346\n\n可以看到tap7b7a17cf-0e收到报文后并给予回复。\n123ovs-appctl ofproto/trace br-int in_port=qvoda24f6b9-4f,udp,dl_src=fa:16:3e:01:c2:a6,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68ovs-appctl ofproto/trace br-int in_port=qvo501b2fa7-e3,udp,dl_src=fa:16:3e:d3:6f:9d,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68\n\ncompute\n123ovs-appctl ofproto/trace br-int in_port=qvo42a41a92-b5,udp,dl_src=fa:16:3e:18:44:cd,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68ovs-appctl ofproto/trace br-tun in_port=vxlan-0a0a0f0c,udp,dl_src=fa:16:3e:18:44:cd,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68\n\n1ovs-appctl ofproto/trace br-ex in_port=br-ex,udp,dl_src=fa:16:3e:18:44:cd,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68","dateCreated":"2022-09-22T18:18:01+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2022-09-22T18:18:01+08:00","description":"OpenStack中OVS的流量分析","headline":"OVS流量分析","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/","keywords":"OVS, 网络","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="OpenStack中OVS的流量分析">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OVS流量分析">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="OpenStack中OVS的流量分析">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2022-09-22T10:18:01.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.031Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OVS">
+<meta property="article:tag" content="网络">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OVS流量分析
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-09-22T18:18:01+08:00">
+	
+		    Sep 22, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#DHCP%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90"><span class="toc-text">DHCP流量分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83"><span class="toc-text">环境</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90"><span class="toc-text">流量分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Request%E9%98%B6%E6%AE%B5"><span class="toc-text">Request阶段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%A1%E7%AE%97%E8%8A%82%E7%82%B9"><span class="toc-text">计算节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%8A%93%E5%8C%85%E8%AF%B7%E6%B1%82"><span class="toc-text">抓包请求</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#br-int%E6%B5%81%E8%A1%A8%E5%88%86%E6%9E%90"><span class="toc-text">br-int流表分析</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-0"><span class="toc-text">Table 0</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-25"><span class="toc-text">Table 25</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-60"><span class="toc-text">Table 60</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#br-tun%E6%B5%81%E8%A1%A8%E5%88%86%E6%9E%90"><span class="toc-text">br-tun流表分析</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-0-1"><span class="toc-text">Table 0</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-2"><span class="toc-text">Table 2</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-22"><span class="toc-text">Table 22</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E8%8A%82%E7%82%B9"><span class="toc-text">控制节点</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#br-tun%E6%B5%81%E8%A1%A8"><span class="toc-text">br-tun流表</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-0-2"><span class="toc-text">Table 0</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-4"><span class="toc-text">Table 4</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-10"><span class="toc-text">Table 10</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#br-int%E6%B5%81%E8%A1%A8"><span class="toc-text">br-int流表</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-0-3"><span class="toc-text">Table 0</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Table-60-1"><span class="toc-text">Table 60</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#DHCP%E7%BD%91%E7%BB%9C%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4"><span class="toc-text">DHCP网络命名空间</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="DHCP流量分析"><a href="#DHCP流量分析" class="headerlink" title="DHCP流量分析"></a>DHCP流量分析</h1><p>DHCP客户端从DHCP服务器获取IP地址，主要通过四个阶段进行：</p>
+<ol>
+<li>发现阶段，即DHCP客户端寻找DHCP服务器的阶段。客户端以广播方式发送DHCP-DISCOVER报文。</li>
+<li>提供阶段，即DHCP服务器提供IP地址的阶段。DHCP服务器接收到客户端的DHCP-DISCOVER报文后，根据IP地址分配的优先次序选出一个IP地址，与其他参数一起通过DHCP-OFFER报文发送给客户端。</li>
+<li>选择阶段，即DHCP客户端选择IP地址的阶段。如果有多台DHCP服务器向该客户端发来DHCP-OFFER 报文，客户端只接受第一个收到的DHCP-OFFER报文，然后以广播方式发送DHCP-REQUEST报文，该报文中包含DHCP服务器在DHCP-OFFER报文中分配的IP地址。</li>
+<li>确认阶段，即DHCP服务器确认IP地址的阶段。DHCP服务器收到DHCP客户端发来的DHCP-REQUEST 报文后，只有DHCP客户端选择的服务器会进行如下操作：如果确认将地址分配给该客户端，则返回DHCP-ACK报文；否则返回DHCP-NAK报文，表明地址不能分配给该客户端。</li>
+</ol>
+<p>一般的，DHCP服务器分配给客户端的IP地址具有一定的租借期限(除自动分配的IP地址)，该租借期限称为租约。当租借期满后服务器会收回该IP地址。如果DHCP客户端希望继续使用该地址，则DHCP客户端需要申请延长IP地址租约。</p>
+<ol>
+<li>在DHCP客户端的IP地址租约期限达到一半左右时间时，DHCP客户端会向为它分配IP地址的DHCP服务器单播发送DHCP-REQUEST报文，以进行IP租约的更新。</li>
+<li>如果客户端可以继续使用此IP地址，则DHCP服务器回应DHCP-ACK报文，通知DHCP客户端已经获得新IP租约；如果此IP地址不可以再分配给该客户端，则DHCP服务器回应DHCP-NAK报文，通知DHCP客户端不能获得新的租约。</li>
+</ol>
+<p>下面主要针对申请延长IP地址租约的情况，做出流量的分析。</p>
+<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><p>云主机网卡</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ip a</span><br><span class="line"></span><br><span class="line">ens4: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc fq_codel state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether fa:16:3e:01:c2:a6 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    altname enp0s4</span><br><span class="line">    inet 172.16.0.193/24 brd 172.16.0.255 scope global dynamic noprefixroute ens4</span><br><span class="line">       valid_lft 85908sec preferred_lft 85908sec</span><br><span class="line">    inet6 fe80::61e4:d0ce:a45c:94ef/64 scope <span class="built_in">link</span> noprefixroute</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>云主机port</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// openstack port show da24f6b9-4f66-488c-bab0-0bd5a9862f0a -f json</span></span><br><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;admin_state_up&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;allowed_address_pairs&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;binding_host_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;compute1&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;binding_profile&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span><span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;binding_vif_details&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;connectivity&quot;</span><span class="punctuation">:</span> <span class="string">&quot;l2&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;port_filter&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;ovs_hybrid_plug&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;datapath_type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;system&quot;</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;bridge_name&quot;</span><span class="punctuation">:</span> <span class="string">&quot;br-int&quot;</span></span><br><span class="line">  <span class="punctuation">&#125;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;binding_vif_type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ovs&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;binding_vnic_type&quot;</span><span class="punctuation">:</span> <span class="string">&quot;normal&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;created_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;2022-09-26T01:34:07Z&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;data_plane_status&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;description&quot;</span><span class="punctuation">:</span> <span class="string">&quot;&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;device_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;30a57936-d0b4-446a-82df-41eb9681e8cc&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;device_owner&quot;</span><span class="punctuation">:</span> <span class="string">&quot;compute:nova&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;dns_assignment&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;dns_domain&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;dns_name&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;extra_dhcp_opts&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;fixed_ips&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="punctuation">&#123;</span></span><br><span class="line">      <span class="attr">&quot;subnet_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;c4758750-17c5-494a-88c5-ebac4558777e&quot;</span><span class="punctuation">,</span></span><br><span class="line">      <span class="attr">&quot;ip_address&quot;</span><span class="punctuation">:</span> <span class="string">&quot;172.16.0.193&quot;</span></span><br><span class="line">    <span class="punctuation">&#125;</span></span><br><span class="line">  <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;da24f6b9-4f66-488c-bab0-0bd5a9862f0a&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;ip_allocation&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;mac_address&quot;</span><span class="punctuation">:</span> <span class="string">&quot;fa:16:3e:01:c2:a6&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;name&quot;</span><span class="punctuation">:</span> <span class="string">&quot;&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;network_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;7b6c69b5-bfa5-4145-901c-26979103da77&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;numa_affinity_policy&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;port_security_enabled&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;project_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;8e4be2cb25084defb5a9f0128afd5291&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;propagate_uplink_status&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;qos_network_policy_id&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;qos_policy_id&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;resource_request&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;revision_number&quot;</span><span class="punctuation">:</span> <span class="number">5</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;security_group_ids&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span></span><br><span class="line">    <span class="string">&quot;238bde14-5bbe-4924-9ef2-3a689353148f&quot;</span></span><br><span class="line">  <span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;status&quot;</span><span class="punctuation">:</span> <span class="string">&quot;ACTIVE&quot;</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;tags&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;trunk_details&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">null</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;updated_at&quot;</span><span class="punctuation">:</span> <span class="string">&quot;2022-09-26T01:41:04Z&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>云主机网络ID</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;network_id&quot;</span><span class="punctuation">:</span> <span class="string">&quot;7b6c69b5-bfa5-4145-901c-26979103da77&quot;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>DHCP的网络命名空间以及网络设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 ip a</span><br><span class="line">1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00</span><br><span class="line">    inet 127.0.0.1/8 scope host lo</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">    inet6 ::1/128 scope host</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">66: tap7b7a17cf-0e: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UNKNOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether fa:16:3e:a4:6f:40 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 172.16.0.2/24 brd 172.16.0.255 scope global tap7b7a17cf-0e</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">    inet6 fe80::a9fe:a9fe/64 scope <span class="built_in">link</span> dadfailed tentative</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">    inet6 fe80::f816:3eff:fea4:6f40/64 scope <span class="built_in">link</span></span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>由port的ID可以得知。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># linux网桥</span></span><br><span class="line">qbrda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether b6:99:35:a2:2a:ea brd ff:ff:ff:ff:ff:ff</span><br><span class="line"></span><br><span class="line"><span class="comment"># ovs上的port</span></span><br><span class="line">qvoda24f6b9-4f@qvbda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master ovs-system state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether 6e:17:ad:a7:83:d3 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet6 fe80::6c17:adff:fea7:83d3/64 scope <span class="built_in">link</span></span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line"></span><br><span class="line"><span class="comment"># linux网桥上的dev</span></span><br><span class="line">qvbda24f6b9-4f@qvoda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue master qbrda24f6b9-4f state UP group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether b6:99:35:a2:2a:ea brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet6 fe80::b499:35ff:fea2:2aea/64 scope <span class="built_in">link</span></span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line"></span><br><span class="line"><span class="comment"># tap设备</span></span><br><span class="line">tapda24f6b9-4f: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc fq_codel master qbrda24f6b9-4f state UNKNOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether fe:16:3e:01:c2:a6 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet6 fe80::fc16:3eff:fe01:c2a6/64 scope <span class="built_in">link</span></span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>利用ovs-vsctl命令查看qvoda24f6b9-4f相关信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show</span><br><span class="line"></span><br><span class="line">Bridge br-int</span><br><span class="line">    Port qvoda24f6b9-4f</span><br><span class="line">        <span class="comment"># tag就是vlan tag</span></span><br><span class="line">        tag: 9</span><br><span class="line">        Interface qvoda24f6b9-4f</span><br></pre></td></tr></table></figure>
+
+<h2 id="流量分析"><a href="#流量分析" class="headerlink" title="流量分析"></a>流量分析</h2><p>云主机内使用dhclient命令发送dhcp请求。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dhclient ens4</span><br></pre></td></tr></table></figure>
+
+<h3 id="Request阶段"><a href="#Request阶段" class="headerlink" title="Request阶段"></a>Request阶段</h3><p>DHCP客户端向服务端发送DHCP REQUEST报文，流量从云主机流向DHCP服务器。</p>
+<h3 id="计算节点"><a href="#计算节点" class="headerlink" title="计算节点"></a>计算节点</h3><h4 id="抓包请求"><a href="#抓包请求" class="headerlink" title="抓包请求"></a>抓包请求</h4><p>对计算节点上的tap设备进行tcpdump抓包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i tapda24f6b9-4f udp -n</span><br><span class="line"></span><br><span class="line">listening on tapda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">09:55:23.628102 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 300</span><br><span class="line">09:55:23.633056 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>fe:16:3e:01:c2:a6是云主机网卡的MAC地址。</p>
+</div>
+
+<p>然后在linux网桥上抓包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qbrda24f6b9-4f udp -n</span><br><span class="line"></span><br><span class="line">listening on qbrda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">09:56:28.704214 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 300</span><br><span class="line">09:56:28.707607 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>在linux网桥的设备上抓包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qvbda24f6b9-4f udp -n</span><br><span class="line"></span><br><span class="line">listening on qvbda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">09:57:23.918547 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 300</span><br><span class="line">09:57:23.921620 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>然后在ovs上的port上抓包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i qvoda24f6b9-4f udp -n</span><br><span class="line"></span><br><span class="line">listening on qvoda24f6b9-4f, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">09:58:06.299939 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:01:c2:a6, length 300</span><br><span class="line">09:58:06.303494 IP 172.16.0.2.bootps &gt; 172.16.0.193.bootpc: BOOTP/DHCP, Reply, length 363</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="br-int流表分析"><a href="#br-int流表分析" class="headerlink" title="br-int流表分析"></a>br-int流表分析</h4><p>dhcp请求进入ovs网桥br-int上，利用ovs命令查看br-int的流表。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br></pre></td></tr></table></figure>
+
+<p>br-int流表如下（已省略部分规则）。</p>
+<h5 id="Table-0"><a href="#Table-0" class="headerlink" title="Table 0"></a>Table 0</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x7cf0a52c49ad76d9, duration=1096.467s, table=0, n_packets=0, n_bytes=0, priority=10,icmp6,in_port=<span class="string">&quot;qvoda24f6b9-4f&quot;</span>,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"></span><br><span class="line">cookie=0x7cf0a52c49ad76d9, duration=1096.463s, table=0, n_packets=5, n_bytes=210, priority=10,arp,in_port=<span class="string">&quot;qvoda24f6b9-4f&quot;</span> actions=resubmit(,24)</span><br><span class="line"></span><br><span class="line">cookie=0x7cf0a52c49ad76d9, duration=1096.483s, table=0, n_packets=84, n_bytes=8876, priority=9,in_port=<span class="string">&quot;qvoda24f6b9-4f&quot;</span> actions=resubmit(,25)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>in_port，匹配进入ovs网桥的端口，这里是qvoda24f6b9-4f。<br>dhcp报文使用的是udp协议，所以按照流表规则应该发送到Table 25。</p>
+</div>
+
+<h5 id="Table-25"><a href="#Table-25" class="headerlink" title="Table 25"></a>Table 25</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x7cf0a52c49ad76d9, duration=1096.493s, table=25, n_packets=70, n_bytes=6828, priority=2,in_port=<span class="string">&quot;qvoda24f6b9-4f&quot;</span>,dl_src=fa:16:3e:01:c2:a6 actions=resubmit(,60)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>dl_src，匹配源MAC地址，这里是fa:16:3e:01:c2:a6，也就是云主机的MAC地址。<br>按照流表规则应该发送到Table 60。</p>
+</div>
+
+<h5 id="Table-60"><a href="#Table-60" class="headerlink" title="Table 60"></a>Table 60</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x7cf0a52c49ad76d9, duration=241159.738s, table=60, n_packets=5071109852, n_bytes=3104632181631, priority=3 actions=NORMAL</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>按照流表规则进行Normal处理，也就是将报文从br-int上的patch-tun发出。</p>
+</div>
+
+<h4 id="br-tun流表分析"><a href="#br-tun流表分析" class="headerlink" title="br-tun流表分析"></a>br-tun流表分析</h4><p>紧接上面说的，报文从br-int上的patch-tun发出，由于patch-tun和patch-int这对veth pair的存在，报文自然而然发送到br-tun的patch-int上。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show</span><br><span class="line"></span><br><span class="line">Bridge br-int</span><br><span class="line">	Port patch-tun</span><br><span class="line">        Interface patch-tun</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-int&#125;</span><br><span class="line"></span><br><span class="line">Bridge br-tun</span><br><span class="line">	Port patch-int</span><br><span class="line">        Interface patch-int</span><br><span class="line">            <span class="built_in">type</span>: patch</span><br><span class="line">            options: &#123;peer=patch-tun&#125;</span><br></pre></td></tr></table></figure>
+
+<p>查看br-tun的流表。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-tun</span><br></pre></td></tr></table></figure>
+
+<p>br-tun流表如下（已省略部分规则）。</p>
+<h5 id="Table-0-1"><a href="#Table-0-1" class="headerlink" title="Table 0"></a>Table 0</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cookie=0xc8bd5b0435a0830b, duration=6952.218s, table=0, n_packets=540130006, n_bytes=318000930632, priority=1,in_port=<span class="string">&quot;patch-int&quot;</span> actions=resubmit(,2)</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>in_port，匹配上文提到的patch-int。<br>按照流表规则应该发送到Table 2。</p>
+</div>
+
+<h5 id="Table-2"><a href="#Table-2" class="headerlink" title="Table 2"></a>Table 2</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cookie=0xc8bd5b0435a0830b, duration=6952.216s, table=2, n_packets=866663, n_bytes=36404220, priority=1,arp,dl_dst=ff:ff:ff:ff:ff:ff actions=resubmit(,21)</span><br><span class="line">cookie=0xc8bd5b0435a0830b, duration=6952.214s, table=2, n_packets=536889805, n_bytes=317711303942, priority=0,dl_dst=00:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,20)</span><br><span class="line">cookie=0xc8bd5b0435a0830b, duration=6952.213s, table=2, n_packets=2373536, n_bytes=253222354, priority=0,dl_dst=01:00:00:00:00:00/01:00:00:00:00:00 actions=resubmit(,22)</span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>dl_dst，匹配以太网的MAC地址。<br>其中00:00:00:00:00:00/01:00:00:00:00:00，代表的是单播，也就是一对一。<br>01:00:00:00:00:00/01:00:00:00:00:00，代表的是广播。</p>
+<p>dhcp是客户机先向搜索消息广播到本地子网的广播地址上，所以按照流表规则应该发送到Table 22。</p>
+</div>
+
+<h5 id="Table-22"><a href="#Table-22" class="headerlink" title="Table 22"></a>Table 22</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cookie=0xc8bd5b0435a0830b, duration=9138.161s, table=22, n_packets=99, n_bytes=9602, priority=1,dl_vlan=9 actions=strip_vlan,load:0x8-&gt;NXM_NX_TUN_ID[],output:<span class="string">&quot;vxlan-0a0a0f0b&quot;</span></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>之前提到过br-int上qvo0f93358c-9e的tag是9，恰好对应vlan的id，所以报文会从vxlan-0a0a0f0b发出。</p>
+<p>同时这里会有一个VNI，也就是vxlan的ID，是8。</p>
+</div>
+
+<p>vxlan-0a0a0f0b是br-tun上的一个port。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Bridge br-tun</span><br><span class="line">    Port vxlan-0a0a0f0b</span><br><span class="line">        Interface vxlan-0a0a0f0b</span><br><span class="line">            <span class="built_in">type</span>: vxlan</span><br><span class="line">            options: &#123;df_default=<span class="string">&quot;true&quot;</span>, egress_pkt_mark=<span class="string">&quot;0&quot;</span>, in_key=flow, local_ip=<span class="string">&quot;10.10.15.12&quot;</span>, out_key=flow, remote_ip=<span class="string">&quot;10.10.15.11&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="控制节点"><a href="#控制节点" class="headerlink" title="控制节点"></a>控制节点</h3><p>上面报文发送到控制节点的br-tun上面。</p>
+<p>查看br-tun的port。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show</span><br><span class="line"></span><br><span class="line">Bridge br-tun</span><br><span class="line">    Port vxlan-0a0a0f0c</span><br><span class="line">        Interface vxlan-0a0a0f0c</span><br><span class="line">            <span class="built_in">type</span>: vxlan</span><br><span class="line">            options: &#123;df_default=<span class="string">&quot;true&quot;</span>, egress_pkt_mark=<span class="string">&quot;0&quot;</span>, in_key=flow, local_ip=<span class="string">&quot;10.10.15.11&quot;</span>, out_key=flow, remote_ip=<span class="string">&quot;10.10.15.12&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到报文由vxlan-0a0a0f0c进入br-tun。</p>
+<h4 id="br-tun流表"><a href="#br-tun流表" class="headerlink" title="br-tun流表"></a>br-tun流表</h4><p>查看br-tun流表</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-tun</span><br></pre></td></tr></table></figure>
+
+<p>br-tun流表如下（已省略部分规则）。</p>
+<h5 id="Table-0-2"><a href="#Table-0-2" class="headerlink" title="Table 0"></a>Table 0</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x2f0e5558da81d9b, duration=3888857.445s, table=0, n_packets=6460187689, n_bytes=3882347621874, priority=1,in_port=<span class="string">&quot;vxlan-0a0a0f0c&quot;</span> actions=resubmit(,4)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>in_port，匹配进入br-tun的port，这里是vxlan-0a0a0f0c，所以报文转发到Table 4。</p>
+</div>
+
+<h5 id="Table-4"><a href="#Table-4" class="headerlink" title="Table 4"></a>Table 4</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x2f0e5558da81d9b, duration=3888868.347s, table=4, n_packets=10248912, n_bytes=2724392934, priority=1,tun_id=0x8 actions=mod_vlan_vid:15,resubmit(,10)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>tun_id，匹配vxlan的ID，VNI，就是在计算节点br-tun流表Table 22中所加入的vxlan id是8。<br>现将报文的vlan ID改为15，再将其转发给Table 10。</p>
+</div>
+
+<h5 id="Table-10"><a href="#Table-10" class="headerlink" title="Table 10"></a>Table 10</h5><p>table 10的流表规则有且只有一条，就是修改Table 20的流表规则，同时将报文从patch-int发出。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0x2f0e5558da81d9b, duration=3888896.210s, table=10, n_packets=14070316277, n_bytes=9137771262107, priority=1 actions=learn(table=20,hard_timeout=300,priority=1,cookie=0x2f0e5558da81d9b,NXM_OF_VLAN_TCI[0..11],NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],load:0-&gt;NXM_OF_VLAN_TCI[],load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[],output:OXM_OF_IN_PORT[]),output:<span class="string">&quot;patch-int&quot;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>actions=learn(table=20…），表示将学习到的流表放入Table 20。<br>NXM_OF_VLAN_TCI[0..11]，记录当前数据包的VLAN_ID作为match中的VLAN_ID，也就是上文提到的15。<br>NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[]，记录当前数据包的源MAC地址作为match中的目的MAC地址。<br>load:0-&gt;NXM_OF_VLAN_TCI[]，表示action中要去掉VLAN_ID。<br>load:NXM_NX_TUN_ID[]-&gt;NXM_NX_TUN_ID[]，表示action中要封装隧道，隧道ID为当前隧道ID。<br>output:NXM_OF_IN_PORT[]，表示action中的输出，输出端口为当前数据包的输入端口。</p>
+</div>
+
+
+<h4 id="br-int流表"><a href="#br-int流表" class="headerlink" title="br-int流表"></a>br-int流表</h4><p>由于patch-int和patch-tun这对veth pair的存在，所以报文由path-tun进入br-int。</p>
+<p>查看br-int流表</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-ofctl dump-flows br-int</span><br></pre></td></tr></table></figure>
+
+<p>br-int流表如下（已省略部分规则）。</p>
+<h5 id="Table-0-3"><a href="#Table-0-3" class="headerlink" title="Table 0"></a>Table 0</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0xa39f8d6fcda0e990, duration=3933781.023s, table=0, n_packets=17446431423, n_bytes=14674327912459, priority=0 actions=resubmit(,60)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>将报文发送给Table 60。</p>
+</div>
+
+<h5 id="Table-60-1"><a href="#Table-60-1" class="headerlink" title="Table 60"></a>Table 60</h5><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cookie=0xa39f8d6fcda0e990, duration=3933781.022s, table=60, n_packets=33187444161, n_bytes=26145058466699, priority=3 actions=NORMAL</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<div class="alert info no-icon"><p>报文执行Normal，就是按照vlan id正常转发，也就是将报文发送给vlan ID是15的port。</p>
+</div>
+
+<h3 id="DHCP网络命名空间"><a href="#DHCP网络命名空间" class="headerlink" title="DHCP网络命名空间"></a>DHCP网络命名空间</h3><p>上面说到报文发送给vlan ID是15的port，查看br-int上的port，可以得到tap7b7a17cf-0e。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ovs-vsctl show </span><br><span class="line"></span><br><span class="line">Bridge br-int</span><br><span class="line">    Port tap7b7a17cf-0e</span><br><span class="line">        tag: 15</span><br><span class="line">        Interface tap7b7a17cf-0e</span><br><span class="line">            <span class="built_in">type</span>: internal</span><br></pre></td></tr></table></figure>
+
+<p>tap7b7a17cf-0e其实就是ovs在dhcp网络命名空间中创建的一块虚拟网卡。<br>DHCP的网络命名空间以及网络设备。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 ip a</span><br><span class="line">66: tap7b7a17cf-0e: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1450 qdisc noqueue state UNKNOWN group default qlen 1000</span><br><span class="line">    <span class="built_in">link</span>/ether fa:16:3e:a4:6f:40 brd ff:ff:ff:ff:ff:ff</span><br><span class="line">    inet 172.16.0.2/24 brd 172.16.0.255 scope global tap7b7a17cf-0e</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">    inet6 fe80::a9fe:a9fe/64 scope <span class="built_in">link</span> dadfailed tentative</span><br><span class="line">       valid_lft forever preferred_lft forever</span><br><span class="line">    inet6 fe80::f816:3eff:fea4:6f40/64 scope <span class="built_in">link</span></span><br><span class="line">       valid_lft forever preferred_lft forever</span><br></pre></td></tr></table></figure>
+
+<p>我们可以在tap7b7a17cf-0e设备上抓取DHCP的报文。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ip netns <span class="built_in">exec</span> qdhcp-7b6c69b5-bfa5-4145-901c-26979103da77 tcpdump -i tap7b7a17cf-0e udp -n</span><br><span class="line"></span><br><span class="line">listening on tap7b7a17cf-0e, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">10:19:35.234314 IP 0.0.0.0.bootpc &gt; 255.255.255.255.bootps: BOOTP/DHCP, Request from fa:16:3e:f0:6c:c9, length 300</span><br><span class="line">10:19:35.236297 IP 172.16.0.2.bootps &gt; 172.16.0.77.bootpc: BOOTP/DHCP, Reply, length 346</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>可以看到tap7b7a17cf-0e收到报文后并给予回复。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ovs-appctl ofproto/trace br-int in_port=qvoda24f6b9-4f,udp,dl_src=fa:16:3e:01:c2:a6,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68</span><br><span class="line"></span><br><span class="line">ovs-appctl ofproto/trace br-int in_port=qvo501b2fa7-e3,udp,dl_src=fa:16:3e:d3:6f:9d,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68</span><br></pre></td></tr></table></figure>
+
+<p>compute</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ovs-appctl ofproto/trace br-int in_port=qvo42a41a92-b5,udp,dl_src=fa:16:3e:18:44:<span class="built_in">cd</span>,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68</span><br><span class="line"></span><br><span class="line">ovs-appctl ofproto/trace br-tun in_port=vxlan-0a0a0f0c,udp,dl_src=fa:16:3e:18:44:<span class="built_in">cd</span>,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ovs-appctl ofproto/trace br-ex in_port=br-ex,udp,dl_src=fa:16:3e:18:44:<span class="built_in">cd</span>,dl_dst=ff:ff:ff:ff:ff:ff,nw_dst=255.255.255.255,udp_dst=67,udp_src=68</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OVS/" rel="tag">OVS</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E7%BD%91%E7%BB%9C/" rel="tag">网络</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/02/OpenStack-All-In-One/"
+                    data-tooltip="OpenStack All In One"
+                    aria-label="PREVIOUS: OpenStack All In One"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    data-tooltip="UOS考试"
+                    aria-label="NEXT: UOS考试"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/&amp;title=OVS流量分析"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/09/22/OVS流量分析/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/02/OpenStack-All-In-One/"
+                    data-tooltip="OpenStack All In One"
+                    aria-label="PREVIOUS: OpenStack All In One"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/07/01/UOS%E8%80%83%E8%AF%95/"
+                    data-tooltip="UOS考试"
+                    aria-label="NEXT: UOS考试"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/&amp;title=OVS流量分析"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/&amp;title=OVS流量分析"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

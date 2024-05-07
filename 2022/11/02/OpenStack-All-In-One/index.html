@@ -1,0 +1,826 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack All In One - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nOpenStack架构图\nOpenStack\n\nCinderVolumeDeviceNotFound实例Hard Reboot后，出现VolumeDeviceNotFound的错误。\n查看计算节点上，nova-compute的日志。 \n1nova.compute.manager [req-1c2e36df-c5ff-49aa-9893-6046cd0cbfeb b29311c34edb4f179092e81cbee10682 8e4be2cb25084defb5a9f0128afd5291 - default default] [instance: d17a8b0f-759c-4f54-b265-64fc16986710] Cannot reboot instance: Volume device not found at .: os_brick.exception.VolumeDeviceNotFound: Volume device not found at .\n\n解决方法\n存储节点查看对应的物理设备是否被创建。\n123# f870fcdb-209c-4877-8de4-1b7683b98548是volume的ID。lsblk | grep f870fcdb--209c--4877--8de4--1b7683b98548ls /dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n在存储节点上查看iSCSI资源。\n1targetcli ls\n得到下面的结果。\n12345678| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................................. [TPGs: 1]| | o- tpg1 .......................................................................................... [no-gen-acls, auth per-acl]| |   o- acls .......................................................................................................... [ACLs: 1]| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ................................................... [1-way auth, Mapped LUNs: 0]| |   o- luns .......................................................................................................... [LUNs: 0]| |   o- portals .................................................................................................... [Portals: 1]| |     o- 10.10.15.14:3260 ................................................................................................. [OK]\n从上面的结果可以看到acls是正常的，但luns中没有数据。\n\n新建backstores\n1234targetcli \\/backstores/block create \\ name=iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 \\dev=/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n新建lun\n1234targetcli \\/iscsi/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548/tpg1/luns \\ create  \\/backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n\n也可以使用cinder-rtstool，更加方便。1cinder-rtstool create /backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548\n\n\n\n重设实例状态。\n1openstack server set --state active ce979e29-198d-498b-b2e3-c0cab6c82c98\n\n重启实例。\n1openstack server reboot --hard ce979e29-198d-498b-b2e3-c0cab6c82c98\n\n再次查看，已经正常。\n1234567| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................................. [TPGs: 1]| | o- tpg1 .......................................................................................... [no-gen-acls, auth per-acl]| |   o- acls .......................................................................................................... [ACLs: 1]| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ................................................... [1-way auth, Mapped LUNs: 1]| |   |   o- mapped_lun0 ................. [lun0 block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (rw)]| |   o- luns .......................................................................................................... [LUNs: 1]| |   | o- lun0  [block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548) (default_tg_pt_gp)]\n\n\n\n其他volume删除后，存储节点的日志里会报错。\n12Jan 17 10:14:22 compute3 kernel: Unable to locate Target IQN: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb in Storage NodeJan 17 10:14:22 compute3 kernel: iSCSI Login negotiation failed.\n\n解决方法，到各个节点中执行iscsiadm命令\n123456[root@compute2 ~] iscsiadm -m session -P 3 | grep c6774132Target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb (non-flash)[root@compute2 ~] iscsiadm -m node -T iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb -p 10.10.15.14:3260 --logoutLogging out of session [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260]Logout of [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260] successful.\n\nImage镜像密码修改使用guestfish在计算节点（运行libvirtd服务的节点）上，使用guestfish命令。\n12# 安装依赖包yum install -y libguestfs-tools\n\n执行guestfish命令。\n1234567891011guestfish --rw -a CentOS-Stream-GenericCloud-9-x86_64.qcow2&gt; run&gt; list-filesystem&gt;&lt;fs&gt; run100% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒⟧ 00:00&gt;&lt;fs&gt;list-filesystems/dev/sda1: xfs&gt;&lt;fs&gt; mount /dev/sda1 /&gt;&lt;fs&gt; vi /etc/cloud/cloud.cfg           # 编辑cloud-init的配置文件&gt;&lt;fs&gt; vi /etc/ssh/sshd_config           # 编辑sshd服务的配置文件\n\n/etc/cloud/cloud.cfg\n12345678910# 打开root登录disable_root: false# 打开ssh 密码登录ssh_pwauth: true# 修改root密码。# 注意：新版本cloud-ini的chpasswd中的list已经被users取代，可以通过指定type，改变密码的类型，默认是hash。chpasswd:   expire: false   list: |     root:centos\n\n/etc/ssh/sshd_config\n12PermitRootLogin yesPasswordAuthentication yes\n\n保存退出。\n使用virt-customize在计算节点（运行libvirtd服务的节点）上，安装依赖包。\n1yum install -y libguestfs-tools\n\n使用virt-customize命令。\n1sudo virt-customize -a CentOS-Stream-GenericCloud-9-x86_64.qcow2 --root-password password:123456\n如果出现下面的错误。\n123456789101112131415[   0.0] Examining the guest ...virt-customize: error: libguestfs error: could not create appliance throughlibvirt.Try running qemu directly without libvirt using this environment variable:export LIBGUESTFS_BACKEND=directOriginal error from libvirt: Cannot access storage file&#x27;/root/CentOS-Stream-GenericCloud-9-x86_64.qcow2&#x27; (as uid:107, gid:107):权限不够 [code=38 int1=13]If reporting bugs, run virt-customize with debugging enabled and includethe complete output:  virt-customize -v -x [...]\n\n执行下面的操作，修改libvirtd的权限。\n12345cat &gt;&gt; /etc/libvirt/qemu.conf &lt;&lt; EOFuser = &quot;root&quot;group = &quot;root&quot;EOFsystemctl restart libvirtd.service\n\n使用horizonhorizon界面支持用户在创建云主机时注入密码。\n传送门\n\n\n修改horizon的local_settings.py文件。\n1234OPENSTACK_HYPERVISOR_FEATURES = &#123;    ...    &#x27;can_set_password&#x27;: False,&#125;\n\n修改/etc/nova/nova.conf，kolla部署的nova修改/etc/kolla/nova-compute/nova.conf。\n12[libvirt]inject_password=true\n\n重启horizon和nova-compute服务。\n1systemctl restart httpd nova-compute\n\n查看horizon界面。\n\n\n镜像上传1234openstack image create --disk-format qcow2 \\--container-format bare --public \\--file ./CentOS-Stream-GenericCloud-9-x86_64.qcow2CentOS-Stream-GenericCloud-9-x86_64\n\n网络DHCP实例获取不到IP地址\n首先排查是否是安全组的问题导致dhcp报文传递不过去，查看安全组已经打开UDP协议。\n排查是否是由系统内部防火墙导致dhcp报文传递不出去，禁用防火墙后问题依然存在。 \n排查是否是系统内部服务导致dhcp没有发送discover报文，在系统内使用dhclient命令可以获取到IP。\n排查dhclient没有启动的原因，发现dhclient应该由NetworkManager启动。NetworkManager之所以没有启动dhclient是因为系统内/etc/sysconfig/network-scripts/ifcfg-enp1s0的配置文件，NetworkManager会忽略/etc/sysconfig/network-scripts/下的网络设备导致会出现device not managed错误导致dhclient不启动，进而云主机拿不到IP地址。 \n解决方法，将/etc/sysconfig/network-scripts/ifcfg-enp1s0删除。\n\n端口转发基于浮动IP的端口转发浮动IP端口转发使用户能够将TCP/UDP流量，从Port通过iptables的NAT功能，转发给浮动IP。\n部署在运行neutron-server的所有节点（网络节点）上，修改/etc/neutron/neutron.conf文件。\n12[DEFAULT]service_plugins = router,segments,port_forwarding\n\n在运行neutron-l3-agent的所有节点上，修改/etc/neutron/l3_agent.ini。\n12[agent]extensions = port_forwarding\n\n重启neutron-server和neutron-l3-agent服务。\n1systemctl restart neutron-server neutron-l3-agent\n\n验证。\n1openstack extension list --network | grep floating-ip-port-forwarding\n\n操作创建端口转发\n1234567openstack floating ip port forwarding create \\--internal-ip-address 10.100.0.1 \\--internal-protocol-port 8080--external-protocol-port 9000--port 36bcd62a-0860-4e22-bf8a-81f5052eff60 \\--protocol tcp \\825cc4f8-9a1c-4e46-b380-501ba0f9b08d\n\n36bcd62a-0860-4e22-bf8a-81f5052eff60和825cc4f8-9a1c-4e46-b380-501ba0f9b08d分别是Port和浮动IP的ID。\n原理TODO\nhorizon1compressor.exceptions.OfflineGenerationError: You have offline compression enabled but key &quot;9a5d87a23b1b5362cdee3cc104aa5c24c3a33cd113d8e4ac4dfbebd1edbd9efc&quot; is missing from offline manifest. You may need to run &quot;python manage.py compress&quot;.\n\n12python manage.py collectstaticpython manage.py compress\n\n其他keepalived多虚IP使用kvm部署多台机器，使用keepalived和haproxy作为集群高可用。发现虚IP在多个节点上同时出现，怀疑keepalived配置出问题。\n在多个节点上利用tcpdump抓包，vrrp包都能被抓到，但是似乎节点之间收不到vrrp包。\n123456tcpdump -i any vrrp -ntcpdump: verbose output suppressed, use -v or -vv for full protocol decodelistening on any, link-type LINUX_SLL (Linux cooked v1), capture size 262144 bytes11:30:09.452941 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 2011:30:10.453144 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 2011:30:11.453369 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20\n\n确保SElinux处于关闭状态。\n1234cat /etc/selinux/configSELINUX=disabledSELINUXTYPE=targeted\n\n检查防火墙是否关闭。\n123systemtcl status firewalldsystemctl stop firewalldsystemctl disable firewalld\n\n查看iptables规则。\n12345iptables -S-P INPUT ACCEPT-P FORWARD ACCEPT-P OUTPUT ACCEPT\n\n防火墙一切正常，怀疑是KVM虚拟机的网络问题导致VRRP不能被传输。KVM使用nat网络进行传输时没有问题，在使用macvtap网络会出现上述问题。\n查看官方文档，kvm在使用macvtap驱动时，参数trustGuestRxFilters默认否，可能会修改从虚拟机出来的流量的MAC地址，导致网络不可达。\n编辑虚拟机配置文件。\n12345678...    &lt;interface type=&#x27;direct&#x27; trustGuestRxFilters=&#x27;yes&#x27;&gt;      &lt;mac address=&#x27;52:54:00:a9:f7:5b&#x27;/&gt;      &lt;source dev=&#x27;ens9f0&#x27; mode=&#x27;bridge&#x27;/&gt;      &lt;model type=&#x27;virtio&#x27;/&gt;      &lt;address type=&#x27;pci&#x27; domain=&#x27;0x0000&#x27; bus=&#x27;0x01&#x27; slot=&#x27;0x00&#x27; function=&#x27;0x0&#x27;/&gt;    &lt;/interface&gt;...\n\n最后如果问题还是复现，将每台虚拟机对应的macvtap网卡设置成混杂模式。\n12345678910ifconfig macvtap5 promiscifconfig macvtap5macvtap5: flags=4419&lt;UP,BROADCAST,RUNNING,PROMISC,MULTICAST&gt;  mtu 1500        inet6 fe80::5054:ff:fea9:f75b  prefixlen 64  scopeid 0x20&lt;link&gt;        ether 52:54:00:a9:f7:5b  txqueuelen 500  (Ethernet)        RX packets 27827  bytes 2287340 (2.1 MiB)        RX errors 0  dropped 0  overruns 0  frame 0        TX packets 16236  bytes 1122923 (1.0 MiB)        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0","dateCreated":"2022-11-02T13:32:25+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2022-11-02T13:32:25+08:00","description":"操作OpenStack这一份就够了。","headline":"OpenStack All In One","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/","keywords":"OpenStack","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="操作OpenStack这一份就够了。">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack All In One">
+<meta property="og:url" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="操作OpenStack这一份就够了。">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/images/openstack.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/images/horizon.png">
+<meta property="article:published_time" content="2022-11-02T05:32:25.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.035Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/images/openstack.jpg">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack All In One
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2022-11-02T13:32:25+08:00">
+	
+		    Nov 02, 2022
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Cinder"><span class="toc-text">Cinder</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#VolumeDeviceNotFound"><span class="toc-text">VolumeDeviceNotFound</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%B3%95"><span class="toc-text">解决方法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Image"><span class="toc-text">Image</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E5%AF%86%E7%A0%81%E4%BF%AE%E6%94%B9"><span class="toc-text">镜像密码修改</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8guestfish"><span class="toc-text">使用guestfish</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8virt-customize"><span class="toc-text">使用virt-customize</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8horizon"><span class="toc-text">使用horizon</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E4%B8%8A%E4%BC%A0"><span class="toc-text">镜像上传</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C"><span class="toc-text">网络</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#DHCP"><span class="toc-text">DHCP</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%9E%E4%BE%8B%E8%8E%B7%E5%8F%96%E4%B8%8D%E5%88%B0IP%E5%9C%B0%E5%9D%80"><span class="toc-text">实例获取不到IP地址</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91"><span class="toc-text">端口转发</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%B5%AE%E5%8A%A8IP%E7%9A%84%E7%AB%AF%E5%8F%A3%E8%BD%AC%E5%8F%91"><span class="toc-text">基于浮动IP的端口转发</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%83%A8%E7%BD%B2"><span class="toc-text">部署</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%93%8D%E4%BD%9C"><span class="toc-text">操作</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8E%9F%E7%90%86"><span class="toc-text">原理</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#horizon"><span class="toc-text">horizon</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%B6%E4%BB%96-1"><span class="toc-text">其他</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#keepalived"><span class="toc-text">keepalived</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E8%99%9AIP"><span class="toc-text">多虚IP</span></a></li></ol></li></ol></li></ol>
+<p>OpenStack架构图</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/openstack.jpg" title="OpenStack" data-caption="OpenStack" data-fancybox="default"><img class="fig-img" src="images/openstack.jpg" alt="OpenStack"></a><span class="caption">OpenStack</span></div>
+
+<h1 id="Cinder"><a href="#Cinder" class="headerlink" title="Cinder"></a>Cinder</h1><h2 id="VolumeDeviceNotFound"><a href="#VolumeDeviceNotFound" class="headerlink" title="VolumeDeviceNotFound"></a>VolumeDeviceNotFound</h2><p>实例Hard Reboot后，出现VolumeDeviceNotFound的错误。</p>
+<p>查看计算节点上，nova-compute的日志。 </p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nova.compute.manager [req-1c2e36df-c5ff-49aa-9893-6046cd0cbfeb b29311c34edb4f179092e81cbee10682 8e4be2cb25084defb5a9f0128afd5291 - default default] [instance: d17a8b0f-759c-4f54-b265-64fc16986710] Cannot reboot instance: Volume device not found at .: os_brick.exception.VolumeDeviceNotFound: Volume device not found at .</span><br></pre></td></tr></table></figure>
+
+<h3 id="解决方法"><a href="#解决方法" class="headerlink" title="解决方法"></a>解决方法</h3><ol>
+<li><p>存储节点查看对应的物理设备是否被创建。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># f870fcdb-209c-4877-8de4-1b7683b98548是volume的ID。</span></span><br><span class="line">lsblk | grep f870fcdb--209c--4877--8de4--1b7683b98548</span><br><span class="line"><span class="built_in">ls</span> /dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在存储节点上查看iSCSI资源。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">targetcli <span class="built_in">ls</span></span><br></pre></td></tr></table></figure>
+<p>得到下面的结果。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................................. [TPGs: 1]</span><br><span class="line">| | o- tpg1 .......................................................................................... [no-gen-acls, auth per-acl]</span><br><span class="line">| |   o- acls .......................................................................................................... [ACLs: 1]</span><br><span class="line">| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ................................................... [1-way auth, Mapped LUNs: 0]</span><br><span class="line">| |   o- luns .......................................................................................................... [LUNs: 0]</span><br><span class="line">| |   o- portals .................................................................................................... [Portals: 1]</span><br><span class="line">| |     o- 10.10.15.14:3260 ................................................................................................. [OK]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>从上面的结果可以看到acls是正常的，但luns中没有数据。</p>
+</li>
+<li><p>新建backstores</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">targetcli \</span><br><span class="line">/backstores/block create \ </span><br><span class="line">name=iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 \</span><br><span class="line">dev=/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建lun</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">targetcli \</span><br><span class="line">/iscsi/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548/tpg1/luns \ </span><br><span class="line">create  \</span><br><span class="line">/backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>也可以使用cinder-rtstool，更加方便。<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cinder-rtstool create /backstores/block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+</li>
+<li><p>重设实例状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack server <span class="built_in">set</span> --state active ce979e29-198d-498b-b2e3-c0cab6c82c98</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>重启实例。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack server reboot --hard ce979e29-198d-498b-b2e3-c0cab6c82c98</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>再次查看，已经正常。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">| o- iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 ............................................. [TPGs: 1]</span><br><span class="line">| | o- tpg1 .......................................................................................... [no-gen-acls, auth per-acl]</span><br><span class="line">| |   o- acls .......................................................................................................... [ACLs: 1]</span><br><span class="line">| |   | o- iqn.2020-08.org.openanolis:8a5ea81155a ................................................... [1-way auth, Mapped LUNs: 1]</span><br><span class="line">| |   |   o- mapped_lun0 ................. [lun0 block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (rw)]</span><br><span class="line">| |   o- luns .......................................................................................................... [LUNs: 1]</span><br><span class="line">| |   | o- lun0  [block/iqn.2010-10.org.openstack:volume-f870fcdb-209c-4877-8de4-1b7683b98548 (/dev/cinder-volumes/volume-f870fcdb-209c-4877-8de4-1b7683b98548) (default_tg_pt_gp)]</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h2 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h2><p>volume删除后，存储节点的日志里会报错。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Jan 17 10:14:22 compute3 kernel: Unable to locate Target IQN: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb in Storage Node</span><br><span class="line">Jan 17 10:14:22 compute3 kernel: iSCSI Login negotiation failed.</span><br></pre></td></tr></table></figure>
+
+<p>解决方法，到各个节点中执行iscsiadm命令</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[root@compute2 ~] iscsiadm -m session -P 3 | grep c6774132</span><br><span class="line">Target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb (non-flash)</span><br><span class="line"></span><br><span class="line">[root@compute2 ~] iscsiadm -m node -T iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb -p 10.10.15.14:3260 --<span class="built_in">logout</span></span><br><span class="line">Logging out of session [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260]</span><br><span class="line">Logout of [sid: 248, target: iqn.2010-10.org.openstack:volume-c6774132-65f2-47a0-a65b-9a5d06a4accb, portal: 10.10.15.14,3260] successful.</span><br></pre></td></tr></table></figure>
+
+<h1 id="Image"><a href="#Image" class="headerlink" title="Image"></a>Image</h1><h2 id="镜像密码修改"><a href="#镜像密码修改" class="headerlink" title="镜像密码修改"></a>镜像密码修改</h2><h3 id="使用guestfish"><a href="#使用guestfish" class="headerlink" title="使用guestfish"></a>使用guestfish</h3><p>在计算节点（运行libvirtd服务的节点）上，使用guestfish命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 安装依赖包</span></span><br><span class="line">yum install -y libguestfs-tools</span><br></pre></td></tr></table></figure>
+
+<p>执行guestfish命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">guestfish --rw -a CentOS-Stream-GenericCloud-9-x86_64.qcow2</span><br><span class="line">&gt; run</span><br><span class="line">&gt; list-filesystem</span><br><span class="line">&gt;&lt;fs&gt; run</span><br><span class="line">100% ⟦▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒⟧ 00:00</span><br><span class="line">&gt;&lt;fs&gt;list-filesystems</span><br><span class="line">/dev/sda1: xfs</span><br><span class="line">&gt;&lt;fs&gt; mount /dev/sda1 /</span><br><span class="line">&gt;&lt;fs&gt; vi /etc/cloud/cloud.cfg           <span class="comment"># 编辑cloud-init的配置文件</span></span><br><span class="line">&gt;&lt;fs&gt; vi /etc/ssh/sshd_config           <span class="comment"># 编辑sshd服务的配置文件</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>/etc/cloud/cloud.cfg</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 打开root登录</span></span><br><span class="line"><span class="attr">disable_root:</span> <span class="literal">false</span></span><br><span class="line"><span class="comment"># 打开ssh 密码登录</span></span><br><span class="line"><span class="attr">ssh_pwauth:</span> <span class="literal">true</span></span><br><span class="line"><span class="comment"># 修改root密码。</span></span><br><span class="line"><span class="comment"># 注意：新版本cloud-ini的chpasswd中的list已经被users取代，可以通过指定type，改变密码的类型，默认是hash。</span></span><br><span class="line"><span class="attr">chpasswd:</span></span><br><span class="line">   <span class="attr">expire:</span> <span class="literal">false</span></span><br><span class="line">   <span class="attr">list:</span> <span class="string">|</span></span><br><span class="line">     <span class="string">root:centos</span></span><br></pre></td></tr></table></figure>
+
+<p>/etc/ssh/sshd_config</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">PermitRootLogin yes</span><br><span class="line">PasswordAuthentication yes</span><br></pre></td></tr></table></figure>
+
+<p>保存退出。</p>
+<h3 id="使用virt-customize"><a href="#使用virt-customize" class="headerlink" title="使用virt-customize"></a>使用virt-customize</h3><p>在计算节点（运行libvirtd服务的节点）上，安装依赖包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install -y libguestfs-tools</span><br></pre></td></tr></table></figure>
+
+<p>使用virt-customize命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo virt-customize -a CentOS-Stream-GenericCloud-9-x86_64.qcow2 --root-password password:123456</span><br></pre></td></tr></table></figure>
+<p>如果出现下面的错误。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[   0.0] Examining the guest ...</span><br><span class="line">virt-customize: error: libguestfs error: could not create appliance through</span><br><span class="line">libvirt.</span><br><span class="line"></span><br><span class="line">Try running qemu directly without libvirt using this environment variable:</span><br><span class="line">export LIBGUESTFS_BACKEND=direct</span><br><span class="line"></span><br><span class="line">Original error from libvirt: Cannot access storage file</span><br><span class="line">&#x27;/root/CentOS-Stream-GenericCloud-9-x86_64.qcow2&#x27; (as uid:107, gid:107):</span><br><span class="line">权限不够 [code=38 int1=13]</span><br><span class="line"></span><br><span class="line">If reporting bugs, run virt-customize with debugging enabled and include</span><br><span class="line">the complete output:</span><br><span class="line"></span><br><span class="line">  virt-customize -v -x [...]</span><br></pre></td></tr></table></figure>
+
+<p>执行下面的操作，修改libvirtd的权限。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt;&gt; /etc/libvirt/qemu.conf &lt;&lt; <span class="string">EOF</span></span><br><span class="line"><span class="string">user = &quot;root&quot;</span></span><br><span class="line"><span class="string">group = &quot;root&quot;</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line">systemctl restart libvirtd.service</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用horizon"><a href="#使用horizon" class="headerlink" title="使用horizon"></a>使用horizon</h3><p>horizon界面支持用户在创建云主机时注入密码。</p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="https://docs.openstack.org/nova/latest/admin/admin-password-injection.html">传送门</a></p>
+</div>
+
+<p>修改horizon的local_settings.py文件。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">OPENSTACK_HYPERVISOR_FEATURES = &#123;</span><br><span class="line">    ...</span><br><span class="line">    <span class="string">&#x27;can_set_password&#x27;</span>: <span class="literal">False</span>,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>修改/etc/nova/nova.conf，kolla部署的nova修改/etc/kolla/nova-compute/nova.conf。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[libvirt]</span><br><span class="line">inject_password=true</span><br></pre></td></tr></table></figure>
+
+<p>重启horizon和nova-compute服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart httpd nova-compute</span><br></pre></td></tr></table></figure>
+
+<p>查看horizon界面。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/horizon.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/horizon.png" alt=""></a></div>
+
+<h2 id="镜像上传"><a href="#镜像上传" class="headerlink" title="镜像上传"></a>镜像上传</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">openstack image create --disk-format qcow2 \</span><br><span class="line">--container-format bare --public \</span><br><span class="line">--file ./CentOS-Stream-GenericCloud-9-x86_64.qcow2</span><br><span class="line">CentOS-Stream-GenericCloud-9-x86_64</span><br></pre></td></tr></table></figure>
+
+<h1 id="网络"><a href="#网络" class="headerlink" title="网络"></a>网络</h1><h2 id="DHCP"><a href="#DHCP" class="headerlink" title="DHCP"></a>DHCP</h2><h3 id="实例获取不到IP地址"><a href="#实例获取不到IP地址" class="headerlink" title="实例获取不到IP地址"></a>实例获取不到IP地址</h3><ol>
+<li>首先排查是否是安全组的问题导致dhcp报文传递不过去，查看安全组已经打开UDP协议。</li>
+<li>排查是否是由系统内部防火墙导致dhcp报文传递不出去，禁用防火墙后问题依然存在。 </li>
+<li>排查是否是系统内部服务导致dhcp没有发送discover报文，在系统内使用dhclient命令可以获取到IP。</li>
+<li>排查dhclient没有启动的原因，发现dhclient应该由NetworkManager启动。NetworkManager之所以没有启动dhclient是因为系统内/etc/sysconfig/network-scripts/ifcfg-enp1s0的配置文件，NetworkManager会忽略/etc/sysconfig/network-scripts/下的网络设备导致会出现device not managed错误导致dhclient不启动，进而云主机拿不到IP地址。 </li>
+<li>解决方法，将/etc/sysconfig/network-scripts/ifcfg-enp1s0删除。</li>
+</ol>
+<h2 id="端口转发"><a href="#端口转发" class="headerlink" title="端口转发"></a>端口转发</h2><h3 id="基于浮动IP的端口转发"><a href="#基于浮动IP的端口转发" class="headerlink" title="基于浮动IP的端口转发"></a>基于浮动IP的端口转发</h3><p>浮动IP端口转发使用户能够将TCP/UDP流量，从Port通过iptables的NAT功能，转发给浮动IP。</p>
+<h4 id="部署"><a href="#部署" class="headerlink" title="部署"></a>部署</h4><p>在运行neutron-server的所有节点（网络节点）上，修改/etc/neutron/neutron.conf文件。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[DEFAULT]</span><br><span class="line">service_plugins = router,segments,port_forwarding</span><br></pre></td></tr></table></figure>
+
+<p>在运行neutron-l3-agent的所有节点上，修改/etc/neutron/l3_agent.ini。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[agent]</span><br><span class="line">extensions = port_forwarding</span><br></pre></td></tr></table></figure>
+
+<p>重启neutron-server和neutron-l3-agent服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart neutron-server neutron-l3-agent</span><br></pre></td></tr></table></figure>
+
+<p>验证。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openstack extension list --network | grep floating-ip-port-forwarding</span><br></pre></td></tr></table></figure>
+
+<h4 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h4><p>创建端口转发</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">openstack floating ip port forwarding create \</span><br><span class="line">--internal-ip-address 10.100.0.1 \</span><br><span class="line">--internal-protocol-port 8080</span><br><span class="line">--external-protocol-port 9000</span><br><span class="line">--port 36bcd62a-0860-4e22-bf8a-81f5052eff60 \</span><br><span class="line">--protocol tcp \</span><br><span class="line">825cc4f8-9a1c-4e46-b380-501ba0f9b08d</span><br></pre></td></tr></table></figure>
+
+<p>36bcd62a-0860-4e22-bf8a-81f5052eff60和825cc4f8-9a1c-4e46-b380-501ba0f9b08d分别是Port和浮动IP的ID。</p>
+<h4 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h4><p>TODO</p>
+<h1 id="horizon"><a href="#horizon" class="headerlink" title="horizon"></a>horizon</h1><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">compressor.exceptions.OfflineGenerationError: You have offline compression enabled but key &quot;9a5d87a23b1b5362cdee3cc104aa5c24c3a33cd113d8e4ac4dfbebd1edbd9efc&quot; is missing from offline manifest. You may need to run &quot;python manage.py compress&quot;.</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">python manage.py collectstatic</span><br><span class="line">python manage.py compress</span><br></pre></td></tr></table></figure>
+
+<h1 id="其他-1"><a href="#其他-1" class="headerlink" title="其他"></a>其他</h1><h2 id="keepalived"><a href="#keepalived" class="headerlink" title="keepalived"></a>keepalived</h2><h3 id="多虚IP"><a href="#多虚IP" class="headerlink" title="多虚IP"></a>多虚IP</h3><p>使用kvm部署多台机器，使用keepalived和haproxy作为集群高可用。发现虚IP在多个节点上同时出现，怀疑keepalived配置出问题。</p>
+<p>在多个节点上利用tcpdump抓包，vrrp包都能被抓到，但是似乎节点之间收不到vrrp包。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i any vrrp -n</span><br><span class="line">tcpdump: verbose output suppressed, use -v or -vv <span class="keyword">for</span> full protocol decode</span><br><span class="line">listening on any, link-type LINUX_SLL (Linux cooked v1), capture size 262144 bytes</span><br><span class="line">11:30:09.452941 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br><span class="line">11:30:10.453144 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br><span class="line">11:30:11.453369 IP 10.12.21.128 &gt; 224.0.0.18: VRRPv2, Advertisement, vrid 51, prio 10, authtype simple, intvl 1s, length 20</span><br></pre></td></tr></table></figure>
+
+<p>确保SElinux处于关闭状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cat</span> /etc/selinux/config</span><br><span class="line"></span><br><span class="line">SELINUX=disabled</span><br><span class="line">SELINUXTYPE=targeted</span><br></pre></td></tr></table></figure>
+
+<p>检查防火墙是否关闭。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemtcl status firewalld</span><br><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br></pre></td></tr></table></figure>
+
+<p>查看iptables规则。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">iptables -S</span><br><span class="line"></span><br><span class="line">-P INPUT ACCEPT</span><br><span class="line">-P FORWARD ACCEPT</span><br><span class="line">-P OUTPUT ACCEPT</span><br></pre></td></tr></table></figure>
+
+<p>防火墙一切正常，怀疑是KVM虚拟机的网络问题导致VRRP不能被传输。KVM使用nat网络进行传输时没有问题，在使用macvtap网络会出现上述问题。</p>
+<p>查看<a target="_blank" rel="noopener" href="https://libvirt.org/formatdomain.html#direct-attachment-to-physical-interface">官方文档</a>，kvm在使用macvtap驱动时，参数trustGuestRxFilters默认否，可能会修改从虚拟机出来的流量的MAC地址，导致网络不可达。</p>
+<p>编辑虚拟机配置文件。</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">    <span class="tag">&lt;<span class="name">interface</span> <span class="attr">type</span>=<span class="string">&#x27;direct&#x27;</span> <span class="attr">trustGuestRxFilters</span>=<span class="string">&#x27;yes&#x27;</span>&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">mac</span> <span class="attr">address</span>=<span class="string">&#x27;52:54:00:a9:f7:5b&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">source</span> <span class="attr">dev</span>=<span class="string">&#x27;ens9f0&#x27;</span> <span class="attr">mode</span>=<span class="string">&#x27;bridge&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">model</span> <span class="attr">type</span>=<span class="string">&#x27;virtio&#x27;</span>/&gt;</span></span><br><span class="line">      <span class="tag">&lt;<span class="name">address</span> <span class="attr">type</span>=<span class="string">&#x27;pci&#x27;</span> <span class="attr">domain</span>=<span class="string">&#x27;0x0000&#x27;</span> <span class="attr">bus</span>=<span class="string">&#x27;0x01&#x27;</span> <span class="attr">slot</span>=<span class="string">&#x27;0x00&#x27;</span> <span class="attr">function</span>=<span class="string">&#x27;0x0&#x27;</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">interface</span>&gt;</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>最后如果问题还是复现，将每台虚拟机对应的macvtap网卡设置成混杂模式。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">ifconfig macvtap5 promisc</span><br><span class="line"></span><br><span class="line">ifconfig macvtap5</span><br><span class="line">macvtap5: flags=4419&lt;UP,BROADCAST,RUNNING,PROMISC,MULTICAST&gt;  mtu 1500</span><br><span class="line">        inet6 fe80::5054:ff:fea9:f75b  prefixlen 64  scopeid 0x20&lt;<span class="built_in">link</span>&gt;</span><br><span class="line">        ether 52:54:00:a9:f7:5b  txqueuelen 500  (Ethernet)</span><br><span class="line">        RX packets 27827  bytes 2287340 (2.1 MiB)</span><br><span class="line">        RX errors 0  dropped 0  overruns 0  frame 0</span><br><span class="line">        TX packets 16236  bytes 1122923 (1.0 MiB)</span><br><span class="line">        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0</span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/03/Koji%E4%BD%BF%E7%94%A8/"
+                    data-tooltip="Koji使用"
+                    aria-label="PREVIOUS: Koji使用"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    data-tooltip="OVS流量分析"
+                    aria-label="NEXT: OVS流量分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/&amp;title=OpenStack All In One"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2022/11/02/OpenStack-All-In-One/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/11/03/Koji%E4%BD%BF%E7%94%A8/"
+                    data-tooltip="Koji使用"
+                    aria-label="PREVIOUS: Koji使用"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2022/09/22/OVS%E6%B5%81%E9%87%8F%E5%88%86%E6%9E%90/"
+                    data-tooltip="OVS流量分析"
+                    aria-label="NEXT: OVS流量分析"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/&amp;title=OpenStack All In One"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/&amp;title=OpenStack All In One"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2022/11/02/OpenStack-All-In-One/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

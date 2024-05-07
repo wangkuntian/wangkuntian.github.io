@@ -1,0 +1,737 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Parallels Desktop Host-only联网 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Parallels Desktop">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n最近用Parallels Desktop安装虚拟机的时候联网的时候碰到了一些问题。我想使用Host-only但是虚拟机还需要联网，于是就有了这篇文章。这里有关于Parallels Desktop三种联网方式的解释。\n\n\n设置Network打开Parallels Desktop的偏好设置，设置Shared Network，也可以不设置，默认设置即可。\n设置Host-Only Network。\n确保启动顺序。\nUbuntu Desktop 18.04添加并设置网卡安装好虚拟机后，先关机，添加第二块网卡，Parallels Desktop默认第一块网卡的联网方式是Shared也就是Nat，我们先不管它。\n我们来配置第二块网卡，将来源source选择相应的Host-Only网络。\nsource\n\n查看网卡开机，进入终端，执行ip a命令。\n可以看到en0s5卡，也就是第一块网卡，ip地址是192.168.0.3。en0s6卡，host-only网络，ip地址是10.0.0.4。\n测试连通性ping 114.114.114.114和ping 10.0.0.1\n外网，内网都能ping通，测试通过。\n静态IP在设置Host-Only的时候，我选择开启了DHCP，这不是我想要的，这里我配置一下Host-Only网络的静态IP。\n添加网络配置因为是Ubuntu Desktop，所以我们不着急去配置/etc/network/interfaces，毕竟有界面支持。打开Ubuntu的设置界面，找到Network一项。\n添加Host-Only的网络配置。\n\n手动设置IP地址和子网掩码和子网网关。\n\n\n我们还可以为Shared网络添加一个网络配置，虽然没什么必要。\n\n\n\n添加配置完成后。\n查看网卡状态，进入终端执行ip a命令。\n这时，en0s6网卡的IP地址已经变成我们想要的10.0.0.11了。\n测试连通性。通过。\nUbuntu Server 18.04连接方式和Ubuntu Desktop一致，主要不同在静态IP的设置。\n静态IP修改/etc/network/interfaces文件\n1234567891011auto loiface lo inet loopbackauto enp0s5iface enp0s5 inet dhcpauto enp0s6iface enp0s6 inet staticaddress 10.0.0.11netmask 255.255.255.0# gateway 10.0.0.1","dateCreated":"2019-05-23T15:57:35+08:00","dateModified":"2023-09-21T14:02:14+08:00","datePublished":"2019-05-23T15:57:35+08:00","description":"Parallels Desktop Host-only联网","headline":"Parallels Desktop Host-only联网","image":[null,"covers/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/","keywords":"Parallels Desktop","thumbnailUrl":"covers/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Parallels Desktop Host-only联网">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Parallels Desktop Host-only联网">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Parallels Desktop Host-only联网">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/shared-network.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/host-only-network.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/boot-order.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/shared.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/source.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/host-only.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/ip-a-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/ping-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/network-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/new-profile-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/new-profile-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/new-profile-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/network-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/ip-a-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/ping-2.png">
+<meta property="article:published_time" content="2019-05-23T07:57:35.000Z">
+<meta property="article:modified_time" content="2023-09-21T06:02:14.832Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Parallels Desktop">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/images/shared-network.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/covers/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/covers/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Parallels Desktop Host-only联网
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-05-23T15:57:35+08:00">
+	
+		    May 23, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Project Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<p>最近用Parallels Desktop安装虚拟机的时候联网的时候碰到了一些问题。我想使用Host-only但是虚拟机还需要联网，于是就有了这篇文章。<a target="_blank" rel="noopener" href="https://kb.parallels.com/en/4948">这里</a>有关于Parallels Desktop三种联网方式的解释。</p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%AE%BE%E7%BD%AENetwork"><span class="toc-text">设置Network</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ubuntu-Desktop-18-04"><span class="toc-text">Ubuntu Desktop 18.04</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E5%B9%B6%E8%AE%BE%E7%BD%AE%E7%BD%91%E5%8D%A1"><span class="toc-text">添加并设置网卡</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E7%BD%91%E5%8D%A1"><span class="toc-text">查看网卡</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95%E8%BF%9E%E9%80%9A%E6%80%A7"><span class="toc-text">测试连通性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%9D%99%E6%80%81IP"><span class="toc-text">静态IP</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%B7%BB%E5%8A%A0%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE"><span class="toc-text">添加网络配置</span></a></li></ol></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Ubuntu-Server-18-04"><span class="toc-text">Ubuntu Server 18.04</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%9D%99%E6%80%81IP-1"><span class="toc-text">静态IP</span></a></li></ol></li></ol>
+
+<h3 id="设置Network"><a href="#设置Network" class="headerlink" title="设置Network"></a>设置Network</h3><p>打开Parallels Desktop的偏好设置，设置Shared Network，也可以不设置，默认设置即可。<br><img src="images/shared-network.png" alt="shared-network"></p>
+<p>设置Host-Only Network。<br><img src="images/host-only-network.png" alt="host-only-network"></p>
+<p>确保启动顺序。<br><img src="images/boot-order.png" alt="boot-order"></p>
+<h3 id="Ubuntu-Desktop-18-04"><a href="#Ubuntu-Desktop-18-04" class="headerlink" title="Ubuntu Desktop 18.04"></a>Ubuntu Desktop 18.04</h3><h4 id="添加并设置网卡"><a href="#添加并设置网卡" class="headerlink" title="添加并设置网卡"></a>添加并设置网卡</h4><p>安装好虚拟机后，先关机，添加第二块网卡，Parallels Desktop默认第一块网卡的联网方式是Shared也就是Nat，我们先不管它。<br><img src="images/shared.png" alt="shared"></p>
+<p>我们来配置第二块网卡，将来源source选择相应的Host-Only网络。</p>
+<div class="figure center" style="width:50%;"><a class="fancybox" href="images/source.png" title="source" data-caption="source" data-fancybox="network"><img class="fig-img" src="images/source.png" style="width:50%;"alt="source"></a><span class="caption">source</span></div>
+<p><img src="images/host-only.png" alt="host-only"></p>
+<h4 id="查看网卡"><a href="#查看网卡" class="headerlink" title="查看网卡"></a>查看网卡</h4><p>开机，进入终端，执行ip a命令。<br><img src="images/ip-a-1.png" alt="ip-a"></p>
+<p>可以看到en0s5卡，也就是第一块网卡，ip地址是192.168.0.3。en0s6卡，host-only网络，ip地址是10.0.0.4。</p>
+<h4 id="测试连通性"><a href="#测试连通性" class="headerlink" title="测试连通性"></a>测试连通性</h4><p>ping 114.114.114.114和ping 10.0.0.1<br><img src="images/ping-1.png" alt="ping"></p>
+<p>外网，内网都能ping通，测试通过。</p>
+<h4 id="静态IP"><a href="#静态IP" class="headerlink" title="静态IP"></a>静态IP</h4><p>在设置Host-Only的时候，我选择开启了DHCP，这不是我想要的，这里我配置一下Host-Only网络的静态IP。</p>
+<h5 id="添加网络配置"><a href="#添加网络配置" class="headerlink" title="添加网络配置"></a>添加网络配置</h5><p>因为是Ubuntu Desktop，所以我们不着急去配置/etc/network/interfaces，毕竟有界面支持。<br>打开Ubuntu的设置界面，找到Network一项。<br><img src="images/network-1.png" alt="network"></p>
+<p>添加Host-Only的网络配置。</p>
+<div class="figure center" style="width:80%;"><a class="fancybox" href="images/new-profile-1.png" title="" data-caption="" data-fancybox="profile-host"><img class="fig-img" src="images/new-profile-1.png" style="width:80%;"alt=""></a></div>
+<p>手动设置IP地址和子网掩码和子网网关。</p>
+<div class="figure center" style="width:80%;"><a class="fancybox" href="images/new-profile-2.png" title="" data-caption="" data-fancybox="profile-host"><img class="fig-img" src="images/new-profile-2.png" style="width:80%;"alt=""></a></div>
+
+<p>我们还可以为Shared网络添加一个网络配置，虽然没什么必要。</p>
+<div class="figure center" style="width:80%;"><a class="fancybox" href="images/new-profile-3.png" title="" data-caption="" data-fancybox="profile-shared"><img class="fig-img" src="images/new-profile-3.png" style="width:80%;"alt=""></a></div>
+
+
+<p>添加配置完成后。<br><img src="images/network-2.png" alt="network"></p>
+<p>查看网卡状态，进入终端执行ip a命令。<br><img src="images/ip-a-1.png" alt="ip-a"></p>
+<p>这时，en0s6网卡的IP地址已经变成我们想要的10.0.0.11了。</p>
+<p>测试连通性。<br><img src="images/ping-2.png" alt="ping"><br>通过。</p>
+<h3 id="Ubuntu-Server-18-04"><a href="#Ubuntu-Server-18-04" class="headerlink" title="Ubuntu Server 18.04"></a>Ubuntu Server 18.04</h3><p>连接方式和Ubuntu Desktop一致，主要不同在静态IP的设置。</p>
+<h4 id="静态IP-1"><a href="#静态IP-1" class="headerlink" title="静态IP"></a>静态IP</h4><p>修改/etc/network/interfaces文件</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">auto lo</span><br><span class="line">iface lo inet loopback</span><br><span class="line"></span><br><span class="line">auto enp0s5</span><br><span class="line">iface enp0s5 inet dhcp</span><br><span class="line"></span><br><span class="line">auto enp0s6</span><br><span class="line">iface enp0s6 inet static</span><br><span class="line">address 10.0.0.11</span><br><span class="line">netmask 255.255.255.0</span><br><span class="line"><span class="comment"># gateway 10.0.0.1</span></span><br></pre></td></tr></table></figure>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Parallels-Desktop/" rel="tag">Parallels Desktop</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/18/Python%E4%B9%8B%E7%A6%85/"
+                    data-tooltip="Python之禅"
+                    aria-label="PREVIOUS: Python之禅"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/05/15/Glance%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%95/"
+                    data-tooltip="Glance接口测试"
+                    aria-label="NEXT: Glance接口测试"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/&amp;title=Parallels Desktop Host-only联网"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/05/23/Parallels-Desktop-Host-only联网/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/07/18/Python%E4%B9%8B%E7%A6%85/"
+                    data-tooltip="Python之禅"
+                    aria-label="PREVIOUS: Python之禅"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/05/15/Glance%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%95/"
+                    data-tooltip="Glance接口测试"
+                    aria-label="NEXT: Glance接口测试"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/&amp;title=Parallels Desktop Host-only联网"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/&amp;title=Parallels Desktop Host-only联网"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/05/23/Parallels-Desktop-Host-only%E8%81%94%E7%BD%91/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

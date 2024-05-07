@@ -1,0 +1,720 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Understand Neutron（一） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"基本概念\n\n\n\nOverlay (tunnel) protocols隧道技术（Tunneling）是一种通过使用互联网络的基础设施在网络之间传递数据的方式。使用隧道传递的数据（或负载）可以是不同协议的数据帧或包。隧道协议将其它协议的数据帧或包重新封装然后通过隧道发送。新的帧头提供路由信息，以便通过互联网传递被封装的负载数据。它允许网络用户访问被拒绝或不安全的网络。为了确保封装的用户网络数据看起来是公共的，它采用数据加密来传输有效载荷，即使它是私有的并且可以容易地通过冲突的网络。\nGRE\n全称：GRE（Generic Routing Encapsulation）：通用路由封装协议。\n功能：定义了在一种网络层协议上封装另一种协议（或同一种协议）。\nGRE的隧道由两端的源IP地址和目的IP地址来定义，允许用户使用IP包封装IP、IPX、AppleTalk包，并支持全部的路由协议（如RIP2、OSPF等）。通过GRE，用户可以利用公共IP网络连接IPX网络、AppleTalk网络，还可以使用保留地址进行网络互连，或者对公网隐藏企业网的IP地址。\nGRE主要用于源路由和终路由之间所形成的隧道。例如，将通过隧道的报文用一个新的报文头（GRE报文头）进行封装然后带着隧道终点地址放入隧道中。当报文到达隧道终点时，GRE报文头被剥掉，继续原始报文的目标地址进行寻址。 GRE隧道通常是点到点的，即隧道只有一个源地址和一个终地址。GRE建立起来的隧道只是在隧道源点和隧道终点可见，中间经过的设备仍按照外层IP在网络上进行普通的路由转发。\n所在层次：GRE是VPN（Virtual Private Network）的第三层隧道协议，即在协议层之间采用了Tunnel（隧道）的技术。\n\nVXLANVXLAN（Virtual extensible local area network），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。它是一种 overlay 技术，通过三层的网络来搭建虚拟的二层网络。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:\n\n多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。\n提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。\n更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。\n\nNetwork namespace命名空间是一种确定特定标识符集的方法。使用命名空间，您可以在不同的命名空间中多次使用相同的标识符。您还可以限制特定进程可见的标识符集。例如，Linux为网络和进程提供名称空间等。如果进程在进程名称空间中运行，则它只能查看同一名称空间中的其他进程并与之通信。因此，如果特定进程命名空间中的shell运行ps waux，则它只会显示同一命名空间中的其他进程。\nLinux network namespaceLinux网络命名空间\nVRF虚拟路由和转发（Virtual routing and forwarding）是一种IP技术，允许路由表的多个实例同时在同一路由器上共存。 它是上述网络命名空间功能的另一个名称。\nNATNAT（Network Address Translation，网络地址转换）。NAT的实现方式有三种，即静态转换Static NAT、动态转换Dynamic NAT和端口多路复用OverLoad。\n\n静态转换静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。\n\n动态转换动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。\n\n端口多路复用端口多路复用是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation)。采用端口多路复用方式，内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。\n\n\nALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。\nSNATSNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。\nDNATDNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。\nOne-to-one NAT在一对一NAT中，NAT路由器维护私有IP地址和公共IP地址之间的一对一映射。OpenStack使用一对一的NAT来实现浮动IP地址。\n","dateCreated":"2018-09-27T14:18:03+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-09-27T14:18:03+08:00","description":"基本概念","headline":"Understand Neutron（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="基本概念">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Understand Neutron（一）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="基本概念">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-09-27T06:18:03.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.103Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Understand Neutron（一）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-27T14:18:03+08:00">
+	
+		    Sep 27, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>基本概念</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#Overlay-tunnel-protocols"><span class="toc-text">Overlay (tunnel) protocols</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#GRE"><span class="toc-text">GRE</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VXLAN"><span class="toc-text">VXLAN</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Network-namespace"><span class="toc-text">Network namespace</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Linux-network-namespace"><span class="toc-text">Linux network namespace</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#VRF"><span class="toc-text">VRF</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT"><span class="toc-text">NAT</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#SNAT"><span class="toc-text">SNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DNAT"><span class="toc-text">DNAT</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#One-to-one-NAT"><span class="toc-text">One-to-one NAT</span></a></li></ol></li></ol>
+
+<h3 id="Overlay-tunnel-protocols"><a href="#Overlay-tunnel-protocols" class="headerlink" title="Overlay (tunnel) protocols"></a>Overlay (tunnel) protocols</h3><p>隧道技术（Tunneling）是一种通过使用互联网络的基础设施在网络之间传递数据的方式。使用隧道传递的数据（或负载）可以是不同协议的数据帧或包。隧道协议将其它协议的数据帧或包重新封装然后通过隧道发送。新的帧头提供路由信息，以便通过互联网传递被封装的负载数据。<br>它允许网络用户访问被拒绝或不安全的网络。为了确保封装的用户网络数据看起来是公共的，它采用数据加密来传输有效载荷，即使它是私有的并且可以容易地通过冲突的网络。</p>
+<h4 id="GRE"><a href="#GRE" class="headerlink" title="GRE"></a>GRE</h4><ol>
+<li>全称：GRE（Generic Routing Encapsulation）：通用路由封装协议。</li>
+<li>功能：定义了在一种网络层协议上封装另一种协议（或同一种协议）。</li>
+<li>GRE的隧道由两端的源IP地址和目的IP地址来定义，允许用户使用IP包封装IP、IPX、AppleTalk包，并支持全部的路由协议（如RIP2、OSPF等）。通过GRE，用户可以利用公共IP网络连接IPX网络、AppleTalk网络，还可以使用保留地址进行网络互连，或者对公网隐藏企业网的IP地址。</li>
+<li>GRE主要用于源路由和终路由之间所形成的隧道。例如，将通过隧道的报文用一个新的报文头（GRE报文头）进行封装然后带着隧道终点地址放入隧道中。当报文到达隧道终点时，GRE报文头被剥掉，继续原始报文的目标地址进行寻址。 GRE隧道通常是点到点的，即隧道只有一个源地址和一个终地址。GRE建立起来的隧道只是在隧道源点和隧道终点可见，中间经过的设备仍按照外层IP在网络上进行普通的路由转发。</li>
+<li>所在层次：GRE是VPN（Virtual Private Network）的第三层隧道协议，即在协议层之间采用了Tunnel（隧道）的技术。</li>
+</ol>
+<h4 id="VXLAN"><a href="#VXLAN" class="headerlink" title="VXLAN"></a>VXLAN</h4><p>VXLAN（Virtual extensible local area network），是一种网络虚似化技术，试图改进大型云计算的部署时的扩展问题。它是一种 overlay 技术，通过三层的网络来搭建虚拟的二层网络。可以说是对vlan的一种扩展。由于vlan Header头部限长是12bit，导致vlan的限制个数是2^12=4096个，无法满足日益增长的需求。目前VXLAN的报文Header内有24bit，可以支持2^24次方的VNI个数（VXLAN中通过VNI来识别，相当于VLAN ID）。<br>就像名字所说，VXLAN提供和VLAN相同的2层网络服务，但相比VLAN有更大的扩展性和灵活性。优点如下:</p>
+<ol>
+<li>多租户的网络在整个数据中心更具灵活性：VXLAN提供了一个在可靠的共享网络设施上扩展2层网段的解决方案，从而租户的负载（tenant workload）可以在数据中心跨physical pods。</li>
+<li>提供更多的2层网段。VLAN使用12bit的VLAN ID表示网段名，从而网段个数被限制在4096个。而VXLAN使用24位作为VXLAN标识符（VNID），使得VXLAN的个数扩展到2^24个。</li>
+<li>更好地在基础设施中利用网络路径（Network path）：VLAN使用STP（Spanning Tree Protocol）协议防止环路,最终不使用网络中的网络链接半阻塞冗余路径。相反，VXLAN数据包基于3层的报头，可以完整的利用3层路由，ECMP路由以及链路聚合协议来使用所有可用的路径。</li>
+</ol>
+<h3 id="Network-namespace"><a href="#Network-namespace" class="headerlink" title="Network namespace"></a>Network namespace</h3><p>命名空间是一种确定特定标识符集的方法。使用命名空间，您可以在不同的命名空间中多次使用相同的标识符。您还可以限制特定进程可见的标识符集。例如，Linux为网络和进程提供名称空间等。如果进程在进程名称空间中运行，则它只能查看同一名称空间中的其他进程并与之通信。因此，如果特定进程命名空间中的shell运行ps waux，则它只会显示同一命名空间中的其他进程。</p>
+<h4 id="Linux-network-namespace"><a href="#Linux-network-namespace" class="headerlink" title="Linux network namespace"></a>Linux network namespace</h4><p>Linux网络命名空间</p>
+<h4 id="VRF"><a href="#VRF" class="headerlink" title="VRF"></a>VRF</h4><p>虚拟路由和转发（Virtual routing and forwarding）是一种IP技术，允许路由表的多个实例同时在同一路由器上共存。 它是上述网络命名空间功能的另一个名称。</p>
+<h3 id="NAT"><a href="#NAT" class="headerlink" title="NAT"></a>NAT</h3><p>NAT（Network Address Translation，网络地址转换）。<br>NAT的实现方式有三种，即静态转换Static NAT、动态转换Dynamic NAT和端口多路复用OverLoad。</p>
+<ul>
+<li><p>静态转换<br>静态转换是指将内部网络的私有IP地址转换为公有IP地址，IP地址对是一对一的，是一成不变的，某个私有IP地址只转换为某个公有IP地址。借助于静态转换，可以实现外部网络对内部网络中某些特定设备（如服务器）的访问。</p>
+</li>
+<li><p>动态转换<br>动态转换是指将内部网络的私有IP地址转换为公用IP地址时，IP地址是不确定的，是随机的，所有被授权访问上Internet的私有IP地址可随机转换为任何指定的合法IP地址。也就是说，只要指定哪些内部地址可以进行转换，以及用哪些合法地址作为外部地址时，就可以进行动态转换。动态转换可以使用多个合法外部地址集。当ISP提供的合法IP地址略少于网络内部的计算机数量时。可以采用动态转换的方式。</p>
+</li>
+<li><p>端口多路复用<br>端口多路复用是指改变外出数据包的源端口并进行端口转换，即端口地址转换（PAT，Port Address Translation)。采用端口多路复用方式，内部网络的所有主机均可共享一个合法外部IP地址实现对Internet的访问，从而可以最大限度地节约IP地址资源。同时，又可隐藏网络内部的所有主机，有效避免来自internet的攻击。因此，目前网络中应用最多的就是端口多路复用方式。</p>
+</li>
+</ul>
+<p>ALG（Application Level Gateway），即应用程序级网关技术：传统的NAT技术只对IP层和传输层头部进行转换处理，但是一些应用层协议，在协议数据报文中包含了地址信息。为了使得这些应用也能透明地完成NAT转换，NAT使用一种称作ALG的技术，它能对这些应用程序在通信时所包含的地址信息也进行相应的NAT转换。例如：对于FTP协议的PORT/PASV命令、DNS协议的 “A” 和 “PTR” queries命令和部分ICMP消息类型等都需要相应的ALG来支持。<br>如果协议数据报文中不包含地址信息，则很容易利用传统的NAT技术来完成透明的地址转换功能，通常我们使用的如下应用就可以直接利用传统的NAT技术：HTTP、TELNET、FINGER、NTP、NFS、ARCHIE、RLOGIN、RSH、RCP等。</p>
+<h4 id="SNAT"><a href="#SNAT" class="headerlink" title="SNAT"></a>SNAT</h4><p>SNAT，是源地址转换，其作用是将ip数据包的源地址转换成另外一个地址。</p>
+<h4 id="DNAT"><a href="#DNAT" class="headerlink" title="DNAT"></a>DNAT</h4><p>DNAT 的全称为Destination Network Address Translation目的地址转换，常用于防火墙中。</p>
+<h4 id="One-to-one-NAT"><a href="#One-to-one-NAT" class="headerlink" title="One-to-one NAT"></a>One-to-one NAT</h4><p>在一对一NAT中，NAT路由器维护私有IP地址和公共IP地址之间的一对一映射。OpenStack使用一对一的NAT来实现浮动IP地址。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/30/OpenStack-Networking/"
+                    data-tooltip="OpenStack Networking"
+                    aria-label="PREVIOUS: OpenStack Networking"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="乘风破浪的Docker（二）"
+                    aria-label="NEXT: 乘风破浪的Docker（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Understand Neutron（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/09/27/Understand-Neutron（一）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/30/OpenStack-Networking/"
+                    data-tooltip="OpenStack Networking"
+                    aria-label="PREVIOUS: OpenStack Networking"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="乘风破浪的Docker（二）"
+                    aria-label="NEXT: 乘风破浪的Docker（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Understand Neutron（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=Understand Neutron（一）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

@@ -1,0 +1,983 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>OpenStack漫游指南--监控篇 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="OpenStack,监控,Prometheus,Grafana">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"使用Prometheus + Grafana监控OpenStack\n\n\n\n概述Prometheus是一个开源的完整监控解决方案，其对传统监控系统的测试和告警模型进行了彻底的颠覆，形成了基于中央化的规则计算、统一分析和告警的新模型。为了不影响原有集群的性能，Prometheus和Grafana的主服务应该部署在单独的监控节点上。Prometheus的监控收集服务要部署在集群的对应节点上，例如node_exporter应该部署在集群的每个节点；libvirt_exporter应该部署在集群的计算节点上。\n环境\n\n\nHost\nIP\n说明\n\n\n\nmonitor\n10.10.15.88\n监控节点\n\n\ncontroller\n10.10.15.89\n控制节点\n\n\ncompute\n10.10.15.76\n计算节点\n\n\n在部署Prometheus前先将每个节点的防火墙关闭。\n1systemctl disable --now firewalld.service\n\n安装Prometheus在监控节点上部署Prometheus的主服务。\n\n下载Prometheus最新的安装包，并解压。\n12wget https://github.com/prometheus/prometheus/releases/download/v2.40.2/prometheus-2.40.2.linux-amd64.tar.gz tar -xzvf prometheus-2.40.1.linux-amd64.tar.gz\n\n将二进制可执行文件复制到/usr/local/bin下。\n12cd prometheus-2.40.1.linux-amd64/cp prometheus promtool /usr/local/bin/\n\n新建用户prometheus。\n1sudo useradd --no-create-home --shell /bin/false prometheus\n\n修改二进制可执行文件的用户和组。\n123mkdir /var/lib/prometheuschown prometheus:prometheus /usr/local/bin/prometheus \\/usr/local/bin/promtool /var/lib/prometheus\n\n新建/etc/prometheus文件夹，复制文件consoles和console_libraries到/etc/prometheus下。\n12mkdir /etc/prometheuscp -r consoles console_libraries /etc/prometheus\n\n编辑Prometheus的配置文件/etc/prometheus/prometheus.yml。\n1234567global:  scrape_interval: 10sscrape_configs:  - job_name: &#x27;prometheus_master&#x27;    scrape_interval: 5s    static_configs:      - targets: [&#x27;10.10.15.88:9090&#x27;]\n\n修改配置文件的用户和组\n1chown -R prometheus:prometheus /etc/prometheus/\n\n编辑service文件/etc/systemd/system/prometheus.service。\n123456789101112131415[Unit]Description=PrometheusWants=network-online.targetAfter=network-online.target[Service]User=prometheusGroup=prometheusType=simpleExecStart=/usr/local/bin/prometheus \\--config.file /etc/prometheus/prometheus.yml \\--storage.tsdb.path /var/lib/prometheus/ \\--web.console.templates=/etc/prometheus/consoles \\--web.console.libraries=/etc/prometheus/console_libraries[Install]WantedBy=multi-user.target\n\n启动服务。\n123systemctl daemon-reloadsystemctl enable --now prometheussystemctl status prometheus\n\n测试，访问http://10.10.15.88:9090/targets。\n\n\n\n\n安装node_exporternode_exporter主要用来收集主机的硬件信息，包括CPU、内存、I/O等。需要在每个需要要被监控的节点安装node_exporter服务。\n\n下载最新的安装包，并解压。\n12wget https://github.com/prometheus/node_exporter/releases/download/v1.4.0/node_exporter-1.4.0.linux-amd64.tar.gztar -xzvf node_exporter-1.4.0.linux-amd64.tar.gz\n\n将二进制可执行文件复制到/usr/local/bin下。\n1cd node_exporter-1.4.0.linux-amd64 &amp;&amp; cp node_exporter /usr/local/bin/\n\n编辑service文件/etc/systemd/system/node_exporter.service。\n12345678[Unit]Description=Node ExporterAfter=network.target[Service]Type=simpleExecStart=/usr/local/bin/node_exporter[Install]WantedBy=multi-user.target\n\n启动服务。\n123systemctl daemon-reloadsystemctl enable --now node_exportersystemctl status node_exporter\n\n在各个节点执行完上述步骤后，在监控节点上编辑Prometheus的配置文件/etc/prometheus/prometheus.yml。\n12345678scrape_configs:  - job_name: &#x27;node_exporter&#x27;    scrape_interval: 5s    static_configs:      - targets:        - &#x27;10.10.15.88:9100&#x27;        - &#x27;10.10.15.89:9100&#x27;        - &#x27;10.10.15.76:9100&#x27;\n重启Prometheus。\n1systemctl restart prometheus\n\n测试，访问http://10.10.15.88:9090/targets。\n\n\n\n\n安装openstack-exporteropenstack-exporter主要用来收集openstack环境中的相关信息，包括云主机、镜像、网络等资源信息以及各个openstack服务的状态信息。\n\n下载最新安装包，并解压。\n12wget https://github.com/openstack-exporter/openstack-exporter/releases/download/v1.6.0/openstack-exporter_1.6.0_linux_amd64.tar.gztar -xzvf openstack-exporter_1.6.0_linux_amd64.tar.gz\n\n将二进制可执行文件复制到/usr/local/bin下。\n1cp openstack-exporter /usr/local/bin/\n\n新建配置文件目录/etc/openstack/，并编写配置文件clouds.yaml。\n12mkdir /etc/openstack/vim /etc/openstack/clouds.yaml\n12345678910111213141516171819202122232425262728clouds:  test:    region_name: RegionOne    identity_api_version: 3    identity_interface: internal    auth:      username: &quot;admin&quot;      password: &quot;000000&quot;      project_name: &quot;admin&quot;      project_domain_name: &quot;Default&quot;      project_domain_id: &quot;default&quot;      user_domain_name: &quot;Default&quot;      auth_url: &quot;http://10.10.15.89:5000/v3&quot;    verify: false  ustack:    region_name: RegionOne    identity_api_version: 3    identity_interface: internal    auth:      username: &quot;admin&quot;      password: &quot;admin12#$&quot;      project_name: &quot;admin&quot;      project_domain_name: &quot;Default&quot;      project_domain_id: &quot;default&quot;      user_domain_name: &quot;Default&quot;      auth_url: &quot;http://10.10.15.11:5000/v3&quot;    verify: false\n\n编辑service文件。(1) /etc/systemd/system/openstack_exporter_test.service\n123456789101112131415161718[Unit]Description=OpenStack ExporterAfter=network.target[Service]Type=simpleExecStart=/usr/local/bin/openstack-exporter \\--os-client-config /etc/openstack/clouds.yaml test \\--disable-service.object-store \\--disable-service.load-balancer \\--disable-service.container-infra \\--disable-service.gnocchi \\--disable-service.dns \\--disable-service.baremetal \\--disable-service.database \\--disable-service.orchestration \\--web.listen-address=&quot;:9181&quot;[Install]WantedBy=multi-user.target\n\n(2) /etc/systemd/system/openstack_exporter_ustack.service\n123456789101112131415161718[Unit]Description=OpenStack ExporterAfter=network.target[Service]Type=simpleExecStart=/usr/local/bin/openstack-exporter \\--os-client-config /etc/openstack/clouds.yaml ustack \\--disable-service.object-store \\--disable-service.load-balancer \\--disable-service.container-infra \\--disable-service.gnocchi \\--disable-service.dns \\--disable-service.baremetal \\--disable-service.database \\--disable-service.orchestration \\--web.listen-address=&quot;:9181&quot;[Install]WantedBy=multi-user.target\n\n启动服务。\n123systemctl daemon-reloadsystemctl enable --now openstack_exporter_test openstack_exporter_ustacksystemctl status openstack_exporter_test openstack_exporter_ustack\n\n编辑Prometheus的配置文件。\n123456scrape_configs:  - job_name: &#x27;openstack_exporter&#x27;    scrape_interval: 60s    scrape_timeout: 60s    static_configs:      - targets: [&#x27;10.10.15.88:9180&#x27;, &#x27;10.10.15.88:9181&#x27;]\n\n重启Prometheus。\n1systemctl restart prometheus\n\n测试，访问http://10.10.15.88:9090/targets。\n\n\n\n\n安装prometheus-libvirt-exporterprometheus-libvirt-exporter用于监控计算节点云主机的详细信息，包括CPU、内存、I/O以及网络的使用情况。需要将服务部署在每个计算节点上。\n\n下载最新的安装包，并解压。\n123wget https://github.com/zhangjianweibj/prometheus-libvirt-exporter/\\releases/download/v1.1.0/prometheus-libvirt-exporter.tar.gztar -czvf prometheus-libvirt-exporter.tar.gz\n\n复制可执行文件到/usr/local/bin/下。\n12cd prometheus-libvirt-exporter/ cp prometheus-libvirt-exporter /usr/local/bin/\n\n编辑service文件/etc/systemd/system/prometheus_libvirt_exporter.service。\n12345678[Unit]Description=Node ExporterAfter=network.target[Service]Type=simpleExecStart=/usr/local/bin/prometheus-libvirt-exporter[Install]WantedBy=multi-user.target\n\n启动服务。\n123systemctl daemon-reloadsystemctl enable --now prometheus_libvirt_exportersystemctl status prometheus_libvirt_exporter\n\n监控节点上编辑Prometheus的配置文件。\n12345scrape_configs:  - job_name: &#x27;libvirt_exporter&#x27;    scrape_interval: 5s    static_configs:      - targets: [&#x27;10.10.15.76:9000&#x27;]\n\n重启Prometheus。\n1systemctl restart prometheus\n\n测试，访问http://10.10.15.88:9090/targets。\n\n\n\n\n安装Grafana\n下载RPM包，使用yum命令安装grafana。\n12wget https://dl.grafana.com/oss/release/grafana-9.5.10-1.x86_64.rpmsudo yum install grafana-9.5.10-1.x86_64.rpm\n\n启动服务。\n12systemctl enable --now grafana-serversystemctl status grafana-server\n\n测试，访问http://10.10.15.88:3000/dashboards。\nGrafana\n\n\n\n登录名是admin默认没有密码，第一次登录会提示修改密码。\n对接Prometheus登录到grafana的后台终端，也就是http://10.10.15.88:3000/后。\n\n点击新建Data Source。\nData Source\n\n选择Data Source类型为Prometheus。\nData Source\n\n编辑好相应的信息后，点击保存。\n\n新建dashboard。grafana中有现成的配置好的dashboard供开发人员使用，可以通过官网选择合适的dashboard。例如为libvirt-exporter新建dashboard可以选择官网上的这个项目。(1) 点击Dashbord中Import按钮。\nDashboard\n\n(2) 填写上述项目的ID号码。点击Load按钮。\nDashboard\n\n(3) 填好相关信息，选择Data Source为Prometheus。点击Imoport，这样就得到了一个可以展示云主机信息的dashboard。\nDashboard\n\n(4) 查看dashboard。如果监控数据正确的话，能看到如下的画面。\nDashboard\n\n\n\n自动伸缩测试我们可以利用Prometheus和Grafana的告警系统连同openstack中的senlin组件实现集群的自动伸缩。\n新建集群创建senlin集群的方式有命令行和界面，这里提供界面创建的步骤，比较直观。\n\n登录openstack dashborad后，点击cluster，首先新建一个Profile。Profile类似Heat资源编排文件，功能是指定创建集群中各个节点的基本信息（flavor、image等）。\n\n\n\n上面的flavor、image和network都需要提前创建，另外指定flavor、image和network的UUID同样生效。\n2.通过创建好profile创建集群。\n\n\n其中Min Size和Max Size分别指定集群最小和最大节点数。Max Size为-1表示集群最大无限大。Desired Capacity表示新建集群的初始大小，这里为2，也就是说新建的集群会直接初始化两个节点。\n\n\n新建的集群信息。\n\n\n节点信息。\n\n\n这样集群就新建好了，下面新建Receiver。\n3.创建Receiver。Receiver的就是触发集群伸缩的触发器。一般有scale in（收缩）和scale out（扩张）两种动作。所以要使集群自动伸缩的话要创建2个Receiver，来控制集群的收缩和扩张。负责scale in的Receiver。\n\n\n负责scale out的Receiver。\n\n\n传递的参数count代表着当Receiver触发动作时，集群会增加或减少count个节点。\n\n\n查看这两个Receiver的详细信息。注意它们的属性中的alarm_url这项，可以通过POST方式访问这个URL来触发这个Receiver。\nReceiver\n\n上面的alarm_url分别是：\n\n\n\nReceiver\nAlarm URL\n\n\n\nmycluster_scale_in\nhttp://10.10.15.89:8777/v1/webhooks/17ca2527-d47e-488c-94dc-7f6626767296/trigger?V=2&amp;count=1\n\n\nmycluster_scale_out\nhttp://10.10.15.89:8777/v1/webhooks/02ae8621-f80b-4a11-9ace-eddc4fb161b0/trigger?V=2&amp;count=1\n\n\n新建Grafana告警登录到Grafana后台，http://10.10.15.88:3000/。\n1.打开grafana告警页面。\nAlert\n\n2.新建告警规则。\nAlert\n\n(1) 首先新建告警的通知方式，分别是scale out和scale in。\nAlert\nAlert\n\n将上面的alarm_url分别填写到空格中。HTTP Method要选择POST。\n\n\n(2) 然后创建通知的策略。也同样是两个。与上面的通知方式一一对应。\nAlert\nAlert\n\n(3) 最后确定告警的规则。需要配合Prometheus的语法。例如我们想新建一个规则规定当集群里的节点的CPU平均使用率达到70%时就触发告警。可以这么写。A的规则是：\n1irate(libvirt_domain_info_cpu_time_seconds_total&#123;instanceId=&quot;28fa71ac-9ad7-4b02-a2c0-d27f157a80e2&quot;&#125;[30s]) * 100\nB的规则是：\n1irate(libvirt_domain_info_cpu_time_seconds_total&#123;instanceId=&quot;78f38479-ca84-4236-a3e8-0088e32d9faf&quot;&#125;[30s]) * 100\n28fa71ac-9ad7-4b02-a2c0-d27f157a80e2和78f38479-ca84-4236-a3e8-0088e32d9faf都是集群内云主机的ID。\nC的规则判断A和B的平均值是否都大于70%，是的话就会触发报警。\nAlert\n\n\n(4) 最后编辑告警的基本信息和通知规则，这样一个监控告警就设置完成了。\nAlert","dateCreated":"2023-09-22T11:05:45+08:00","dateModified":"2024-05-07T10:29:15+08:00","datePublished":"2023-09-22T11:05:45+08:00","description":"使用Prometheus + Grafana监控OpenStack","headline":"OpenStack漫游指南--监控篇","image":["covers/LOL/Ezreal/Pulsefire-Ezreal.jpg","covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/","keywords":"OpenStack, 监控, Prometheus, Grafana","thumbnailUrl":"covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"}</script>
+    <meta name="description" content="使用Prometheus + Grafana监控OpenStack">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="OpenStack漫游指南--监控篇">
+<meta property="og:url" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="使用Prometheus + Grafana监控OpenStack">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/target_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/target_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/target_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/target_4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/grafana.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/data_source_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/data_source_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/dashboard_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/dashboard_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/dashboard_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/dashboard_4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_cluster_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_cluster_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_cluster_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_cluster_4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_receiver_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_receiver_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_receiver_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_4.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_5.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_6.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_7.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/create_alert_8.png">
+<meta property="article:published_time" content="2023-09-22T03:05:45.000Z">
+<meta property="article:modified_time" content="2024-05-07T02:29:15.563Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="OpenStack">
+<meta property="article:tag" content="监控">
+<meta property="article:tag" content="Prometheus">
+<meta property="article:tag" content="Grafana">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/images/target_1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Ezreal/Pulsefire-Ezreal.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            OpenStack漫游指南--监控篇
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2023-09-22T11:05:45+08:00">
+	
+		    Sep 22, 2023
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Pulsefire Ezreal</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>使用Prometheus + Grafana监控OpenStack</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-text">概述</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83"><span class="toc-text">环境</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%89%E8%A3%85Prometheus"><span class="toc-text">安装Prometheus</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85node-exporter"><span class="toc-text">安装node_exporter</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85openstack-exporter"><span class="toc-text">安装openstack-exporter</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85prometheus-libvirt-exporter"><span class="toc-text">安装prometheus-libvirt-exporter</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%89%E8%A3%85Grafana"><span class="toc-text">安装Grafana</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%B9%E6%8E%A5Prometheus"><span class="toc-text">对接Prometheus</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E8%87%AA%E5%8A%A8%E4%BC%B8%E7%BC%A9%E6%B5%8B%E8%AF%95"><span class="toc-text">自动伸缩测试</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E9%9B%86%E7%BE%A4"><span class="toc-text">新建集群</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%B0%E5%BB%BAGrafana%E5%91%8A%E8%AD%A6"><span class="toc-text">新建Grafana告警</span></a></li></ol></li></ol>
+
+<h1 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h1><p>Prometheus是一个开源的完整监控解决方案，其对传统监控系统的测试和告警模型进行了彻底的颠覆，形成了基于中央化的规则计算、统一分析和告警的新模型。<br>为了不影响原有集群的性能，Prometheus和Grafana的主服务应该部署在单独的监控节点上。Prometheus的监控收集服务要部署在集群的对应节点上，例如node_exporter应该部署在集群的每个节点；libvirt_exporter应该部署在集群的计算节点上。</p>
+<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><table>
+<thead>
+<tr>
+<th align="left">Host</th>
+<th align="left">IP</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">monitor</td>
+<td align="left">10.10.15.88</td>
+<td align="left">监控节点</td>
+</tr>
+<tr>
+<td align="left">controller</td>
+<td align="left">10.10.15.89</td>
+<td align="left">控制节点</td>
+</tr>
+<tr>
+<td align="left">compute</td>
+<td align="left">10.10.15.76</td>
+<td align="left">计算节点</td>
+</tr>
+</tbody></table>
+<p>在部署Prometheus前先将每个节点的防火墙关闭。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl <span class="built_in">disable</span> --now firewalld.service</span><br></pre></td></tr></table></figure>
+
+<h1 id="安装Prometheus"><a href="#安装Prometheus" class="headerlink" title="安装Prometheus"></a>安装Prometheus</h1><p>在监控节点上部署Prometheus的主服务。</p>
+<ol>
+<li><p>下载Prometheus最新的安装包，并解压。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.40.2/prometheus-2.40.2.linux-amd64.tar.gz </span><br><span class="line">tar -xzvf prometheus-2.40.1.linux-amd64.tar.gz</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将二进制可执行文件复制到/usr/local/bin下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> prometheus-2.40.1.linux-amd64/</span><br><span class="line"><span class="built_in">cp</span> prometheus promtool /usr/local/bin/</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建用户prometheus。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo useradd --no-create-home --shell /bin/false prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改二进制可执行文件的用户和组。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> /var/lib/prometheus</span><br><span class="line"><span class="built_in">chown</span> prometheus:prometheus /usr/local/bin/prometheus \</span><br><span class="line">/usr/local/bin/promtool /var/lib/prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建/etc/prometheus文件夹，复制文件consoles和console_libraries到/etc/prometheus下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> /etc/prometheus</span><br><span class="line"><span class="built_in">cp</span> -r consoles console_libraries /etc/prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑Prometheus的配置文件/etc/prometheus/prometheus.yml。</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">global:</span></span><br><span class="line">  <span class="attr">scrape_interval:</span> <span class="string">10s</span></span><br><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;prometheus_master&#x27;</span></span><br><span class="line">    <span class="attr">scrape_interval:</span> <span class="string">5s</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&#x27;10.10.15.88:9090&#x27;</span>]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>修改配置文件的用户和组</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">chown</span> -R prometheus:prometheus /etc/prometheus/</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑service文件/etc/systemd/system/prometheus.service。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Prometheus</span><br><span class="line"><span class="attr">Wants</span>=network-<span class="literal">on</span>line.target</span><br><span class="line"><span class="attr">After</span>=network-<span class="literal">on</span>line.target</span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">User</span>=prometheus</span><br><span class="line"><span class="attr">Group</span>=prometheus</span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/prometheus \</span><br><span class="line">--config.file /etc/prometheus/prometheus.yml \</span><br><span class="line">--storage.tsdb.path /var/lib/prometheus/ \</span><br><span class="line"><span class="attr">--web.console.templates</span>=/etc/prometheus/consoles \</span><br><span class="line"><span class="attr">--web.console.libraries</span>=/etc/prometheus/console_libraries</span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now prometheus</span><br><span class="line">systemctl status prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试，访问<a target="_blank" rel="noopener" href="http://10.10.15.88:9090/targets%E3%80%82">http://10.10.15.88:9090/targets。</a></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/target_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/target_1.png" alt=""></a></div>
+
+</li>
+</ol>
+<h2 id="安装node-exporter"><a href="#安装node-exporter" class="headerlink" title="安装node_exporter"></a>安装node_exporter</h2><p>node_exporter主要用来收集主机的硬件信息，包括CPU、内存、I/O等。需要在每个需要要被监控的节点安装node_exporter服务。</p>
+<ol>
+<li><p>下载最新的安装包，并解压。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/prometheus/node_exporter/releases/download/v1.4.0/node_exporter-1.4.0.linux-amd64.tar.gz</span><br><span class="line">tar -xzvf node_exporter-1.4.0.linux-amd64.tar.gz</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将二进制可执行文件复制到/usr/local/bin下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> node_exporter-1.4.0.linux-amd64 &amp;&amp; <span class="built_in">cp</span> node_exporter /usr/local/bin/</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑service文件/etc/systemd/system/node_exporter.service。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Node Exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/node_exporter</span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now node_exporter</span><br><span class="line">systemctl status node_exporter</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>在各个节点执行完上述步骤后，在监控节点上编辑Prometheus的配置文件/etc/prometheus/prometheus.yml。</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;node_exporter&#x27;</span></span><br><span class="line">    <span class="attr">scrape_interval:</span> <span class="string">5s</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">&#x27;10.10.15.88:9100&#x27;</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">&#x27;10.10.15.89:9100&#x27;</span></span><br><span class="line">        <span class="bullet">-</span> <span class="string">&#x27;10.10.15.76:9100&#x27;</span></span><br></pre></td></tr></table></figure></li>
+<li><p>重启Prometheus。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试，访问<a target="_blank" rel="noopener" href="http://10.10.15.88:9090/targets%E3%80%82">http://10.10.15.88:9090/targets。</a></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/target_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/target_2.png" alt=""></a></div>
+
+</li>
+</ol>
+<h2 id="安装openstack-exporter"><a href="#安装openstack-exporter" class="headerlink" title="安装openstack-exporter"></a>安装openstack-exporter</h2><p>openstack-exporter主要用来收集openstack环境中的相关信息，包括云主机、镜像、网络等资源信息以及各个openstack服务的状态信息。</p>
+<ol>
+<li><p>下载最新安装包，并解压。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/openstack-exporter/openstack-exporter/releases/download/v1.6.0/openstack-exporter_1.6.0_linux_amd64.tar.gz</span><br><span class="line">tar -xzvf openstack-exporter_1.6.0_linux_amd64.tar.gz</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>将二进制可执行文件复制到/usr/local/bin下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cp</span> openstack-exporter /usr/local/bin/</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>新建配置文件目录/etc/openstack/，并编写配置文件clouds.yaml。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> /etc/openstack/</span><br><span class="line">vim /etc/openstack/clouds.yaml</span><br></pre></td></tr></table></figure>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">clouds:</span></span><br><span class="line">  <span class="attr">test:</span></span><br><span class="line">    <span class="attr">region_name:</span> <span class="string">RegionOne</span></span><br><span class="line">    <span class="attr">identity_api_version:</span> <span class="number">3</span></span><br><span class="line">    <span class="attr">identity_interface:</span> <span class="string">internal</span></span><br><span class="line">    <span class="attr">auth:</span></span><br><span class="line">      <span class="attr">username:</span> <span class="string">&quot;admin&quot;</span></span><br><span class="line">      <span class="attr">password:</span> <span class="string">&quot;000000&quot;</span></span><br><span class="line">      <span class="attr">project_name:</span> <span class="string">&quot;admin&quot;</span></span><br><span class="line">      <span class="attr">project_domain_name:</span> <span class="string">&quot;Default&quot;</span></span><br><span class="line">      <span class="attr">project_domain_id:</span> <span class="string">&quot;default&quot;</span></span><br><span class="line">      <span class="attr">user_domain_name:</span> <span class="string">&quot;Default&quot;</span></span><br><span class="line">      <span class="attr">auth_url:</span> <span class="string">&quot;http://10.10.15.89:5000/v3&quot;</span></span><br><span class="line">    <span class="attr">verify:</span> <span class="literal">false</span></span><br><span class="line"></span><br><span class="line">  <span class="attr">ustack:</span></span><br><span class="line">    <span class="attr">region_name:</span> <span class="string">RegionOne</span></span><br><span class="line">    <span class="attr">identity_api_version:</span> <span class="number">3</span></span><br><span class="line">    <span class="attr">identity_interface:</span> <span class="string">internal</span></span><br><span class="line">    <span class="attr">auth:</span></span><br><span class="line">      <span class="attr">username:</span> <span class="string">&quot;admin&quot;</span></span><br><span class="line">      <span class="attr">password:</span> <span class="string">&quot;admin12#$&quot;</span></span><br><span class="line">      <span class="attr">project_name:</span> <span class="string">&quot;admin&quot;</span></span><br><span class="line">      <span class="attr">project_domain_name:</span> <span class="string">&quot;Default&quot;</span></span><br><span class="line">      <span class="attr">project_domain_id:</span> <span class="string">&quot;default&quot;</span></span><br><span class="line">      <span class="attr">user_domain_name:</span> <span class="string">&quot;Default&quot;</span></span><br><span class="line">      <span class="attr">auth_url:</span> <span class="string">&quot;http://10.10.15.11:5000/v3&quot;</span></span><br><span class="line">    <span class="attr">verify:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑service文件。<br>(1) /etc/systemd/system/openstack_exporter_test.service</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=OpenStack Exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/openstack-exporter \</span><br><span class="line">--os-client-config /etc/openstack/clouds.yaml test \</span><br><span class="line">--disable-service.object-store \</span><br><span class="line">--disable-service.load-balancer \</span><br><span class="line">--disable-service.container-infra \</span><br><span class="line">--disable-service.gnocchi \</span><br><span class="line">--disable-service.dns \</span><br><span class="line">--disable-service.baremetal \</span><br><span class="line">--disable-service.database \</span><br><span class="line">--disable-service.orchestration \</span><br><span class="line"><span class="attr">--web.listen-address</span>=<span class="string">&quot;:9181&quot;</span></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<p>(2) /etc/systemd/system/openstack_exporter_ustack.service</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=OpenStack Exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/openstack-exporter \</span><br><span class="line">--os-client-config /etc/openstack/clouds.yaml ustack \</span><br><span class="line">--disable-service.object-store \</span><br><span class="line">--disable-service.load-balancer \</span><br><span class="line">--disable-service.container-infra \</span><br><span class="line">--disable-service.gnocchi \</span><br><span class="line">--disable-service.dns \</span><br><span class="line">--disable-service.baremetal \</span><br><span class="line">--disable-service.database \</span><br><span class="line">--disable-service.orchestration \</span><br><span class="line"><span class="attr">--web.listen-address</span>=<span class="string">&quot;:9181&quot;</span></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now openstack_exporter_test openstack_exporter_ustack</span><br><span class="line">systemctl status openstack_exporter_test openstack_exporter_ustack</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑Prometheus的配置文件。</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;openstack_exporter&#x27;</span></span><br><span class="line">    <span class="attr">scrape_interval:</span> <span class="string">60s</span></span><br><span class="line">    <span class="attr">scrape_timeout:</span> <span class="string">60s</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&#x27;10.10.15.88:9180&#x27;</span>, <span class="string">&#x27;10.10.15.88:9181&#x27;</span>]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>重启Prometheus。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试，访问<a target="_blank" rel="noopener" href="http://10.10.15.88:9090/targets%E3%80%82">http://10.10.15.88:9090/targets。</a></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/target_3.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/target_3.png" alt=""></a></div>
+
+</li>
+</ol>
+<h2 id="安装prometheus-libvirt-exporter"><a href="#安装prometheus-libvirt-exporter" class="headerlink" title="安装prometheus-libvirt-exporter"></a>安装prometheus-libvirt-exporter</h2><p>prometheus-libvirt-exporter用于监控计算节点云主机的详细信息，包括CPU、内存、I/O以及网络的使用情况。需要将服务部署在每个计算节点上。</p>
+<ol>
+<li><p>下载最新的安装包，并解压。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/zhangjianweibj/prometheus-libvirt-exporter/\</span><br><span class="line">releases/download/v1.1.0/prometheus-libvirt-exporter.tar.gz</span><br><span class="line">tar -czvf prometheus-libvirt-exporter.tar.gz</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>复制可执行文件到/usr/local/bin/下。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> prometheus-libvirt-exporter/ </span><br><span class="line"><span class="built_in">cp</span> prometheus-libvirt-exporter /usr/local/bin/</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>编辑service文件/etc/systemd/system/prometheus_libvirt_exporter.service。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=Node Exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/bin/prometheus-libvirt-exporter</span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now prometheus_libvirt_exporter</span><br><span class="line">systemctl status prometheus_libvirt_exporter</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>监控节点上编辑Prometheus的配置文件。</p>
+<figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">scrape_configs:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&#x27;libvirt_exporter&#x27;</span></span><br><span class="line">    <span class="attr">scrape_interval:</span> <span class="string">5s</span></span><br><span class="line">    <span class="attr">static_configs:</span></span><br><span class="line">      <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&#x27;10.10.15.76:9000&#x27;</span>]</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>重启Prometheus。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart prometheus</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试，访问<a target="_blank" rel="noopener" href="http://10.10.15.88:9090/targets%E3%80%82">http://10.10.15.88:9090/targets。</a></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/target_4.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/target_4.png" alt=""></a></div>
+
+</li>
+</ol>
+<h1 id="安装Grafana"><a href="#安装Grafana" class="headerlink" title="安装Grafana"></a>安装Grafana</h1><ol>
+<li><p>下载RPM包，使用yum命令安装grafana。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://dl.grafana.com/oss/release/grafana-9.5.10-1.x86_64.rpm</span><br><span class="line">sudo yum install grafana-9.5.10-1.x86_64.rpm</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动服务。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">systemctl <span class="built_in">enable</span> --now grafana-server</span><br><span class="line">systemctl status grafana-server</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试，访问<a target="_blank" rel="noopener" href="http://10.10.15.88:3000/dashboards%E3%80%82">http://10.10.15.88:3000/dashboards。</a></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/grafana.png" title="Grafana" data-caption="Grafana" data-fancybox="default"><img class="fig-img" src="images/grafana.png" alt="Grafana"></a><span class="caption">Grafana</span></div>
+
+</li>
+</ol>
+<p>登录名是admin默认没有密码，第一次登录会提示修改密码。</p>
+<h2 id="对接Prometheus"><a href="#对接Prometheus" class="headerlink" title="对接Prometheus"></a>对接Prometheus</h2><p>登录到grafana的后台终端，也就是<a target="_blank" rel="noopener" href="http://10.10.15.88:3000/%E5%90%8E%E3%80%82">http://10.10.15.88:3000/后。</a></p>
+<ol>
+<li><p>点击新建Data Source。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/data_source_1.png" title="Data Source" data-caption="Data Source" data-fancybox="default"><img class="fig-img" src="images/data_source_1.png" alt="Data Source"></a><span class="caption">Data Source</span></div>
+</li>
+<li><p>选择Data Source类型为Prometheus。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/data_source_2.png" title="Data Source" data-caption="Data Source" data-fancybox="default"><img class="fig-img" src="images/data_source_2.png" alt="Data Source"></a><span class="caption">Data Source</span></div>
+</li>
+<li><p>编辑好相应的信息后，点击保存。</p>
+</li>
+<li><p>新建dashboard。grafana中有现成的配置好的dashboard供开发人员使用，可以通过<a target="_blank" rel="noopener" href="https://grafana.com/grafana/dashboards/">官网</a>选择合适的dashboard。例如为libvirt-exporter新建dashboard可以选择官网上的<a target="_blank" rel="noopener" href="https://grafana.com/grafana/dashboards/15682-libvirt">这个项目</a>。<br>(1) 点击Dashbord中Import按钮。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/dashboard_1.png" title="Dashboard" data-caption="Dashboard" data-fancybox="default"><img class="fig-img" src="images/dashboard_1.png" alt="Dashboard"></a><span class="caption">Dashboard</span></div>
+
+<p>(2) 填写上述项目的ID号码。点击Load按钮。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/dashboard_2.png" title="Dashboard" data-caption="Dashboard" data-fancybox="default"><img class="fig-img" src="images/dashboard_2.png" alt="Dashboard"></a><span class="caption">Dashboard</span></div>
+
+<p>(3) 填好相关信息，选择Data Source为Prometheus。点击Imoport，这样就得到了一个可以展示云主机信息的dashboard。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/dashboard_3.png" title="Dashboard" data-caption="Dashboard" data-fancybox="default"><img class="fig-img" src="images/dashboard_3.png" alt="Dashboard"></a><span class="caption">Dashboard</span></div>
+
+<p>(4) 查看dashboard。如果监控数据正确的话，能看到如下的画面。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/dashboard_4.png" title="Dashboard" data-caption="Dashboard" data-fancybox="default"><img class="fig-img" src="images/dashboard_4.png" alt="Dashboard"></a><span class="caption">Dashboard</span></div>
+
+</li>
+</ol>
+<h1 id="自动伸缩测试"><a href="#自动伸缩测试" class="headerlink" title="自动伸缩测试"></a>自动伸缩测试</h1><p>我们可以利用Prometheus和Grafana的告警系统连同openstack中的senlin组件实现集群的自动伸缩。</p>
+<h2 id="新建集群"><a href="#新建集群" class="headerlink" title="新建集群"></a>新建集群</h2><p>创建senlin集群的方式有命令行和界面，这里提供界面创建的步骤，比较直观。</p>
+<ol>
+<li>登录openstack dashborad后，点击cluster，首先新建一个Profile。Profile类似Heat资源编排文件，功能是指定创建集群中各个节点的基本信息（flavor、image等）。<div class="figure center" style="width:;"><a class="fancybox" href="images/create_cluster_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_cluster_1.png" alt=""></a></div>
+
+</li>
+</ol>
+<p>上面的flavor、image和network都需要提前创建，另外指定flavor、image和network的UUID同样生效。</p>
+<p>2.通过创建好profile创建集群。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_cluster_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_cluster_2.png" alt=""></a></div>
+
+<div class="alert no-icon info"><p>其中Min Size和Max Size分别指定集群最小和最大节点数。Max Size为-1表示集群最大无限大。Desired Capacity表示新建集群的初始大小，这里为2，也就是说新建的集群会直接初始化两个节点。</p>
+</div>
+
+<p>新建的集群信息。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_cluster_3.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_cluster_3.png" alt=""></a></div>
+
+<p>节点信息。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_cluster_4.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_cluster_4.png" alt=""></a></div>
+
+<p>这样集群就新建好了，下面新建Receiver。</p>
+<p>3.创建Receiver。Receiver的就是触发集群伸缩的触发器。一般有scale in（收缩）和scale out（扩张）两种动作。所以要使集群自动伸缩的话要创建2个Receiver，来控制集群的收缩和扩张。<br>负责scale in的Receiver。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_receiver_1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_receiver_1.png" alt=""></a></div>
+
+<p>负责scale out的Receiver。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_receiver_2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/create_receiver_2.png" alt=""></a></div>
+
+<div class="alert no-icon info"><p>传递的参数count代表着当Receiver触发动作时，集群会增加或减少count个节点。</p>
+</div>
+
+<p>查看这两个Receiver的详细信息。注意它们的属性中的alarm_url这项，可以通过POST方式访问这个URL来触发这个Receiver。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_receiver_3.png" title="Receiver" data-caption="Receiver" data-fancybox="default"><img class="fig-img" src="images/create_receiver_3.png" alt="Receiver"></a><span class="caption">Receiver</span></div>
+
+<p>上面的alarm_url分别是：</p>
+<table>
+<thead>
+<tr>
+<th align="left">Receiver</th>
+<th align="left">Alarm URL</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">mycluster_scale_in</td>
+<td align="left"><a target="_blank" rel="noopener" href="http://10.10.15.89:8777/v1/webhooks/17ca2527-d47e-488c-94dc-7f6626767296/trigger?V=2&amp;count=1">http://10.10.15.89:8777/v1/webhooks/17ca2527-d47e-488c-94dc-7f6626767296/trigger?V=2&amp;count=1</a></td>
+</tr>
+<tr>
+<td align="left">mycluster_scale_out</td>
+<td align="left"><a target="_blank" rel="noopener" href="http://10.10.15.89:8777/v1/webhooks/02ae8621-f80b-4a11-9ace-eddc4fb161b0/trigger?V=2&amp;count=1">http://10.10.15.89:8777/v1/webhooks/02ae8621-f80b-4a11-9ace-eddc4fb161b0/trigger?V=2&amp;count=1</a></td>
+</tr>
+</tbody></table>
+<h2 id="新建Grafana告警"><a href="#新建Grafana告警" class="headerlink" title="新建Grafana告警"></a>新建Grafana告警</h2><p>登录到Grafana后台，<a target="_blank" rel="noopener" href="http://10.10.15.88:3000/%E3%80%82">http://10.10.15.88:3000/。</a></p>
+<p>1.打开grafana告警页面。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_1.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_1.png" alt="Alert"></a><span class="caption">Alert</span></div>
+
+<p>2.新建告警规则。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_2.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_2.png" alt="Alert"></a><span class="caption">Alert</span></div>
+
+<p>(1) 首先新建告警的通知方式，分别是scale out和scale in。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_3.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_3.png" alt="Alert"></a><span class="caption">Alert</span></div>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_4.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_4.png" alt="Alert"></a><span class="caption">Alert</span></div>
+
+<div class="alert no-icon info"><p>将上面的alarm_url分别填写到空格中。HTTP Method要选择POST。</p>
+</div>
+
+<p>(2) 然后创建通知的策略。也同样是两个。与上面的通知方式一一对应。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_5.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_5.png" alt="Alert"></a><span class="caption">Alert</span></div>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_6.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_6.png" alt="Alert"></a><span class="caption">Alert</span></div>
+
+<p>(3) 最后确定告警的规则。需要配合Prometheus的语法。例如我们想新建一个规则规定当集群里的节点的CPU平均使用率达到70%时就触发告警。可以这么写。<br>A的规则是：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">irate(libvirt_domain_info_cpu_time_seconds_total&#123;instanceId=<span class="string">&quot;28fa71ac-9ad7-4b02-a2c0-d27f157a80e2&quot;</span>&#125;[30s]) * 100</span><br></pre></td></tr></table></figure>
+<p>B的规则是：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">irate(libvirt_domain_info_cpu_time_seconds_total&#123;instanceId=<span class="string">&quot;78f38479-ca84-4236-a3e8-0088e32d9faf&quot;</span>&#125;[30s]) * 100</span><br></pre></td></tr></table></figure>
+<p>28fa71ac-9ad7-4b02-a2c0-d27f157a80e2和78f38479-ca84-4236-a3e8-0088e32d9faf都是集群内云主机的ID。</p>
+<p>C的规则判断A和B的平均值是否都大于70%，是的话就会触发报警。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_7.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_7.png" alt="Alert"></a><span class="caption">Alert</span></div>
+
+
+<p>(4) 最后编辑告警的基本信息和通知规则，这样一个监控告警就设置完成了。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/create_alert_8.png" title="Alert" data-caption="Alert" data-fancybox="default"><img class="fig-img" src="images/create_alert_8.png" alt="Alert"></a><span class="caption">Alert</span></div>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Grafana/" rel="tag">Grafana</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/OpenStack/" rel="tag">OpenStack</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/Prometheus/" rel="tag">Prometheus</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E7%9B%91%E6%8E%A7/" rel="tag">监控</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    data-tooltip="OpenStack漫游指南--Cinder"
+                    aria-label="PREVIOUS: OpenStack漫游指南--Cinder"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-VPNaaS/"
+                    data-tooltip="OpenStack漫游指南--VPNaaS"
+                    aria-label="NEXT: OpenStack漫游指南--VPNaaS"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/&amp;title=OpenStack漫游指南--监控篇"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2023/09/22/OpenStack漫游指南-监控篇/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/25/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-Cinder/"
+                    data-tooltip="OpenStack漫游指南--Cinder"
+                    aria-label="PREVIOUS: OpenStack漫游指南--Cinder"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-VPNaaS/"
+                    data-tooltip="OpenStack漫游指南--VPNaaS"
+                    aria-label="NEXT: OpenStack漫游指南--VPNaaS"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/&amp;title=OpenStack漫游指南--监控篇"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/&amp;title=OpenStack漫游指南--监控篇"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2023/09/22/OpenStack%E6%BC%AB%E6%B8%B8%E6%8C%87%E5%8D%97-%E7%9B%91%E6%8E%A7%E7%AF%87/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

@@ -1,0 +1,785 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Mysql开发篇之选择合适的数据类型 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Mysql,数据类型">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\nCHAR与VARCHARCHAR属于固定长度的字符类型，VARCHAR属于可变长度的字符类型。\n\n\n\n值\nCHAR(4)\n存储需求\nVARCHAR(4)\n存储需求\n\n\n\n‘’\n‘&nbsp;&nbsp;&nbsp;&nbsp;’\n4个字节\n‘&nbsp;’\n1个字节\n\n\n‘ab’\n‘ab&nbsp;’\n4个字节\n‘ab&nbsp;’\n3个字节\n\n\n‘abcd’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n‘abcdefgh’\n‘abcd’\n4个字节\n‘abcd’\n5个字节\n\n\n由于CHAR长度固定，所以它处理速度比VARCHAR要快很多，但是缺点是浪费存储空间，程序需要对行尾空格进行处理。对于长度变化不大并且对查询速度有较高要求的数据可以考虑使用CHAR类型来存储。\n\n不同的存储引擎对CHAR和VARCHAR的使用原则有所不同。\n\n\nInnoDB  建议使用VARCHAR类型。对于InnoDB数据表，内部的行存储格式没有区分固定长度和可变长度列(所有数据行都使用指向数据列值的头指针)，\b因此本质上，使用固定长度的CHAR不一定比使用可变长度VARCHAR列性能要好。因而，主要的性能因素是数据行使用的存储总量。由于CHAR平均占用的空间多于VARCHAR，因此使用VARCHAR来最小化需要处理的数据行的存储总量和磁盘I/O是比较好的。\n\nMyISAM  建议使用固定长度的数据列代替\b可变长度的数据列。\n\nMEMORY  都使用固定长度的数据行存储，因此无论使用CHAR或者VARCHAR列都没有关系。两者都是作为CHAR类型处理。\n\n\nTEXT与BLOBBLOB能用来保存二进制数据，比如照片；Text只能保存字符数据，比如一篇文章或者日记。\n常见问题\nBLOB和TEXT值会引起一些性能问题，特别是在执行大量的删除操作时。删除操作会在数据表中留下很大的“空洞”，以后填入这些\b“空洞”的记录在插入的性能上会有影响。为了提高性能，建议定期使用optimize table 功能对这类表进行碎片整理，避免因为“空洞”导致性能问题。\n\n使用合成的(Synthetic)索引来提高文本字段(BLOB或TEXT)的查询性能。合成索引就是根据大文本字段的内容建立一个散列值，并将这个值存储在单独的数据列中，通过检索散列值就可以找到数据行(只能用于精确匹配的查询)。可以使用MD5()、SHA1()、CRC32()生成散列值。\n\n在不必要的时候避免检索大型的BLOB或TEXT值。\n\n把BLOB或者TEXT列分离到单独的表中。\n\n\n浮点数与定点数浮点数一般用于表示含有小数部分的数值。\n当一个字段被定义为\b浮点类型后，如果被插入数据的精度超过该列定义的实际精度，则插入值会被四舍五入到实际定义的精度值，然后插入，四舍五入的过程不会报错。\b在Mysql中float、double(或real)用来表示浮点数。\n定点数不同于浮点数，定点数实际上是以字符串的形式存放的，所以定点数可以更精确地保存数据。如果实际插入的数值精度大于实际定义的精度，\b则Mysql会进行警告(默认的SQLModel下)，但是\b数据会按照\b实际精度四舍五入后插入；如果SQLModel是在Tranditional(传统模式)下，则系统会直接报错，导致数据无法插入。在Mysql中，decimal(或\bnumberic)用来表示定点数。\b\b\b\n在今后的\b关于浮点数和定点数的应用中，要考虑到：\n\n浮点数存在误差\n对于货币等对精度敏感的数据，应该应用定点数标书或存储。\n在编程中，如果用到浮点数，要特别注意误差问题，并尽量避免做浮点数比较。\n要注意浮点数中一些特殊值的处理。\n\n日期类型Mysql提供的常用的日期类型有D\bATE、TIME、DATETIME、TIMESTAMP。\b日期选择原则：\n\n根据实际需要选择能够满足应用最小的存储的日期类型。这样不仅能节约存储，更能提高表的操作效率。\n\n如果要记录年月日时分秒，并且记录的年份比较久远，最好使用DATETIME,不要使用TIMESTAMP。因为TIMESTAMP表示的日期范围比DATETIME\b要短得多。\n\n如果记录的日期需要要让不同时区的用户使用，那么最好是使用TIMESTAMP，因为日期类型中只有它能够和实际时区相对应。\n\n\n总结\n 对于字符类型，要根据存储引擎来进行相应的选择。\n\n对于精度要求较高的应用中，建议使用定点数来存储数值，以保证结果的正确性。\n\n对于含有TEXT和BOLG字段的表，如果经常做删除和修改记录的操作要定时执行optimize table功能\b对表进行碎片整理。\n\n日期类型要根据实际需要选择能够满足应用的最小存储的日期类型。\n\n","dateCreated":"2018-07-18T14:30:00+08:00","dateModified":"2023-09-21T14:03:51+08:00","datePublished":"2018-07-18T14:30:00+08:00","description":"选择合适的数据类型","headline":"Mysql开发篇之选择合适的数据类型","image":["covers/LOL/Vayne/Firecracker-Vayne-1.jpg","covers/LOL/Vayne/Firecracker-Vayne-1.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/","keywords":"Mysql, 数据类型","thumbnailUrl":"covers/LOL/Vayne/Firecracker-Vayne-1.jpg"}</script>
+    <meta name="description" content="选择合适的数据类型">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Mysql开发篇之选择合适的数据类型">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="选择合适的数据类型">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-07-18T06:30:00.000Z">
+<meta property="article:modified_time" content="2023-09-21T06:03:51.458Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Mysql">
+<meta property="article:tag" content="数据类型">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/covers/LOL/Vayne/Firecracker-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/covers/LOL/Vayne/Firecracker-Vayne-1.jpg"/>
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/covers/LOL/Vayne/Firecracker-Vayne-1.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/covers/LOL/Vayne/Firecracker-Vayne-1.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/covers/LOL/Vayne/Firecracker-Vayne-1.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Mysql开发篇之选择合适的数据类型
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-07-18T14:30:00+08:00">
+	
+		    Jul 18, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        hasCoverCaption">
+                
+<article class="post">
+    
+        <span class="post-header-cover-caption caption">Firecracker Vayne</span>
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<h3 id="CHAR与VARCHAR"><a href="#CHAR与VARCHAR" class="headerlink" title="CHAR与VARCHAR"></a>CHAR与VARCHAR</h3><p>CHAR属于固定长度的字符类型，VARCHAR属于可变长度的字符类型。</p>
+<table>
+<thead>
+<tr>
+<th align="left">值</th>
+<th align="left">CHAR(4)</th>
+<th align="left">存储需求</th>
+<th align="left">VARCHAR(4)</th>
+<th align="left">存储需求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">‘’</td>
+<td align="left">‘&nbsp;&nbsp;&nbsp;&nbsp;’</td>
+<td align="left">4个字节</td>
+<td align="left">‘&nbsp;’</td>
+<td align="left">1个字节</td>
+</tr>
+<tr>
+<td align="left">‘ab’</td>
+<td align="left">‘ab&nbsp;’</td>
+<td align="left">4个字节</td>
+<td align="left">‘ab&nbsp;’</td>
+<td align="left">3个字节</td>
+</tr>
+<tr>
+<td align="left">‘abcd’</td>
+<td align="left">‘abcd’</td>
+<td align="left">4个字节</td>
+<td align="left">‘abcd’</td>
+<td align="left">5个字节</td>
+</tr>
+<tr>
+<td align="left">‘abcdefgh’</td>
+<td align="left">‘abcd’</td>
+<td align="left">4个字节</td>
+<td align="left">‘abcd’</td>
+<td align="left">5个字节</td>
+</tr>
+</tbody></table>
+<p>由于CHAR长度固定，所以它处理速度比VARCHAR要快很多，但是缺点是浪费存储空间，程序需要对行尾空格进行处理。对于长度变化不大并且对查询速度有较高要求的数据可以考虑使用CHAR类型来存储。</p>
+<blockquote>
+<p>不同的存储引擎对CHAR和VARCHAR的使用原则有所不同。</p>
+</blockquote>
+<ul>
+<li><h4 id="InnoDB"><a href="#InnoDB" class="headerlink" title="InnoDB"></a>InnoDB</h4><p>  建议使用VARCHAR类型。对于InnoDB数据表，内部的行存储格式没有区分固定长度和可变长度列(所有数据行都使用指向数据列值的头指针)，因此本质上，使用固定长度的CHAR不一定比使用可变长度VARCHAR列性能要好。因而，主要的性能因素是数据行使用的存储总量。由于CHAR平均占用的空间多于VARCHAR，因此使用VARCHAR来最小化需要处理的数据行的存储总量和磁盘I/O是比较好的。</p>
+</li>
+<li><h4 id="MyISAM"><a href="#MyISAM" class="headerlink" title="MyISAM"></a>MyISAM</h4><p>  建议使用固定长度的数据列代替可变长度的数据列。</p>
+</li>
+<li><h4 id="MEMORY"><a href="#MEMORY" class="headerlink" title="MEMORY"></a>MEMORY</h4><p>  都使用固定长度的数据行存储，因此无论使用CHAR或者VARCHAR列都没有关系。两者都是作为CHAR类型处理。</p>
+</li>
+</ul>
+<h3 id="TEXT与BLOB"><a href="#TEXT与BLOB" class="headerlink" title="TEXT与BLOB"></a>TEXT与BLOB</h3><p>BLOB能用来保存二进制数据，比如照片；<br>Text只能保存字符数据，比如一篇文章或者日记。</p>
+<h4 id="常见问题"><a href="#常见问题" class="headerlink" title="常见问题"></a><strong>常见问题</strong></h4><ol>
+<li><p>BLOB和TEXT值会引起一些性能问题，特别是在执行大量的删除操作时。删除操作会在数据表中留下很大的“空洞”，以后填入这些“空洞”的记录在插入的性能上会有影响。为了提高性能，建议定期使用optimize table 功能对这类表进行碎片整理，避免因为“空洞”导致性能问题。</p>
+</li>
+<li><p>使用合成的(Synthetic)索引来提高文本字段(BLOB或TEXT)的查询性能。合成索引就是根据大文本字段的内容建立一个散列值，并将这个值存储在单独的数据列中，通过检索散列值就可以找到数据行(只能用于精确匹配的查询)。可以使用MD5()、SHA1()、CRC32()生成散列值。</p>
+</li>
+<li><p>在不必要的时候避免检索大型的BLOB或TEXT值。</p>
+</li>
+<li><p>把BLOB或者TEXT列分离到单独的表中。</p>
+</li>
+</ol>
+<h3 id="浮点数与定点数"><a href="#浮点数与定点数" class="headerlink" title="浮点数与定点数"></a>浮点数与定点数</h3><p>浮点数一般用于表示含有小数部分的数值。</p>
+<p>当一个字段被定义为浮点类型后，如果被插入数据的精度超过该列定义的实际精度，则插入值会被四舍五入到实际定义的精度值，然后插入，四舍五入的过程不会报错。在Mysql中float、double(或real)用来表示浮点数。</p>
+<p>定点数不同于浮点数，定点数实际上是以字符串的形式存放的，所以定点数可以更精确地保存数据。<br>如果实际插入的数值精度大于实际定义的精度，则Mysql会进行警告(默认的SQLModel下)，但是数据会按照实际精度四舍五入后插入；如果SQLModel是在Tranditional(传统模式)下，则系统会直接报错，导致数据无法插入。在Mysql中，decimal(或numberic)用来表示定点数。</p>
+<p>在今后的关于浮点数和定点数的应用中，要考虑到：</p>
+<ul>
+<li>浮点数存在误差</li>
+<li>对于货币等对精度敏感的数据，应该应用定点数标书或存储。</li>
+<li>在编程中，如果用到浮点数，要特别注意误差问题，并尽量避免做浮点数比较。</li>
+<li>要注意浮点数中一些特殊值的处理。</li>
+</ul>
+<h3 id="日期类型"><a href="#日期类型" class="headerlink" title="日期类型"></a>日期类型</h3><p>Mysql提供的常用的日期类型有DATE、TIME、DATETIME、TIMESTAMP。日期选择原则：</p>
+<ul>
+<li><p>根据实际需要选择能够满足应用最小的存储的日期类型。这样不仅能节约存储，更能提高表的操作效率。</p>
+</li>
+<li><p>如果要记录年月日时分秒，并且记录的年份比较久远，最好使用DATETIME,不要使用TIMESTAMP。因为TIMESTAMP表示的日期范围比DATETIME要短得多。</p>
+</li>
+<li><p>如果记录的日期需要要让不同时区的用户使用，那么最好是使用TIMESTAMP，因为日期类型中只有它能够和实际时区相对应。</p>
+</li>
+</ul>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><ul>
+<li><p> 对于字符类型，要根据存储引擎来进行相应的选择。</p>
+</li>
+<li><p>对于精度要求较高的应用中，建议使用定点数来存储数值，以保证结果的正确性。</p>
+</li>
+<li><p>对于含有TEXT和BOLG字段的表，如果经常做删除和修改记录的操作要定时执行optimize table功能对表进行碎片整理。</p>
+</li>
+<li><p>日期类型要根据实际需要选择能够满足应用的最小存储的日期类型。</p>
+</li>
+</ul>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Mysql/" rel="tag">Mysql</a> <a class="tag tag--primary tag--small t-none-link" href="/tags/%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/" rel="tag">数据类型</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    data-tooltip="Mysql开发篇之字符集"
+                    aria-label="PREVIOUS: Mysql开发篇之字符集"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
+                    data-tooltip="Mysql开发篇之数据库引擎"
+                    aria-label="NEXT: Mysql开发篇之数据库引擎"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/&amp;title=Mysql开发篇之选择合适的数据类型"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/07/18/Mysql开发篇之选择合适的数据类型/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E5%AD%97%E7%AC%A6%E9%9B%86/"
+                    data-tooltip="Mysql开发篇之字符集"
+                    aria-label="PREVIOUS: Mysql开发篇之字符集"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E6%95%B0%E6%8D%AE%E5%BA%93%E5%BC%95%E6%93%8E/"
+                    data-tooltip="Mysql开发篇之数据库引擎"
+                    aria-label="NEXT: Mysql开发篇之数据库引擎"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/&amp;title=Mysql开发篇之选择合适的数据类型"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#" aria-label="Back to top">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/&amp;title=Mysql开发篇之选择合适的数据类型"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/07/18/Mysql%E5%BC%80%E5%8F%91%E7%AF%87%E4%B9%8B%E9%80%89%E6%8B%A9%E5%90%88%E9%80%82%E7%9A%84%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

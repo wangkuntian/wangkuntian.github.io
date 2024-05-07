@@ -1,0 +1,999 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>乘风破浪的Docker（一） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Docker">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Docker初级使用指南\n\n\n\n\n什么是DockerDocker开源项目Docker是基于Go语言实现的云开源项目，诞生于2013年初，最初的发起者是dotCloud公司。dotCloud公司后来改名为Docker Inc，专注于Docker相关技术和产品的开发。Docker的主要目标是“Build, Ship and Run Any App, Anywhere”，即通过对应用组件的封装（Packaging）、分发（Distribution）、部署（Deployment）、运行（Runtime）等设备能生命周期的管理，达到应用组件级别的“一次封装，到处运行”。这里的应用组件，既可以是一个web应用，也可以是一套数据库服务，甚至是一个操作系统或编译器。\nDocker基于Linux的多项开源技术提供了高效、敏捷和轻量级的容器方案，并且支持在多种主流云平台（PaaS）和本地系统上部署。可以说Docker为应用的开发和部署提供了“一站式”的解决方案。\nLinux容器技术Docker 引擎的基础是Linux容器（Linux Containers，LXC）技术。\n容器有效的将由单个操作系统管理的资源划分到孤立的组中，以便更好地在孤立的组中之间平衡有冲突的资源使用需求。与虚拟化相比，这样既不需要指令级模拟，也不需要及时编译。容器可以在核心CPU本地运行指令，而不需要任何专门的解释机制。此外也避免了准虚拟化（paravirtualization）和系统调用替换中的复杂性。\n\nLXC被集成到了主流Linux内核中，进而成为Linux系统轻量级容器技术的事实标准。\n从Linux容器到Docker在LXC的基础上，Docker进一步优化了容器的使用体验。Docker提供了各种容器管理工具（如分发、版本、移植等）让用户无需关注底层的操作，可以简单明了地管理和使用容器。用户操作Docker容器就像操作一个轻量级的虚拟机那样简单。可以简单地将Docker容器理解为一种沙盒（SandBox），每个容器内运行一个应用，不同的容器相互隔离，容器之间也可以建立通信机制。容器的创建和停止都十分快速，容器自身对资源的需求也十分有限，远低于虚拟机。\n为什么要使用DockerDocker容器虚拟化的好处高效地构建应用。Docker通过容器打包应用，节约时间，降低部署过程出现问题的风险。\nDocker在开发和运维中的优势\n更快速的交付和部署。使用Docker，开发人员可以使用镜像来快速构建一套标准的开发环境；开发完成后，测试和运维人员可以直接使用相同环境来部署代码。Docker可以快速创建和删除容器，实现快速迭代，大量节约开发、测试、部署的时间。并且，各个步骤都有明确的配置和操作，整个过程全程可见，使团队更容易理解应用的创建和工作过程。\n更高效的资源利用。Docker容器的运行不需要额外的虚拟化管理程序（Virtual Machine Manager，VMM，以及Hypervisor）支持，它是内核级的虚拟化，可以实现更高的性能，同时对资源的额外要求很低。\n更轻松的迁移和扩展。Docker容器几乎可以在任意平台上运行，包括物理机、虚拟机、公有云、私有云、个人电脑、服务器等。这种兼容性让用户可以在不同平台之间轻松地迁移应用。\n更简单的更新管理。使用Dockerfile，只需要小小的配置修改，就可以代替以往大量的更新工作。并且所有的修改都以增量的方式进行分发和更新，从而实现自动化并且高效的容器管理。\n\nDocker与虚拟机比较Docker在运行应用上相比传统虚拟机方式具有显著的优势：\n\nDocker容器很快，启动和停止可以在秒级实现。\nDocker容器对系统资源需求很少，一台主机可以同时运行数千个Docker容器。\nDocker通过类似Git的操作来方便用户获取、分发和更新应用镜像，指令简明，学习成本低。\nDocker通过Dockerfile配置文件来支持灵活的自动化创建和部署机制，提高工作效率。\n\n\n\n\n特性\n容器\n虚拟机\n\n\n\n启动速度\n秒级\n分钟级\n\n\n硬盘使用\n一般为MB\n一般为GB\n\n\n性能\n接近原生\n弱于\n\n\n系统支持量\n单机支持上千个容器\n一般几十个\n\n\n隔离性\n安全隔离\n完全隔离\n\n\n虚拟化与Docker虚拟化技术，在计算机领域，一般指的是计算机虚拟化（Computing Virtualization），或通常说的服务器虚拟化。\n在计算机技术中，虚拟化（Virtualization）是一种资源管理技术，是将计算机的各种实体资源，如服务器、网络、内存级存储等，予以抽象、转换后呈现出来，打破实体结构间的不可切割的障碍，使用户可以用比原来的组态更好的方式来应用这些资源。\n\n\n虚拟化的核心就是对资源进行抽象，目标往往是为了同一个主机上运行多个系统或应用，从而提高系统资源的利用率，同时降低成本，方便管理和容错容灾等好处。\n\n\n从大类上分，虚拟化技术可以分为基于硬件的虚拟化和基于软件的虚拟化。其中，真正意义上的基于硬件的虚拟化技术不多见，少数如网卡中的单根多IO虚拟化（Single Root I/O Virtualization and Sharing Specificatio，SR-IOV）等技术。\n基于软件的虚拟化从对象所在的层次，又可以分为应用虚拟化和平台虚拟化（通常说的虚拟化技术即属于这个范畴）。其中，前者一般指的一些模拟设备或Wine这样的软件。后者又可以详细分为：\nVirtualization* 完全虚拟化。虚拟机模拟完整的底层硬件环境和特权指令的执行过程，客户机操作系统无需进行修改。例如VMware Workstation、VirtualBox、QEMU等。\n\n硬件辅助虚拟化。利用硬件（主要是CPU）辅助支持（目前x86体系结构上可用的硬件辅助虚拟化技术包括Intel-VT和AMD-V）处理敏感指令来实现完全虚拟化的功能，客户机操作系统无需修改，例如VMware WorkStation、Xen、KVM。\n部分虚拟化。只针对部分硬件资源进行虚拟化，客户端操作系统需要进行修改。现在有些虚拟化技术的早期版本仅支持部分虚拟化。\n超虚拟化（paravirtualization）。部分硬件接口以软件的形式提供给客户机操作系统，客户机操作系统需要进行修改，例如早期的Xen。\n操作系统级虚拟化。内核通过创建多个虚拟的操作系统（内核和库）来隔离不同的进程。容器相关技术即在这个范畴。\n\nDocker和常见的虚拟机方式的不同之处。传统方式是在硬件层面实现虚拟化，需要有额外的虚拟机管理应用和虚拟机操作系统层。Docker容器是在操作系统层面上实现虚拟化，直接复用本地主机的操作系统，因而更加轻量级。\nDocker和传统的虚拟机方式的不同之处\n\n\n核心概念Docker镜像Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。\nDocker容器Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。\nDocker仓库Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。\n根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。\n\n用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。\n\n当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。\n安装Docker安装 \nDocker镜像镜像是Docker的三大核心概念之一。Docker运行容器前需要本地存在对应的镜像，如果不存在本地，Docker会尝试先从默认镜像仓库下载（Docker Hub），用户也可以通过配置，使用自定义的镜像仓库。\n获取镜像命令的格式。\n1docker pull NAME[:TAG]\n从Docker Hub的Ubuntu仓库下载最新的Ubuntu操作系统的镜像。\n1sudo docker pull ubuntu\n下载Ubuntu镜像\n\n下载过程中，镜像文件一般由若干层组成，行首的afde35469481字符串代表了各层的ID。\n层（Layer）其实是AUFS（Advanced Union File System，一种联合文件系统）中的重要概念，是实现增量保存于更新的基础。\n\n\n指定标签下载指定版本的镜像\n1sudo docker pull ubuntu:16.04\n\n查看镜像信息使用docker images命令可以查看本地主机上已有的镜像。\n1sudo docker images\n查看镜像\n\npepository 来自哪个仓库tag 镜像的标签信息image id 镜像的id（唯一）created 创建时间virtual size 镜像大小\n\n\n使用docker inspect获取镜像的详细信息\n1sudo docker inspect [image id]\n查看镜像详细\n\ndocker inspect命令返回的是一个Json格式的消息，获取其中一项内容可以使用-f参数指定。获取镜像的Created信息。\n1sudo docker inspect [image id] -f &#123;&#123;&quot;.Created&quot;&#125;&#125;\n查看镜像创建时间\n\n在指定镜像ID的时候，同常使用该ID的前若干个字符组成的可区分字符串来代替完整的ID\n\n\n搜寻镜像使用docker search命令可以搜寻远端仓库中共享的镜像。\n1sudo docker search [item]\n可选参数–automated=false 仅显示自动创建的镜像。–no-trunc=false 输出信息不截断显示-s，–starts=0 指定仅显示评级未指定星级以上的镜像\n\n\n搜寻镜像\n\nname 镜像的名字description 描述stars 星级official 是否官方创建automated 是否自动创建\n\n\n删除镜像1sudo docker images rm [image id|tag]\n或者\n1sudo docker rmi [image id|tag]\n\n删除镜像\n\n强行删除镜像可以使用-f参数。\n\n1sudo docker images rm [image id tag] -f\n\n创建镜像创建镜像的方法有三种：基于已有镜像的容器创建、基于本地模板导入、基于Dockerfile创建。\n基于已有镜像的容器创建主要使用docker commit命令。\n1sudo docker commit [options] container [repository[:tag]]\n可选参数-a，–author=”” 作者信息。-m，–message=”” 提交消息。-p，–pause=true 提交时暂停容器运行。\n\n\n演示。首先，启动一个镜像，并且在其中进行修改操作，创建test文件，之后退出。\n1234king@ubuntu ~ sudo docker run -it ubuntu /bin/bashroot@d12bc42d52bc:/ touch testroot@d12bc42d52bc:/ exitexit\n容器的ID为d12bc42d52bc。\n\n提交镜像。\n12king@ubuntu ~ sudo docker commit -m &quot;Added a new file&quot; -a &quot;Docker Newbee&quot; d12bc42d52bc testsha256:1150ce2e62f8ddb58c2fea2de546636d3d7fee0793483f7ecb56c30b3a5bf3fc\n此时查看本地镜像列表，可以看到新创建的镜像。\n\n\n基于本地模板导入从一个操作系统模板文件导入一个镜像。这里使用的是OpenVZ提供的模板来创建。下载地址\n1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\n\n\n基于Dockerfile创建[下节讲]\n存储和载入镜像存储镜像1sudo docker save [OPTIONS] IMAGE [IMAGE...]\n可选参数-o, –output string 写到文件中。\n\n\n\n\n载入镜像1sudo docker load [OPTIONS]\n可选参数-i, –input string 文件名。-q, –quiet Suppress the load output.\n\n\n\n\n上传镜像可以使用docker push命令上传镜像到仓库，默认上传到DockerHub官方仓库（需要登录）。\n1sudo docker push [OPTIONS] NAME[:TAG]\n\nDocker容器容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。\n创建容器新建容器可以使用docker create命令新建一个容器。\n1sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n\n使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。\n1sudo docker start [OPTIONS] CONTAINER [CONTAINER...]\n\n\n新建并启动容器启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。\n1sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]\n\n\n当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：\n\n检查本地是否存在指定的镜像，不存在就从公有仓库下载。\n利用镜像创建并启动一个容器。\n分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。\n从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。\n从地址池配置一个IP地址给容器。\n执行用户指定的应用程序。\n执行完毕后容器就被终止。\n\n下面的命令将启动一个bash终端，允许用户进行交互。\n1sudo docker run -t -i ubuntu /bin/bash\n\n\n可选参数-t docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。-i 容器的标准输入保持打开。\n\n用户可以使用Ctrl+d或者exit命令退出容器。对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。\n\n\n守护态运行更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。\n1sudo docker run -d ubuntu /bin/sh -c &quot;while ture; do echo hello world; sleep 1; done&quot;\nps：要获取容器的输出信息可以通过docker logs命令\n\n1sudo docker logs [OPTIONS] CONTAINER\n\n终止容器1sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-t，–time=10 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。\n\n\ndocker kill命令会直接发送SIGKILL信号强行终止容器。\n\n\ndocker start命令可以重新启动已经终止的容器。docker restart命令将会让一个运行的容器终止，然后重新启动。\n\n\n进入容器在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。\nattach命令docker attach是docker自带的命令。\n1sudo docker attach [OPTIONS] CONTAINER\n\n\n\n但是使用attach命令有时并不方便。当多个窗口同时attach到同一容器是，所有窗口都会同步显示。当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。\n\n\nexec命令docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。\n1sudo docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\n\n\nnsenter工具这里不做讨论。\n删除容器1sudo docker rm [OPTIONS] CONTAINER [CONTAINER...]\n可选参数-f，–force=false 强行终止并删除一个运行中的容器。-l，–link=false 删除容器的连接，但保留容器。-v，–volumes=false 删除容器挂载的数据卷。\n\n\n\n\n删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。\n\n\n导入和导出容器导出容器导出容器是指导出一个已经创建的容器到一个文件中。\n1sudo docker export [OPTIONS] CONTAINER\n\n\n导入容器导出的文件又可以使用docker import命令导入，成为镜像。\n1sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]\n\n\ndocker load和docker import比较。docker load导入镜像存储文件到本地镜像库。docker import导入容器快照到本地镜像库。区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。\n\n\n\nDocker仓库仓库（Repository）是集中存放镜像的地方。注册服务器是存放仓库的具体服务器，每个服务器上可以有多个仓库，而每个仓库下有多个镜像。对于仓库地址dl.dockerpool.com/ubuntu来说，dl.dockerpool.com是注册服务器地址，ubuntu是仓库名。\nDocker Hub官网\n创建和使用私有仓库使用registry镜像创建私有仓库可以使用官方提供的registry镜像来搭建本地私有仓库环境。\n1sudo docker run -d -p 5000:5000 -v /opt/data/registry:/tmp/registry registry\n此时本地将启动一个私有仓库服务，监听端口为5000。\n默认情况下，会将仓库创建在容器的/tmp/registry下。可以通过-v参数来将镜像文件存放在本地的指定路径上。\n\n\n管理私有仓库镜像使用docker tag将ubuntu镜像标记为10.211.55.11:5000/test（格式为docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]）\n12sudo docker tag ubuntu 10.211.55.11:5000/kingsudo docker images\n10.211.55.11是我的IP地址。\n\n\n\n\n使用docker push上传标记的镜像。\n1sudo docker push 10.211.55.11:5000/king\n\n\n现在可以在任意连接到10.211.55.11的机器下载这个镜像。\n1sudo docker pull 10.211.55.11:5000/king\n出现错误123king@ubuntu: sudo docker push 10.211.55.11:5000/kingThe push refers to repository [10.211.55.11:5000/king]Get https://10.211.55.11:5000/v2/: http: server gave HTTP response to HTTPS client\n在/etc/docker下，创建daemon.json文件。\n1&#123; &quot;insecure-registries&quot;:[&quot;10.211.55.11:5000&quot;]&#125;\n重启docker\n1systemctl restart docker.service\n重新启动registry\n12sudo docker ps -a # 找到registry的CONTAINER IDsudo docker start [CONTAINER ID]\n\n","dateCreated":"2018-09-14T11:10:28+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-09-14T11:10:28+08:00","description":"Docker初级使用指南","headline":"乘风破浪的Docker（一）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Docker初级使用指南">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="乘风破浪的Docker（一）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Docker初级使用指南">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-pull-ubuntu.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-images.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-inspect.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-inspect-f.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-search.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-image-rm.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-images-a.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-import.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-save.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-load.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-create.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-start.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-run.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-run-it.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-attach.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-exec.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-rm.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-export.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-import-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-tag.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker-push.png">
+<meta property="article:published_time" content="2018-09-14T03:10:28.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.135Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Docker">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/docker.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            乘风破浪的Docker（一）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-14T11:10:28+08:00">
+	
+		    Sep 14, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Docker初级使用指南</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BB%80%E4%B9%88%E6%98%AFDocker"><span class="toc-text">什么是Docker</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E5%BC%80%E6%BA%90%E9%A1%B9%E7%9B%AE"><span class="toc-text">Docker开源项目</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Linux%E5%AE%B9%E5%99%A8%E6%8A%80%E6%9C%AF"><span class="toc-text">Linux容器技术</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8ELinux%E5%AE%B9%E5%99%A8%E5%88%B0Docker"><span class="toc-text">从Linux容器到Docker</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E4%BD%BF%E7%94%A8Docker"><span class="toc-text">为什么要使用Docker</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E5%AE%B9%E5%99%A8%E8%99%9A%E6%8B%9F%E5%8C%96%E7%9A%84%E5%A5%BD%E5%A4%84"><span class="toc-text">Docker容器虚拟化的好处</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E5%9C%A8%E5%BC%80%E5%8F%91%E5%92%8C%E8%BF%90%E7%BB%B4%E4%B8%AD%E7%9A%84%E4%BC%98%E5%8A%BF"><span class="toc-text">Docker在开发和运维中的优势</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E4%B8%8E%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%AF%94%E8%BE%83"><span class="toc-text">Docker与虚拟机比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E5%8C%96%E4%B8%8EDocker"><span class="toc-text">虚拟化与Docker</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5"><span class="toc-text">核心概念</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E9%95%9C%E5%83%8F"><span class="toc-text">Docker镜像</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E5%AE%B9%E5%99%A8"><span class="toc-text">Docker容器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker%E4%BB%93%E5%BA%93"><span class="toc-text">Docker仓库</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85Docker"><span class="toc-text">安装Docker</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Docker%E9%95%9C%E5%83%8F-1"><span class="toc-text">Docker镜像</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%8E%B7%E5%8F%96%E9%95%9C%E5%83%8F"><span class="toc-text">获取镜像</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E9%95%9C%E5%83%8F%E4%BF%A1%E6%81%AF"><span class="toc-text">查看镜像信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%90%9C%E5%AF%BB%E9%95%9C%E5%83%8F"><span class="toc-text">搜寻镜像</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E9%95%9C%E5%83%8F"><span class="toc-text">删除镜像</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E9%95%9C%E5%83%8F"><span class="toc-text">创建镜像</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E5%B7%B2%E6%9C%89%E9%95%9C%E5%83%8F%E7%9A%84%E5%AE%B9%E5%99%A8%E5%88%9B%E5%BB%BA"><span class="toc-text">基于已有镜像的容器创建</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8E%E6%9C%AC%E5%9C%B0%E6%A8%A1%E6%9D%BF%E5%AF%BC%E5%85%A5"><span class="toc-text">基于本地模板导入</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EDockerfile%E5%88%9B%E5%BB%BA"><span class="toc-text">基于Dockerfile创建</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AD%98%E5%82%A8%E5%92%8C%E8%BD%BD%E5%85%A5%E9%95%9C%E5%83%8F"><span class="toc-text">存储和载入镜像</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AD%98%E5%82%A8%E9%95%9C%E5%83%8F"><span class="toc-text">存储镜像</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%BD%E5%85%A5%E9%95%9C%E5%83%8F"><span class="toc-text">载入镜像</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8A%E4%BC%A0%E9%95%9C%E5%83%8F"><span class="toc-text">上传镜像</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Docker%E5%AE%B9%E5%99%A8-1"><span class="toc-text">Docker容器</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">创建容器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">新建容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B0%E5%BB%BA%E5%B9%B6%E5%90%AF%E5%8A%A8%E5%AE%B9%E5%99%A8"><span class="toc-text">新建并启动容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%88%E6%8A%A4%E6%80%81%E8%BF%90%E8%A1%8C"><span class="toc-text">守护态运行</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%88%E6%AD%A2%E5%AE%B9%E5%99%A8"><span class="toc-text">终止容器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%9B%E5%85%A5%E5%AE%B9%E5%99%A8"><span class="toc-text">进入容器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#attach%E5%91%BD%E4%BB%A4"><span class="toc-text">attach命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#exec%E5%91%BD%E4%BB%A4"><span class="toc-text">exec命令</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nsenter%E5%B7%A5%E5%85%B7"><span class="toc-text">nsenter工具</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A0%E9%99%A4%E5%AE%B9%E5%99%A8"><span class="toc-text">删除容器</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%BC%E5%85%A5%E5%92%8C%E5%AF%BC%E5%87%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">导入和导出容器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%BC%E5%87%BA%E5%AE%B9%E5%99%A8"><span class="toc-text">导出容器</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%BC%E5%85%A5%E5%AE%B9%E5%99%A8"><span class="toc-text">导入容器</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Docker%E4%BB%93%E5%BA%93-1"><span class="toc-text">Docker仓库</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Docker-Hub"><span class="toc-text">Docker Hub</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%9B%E5%BB%BA%E5%92%8C%E4%BD%BF%E7%94%A8%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93"><span class="toc-text">创建和使用私有仓库</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8registry%E9%95%9C%E5%83%8F%E5%88%9B%E5%BB%BA%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93"><span class="toc-text">使用registry镜像创建私有仓库</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%AE%A1%E7%90%86%E7%A7%81%E6%9C%89%E4%BB%93%E5%BA%93%E9%95%9C%E5%83%8F"><span class="toc-text">管理私有仓库镜像</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%87%BA%E7%8E%B0%E9%94%99%E8%AF%AF"><span class="toc-text">出现错误</span></a></li></ol></li></ol></li></ol></li></ol>
+
+<h1 id="什么是Docker"><a href="#什么是Docker" class="headerlink" title="什么是Docker"></a>什么是Docker</h1><h2 id="Docker开源项目"><a href="#Docker开源项目" class="headerlink" title="Docker开源项目"></a>Docker开源项目</h2><p>Docker是基于Go语言实现的云开源项目，诞生于2013年初，最初的发起者是dotCloud公司。dotCloud公司后来改名为Docker Inc，专注于Docker相关技术和产品的开发。<br>Docker的主要目标是“Build, Ship and Run Any App, Anywhere”，即通过对应用组件的封装（Packaging）、分发（Distribution）、部署（Deployment）、运行（Runtime）等设备能生命周期的管理，达到应用组件级别的“一次封装，到处运行”。这里的应用组件，既可以是一个web应用，也可以是一套数据库服务，甚至是一个操作系统或编译器。</p>
+<p>Docker基于Linux的多项开源技术提供了高效、敏捷和轻量级的容器方案，并且支持在多种主流云平台（PaaS）和本地系统上部署。可以说Docker为应用的开发和部署提供了“一站式”的解决方案。</p>
+<h2 id="Linux容器技术"><a href="#Linux容器技术" class="headerlink" title="Linux容器技术"></a>Linux容器技术</h2><p>Docker 引擎的基础是Linux容器（Linux Containers，LXC）技术。</p>
+<div class="alert info no-icon"><p>容器有效的将由单个操作系统管理的资源划分到孤立的组中，以便更好地在孤立的组中之间平衡有冲突的资源使用需求。与虚拟化相比，这样既不需要指令级模拟，也不需要及时编译。容器可以在核心CPU本地运行指令，而不需要任何专门的解释机制。此外也避免了准虚拟化（paravirtualization）和系统调用替换中的复杂性。</p>
+</div>
+<p>LXC被集成到了主流Linux内核中，进而成为Linux系统轻量级容器技术的事实标准。</p>
+<h2 id="从Linux容器到Docker"><a href="#从Linux容器到Docker" class="headerlink" title="从Linux容器到Docker"></a>从Linux容器到Docker</h2><p>在LXC的基础上，Docker进一步优化了容器的使用体验。Docker提供了各种容器管理工具（如分发、版本、移植等）让用户无需关注底层的操作，可以简单明了地管理和使用容器。用户操作Docker容器就像操作一个轻量级的虚拟机那样简单。<br>可以简单地将Docker容器理解为一种沙盒（SandBox），每个容器内运行一个应用，不同的容器相互隔离，容器之间也可以建立通信机制。容器的创建和停止都十分快速，容器自身对资源的需求也十分有限，远低于虚拟机。</p>
+<h1 id="为什么要使用Docker"><a href="#为什么要使用Docker" class="headerlink" title="为什么要使用Docker"></a>为什么要使用Docker</h1><h2 id="Docker容器虚拟化的好处"><a href="#Docker容器虚拟化的好处" class="headerlink" title="Docker容器虚拟化的好处"></a>Docker容器虚拟化的好处</h2><p>高效地构建应用。Docker通过容器打包应用，节约时间，降低部署过程出现问题的风险。</p>
+<h2 id="Docker在开发和运维中的优势"><a href="#Docker在开发和运维中的优势" class="headerlink" title="Docker在开发和运维中的优势"></a>Docker在开发和运维中的优势</h2><ul>
+<li>更快速的交付和部署。使用Docker，开发人员可以使用镜像来快速构建一套标准的开发环境；开发完成后，测试和运维人员可以直接使用相同环境来部署代码。Docker可以快速创建和删除容器，实现快速迭代，大量节约开发、测试、部署的时间。并且，各个步骤都有明确的配置和操作，整个过程全程可见，使团队更容易理解应用的创建和工作过程。</li>
+<li>更高效的资源利用。Docker容器的运行不需要额外的虚拟化管理程序（Virtual Machine Manager，VMM，以及Hypervisor）支持，它是内核级的虚拟化，可以实现更高的性能，同时对资源的额外要求很低。</li>
+<li>更轻松的迁移和扩展。Docker容器几乎可以在任意平台上运行，包括物理机、虚拟机、公有云、私有云、个人电脑、服务器等。这种兼容性让用户可以在不同平台之间轻松地迁移应用。</li>
+<li>更简单的更新管理。使用Dockerfile，只需要小小的配置修改，就可以代替以往大量的更新工作。并且所有的修改都以增量的方式进行分发和更新，从而实现自动化并且高效的容器管理。</li>
+</ul>
+<h2 id="Docker与虚拟机比较"><a href="#Docker与虚拟机比较" class="headerlink" title="Docker与虚拟机比较"></a>Docker与虚拟机比较</h2><p>Docker在运行应用上相比传统虚拟机方式具有显著的优势：</p>
+<ul>
+<li>Docker容器很快，启动和停止可以在秒级实现。</li>
+<li>Docker容器对系统资源需求很少，一台主机可以同时运行数千个Docker容器。</li>
+<li>Docker通过类似Git的操作来方便用户获取、分发和更新应用镜像，指令简明，学习成本低。</li>
+<li>Docker通过Dockerfile配置文件来支持灵活的自动化创建和部署机制，提高工作效率。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">特性</th>
+<th align="left">容器</th>
+<th align="left">虚拟机</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">启动速度</td>
+<td align="left">秒级</td>
+<td align="left">分钟级</td>
+</tr>
+<tr>
+<td align="left">硬盘使用</td>
+<td align="left">一般为MB</td>
+<td align="left">一般为GB</td>
+</tr>
+<tr>
+<td align="left">性能</td>
+<td align="left">接近原生</td>
+<td align="left">弱于</td>
+</tr>
+<tr>
+<td align="left">系统支持量</td>
+<td align="left">单机支持上千个容器</td>
+<td align="left">一般几十个</td>
+</tr>
+<tr>
+<td align="left">隔离性</td>
+<td align="left">安全隔离</td>
+<td align="left">完全隔离</td>
+</tr>
+</tbody></table>
+<h2 id="虚拟化与Docker"><a href="#虚拟化与Docker" class="headerlink" title="虚拟化与Docker"></a>虚拟化与Docker</h2><p>虚拟化技术，在计算机领域，一般指的是计算机虚拟化（Computing Virtualization），或通常说的服务器虚拟化。</p>
+<div class="alert info no-icon"><p>在计算机技术中，虚拟化（Virtualization）是一种资源管理技术，是将计算机的各种实体资源，如服务器、网络、内存级存储等，予以抽象、转换后呈现出来，打破实体结构间的不可切割的障碍，使用户可以用比原来的组态更好的方式来应用这些资源。</p>
+</div>
+
+<div class="alert danger no-icon"><p>虚拟化的核心就是对资源进行抽象，目标往往是为了同一个主机上运行多个系统或应用，从而提高系统资源的利用率，同时降低成本，方便管理和容错容灾等好处。</p>
+</div>
+
+<p>从大类上分，虚拟化技术可以分为基于硬件的虚拟化和基于软件的虚拟化。其中，真正意义上的基于硬件的虚拟化技术不多见，少数如网卡中的单根多IO虚拟化（Single Root I/O Virtualization and Sharing Specificatio，SR-IOV）等技术。</p>
+<p>基于软件的虚拟化从对象所在的层次，又可以分为应用虚拟化和平台虚拟化（通常说的虚拟化技术即属于这个范畴）。其中，前者一般指的一些模拟设备或Wine这样的软件。后者又可以详细分为：</p>
+<p>Virtualization* 完全虚拟化。虚拟机模拟完整的底层硬件环境和特权指令的执行过程，客户机操作系统无需进行修改。例如VMware Workstation、VirtualBox、QEMU等。</p>
+<ul>
+<li>硬件辅助虚拟化。利用硬件（主要是CPU）辅助支持（目前x86体系结构上可用的硬件辅助虚拟化技术包括Intel-VT和AMD-V）处理敏感指令来实现完全虚拟化的功能，客户机操作系统无需修改，例如VMware WorkStation、Xen、KVM。</li>
+<li>部分虚拟化。只针对部分硬件资源进行虚拟化，客户端操作系统需要进行修改。现在有些虚拟化技术的早期版本仅支持部分虚拟化。</li>
+<li>超虚拟化（paravirtualization）。部分硬件接口以软件的形式提供给客户机操作系统，客户机操作系统需要进行修改，例如早期的Xen。</li>
+<li>操作系统级虚拟化。内核通过创建多个虚拟的操作系统（内核和库）来隔离不同的进程。容器相关技术即在这个范畴。</li>
+</ul>
+<p>Docker和常见的虚拟机方式的不同之处。<br>传统方式是在硬件层面实现虚拟化，需要有额外的虚拟机管理应用和虚拟机操作系统层。<br>Docker容器是在操作系统层面上实现虚拟化，直接复用本地主机的操作系统，因而更加轻量级。<br></br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker.png" title="Docker和传统的虚拟机方式的不同之处" data-caption="Docker和传统的虚拟机方式的不同之处" data-fancybox="default"><img class="fig-img" src="images/docker.png" alt="Docker和传统的虚拟机方式的不同之处"></a><span class="caption">Docker和传统的虚拟机方式的不同之处</span></div>
+
+
+<h1 id="核心概念"><a href="#核心概念" class="headerlink" title="核心概念"></a>核心概念</h1><h2 id="Docker镜像"><a href="#Docker镜像" class="headerlink" title="Docker镜像"></a>Docker镜像</h2><p>Docker镜像（Image）类似于虚拟机镜像，可以将它理解为一个面向Docker引起的只读模板，包含了文件系统。<br>镜像是创建Docker容器的基础。通过版本管理和增量的文件系统，Docker提供了一套十分简单的机制来创建和更新现有的镜像，用户甚至可以从网上下载一个已经做好的应用镜像，并通过简单的命令就可以直接使用。</p>
+<h2 id="Docker容器"><a href="#Docker容器" class="headerlink" title="Docker容器"></a>Docker容器</h2><p>Docker容器（Container）类似于一个轻量级的沙箱，Docker利用容器来运行和隔离应用。<br>容器是从镜像创建的应用运行实例，可以将其启动、开始、停止、删除，而这些容器都是相互隔离、互不可见的。<br>镜像自身是只读的。容器从镜像启动的时候，Docker会在镜像的最上层创建一个可写层，镜像本身将保持不变。</p>
+<h2 id="Docker仓库"><a href="#Docker仓库" class="headerlink" title="Docker仓库"></a>Docker仓库</h2><p>Docker仓库（Repository）类似于代码仓库，是Docker集中存放镜像文件的场所。<br>Docker注册服务器（Registry）是存放仓库的地方。每个仓库中存放某一类镜像，往往包括多个镜像文件，通过不同的标签（tag）来进行区分。</p>
+<div class="alert info no-icon"><p>根据所存储的镜像公开分享与否，Docker仓库可分为公开的仓库（Public）和私有仓库（Private）两种形式。</p>
+</div>
+<div class="alert info no-icon"><p>用户不希望公开分享自己的镜像文件，Docker支持用户在本地网络内创建一个只能自己访问的私有仓库。</p>
+</div>
+<p>当用户创建了自己的镜像后，就可以使用push命令将它上传到指定的仓库中。这样下一次用户在另外一台机器上使用该镜像时，只需将其从仓库上pull下来就可以了。</p>
+<h2 id="安装Docker"><a href="#安装Docker" class="headerlink" title="安装Docker"></a>安装Docker</h2><p><a target="_blank" rel="noopener" href="https://docs.docker.com/get-docker/">安装</a> </p>
+<h1 id="Docker镜像-1"><a href="#Docker镜像-1" class="headerlink" title="Docker镜像"></a>Docker镜像</h1><p>镜像是Docker的三大核心概念之一。<br>Docker运行容器前需要本地存在对应的镜像，如果不存在本地，Docker会尝试先从默认镜像仓库下载（Docker Hub），用户也可以通过配置，使用自定义的镜像仓库。</p>
+<h2 id="获取镜像"><a href="#获取镜像" class="headerlink" title="获取镜像"></a>获取镜像</h2><p>命令的格式。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker pull NAME[:TAG]</span><br></pre></td></tr></table></figure>
+<p>从Docker Hub的Ubuntu仓库下载最新的Ubuntu操作系统的镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker pull ubuntu</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-pull-ubuntu.png" title="下载Ubuntu镜像" data-caption="下载Ubuntu镜像" data-fancybox="default"><img class="fig-img" src="images/docker-pull-ubuntu.png" alt="下载Ubuntu镜像"></a><span class="caption">下载Ubuntu镜像</span></div>
+
+<p>下载过程中，镜像文件一般由若干层组成，行首的afde35469481字符串代表了各层的ID。</p>
+<div class="alert info no-icon"><p>层（Layer）其实是AUFS（Advanced Union File System，一种联合文件系统）中的重要概念，是实现增量保存于更新的基础。</p>
+</div>
+
+<p>指定标签下载指定版本的镜像</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker pull ubuntu:16.04</span><br></pre></td></tr></table></figure>
+
+<h2 id="查看镜像信息"><a href="#查看镜像信息" class="headerlink" title="查看镜像信息"></a>查看镜像信息</h2><p>使用docker images命令可以查看本地主机上已有的镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker images</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-images.png" title="查看镜像" data-caption="查看镜像" data-fancybox="default"><img class="fig-img" src="images/docker-images.png" alt="查看镜像"></a><span class="caption">查看镜像</span></div>
+
+<div class="alert info no-icon"><p><strong>pepository</strong> 来自哪个仓库<br><strong>tag</strong> 镜像的标签信息<br><strong>image id</strong> 镜像的id（唯一）<br><strong>created</strong> 创建时间<br><strong>virtual size</strong> 镜像大小</p>
+</div>
+
+<p>使用docker inspect获取镜像的详细信息</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker inspect [image <span class="built_in">id</span>]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-inspect.png" title="查看镜像详细" data-caption="查看镜像详细" data-fancybox="default"><img class="fig-img" src="images/docker-inspect.png" alt="查看镜像详细"></a><span class="caption">查看镜像详细</span></div>
+
+<p>docker inspect命令返回的是一个Json格式的消息，获取其中一项内容可以使用-f参数指定。获取镜像的Created信息。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker inspect [image <span class="built_in">id</span>] -f &#123;&#123;<span class="string">&quot;.Created&quot;</span>&#125;&#125;</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-inspect-f.png" title="查看镜像创建时间" data-caption="查看镜像创建时间" data-fancybox="default"><img class="fig-img" src="images/docker-inspect-f.png" alt="查看镜像创建时间"></a><span class="caption">查看镜像创建时间</span></div>
+
+<div class="alert danger no-icon"><p>在指定镜像ID的时候，同常使用该ID的前若干个字符组成的可区分字符串来代替完整的ID</p>
+</div>
+
+<h2 id="搜寻镜像"><a href="#搜寻镜像" class="headerlink" title="搜寻镜像"></a>搜寻镜像</h2><p>使用docker search命令可以搜寻远端仓库中共享的镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker search [item]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>–automated=false</strong> 仅显示自动创建的镜像。<br><strong>–no-trunc=false</strong> 输出信息不截断显示<br><strong>-s，–starts=0</strong> 指定仅显示评级未指定星级以上的镜像</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-search.png" title="搜寻镜像" data-caption="搜寻镜像" data-fancybox="default"><img class="fig-img" src="images/docker-search.png" alt="搜寻镜像"></a><span class="caption">搜寻镜像</span></div>
+
+<div class="alert info no-icon"><p><strong>name</strong> 镜像的名字<br><strong>description</strong> 描述<br><strong>stars</strong> 星级<br><strong>official</strong> 是否官方创建<br><strong>automated</strong> 是否自动创建</p>
+</div>
+
+<h2 id="删除镜像"><a href="#删除镜像" class="headerlink" title="删除镜像"></a>删除镜像</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker images <span class="built_in">rm</span> [image <span class="built_in">id</span>|tag]</span><br></pre></td></tr></table></figure>
+<p>或者</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker rmi [image <span class="built_in">id</span>|tag]</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-image-rm.png" title="删除镜像" data-caption="删除镜像" data-fancybox="default"><img class="fig-img" src="images/docker-image-rm.png" alt="删除镜像"></a><span class="caption">删除镜像</span></div>
+
+<div class="alert danger no-icon"><p>强行删除镜像可以使用-f参数。</p>
+</div>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker images <span class="built_in">rm</span> [image <span class="built_in">id</span> tag] -f</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建镜像"><a href="#创建镜像" class="headerlink" title="创建镜像"></a>创建镜像</h2><p>创建镜像的方法有三种：基于已有镜像的容器创建、基于本地模板导入、基于Dockerfile创建。</p>
+<h3 id="基于已有镜像的容器创建"><a href="#基于已有镜像的容器创建" class="headerlink" title="基于已有镜像的容器创建"></a>基于已有镜像的容器创建</h3><p>主要使用docker commit命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker commit [options] container [repository[:tag]]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-a，–author=””</strong> 作者信息。<br><strong>-m，–message=””</strong> 提交消息。<br><strong>-p，–pause=true</strong> 提交时暂停容器运行。</p>
+</div>
+
+<p>演示。首先，启动一个镜像，并且在其中进行修改操作，创建test文件，之后退出。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">king@ubuntu ~ sudo docker run -it ubuntu /bin/bash</span><br><span class="line">root@d12bc42d52bc:/ <span class="built_in">touch</span> <span class="built_in">test</span></span><br><span class="line">root@d12bc42d52bc:/ <span class="built_in">exit</span></span><br><span class="line"><span class="built_in">exit</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>容器的ID为d12bc42d52bc。</p>
+</div>
+<p>提交镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">king@ubuntu ~ sudo docker commit -m <span class="string">&quot;Added a new file&quot;</span> -a <span class="string">&quot;Docker Newbee&quot;</span> d12bc42d52bc <span class="built_in">test</span></span><br><span class="line">sha256:1150ce2e62f8ddb58c2fea2de546636d3d7fee0793483f7ecb56c30b3a5bf3fc</span><br></pre></td></tr></table></figure>
+<p>此时查看本地镜像列表，可以看到新创建的镜像。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-images-a.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-images-a.png" alt=""></a></div>
+
+<h3 id="基于本地模板导入"><a href="#基于本地模板导入" class="headerlink" title="基于本地模板导入"></a>基于本地模板导入</h3><p>从一个操作系统模板文件导入一个镜像。这里使用的是OpenVZ提供的模板来创建。<br><a target="_blank" rel="noopener" href="https://download.openvz.org/template/precreated/">下载地址</a></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-import.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-import.png" alt=""></a></div>
+
+<h3 id="基于Dockerfile创建"><a href="#基于Dockerfile创建" class="headerlink" title="基于Dockerfile创建"></a>基于Dockerfile创建</h3><p>[下节讲]</p>
+<h2 id="存储和载入镜像"><a href="#存储和载入镜像" class="headerlink" title="存储和载入镜像"></a>存储和载入镜像</h2><h3 id="存储镜像"><a href="#存储镜像" class="headerlink" title="存储镜像"></a>存储镜像</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker save [OPTIONS] IMAGE [IMAGE...]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-o, –output string</strong> 写到文件中。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-save.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-save.png" alt=""></a></div>
+
+<h3 id="载入镜像"><a href="#载入镜像" class="headerlink" title="载入镜像"></a>载入镜像</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker load [OPTIONS]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-i, –input string</strong> 文件名。<br><strong>-q, –quiet</strong> Suppress the load output.</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-load.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-load.png" alt=""></a></div>
+
+<h3 id="上传镜像"><a href="#上传镜像" class="headerlink" title="上传镜像"></a>上传镜像</h3><p>可以使用docker push命令上传镜像到仓库，默认上传到DockerHub官方仓库（需要登录）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker push [OPTIONS] NAME[:TAG]</span><br></pre></td></tr></table></figure>
+
+<h1 id="Docker容器-1"><a href="#Docker容器-1" class="headerlink" title="Docker容器"></a>Docker容器</h1><p>容器是Docker的另一核心概念。容器是镜像的一个运行实例，不同的是，容器带有额外的可写文件层。</p>
+<h2 id="创建容器"><a href="#创建容器" class="headerlink" title="创建容器"></a>创建容器</h2><h3 id="新建容器"><a href="#新建容器" class="headerlink" title="新建容器"></a>新建容器</h3><p>可以使用docker create命令新建一个容器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker create [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-create.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-create.png" alt=""></a></div>
+
+<p>使用docker create命令创建的容器处于停止状态，可以使用docker start命令来启动它。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker start [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-start.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-start.png" alt=""></a></div>
+
+<h3 id="新建并启动容器"><a href="#新建并启动容器" class="headerlink" title="新建并启动容器"></a>新建并启动容器</h3><p>启动容器有两种方式：一种是基于镜像新建一个容器并启动，另一个是将在终止的状态（stopped）的容器重新启动。使用命令docker run，等价于先执行docker create命令，再执行docker start命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run [OPTIONS] IMAGE [COMMAND] [ARG...]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-run.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run.png" alt=""></a></div>
+
+<p>当利用docker run来创建并启动容器是，Docker在后台运行的标准包括：</p>
+<ol>
+<li>检查本地是否存在指定的镜像，不存在就从公有仓库下载。</li>
+<li>利用镜像创建并启动一个容器。</li>
+<li>分配一个文件系统，并在只读的镜像层外面挂在一层可读写层。</li>
+<li>从宿主主机配置的网桥接口中桥接一个虚拟接口到容器中。</li>
+<li>从地址池配置一个IP地址给容器。</li>
+<li>执行用户指定的应用程序。</li>
+<li>执行完毕后容器就被终止。</li>
+</ol>
+<p>下面的命令将启动一个bash终端，允许用户进行交互。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -t -i ubuntu /bin/bash</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-run-it.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run-it.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>可选参数<br><strong>-t</strong> docker分配一个伪终端（pseudo-tty）并绑定到容器的标准输入上。<br><strong>-i</strong> 容器的标准输入保持打开。</p>
+</div>
+<div class="alert warning no-icon"><p>用户可以使用Ctrl+d或者exit命令退出容器。<br>对于创建的bash容器，当使用exit命令退出后，该容器就会自动处于中止状态。<br>因为对于docker容器来说，当运行的应用退出后，容器也就没有了继续运行的必要了。</p>
+</div>
+
+<h3 id="守护态运行"><a href="#守护态运行" class="headerlink" title="守护态运行"></a>守护态运行</h3><p>更多时候，需要docker容器在后台以守护态（Daemonized）形式运行。用户可以添加-d参数来实现。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d ubuntu /bin/sh -c <span class="string">&quot;while ture; do echo hello world; sleep 1; done&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>ps：要获取容器的输出信息可以通过docker logs命令</p>
+</div>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker logs [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
+
+<h2 id="终止容器"><a href="#终止容器" class="headerlink" title="终止容器"></a>终止容器</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker stop [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-t，–time=10</strong> 等待几秒停止。首先会向容器发送SIGTERM信号，等待t秒后，再发送SIGKILL信号终止容器。</p>
+</div>
+
+<div class="alert danger no-icon"><p>docker kill命令会直接发送SIGKILL信号强行终止容器。</p>
+</div>
+
+<div class="alert info no-icon"><p>docker start命令可以重新启动已经终止的容器。<br>docker restart命令将会让一个运行的容器终止，然后重新启动。</p>
+</div>
+
+<h2 id="进入容器"><a href="#进入容器" class="headerlink" title="进入容器"></a>进入容器</h2><p>在使用-d参数时，容器启动后会进入后台，用户需要进入容器进行相关操作。</p>
+<h3 id="attach命令"><a href="#attach命令" class="headerlink" title="attach命令"></a>attach命令</h3><p>docker attach是docker自带的命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker attach [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-attach.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-attach.png" alt=""></a></div>
+
+<div class="alert warning no-icon"><p>但是使用attach命令有时并不方便。<br>当多个窗口同时attach到同一容器是，所有窗口都会同步显示。<br>当某个窗口因为命令阻塞时，其他窗口也无法执行操作了。</p>
+</div>
+
+<h3 id="exec命令"><a href="#exec命令" class="headerlink" title="exec命令"></a>exec命令</h3><p>docker自1.3版本起，提供一个更加方便的工具exec，可以直接在容器内运行命令。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker <span class="built_in">exec</span> [OPTIONS] CONTAINER COMMAND [ARG...]</span><br></pre></td></tr></table></figure>
+
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-exec.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-exec.png" alt=""></a></div>
+
+<h3 id="nsenter工具"><a href="#nsenter工具" class="headerlink" title="nsenter工具"></a>nsenter工具</h3><p>这里不做讨论。</p>
+<h2 id="删除容器"><a href="#删除容器" class="headerlink" title="删除容器"></a>删除容器</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker <span class="built_in">rm</span> [OPTIONS] CONTAINER [CONTAINER...]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>可选参数<br><strong>-f，–force=false</strong> 强行终止并删除一个运行中的容器。<br><strong>-l，–link=false</strong> 删除容器的连接，但保留容器。<br><strong>-v，–volumes=false</strong> 删除容器挂载的数据卷。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-rm.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-rm.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>删除运行中的容器可以添加-f参数。docker会发送SIGKILL信号给容器，终止其中的应用。</p>
+</div>
+
+<h2 id="导入和导出容器"><a href="#导入和导出容器" class="headerlink" title="导入和导出容器"></a>导入和导出容器</h2><h3 id="导出容器"><a href="#导出容器" class="headerlink" title="导出容器"></a>导出容器</h3><p>导出容器是指导出一个已经创建的容器到一个文件中。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker export [OPTIONS] CONTAINER</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-export.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-export.png" alt=""></a></div>
+
+<h3 id="导入容器"><a href="#导入容器" class="headerlink" title="导入容器"></a>导入容器</h3><p>导出的文件又可以使用docker import命令导入，成为镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker import [OPTIONS] file|URL|- [REPOSITORY[:TAG]]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-import-2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-import-2.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>docker load和docker import比较。<br>docker load导入镜像存储文件到本地镜像库。<br>docker import导入容器快照到本地镜像库。<br>区别在于容器快照文件将丢弃所有的历史记录和元数据信息（仅保存容器当时的快照状态），而镜像存储文件将保存完整信息，体积也要大。</p>
+</div>
+
+
+<h1 id="Docker仓库-1"><a href="#Docker仓库-1" class="headerlink" title="Docker仓库"></a>Docker仓库</h1><p>仓库（Repository）是集中存放镜像的地方。注册服务器是存放仓库的具体服务器，每个服务器上可以有多个仓库，而每个仓库下有多个镜像。对于仓库地址dl.dockerpool.com/ubuntu来说，dl.dockerpool.com是注册服务器地址，ubuntu是仓库名。</p>
+<h2 id="Docker-Hub"><a href="#Docker-Hub" class="headerlink" title="Docker Hub"></a>Docker Hub</h2><p><a target="_blank" rel="noopener" href="https://hub.docker.com/">官网</a></p>
+<h2 id="创建和使用私有仓库"><a href="#创建和使用私有仓库" class="headerlink" title="创建和使用私有仓库"></a>创建和使用私有仓库</h2><h3 id="使用registry镜像创建私有仓库"><a href="#使用registry镜像创建私有仓库" class="headerlink" title="使用registry镜像创建私有仓库"></a>使用registry镜像创建私有仓库</h3><p>可以使用官方提供的registry镜像来搭建本地私有仓库环境。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -p 5000:5000 -v /opt/data/registry:/tmp/registry registry</span><br></pre></td></tr></table></figure>
+<p>此时本地将启动一个私有仓库服务，监听端口为5000。</p>
+<div class="alert info no-icon"><p>默认情况下，会将仓库创建在容器的/tmp/registry下。<br>可以通过-v参数来将镜像文件存放在本地的指定路径上。</p>
+</div>
+
+<h3 id="管理私有仓库镜像"><a href="#管理私有仓库镜像" class="headerlink" title="管理私有仓库镜像"></a>管理私有仓库镜像</h3><p>使用docker tag将ubuntu镜像标记为10.211.55.11:5000/test（格式为docker tag SOURCE_IMAGE[:TAG] TARGET_IMAGE[:TAG]）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo docker tag ubuntu 10.211.55.11:5000/king</span><br><span class="line">sudo docker images</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>10.211.55.11是我的IP地址。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-tag.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-tag.png" alt=""></a></div>
+
+<p>使用docker push上传标记的镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker push 10.211.55.11:5000/king</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-push.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-push.png" alt=""></a></div>
+
+<p>现在可以在任意连接到10.211.55.11的机器下载这个镜像。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker pull 10.211.55.11:5000/king</span><br></pre></td></tr></table></figure>
+<h4 id="出现错误"><a href="#出现错误" class="headerlink" title="出现错误"></a>出现错误</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">king@ubuntu: sudo docker push 10.211.55.11:5000/king</span><br><span class="line">The push refers to repository [10.211.55.11:5000/king]</span><br><span class="line">Get https://10.211.55.11:5000/v2/: http: server gave HTTP response to HTTPS client</span><br></pre></td></tr></table></figure>
+<p>在/etc/docker下，创建daemon.json文件。</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span> <span class="attr">&quot;insecure-registries&quot;</span><span class="punctuation">:</span><span class="punctuation">[</span><span class="string">&quot;10.211.55.11:5000&quot;</span><span class="punctuation">]</span><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+<p>重启docker</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart docker.service</span><br></pre></td></tr></table></figure>
+<p>重新启动registry</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo docker ps -a <span class="comment"># 找到registry的CONTAINER ID</span></span><br><span class="line">sudo docker start [CONTAINER ID]</span><br></pre></td></tr></table></figure>
+
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Docker/" rel="tag">Docker</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/15/%E5%B8%AD%E6%85%95%E8%93%89%E2%80%94%E2%80%94%E6%97%A0%E6%80%A8%E7%9A%84%E9%9D%92%E6%98%A5/"
+                    data-tooltip="席慕蓉——无怨的青春"
+                    aria-label="PREVIOUS: 席慕蓉——无怨的青春"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/13/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Mysql架构篇之复制（二）"
+                    aria-label="NEXT: Mysql架构篇之复制（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=乘风破浪的Docker（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/09/14/乘风破浪的Docker（一）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/15/%E5%B8%AD%E6%85%95%E8%93%89%E2%80%94%E2%80%94%E6%97%A0%E6%80%A8%E7%9A%84%E9%9D%92%E6%98%A5/"
+                    data-tooltip="席慕蓉——无怨的青春"
+                    aria-label="PREVIOUS: 席慕蓉——无怨的青春"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/13/Mysql%E6%9E%B6%E6%9E%84%E7%AF%87%E4%B9%8B%E5%A4%8D%E5%88%B6%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    data-tooltip="Mysql架构篇之复制（二）"
+                    aria-label="NEXT: Mysql架构篇之复制（二）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=乘风破浪的Docker（一）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/&amp;title=乘风破浪的Docker（一）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/14/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%B8%80%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

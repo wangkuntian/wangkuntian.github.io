@@ -1,0 +1,892 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>深入浅出Neutron（七）网络安全 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n在云计算中，虚拟网络中的安全需要回答以下几个基本问题。\n\n如何对租户网络进行隔离？\n如何控制用户对网络中资源的访问？\n如何实现对网络管理的安全控制？\n\n关于租户网络隔离，云计算中的一个重要概念是多租户的概念，即多个租户共享或者独占云中的资源。对云中的网络资源也不例外，每个租户需要有自己的网络、网段、路由和IP，这些网络构建于云的物理网络基础设施之上，在每个租户之间相互隔离。为了实现这种网络的隔离，一般采用VLAN或者基于overlay的虚拟网络进行隔离。\n关于网络管理的安全控制，需要结合OpenStack的权限管理机制（Keystone）来看，保证用户对于网络管理的访问与使用是可控的。\nNeutron是如何控制用户对网络中资源的访问，主要是OpneStack中两个很重要的功能，一个是安全组（Security Group）的功能，一个是防火墙即服务（FWaaS）的功能。\n\n\niptables基础在Linux系统中，对于防火墙的实现一般分为包过滤防火墙、TCP-Wrapper即程序管控、代理服务器等几种方式。其中，iptables作为一种基于包过滤方式的防火墙工具，在实际中应用非常广泛，是非常重要的安全工具。\niptables防火墙应该称为netfilter/iptables防火墙。\niptables命令定义包过滤的规则，而这些规则的读取和执行，是由内核空间中的netfilter来实现的。顾名思义，netfilter是放在内核中的网络过滤器，而它控制的位置必须是TCP/IP协议栈经过的地方。在netfilter/iptables框架中，在内核空间中一共定义了以下5个位置：\n\n数据包刚刚进入网络层的位置。\n经过路由判断，数据包从内核流入本机用户空间的位置。\n数据包从本机用户空间进程发出的位置，后接路由判断出口的网络接口。\n经路由判断，数据包不进入本机用户空间，只是进行转发的位置。\n数据包将通过网络接口出去的位置。\n\n相应的，netfilter在这5个位置定义了5个钩子函数，也叫5个规则链：\n\nPREROUTING 在这里处理目的地址转换。\nINPUT 在这里处理INPUT包过滤。\nOUTPUT 在这里处理OUTPUT包过滤。\nFORWARD 在这里处理FORWARD包过滤。\nPOSTROUTING 在这里处理源地址转换。\n\n任何经过本机的数据包，都会经过这5个规则链上的几个位置。一般来讲，数据包需要发给本机进程的，会通过PREROUTING –&gt; OUTPUT –&gt; POSTROUTING这条链；数据包只在本机进行转发的，会通过PREROUTING –&gt; FORWARD –&gt; POSTROUTING这条链。\niptables实际上指的是整个netfilter/iptables框架中，运行在用户空间的应用软件。它通过控制内核空间的netfilter模块，来管理网络数据包的流动与传送，其中最核心的是定义iptables策略。\niptales策略是由一组有序的规则建立的，告诉内核怎样处理数据包。而规则用于一个表的一个链，链是一个规则集。iptables的概念从大到小是：iptables –&gt; 表 –&gt; 链 –&gt; 规则。\n表首先，iptables定义了4个表来定义、区分各种不同的工作功能和处理方式。\nFilter表Filter表用于一般的数据包的过滤。其中包括3个链：\n\nINPUT 在此链中可添加对进入到用户空间的包的过滤。\nOUTPUT 在此链中可添加从用户空间发出去的包的过滤。\nFORWARD 在此链中可添加要转发的包的过滤。\n\nNAT表NAT表用于网络地址的转换，其中包括3个链：\n\nPREROUTING 在此链中可添加目的地址转换的规则（DNAT）。\nPOSTROUTING 在此链中可添加源地址转换的规则（SNAT）。\nINPUT 在此链中可添加对进入到用户空间的包的过滤。\nOUTPUT 在此链中可添加从用户空间发出去的包的过滤。\n\nMangle表Mangle表用于修改数据包的原数据，一般用于防火墙标记。Mangle表包含全部5个规则链，即PREROUTING、OUTPUT、FORWARD、INPUT和POSTROUTING。\nRaw表Raw表是用于配置免除的，包含PREROUTING和OUTPUT两个内置链。\n自定义链链中规则的执行优先级：raw表 &gt; mangle表 &gt; nat表 &gt; filter表\n\n\n\n创建新链\n1iptables -t nat -N my_chain\n\n\n\n\n添加规则\n1iptables -t filter -A my_chain -s 192.168.2.10 -j DROP\n\n\n\n\n使用自定义链\n1iptables -t filter -A INPUT -j my_chain\n\n\n\niptables命令1iptables [-t table] command [chain] [rules] [-j target]\n\ntable 指定表的名字，默认是filter。\ncommand 对链的操作命令。\nchain 链名。\nrules 规则。\ntarget 目标，将要采取的动作。\n\n\n\n在iptables的一个链中定义规则时，都需要包含匹配规则和target。前者决定是否匹配该条规则，后者告诉iptables对于符合规则的数据包应该采取什么动作。\n\nsource（-s），匹配源IP地址。\ndestination（-d），匹配目的IP地址。\nprotocol（-p），匹配协议。\nin-interface（-i），流入接口（如eth0）。\nout-interface（-o），流出接口。\n\ntarget，即动作，它们用于在数据包匹配一条规则时触发的一个动作。\n\nACCEPT，允许数据包通过。\nDROP，丢弃数据包，不响应报文。\nREJECT，丢弃数据包，响应报文。\nLOG，记录数据包信息都syslog。\nRETURN，在调用链中继续处理数据包。\n\nNeutron中的安全组Security Group（安全组）运行在计算节点，对进入虚拟机的流量进行控制。\n\n过滤进入到计算节点上虚拟机的流量。\n过滤从虚拟机出来的流量。\n过滤虚拟机之间的流量。\n\nNeutron中的自定义链Neutron使用了自定义链，分为包装链和非包装链两类，区别在于是否对链表添加组件名重新包装（目的是为了不和系统中其他应用设置的防火墙规则混淆）。\n\n包装链链名需要通过组件名重新包装，如neutron-l3-agent组件定义的OUTPUT链叫neutron-l3-agent-OUTPUT，也意味着，Neutron不会用内置链OUTPUT，它必须跳转到对应的包装链（iptables -t filter OUTPUT -j neutron l3-agent-OUTPUT）\n\n非包装链链名没有用组件名包装，例如，neutron-filter-top就是位于FORWARD和OUTPUT顶部的非包装链，用于在不同OpenStack组件共享的链。\n\n\n\nneutron-filter-top链的内容是：\n\n\niptables -t filter -N neutron-filter-top\niptables -t filter -A FORWARD -j neutron-filter-top\niptables -t filter -A OUTPUT -j neutron-filter-top\n\n\n添加一个包装链neutron-l3-agent-local，接管neutron-filter-top链：\n\n\niptables -t filter -N neutron-l3-agent-local\niptables -t filter -A neutron-filter-top -j neutron-l3-agent-local\n\n\n对于IPv4、IPv6，Neutron为filter和nat两张表里的INPUT、FORWARD、OUTPUT三个内置链都定义了相应的包装链：\n\n\niptables -t filter -A INPUT -j neutron-l3-agent-INPUT\niptables -t filter -FORWARD -j neutron-l3-agent-FORWARD\niptables -t filter -A OUTPUT -j neutron-l3-agent-OUTPUT\n\n\n在POSTROUTING链之后还定义了一个名为neutron-postrouting-bottom的非包装类：\n\n\niptables -t filter -N neutron-postrouting-bottom\niptables -t filter -A POSTROUTING -j neutron-postrouting-bottom\n\n\n在neutron-postrouting-bottom链后再定义了两个snat（neutron-l3-agent-snat）的包装类：\n\n\niptables -t filter -N neutron-l3-agent-snat\niptables -t filter -A neutron-postrouting-bottom -j neutron-l3-agent-snat\niptables -t filter N neutron-l3-agent-float-snat\niptables -t filter -A neutron-postrouting-bottom -j neutron-l3-agent-float-snat\n\n\n最后定义sg-fallback包装链：\n\n\niptables -t filter -N neutron-l3-agent-sg-fallback\niptables -t filter -A neutron-l3-agent-sg-fallback -g DROP\n\n虚拟机的链和规则配置使用Neutron中的Security Group\n/etc/neutron/neutron.conf\n12345678910# Rockyservice_plugins = firewall[service_providers]# ...service_provider = FIREWALL:Iptables:neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver:default[fwaas]driver = iptablesenabled = True\n\n/etc/neutron/l3_agent.ini\n12[AGENT]extensions = fwaas\n\n\n\n使用步骤。\nTODO1234567```## Allowed Address Pairs扩展安全组有一条默认的防欺骗规则，只允许匹配的IP -&gt; MAC的流量访问虚拟机。通过Allowed Address Pairs扩展可以设置任意的源IP来访问外部网络。```bashneutron port-update &lt;port-id&gt; --allowed-address-pairs type=dict list=true ip_address=192.168.99.122\nNeutron中的防火墙安全组由一系列的iptables rules组成，rule都是针对source/dest ip以及tcp port的，它不能像下一代的防火墙一样来表达应用特性像audited rules，也不能提供边缘防火墙的特性。所以Neutron推出了FWaaS服务。在FWaaS中，租户可以创建多个Firewall instances，而每一个virtual firewall instances和多个Firewall Policies关联，每个firewall policies由多个Firewall Rules按序组成。不能直接应用一个rule，它必须先加入到一个policy中，因为它需要先审计。\nTODONeutron L3 agent运行在getaway host上，它通过Linux命名空间特性实例化多个neutron router，一个租户能用多个router。router中qr-xxx虚拟接口用于和租户网络相连接，qg-xxx虚拟接口用于跟外部网络相连接，防火墙服务应该是过滤出入租户网络的所有流量，所以firewall policy应该是应用在qr-xxx虚拟接口上（iptables出口规则中添加“-o qr-xxx”即可，入口规则添加“-i qr-xxx”即可），如果对所有租户网络都使用，可以运用在qg-xxx接口上（一组像上面的qr-xxx接口可以组成一个zone）。所以FWaaS不像Security Group那样运行在计算节点上，而是运行在网络节点上。\n代码实现中将会有4个chains，出和如各一个，IPv4和IPv6各一个：\nTODO有状态的防火墙和基于OVS流规则的防火墙上面讲的防火墙都是基于iptables来实现的，防火墙也可以基于OpenvSwitch流规则来实现。iptables规则无法直接应用到OVS网桥上，所以虚拟机的tap网卡并没有直接plug到OVS网桥br-int上，而是中间又创建出一个Linux网桥qbr，在OVS网桥br-int和Linux网桥qbr之间采用了qvo和qbr这对veth peers设备连接。Linux peers设备的性能比较差，基于OVS流规则的防火墙很有必要。\n有状态的防火墙例如，允许内网用户访问公网的Web服务，如果采用包过滤的无状态的防火墙技术，需要按照下面设置。\nTODO因为本地的端口是随机生成的，把1024到65535的端口都打开是非常危险的，所以有一些防火墙又根据TCP连接中的ACL为来决定数据包进出，但这容易引发拒绝服务DoS攻击，何况UDP没有ACL标志位。\n有状态的防火墙，只需要上述的防火墙规则1，不需要规则2（状态防火墙之定义出站规则，不需要定义入站规则）。当用户打开浏览器访问那个Web服务时，当数据包到防火墙时，状态检测引擎会检测到这是一个发起连接的初始数据包（由SYN标志），然后它就会把这个数据包中的信息与防火墙规则作比较，如果没有相应规则允许，防火墙就会拒绝这次连接。\n当然在这里它发现有一条规则允许访问外部Web服务，于是它允许数据包外出并且在状态表中新建一条会话，通常这条会话会包括此连接的源地址、源端口、目标地址、目标端口、连接时间等信息，对于TCP连接（只针对TCP，对UDP创建模拟的虚拟连接，对ICMP无效），它还会包含序列号和标志位等信息。当后续数据包到达时，如果这个数据包不包含SYN标志，也就是说这个数据包不是发起一个新的连接时，状态检测引擎就会把它的信息与状态表中的会话条目进行比较，如果信息匹配，就直接允许数据包通过，这样不再去接受规则检测，提高了效率，如果信息不匹配，数据包就会被丢弃或者连接被拒绝，并且每个会话还有一个超时值，过了这个时间，相应会话条目就会被从状态表中删除（这也就是为什么一些客户端去访问防火墙背后的服务端时，如果客户端不定时去发一条信息连一下服务器的话，服务器就无法再给客户端主动发消息了，因为状态会话已经超时，被删除了）。\n就上面外部Web网站对响应包来说，由于状态检测引擎会检测到返回的数据包属于Web连接的那个会话，所以它会动态打开端口以允许返回包进入，传输完毕后有动态关闭这个端口，这样就避免了防火墙过普通包时，那种静态地开放所以高端端口的危险做法，同时由于又有会话超时的限制，它也能有效地避免外部的DoS攻击，并且外部伪造的ACK数据包也不会进入，因为它的数据包信息不回匹配状态表中的会话条目。\n有状态的防火墙在iptables中的实现iptables中的状态：\n\nNEW：主机向远程机器发送一个连接请求时，这个数据包的状态是NEW。\nESTABLISHED：当连接建立之后，远程主机和本地主机通信数据状态为ESTABLISHED。\nRELATED：像ftp这样的服务，用21端口传送命令，而用20端口（port模式）或者其他端口（PASV模式）传送数据。在已有21端口上建立好连接后发送命令，用20端口传送的数据的状态时RELATED。\n\n\n默认规则。对所有进入机器的数据包都丢弃。\n1iptables -P INPUT DROP\n\n禁止其他机器主动发起对本机的连接，但是本机可以主动连接其他机器，这条可以省去由默认规则处理。\n1iptables -A INPUT -m state --state NEW -j DROP\n\n当本机主动连接其他机器之后，再进来的数据就是ESTABLISHED状态了。\n1iptables -A INPUT -m state --state ESTABLISHED, RELATED -j ACCEPT\n\n如果机器提供pasv模式的ftp服务（会使用动态的端口来传送数据，这对于有状态的防火墙轻易能做到）\n12iptables -A INPUT -i ppp0 -p tcp -dport 21 -j ACCEPTiptables -A INPUT -i ppp0 -p udp -dport 21 -j ACCEPT\n\n\n\n\n两条命令解决内部用户上网收发邮件、浏览网页等需求。\n12iptables -A FORWARD -i eth0 -p tcp -m multiport --dports 25,80,110,443,1863 -j ACCEPTiptables -A FORWARD -i eth0 -p udp --dport 53 -j ACCEPT\n\n从数据流向看iptables对TCP、UDP及ICMP报文的支持\n第一个出去的数据包，也就是SYN报文，会标记为NEW状态。\n","dateCreated":"2020-03-10T18:18:21+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2020-03-10T18:18:21+08:00","description":"Neutron中的网络安全","headline":"深入浅出Neutron（七）网络安全","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron中的网络安全">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="深入浅出Neutron（七）网络安全">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron中的网络安全">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/iptables_l.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/iptables_vnl.png">
+<meta property="article:published_time" content="2020-03-10T10:18:21.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.323Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/iptables_l.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            深入浅出Neutron（七）网络安全
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-03-10T18:18:21+08:00">
+	
+		    Mar 10, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+
+<p>在云计算中，虚拟网络中的安全需要回答以下几个基本问题。</p>
+<ul>
+<li>如何对租户网络进行隔离？</li>
+<li>如何控制用户对网络中资源的访问？</li>
+<li>如何实现对网络管理的安全控制？</li>
+</ul>
+<p>关于租户网络隔离，云计算中的一个重要概念是多租户的概念，即多个租户共享或者独占云中的资源。对云中的网络资源也不例外，每个租户需要有自己的网络、网段、路由和IP，这些网络构建于云的物理网络基础设施之上，在每个租户之间相互隔离。为了实现这种网络的隔离，一般采用VLAN或者基于overlay的虚拟网络进行隔离。</p>
+<p>关于网络管理的安全控制，需要结合OpenStack的权限管理机制（Keystone）来看，保证用户对于网络管理的访问与使用是可控的。</p>
+<p>Neutron是如何控制用户对网络中资源的访问，主要是OpneStack中两个很重要的功能，一个是安全组（Security Group）的功能，一个是防火墙即服务（FWaaS）的功能。</p>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#iptables%E5%9F%BA%E7%A1%80"><span class="toc-text">iptables基础</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A8"><span class="toc-text">表</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Filter%E8%A1%A8"><span class="toc-text">Filter表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#NAT%E8%A1%A8"><span class="toc-text">NAT表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mangle%E8%A1%A8"><span class="toc-text">Mangle表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Raw%E8%A1%A8"><span class="toc-text">Raw表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E5%AE%9A%E4%B9%89%E9%93%BE"><span class="toc-text">自定义链</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#iptables%E5%91%BD%E4%BB%A4"><span class="toc-text">iptables命令</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E5%AE%89%E5%85%A8%E7%BB%84"><span class="toc-text">Neutron中的安全组</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E8%87%AA%E5%AE%9A%E4%B9%89%E9%93%BE"><span class="toc-text">Neutron中的自定义链</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E6%9C%BA%E7%9A%84%E9%93%BE%E5%92%8C%E8%A7%84%E5%88%99"><span class="toc-text">虚拟机的链和规则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE%E4%BD%BF%E7%94%A8Neutron%E4%B8%AD%E7%9A%84Security-Group"><span class="toc-text">配置使用Neutron中的Security Group</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO"><span class="toc-text">TODO</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">Neutron中的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-1"><span class="toc-text">TODO</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#TODO-2"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99%E5%92%8C%E5%9F%BA%E4%BA%8EOVS%E6%B5%81%E8%A7%84%E5%88%99%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">有状态的防火墙和基于OVS流规则的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99"><span class="toc-text">有状态的防火墙</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#TODO-3"><span class="toc-text">TODO</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9C%89%E7%8A%B6%E6%80%81%E7%9A%84%E9%98%B2%E7%81%AB%E5%A2%99%E5%9C%A8iptables%E4%B8%AD%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">有状态的防火墙在iptables中的实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%8E%E6%95%B0%E6%8D%AE%E6%B5%81%E5%90%91%E7%9C%8Biptables%E5%AF%B9TCP%E3%80%81UDP%E5%8F%8AICMP%E6%8A%A5%E6%96%87%E7%9A%84%E6%94%AF%E6%8C%81"><span class="toc-text">从数据流向看iptables对TCP、UDP及ICMP报文的支持</span></a></li></ol></li></ol>
+
+<h1 id="iptables基础"><a href="#iptables基础" class="headerlink" title="iptables基础"></a>iptables基础</h1><p>在Linux系统中，对于防火墙的实现一般分为包过滤防火墙、TCP-Wrapper即程序管控、代理服务器等几种方式。其中，iptables作为一种基于包过滤方式的防火墙工具，在实际中应用非常广泛，是非常重要的安全工具。</p>
+<p>iptables防火墙应该称为netfilter/iptables防火墙。</p>
+<p>iptables命令定义包过滤的规则，而这些规则的读取和执行，是由内核空间中的netfilter来实现的。顾名思义，netfilter是放在内核中的网络过滤器，而它控制的位置必须是TCP/IP协议栈经过的地方。在netfilter/iptables框架中，在内核空间中一共定义了以下5个位置：</p>
+<ol>
+<li>数据包刚刚进入网络层的位置。</li>
+<li>经过路由判断，数据包从内核流入本机用户空间的位置。</li>
+<li>数据包从本机用户空间进程发出的位置，后接路由判断出口的网络接口。</li>
+<li>经路由判断，数据包不进入本机用户空间，只是进行转发的位置。</li>
+<li>数据包将通过网络接口出去的位置。</li>
+</ol>
+<p>相应的，netfilter在这5个位置定义了5个钩子函数，也叫5个规则链：</p>
+<ol>
+<li>PREROUTING 在这里处理目的地址转换。</li>
+<li>INPUT 在这里处理INPUT包过滤。</li>
+<li>OUTPUT 在这里处理OUTPUT包过滤。</li>
+<li>FORWARD 在这里处理FORWARD包过滤。</li>
+<li>POSTROUTING 在这里处理源地址转换。</li>
+</ol>
+<p>任何经过本机的数据包，都会经过这5个规则链上的几个位置。一般来讲，数据包需要发给本机进程的，会通过PREROUTING –&gt; OUTPUT –&gt; POSTROUTING这条链；数据包只在本机进行转发的，会通过PREROUTING –&gt; FORWARD –&gt; POSTROUTING这条链。</p>
+<p>iptables实际上指的是整个netfilter/iptables框架中，运行在用户空间的应用软件。它通过控制内核空间的netfilter模块，来管理网络数据包的流动与传送，其中最核心的是定义iptables策略。</p>
+<p>iptales策略是由一组有序的规则建立的，告诉内核怎样处理数据包。而规则用于一个表的一个链，链是一个规则集。<br>iptables的概念从大到小是：iptables –&gt; 表 –&gt; 链 –&gt; 规则。</p>
+<h2 id="表"><a href="#表" class="headerlink" title="表"></a>表</h2><p>首先，iptables定义了4个表来定义、区分各种不同的工作功能和处理方式。</p>
+<h3 id="Filter表"><a href="#Filter表" class="headerlink" title="Filter表"></a>Filter表</h3><p>Filter表用于一般的数据包的过滤。其中包括3个链：</p>
+<ol>
+<li>INPUT 在此链中可添加对进入到用户空间的包的过滤。</li>
+<li>OUTPUT 在此链中可添加从用户空间发出去的包的过滤。</li>
+<li>FORWARD 在此链中可添加要转发的包的过滤。</li>
+</ol>
+<h3 id="NAT表"><a href="#NAT表" class="headerlink" title="NAT表"></a>NAT表</h3><p>NAT表用于网络地址的转换，其中包括3个链：</p>
+<ol>
+<li>PREROUTING 在此链中可添加目的地址转换的规则（DNAT）。</li>
+<li>POSTROUTING 在此链中可添加源地址转换的规则（SNAT）。</li>
+<li>INPUT 在此链中可添加对进入到用户空间的包的过滤。</li>
+<li>OUTPUT 在此链中可添加从用户空间发出去的包的过滤。</li>
+</ol>
+<h3 id="Mangle表"><a href="#Mangle表" class="headerlink" title="Mangle表"></a>Mangle表</h3><p>Mangle表用于修改数据包的原数据，一般用于防火墙标记。Mangle表包含全部5个规则链，即PREROUTING、OUTPUT、FORWARD、INPUT和POSTROUTING。</p>
+<h3 id="Raw表"><a href="#Raw表" class="headerlink" title="Raw表"></a>Raw表</h3><p>Raw表是用于配置免除的，包含PREROUTING和OUTPUT两个内置链。</p>
+<h3 id="自定义链"><a href="#自定义链" class="headerlink" title="自定义链"></a>自定义链</h3><div class="alert danger no-icon"><p>链中规则的执行优先级：<br>raw表 &gt; mangle表 &gt; nat表 &gt; filter表</p>
+</div>
+
+<ol>
+<li><p>创建新链</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t nat -N my_chain</span><br></pre></td></tr></table></figure>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/iptables_l.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables_l.png" alt=""></a></div>
+<br>
+</li>
+<li><p>添加规则</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A my_chain -s 192.168.2.10 -j DROP</span><br></pre></td></tr></table></figure>
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/iptables_vnl.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/iptables_vnl.png" alt=""></a></div>
+<br>
+</li>
+<li><p>使用自定义链</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -t filter -A INPUT -j my_chain</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<h2 id="iptables命令"><a href="#iptables命令" class="headerlink" title="iptables命令"></a>iptables命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables [-t table] <span class="built_in">command</span> [chain] [rules] [-j target]</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><ul>
+<li>table 指定表的名字，默认是filter。</li>
+<li>command 对链的操作命令。</li>
+<li>chain 链名。</li>
+<li>rules 规则。</li>
+<li>target 目标，将要采取的动作。</li>
+</ul>
+</div>
+
+<p>在iptables的一个链中定义规则时，都需要包含匹配规则和target。前者决定是否匹配该条规则，后者告诉iptables对于符合规则的数据包应该采取什么动作。</p>
+<ul>
+<li>source（-s），匹配源IP地址。</li>
+<li>destination（-d），匹配目的IP地址。</li>
+<li>protocol（-p），匹配协议。</li>
+<li>in-interface（-i），流入接口（如eth0）。</li>
+<li>out-interface（-o），流出接口。</li>
+</ul>
+<p>target，即动作，它们用于在数据包匹配一条规则时触发的一个动作。</p>
+<ul>
+<li>ACCEPT，允许数据包通过。</li>
+<li>DROP，丢弃数据包，不响应报文。</li>
+<li>REJECT，丢弃数据包，响应报文。</li>
+<li>LOG，记录数据包信息都syslog。</li>
+<li>RETURN，在调用链中继续处理数据包。</li>
+</ul>
+<h1 id="Neutron中的安全组"><a href="#Neutron中的安全组" class="headerlink" title="Neutron中的安全组"></a>Neutron中的安全组</h1><p>Security Group（安全组）运行在计算节点，对进入虚拟机的流量进行控制。</p>
+<ol>
+<li>过滤进入到计算节点上虚拟机的流量。</li>
+<li>过滤从虚拟机出来的流量。</li>
+<li>过滤虚拟机之间的流量。</li>
+</ol>
+<h2 id="Neutron中的自定义链"><a href="#Neutron中的自定义链" class="headerlink" title="Neutron中的自定义链"></a>Neutron中的自定义链</h2><p>Neutron使用了自定义链，分为包装链和非包装链两类，区别在于是否对链表添加组件名重新包装（目的是为了不和系统中其他应用设置的防火墙规则混淆）。</p>
+<ul>
+<li><p>包装链<br>链名需要通过组件名重新包装，如neutron-l3-agent组件定义的OUTPUT链叫neutron-l3-agent-OUTPUT，也意味着，Neutron不会用内置链OUTPUT，它必须跳转到对应的包装链（iptables -t filter OUTPUT -j neutron l3-agent-OUTPUT）</p>
+</li>
+<li><p>非包装链<br>链名没有用组件名包装，例如，neutron-filter-top就是位于FORWARD和OUTPUT顶部的非包装链，用于在不同OpenStack组件共享的链。</p>
+</li>
+</ul>
+<ol>
+<li>neutron-filter-top链的内容是：</li>
+</ol>
+<ul>
+<li>iptables -t filter -N neutron-filter-top</li>
+<li>iptables -t filter -A FORWARD -j neutron-filter-top</li>
+<li>iptables -t filter -A OUTPUT -j neutron-filter-top</li>
+</ul>
+<ol start="2">
+<li>添加一个包装链neutron-l3-agent-local，接管neutron-filter-top链：</li>
+</ol>
+<ul>
+<li>iptables -t filter -N neutron-l3-agent-local</li>
+<li>iptables -t filter -A neutron-filter-top -j neutron-l3-agent-local</li>
+</ul>
+<ol start="3">
+<li>对于IPv4、IPv6，Neutron为filter和nat两张表里的INPUT、FORWARD、OUTPUT三个内置链都定义了相应的包装链：</li>
+</ol>
+<ul>
+<li>iptables -t filter -A INPUT -j neutron-l3-agent-INPUT</li>
+<li>iptables -t filter -FORWARD -j neutron-l3-agent-FORWARD</li>
+<li>iptables -t filter -A OUTPUT -j neutron-l3-agent-OUTPUT</li>
+</ul>
+<ol start="4">
+<li>在POSTROUTING链之后还定义了一个名为neutron-postrouting-bottom的非包装类：</li>
+</ol>
+<ul>
+<li>iptables -t filter -N neutron-postrouting-bottom</li>
+<li>iptables -t filter -A POSTROUTING -j neutron-postrouting-bottom</li>
+</ul>
+<ol start="5">
+<li>在neutron-postrouting-bottom链后再定义了两个snat（neutron-l3-agent-snat）的包装类：</li>
+</ol>
+<ul>
+<li>iptables -t filter -N neutron-l3-agent-snat</li>
+<li>iptables -t filter -A neutron-postrouting-bottom -j neutron-l3-agent-snat</li>
+<li>iptables -t filter N neutron-l3-agent-float-snat</li>
+<li>iptables -t filter -A neutron-postrouting-bottom -j neutron-l3-agent-float-snat</li>
+</ul>
+<ol start="6">
+<li>最后定义sg-fallback包装链：</li>
+</ol>
+<ul>
+<li>iptables -t filter -N neutron-l3-agent-sg-fallback</li>
+<li>iptables -t filter -A neutron-l3-agent-sg-fallback -g DROP</li>
+</ul>
+<h2 id="虚拟机的链和规则"><a href="#虚拟机的链和规则" class="headerlink" title="虚拟机的链和规则"></a>虚拟机的链和规则</h2><h2 id="配置使用Neutron中的Security-Group"><a href="#配置使用Neutron中的Security-Group" class="headerlink" title="配置使用Neutron中的Security Group"></a>配置使用Neutron中的Security Group</h2><ol>
+<li><p>/etc/neutron/neutron.conf</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"># Rocky</span><br><span class="line">service_plugins = firewall</span><br><span class="line"></span><br><span class="line">[service_providers]</span><br><span class="line"># ...</span><br><span class="line">service_provider = FIREWALL:Iptables:neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver:default</span><br><span class="line"></span><br><span class="line">[fwaas]</span><br><span class="line">driver = iptables</span><br><span class="line">enabled = True</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>/etc/neutron/l3_agent.ini</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[AGENT]</span><br><span class="line">extensions = fwaas</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>使用步骤。</p>
+<h3 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">```</span><br><span class="line"></span><br><span class="line"><span class="comment">## Allowed Address Pairs扩展</span></span><br><span class="line">安全组有一条默认的防欺骗规则，只允许匹配的IP -&gt; MAC的流量访问虚拟机。通过Allowed Address Pairs扩展可以设置任意的源IP来访问外部网络。</span><br><span class="line"></span><br><span class="line">```bash</span><br><span class="line">neutron port-update &lt;port-id&gt; --allowed-address-pairs <span class="built_in">type</span>=dict list=<span class="literal">true</span> ip_address=192.168.99.122</span><br></pre></td></tr></table></figure>
+<h1 id="Neutron中的防火墙"><a href="#Neutron中的防火墙" class="headerlink" title="Neutron中的防火墙"></a>Neutron中的防火墙</h1><p>安全组由一系列的iptables rules组成，rule都是针对source/dest ip以及tcp port的，它不能像下一代的防火墙一样来表达应用特性像audited rules，也不能提供边缘防火墙的特性。所以Neutron推出了FWaaS服务。在FWaaS中，租户可以创建多个Firewall instances，而每一个virtual firewall instances和多个Firewall Policies关联，每个firewall policies由多个Firewall Rules按序组成。不能直接应用一个rule，它必须先加入到一个policy中，因为它需要先审计。</p>
+<h2 id="TODO-1"><a href="#TODO-1" class="headerlink" title="TODO"></a>TODO</h2><p>Neutron L3 agent运行在getaway host上，它通过Linux命名空间特性实例化多个neutron router，一个租户能用多个router。router中qr-xxx虚拟接口用于和租户网络相连接，qg-xxx虚拟接口用于跟外部网络相连接，防火墙服务应该是过滤出入租户网络的所有流量，所以firewall policy应该是应用在qr-xxx虚拟接口上（iptables出口规则中添加“-o qr-xxx”即可，入口规则添加“-i qr-xxx”即可），如果对所有租户网络都使用，可以运用在qg-xxx接口上（一组像上面的qr-xxx接口可以组成一个zone）。所以FWaaS不像Security Group那样运行在计算节点上，而是运行在网络节点上。</p>
+<p>代码实现中将会有4个chains，出和如各一个，IPv4和IPv6各一个：</p>
+<h2 id="TODO-2"><a href="#TODO-2" class="headerlink" title="TODO"></a>TODO</h2><h1 id="有状态的防火墙和基于OVS流规则的防火墙"><a href="#有状态的防火墙和基于OVS流规则的防火墙" class="headerlink" title="有状态的防火墙和基于OVS流规则的防火墙"></a>有状态的防火墙和基于OVS流规则的防火墙</h1><p>上面讲的防火墙都是基于iptables来实现的，防火墙也可以基于OpenvSwitch流规则来实现。iptables规则无法直接应用到OVS网桥上，所以虚拟机的tap网卡并没有直接plug到OVS网桥br-int上，而是中间又创建出一个Linux网桥qbr，在OVS网桥br-int和Linux网桥qbr之间采用了qvo和qbr这对veth peers设备连接。Linux peers设备的性能比较差，基于OVS流规则的防火墙很有必要。</p>
+<h2 id="有状态的防火墙"><a href="#有状态的防火墙" class="headerlink" title="有状态的防火墙"></a>有状态的防火墙</h2><p>例如，允许内网用户访问公网的Web服务，如果采用包过滤的无状态的防火墙技术，需要按照下面设置。</p>
+<h3 id="TODO-3"><a href="#TODO-3" class="headerlink" title="TODO"></a>TODO</h3><p>因为本地的端口是随机生成的，把1024到65535的端口都打开是非常危险的，所以有一些防火墙又根据TCP连接中的ACL为来决定数据包进出，但这容易引发拒绝服务DoS攻击，何况UDP没有ACL标志位。</p>
+<p>有状态的防火墙，只需要上述的防火墙规则1，不需要规则2（状态防火墙之定义出站规则，不需要定义入站规则）。当用户打开浏览器访问那个Web服务时，当数据包到防火墙时，状态检测引擎会检测到这是一个发起连接的初始数据包（由SYN标志），然后它就会把这个数据包中的信息与防火墙规则作比较，如果没有相应规则允许，防火墙就会拒绝这次连接。</p>
+<p>当然在这里它发现有一条规则允许访问外部Web服务，于是它允许数据包外出并且在状态表中新建一条会话，通常这条会话会包括此连接的源地址、源端口、目标地址、目标端口、连接时间等信息，对于TCP连接（只针对TCP，对UDP创建模拟的虚拟连接，对ICMP无效），它还会包含序列号和标志位等信息。当后续数据包到达时，如果这个数据包不包含SYN标志，也就是说这个数据包不是发起一个新的连接时，状态检测引擎就会把它的信息与状态表中的会话条目进行比较，如果信息匹配，就直接允许数据包通过，这样不再去接受规则检测，提高了效率，如果信息不匹配，数据包就会被丢弃或者连接被拒绝，并且每个会话还有一个超时值，过了这个时间，相应会话条目就会被从状态表中删除（这也就是为什么一些客户端去访问防火墙背后的服务端时，如果客户端不定时去发一条信息连一下服务器的话，服务器就无法再给客户端主动发消息了，因为状态会话已经超时，被删除了）。</p>
+<p>就上面外部Web网站对响应包来说，由于状态检测引擎会检测到返回的数据包属于Web连接的那个会话，所以它会动态打开端口以允许返回包进入，传输完毕后有动态关闭这个端口，这样就避免了防火墙过普通包时，那种静态地开放所以高端端口的危险做法，同时由于又有会话超时的限制，它也能有效地避免外部的DoS攻击，并且外部伪造的ACK数据包也不会进入，因为它的数据包信息不回匹配状态表中的会话条目。</p>
+<h2 id="有状态的防火墙在iptables中的实现"><a href="#有状态的防火墙在iptables中的实现" class="headerlink" title="有状态的防火墙在iptables中的实现"></a>有状态的防火墙在iptables中的实现</h2><p>iptables中的状态：</p>
+<ul>
+<li>NEW：主机向远程机器发送一个连接请求时，这个数据包的状态是NEW。</li>
+<li>ESTABLISHED：当连接建立之后，远程主机和本地主机通信数据状态为ESTABLISHED。</li>
+<li>RELATED：像ftp这样的服务，用21端口传送命令，而用20端口（port模式）或者其他端口（PASV模式）传送数据。在已有21端口上建立好连接后发送命令，用20端口传送的数据的状态时RELATED。</li>
+</ul>
+<ol>
+<li><p>默认规则。对所有进入机器的数据包都丢弃。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -P INPUT DROP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>禁止其他机器主动发起对本机的连接，但是本机可以主动连接其他机器，这条可以省去由默认规则处理。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -m state --state NEW -j DROP</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>当本机主动连接其他机器之后，再进来的数据就是ESTABLISHED状态了。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -m state --state ESTABLISHED, RELATED -j ACCEPT</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>如果机器提供pasv模式的ftp服务（会使用动态的端口来传送数据，这对于有状态的防火墙轻易能做到）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A INPUT -i ppp0 -p tcp -dport 21 -j ACCEPT</span><br><span class="line">iptables -A INPUT -i ppp0 -p udp -dport 21 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+
+</li>
+</ol>
+<p>两条命令解决内部用户上网收发邮件、浏览网页等需求。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">iptables -A FORWARD -i eth0 -p tcp -m multiport --dports 25,80,110,443,1863 -j ACCEPT</span><br><span class="line">iptables -A FORWARD -i eth0 -p udp --dport 53 -j ACCEPT</span><br></pre></td></tr></table></figure>
+
+<h2 id="从数据流向看iptables对TCP、UDP及ICMP报文的支持"><a href="#从数据流向看iptables对TCP、UDP及ICMP报文的支持" class="headerlink" title="从数据流向看iptables对TCP、UDP及ICMP报文的支持"></a>从数据流向看iptables对TCP、UDP及ICMP报文的支持</h2><ol>
+<li>第一个出去的数据包，也就是SYN报文，会标记为NEW状态。</li>
+</ol>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    data-tooltip="Neutron OVS OpenFlow流表和L2 Population"
+                    aria-label="PREVIOUS: Neutron OVS OpenFlow流表和L2 Population"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="NEXT: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=深入浅出Neutron（七）网络安全"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/03/10/深入浅出Neutron（七）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/12/Neutron-OVS-OpenFlow%E6%B5%81%E8%A1%A8%E5%92%8CL2-Population/"
+                    data-tooltip="Neutron OVS OpenFlow流表和L2 Population"
+                    aria-label="PREVIOUS: Neutron OVS OpenFlow流表和L2 Population"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E5%85%AD%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（六）三层网络服务实现原理"
+                    aria-label="NEXT: 深入浅出Neutron（六）三层网络服务实现原理"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=深入浅出Neutron（七）网络安全"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/&amp;title=深入浅出Neutron（七）网络安全"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/03/10/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%83%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

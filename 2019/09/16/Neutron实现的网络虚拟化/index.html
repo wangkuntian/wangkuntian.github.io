@@ -1,0 +1,1087 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Neutron实现的网络虚拟化 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Neutron">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n为什么要网络虚拟化\n数据中心的现有网络不能满足云计算的物理需求。\n数据中心的现有网络不能满足云计算的软件即SDN要求。\n\n现有的物理网络不能满足云计算的需求互联网数据中心的基本特征就是服务器规模偏大。进入云计算时代后，其业务特征变得更加复杂，包括虚拟化支持、多业务承载、资源灵活调度等。与此同时，互联网云计算的规模不但没有缩减，反而更加庞大，这就给云计算的网络带来巨大压力。\n\n虚拟化支持\n提供云平台支撑\n快速部署\n灵活迁移\n\n\n多业务承载\n承载多种业务\n主机托管业务安全隔离及访问控制\n\n\n资源灵活性\n业务资源任意迁移\n业务、资源与物理位置无关\n\n\n\n\n大容量的MAC表项和ARP表项虚拟化会导致更大的MAC表项。假设一个互联网云计算中心的服务器有5000台，按照1:20的比例进行虚拟化，则有10万个虚拟机。通常每个虚拟机会配置两个业务网口，这样这个云计算中心就有20万个虚拟网口，对应的就是需要20万个MAC地址和IP地址。云计算要求资源灵活调度，业务资源任意迁移。也就是说任意一个虚拟机可以在整个云计算网络中任意迁移。这就要求全网在一个统一的二层网络中。全网任意交换机都有可能学习到全网所有的MAC表项。与此对应的则是，目前业界主流的接入交换机的MAC表项只有32K，基本无法满足互联网云计算的需求。另外，网关需要记录全网所有主机、所有网口的ARP信息。这就需要网关设备的有效ARP表项超过20万。大部分的网关设备芯片都不具备这种能力。\n\n4K VLAN Trunk问题传统大二层网络支持任意VLAN的虚拟机迁移到网络的任意位置，一般有两种方式。\n\n虚拟机迁移后，通过自动化网络管理平台动态的在虚拟机对应的端口上下发VLAN配置；同时，还有动态删除迁移前虚拟机对应所有端口上的VLAN配置，这种方式缺点是非常复杂，同时自动化管理平台对厂商设备还面临兼容性问题，所以很难实现。\n在云计算网络上静态配置VLAN，在所有端口上配置VLAN Trunk All。这种方式的优点是非常简单，是目前主流的应用方式，但是也带来了巨大的问题：任一VLAN内如果出现广播风暴，则全网所有VLAN内的虚拟机都会受到风暴影响，出现业务中断。\n\n\n4K VLAN上限问题云计算网络中有可能出现多租户需求。如果租户即业务的数量规模超出VLAN的上限（4K），则无法支撑客户的需求。\n\n虚拟机迁移网络依赖问题VM迁移需要在同一个二层域内，基于IP子网的区域换分限制了二层网络连通性的规模。\n\n\n云计算的SDN要求数据中心（Data Center）中的网络是固定的、需要手工配置的、单一的、没有多租户隔离的网络。\n\n来源TOR：Top On Rack交换机。图中的一个服务器拥有三块网卡，分别连接到数据网络和管理网络的交换机。\n\n\n而云架构往往都是多租户架构，这意味着多个客户会共享单一的物理网络。因此，除了提供基本的网络连接能力之外，云还需要提供网络在租户之间的隔离能力；同时云是自服务的，这意味着租户可以通过云提供的API来使用虚拟出来的网络组建来设计、构建和部署各种他们需要的网络。\nWhat is Network Virtualization\n来源\n\n\n\nMidoNet Logical and Physical View\n来源MidoNet提供的物理网络和逻辑网络的映射。\n\n\nOpenStack云也不例外。OpenStack通过Neutron项目在物理网络环境之上提供满足多租户要求的虚拟网络和服务。Neutron提供的网络虚拟能力包括：\n\n二层到七层网路的虚拟化：L2（Virtual Switch）、L3（Virtual Router和LB）、L4-L7（Virtual Firewall）等。\n网络连通性：二层网络和三层网络。\n租户隔离性。\n网络安全性。\n网络扩展性。\nREST API。\n更高的网络服务，包括LBaaS、FWaaS、VPNaaS等。\n\nNeutron网络虚拟化在实际的数据中心中，网络可以分为三层：OpenStack Cloud Network、机房Intranet（External Network），以及真正的外部网络即Internet。External网络和Internet之间是数据中心的Uplink路由器，它负责通过NAT来进行两个网络之间的IP地址（即Floating IP和Internet/Public IP）转换，因此，这部分的控制不在OpenStack控制之下。\nRedHat提供的OpenStack Cloud Network网络架构。\nOpenStack Cloud Network\n\n大概的分类的话，分为管理网络和数据网络，数据网络中关键的是租户网络，用于租户虚拟机之间的通信。这部分也是Neutron所实现的网络虚拟化的核心。在目前的Neutron实现中，Neutron向租户提供虚拟的网络（network）、子网（subnet）、端口（port）、交换机（switch）、路由器（router）等网络组件。下图显示了虚拟网络和物理网络的映射关系：\n网络（L2 Network）网络（Network）是一个隔离的二层网段，类似于物理网络世界中的虚拟LAN（VLAN）。更具体来讲，它是为创建它的租户而保留的一个广播域，或者被显式配置为共享网段。端口和子网始终被分配给某个特定的网络。这里所谓的隔离，可以理解为：\n\n跨网络的子网之间的流量必须走L3 Virtual Router。\n每个网络使用自己的DHCP Agent，每个DHCP Agent在一个Network NameSpace内。\n不同网络内的IP地址可以重复（overlapping）。\n\n根据创建网络的用户的权限，Neutron Network可以分为：\n\nProvider Network：管理员创建的和物理网络有之间映射关系的虚拟网络。\nTenant Network：租户普通用户创建的网络，物理网络对创建者透明，其配置由Neutron根据管理员在系统中的配置决定。\n\n虚拟机可以直接挂载到Provider Network或者Tenant Network上。\n根据网络的类型，Neutron Network可以分为：\n\nVLAN Network（虚拟局域网）：基于物理VLAN网络实现的虚拟网络。共享同一个物理网络的多个VLAN网络是相互隔离的，甚至可以使用重叠的IP地址空间。每个支持VLAN Network的物理网络可以被视为一个分离的VLAN Trunk，它使用一组独占的VLAN ID。有效的VLAN ID范围是1到4094（0和4095保留）。\nFlat Network：基于不使用VLAN的物理网络实现的虚拟网络。每个物理网络最多只能实现一个虚拟网络。\nLocal Network（本地网络）：一个只允许在本服务器内通信的虚拟网络，不支持跨服务的通信。主要用于单节点测试。\nGRE Network（通用路由封装网络）：一个使用GRE封装网络包的虚拟网络。GRE封装的数据包基于IP路由表来进行路由，因此GRE Network不和具体的物理网络绑定。\nVxLAN Network（虚拟可扩展网络）：基于VxLAN实现的虚拟网络。同GRE Network一样，VxLAN Network中的IP包的路由也基于IP路由表，也不和具体的物理网络绑定。\n\nProvider NetworkProvider Network是由OpenStack管理员创建的，直接对应数据中心的已有网络的一个网段。这种网络有三个和物理网络有关的属性：\n\nprovider:network_type（网络类型，包括vxlan、gre、vlan、flat和local）\nprovider:physical_network（物理网络的逻辑名称，比如physnet1、ph-eth1等等）\nprovider:segmentation_id（网段ID，比如VLAN的802.1q tag，GRE网络的Tunnel ID，VxLAN网络的VNI）\n\n这种网络是可以在多个租户中共享的。这种网络通过计算和网络节点上指定的bridge直接接入物理网络，所以默认的情况下它们是可以路由的，因此因不需要接入Neutron Virtual Router，也不需要使用L3 agent。使用这种网络，必须预先在各个计算节点和网络节点上配置指定的网桥。\n\n\n创建 provider network：\n1234567891011121314# local类型neutron net-create NAME --provider:network_type local# flat类型neutron net-create NAME --provider:network_type flat --provider:physical_network PHYS_NET_NAME# vlan类型neutron net-create NAME --provider:network_type vlan --provider:physical_network PHYS_NET_NAME --provider:segmentation_id VID# gre类型neutron net-create NAME --provider:network_type gre --provider:segmentation_id TUNNEL_ID# vxlan 类型neutron net-create NAME --provider:network_type vxlan --provider:segmentation_id VNI\n\nTenant NetworkTenant Network是由Tenant的普通用户创建的网络。默人情况下，这类用户不能创建共享的Tenant Network（Neutron Server的policy设置了”create_network:shared”: “rule:admin_only”）。因此这种网络是完全隔离的，也不可以被别的Tenant共享。\nTenant Network也有local、flat、vlan、gre和vxlan等类型。\n创建Tenant Network的过程：\n\n管理员在neutron配置文件中配置tenant_network_types，其值可以设为一个所支持的网络类型列表，比如“vlan,gre,vxlan”。其值默认为“local”，因此需要被修改。该值表明OpenStack云中允许创建的Tenant Network类型。\n运行命令neutron net-create \nneutron-server逐一根据该配置创建network segment，成功则立即返回。\n\n\n\n\nProvider Network和Tenant Network的区别\nProvider Network是由Admin用户创建的，而Tenant Network是由Tenant普通用户创建的。\nProvider Network和物理网络的某段直接映射，比如对应某个VLAN，因此需要预先在物理网络中做相应的配置。而Tenant Network是虚拟化的网络，Neutron需要负责其路由等三层功能。\n对Flat和VLAN类型的网络来说，只有Provider Network才有意义。即使这种类型的Tenant Network，其本质上也是对应一个实际的物理段。\n对GRE和VxLAN类型的网络来说，只有Tenant Network才有意义，因为它本身不依赖于具体的物理网络，只是需要物理网络提供IP和组播即可。\nProvider Network根据Admin用户输入的物理网络参数创建；而Tenant Network由Tenant普通用户创建，Neutron根据其网络配置来选择具体的配置，包括网络类型、物理网络；和segmentation_id。\n创建Provider Network时允许使用不在配置项范围内的segmentation_id。\n\n\n\n子网（Subnet）子网是一组IPv4或IPv6地址以及与其有关联的配置。它是一个资源池，OpenStack可从中向虚拟机（VM）分配IP地址。每一个子网指定为一个无类别域间路由（Classless Inter-Domain Routing）范围，必须与一个网络相关联。除了子网之外，租户还可以指定一个网关、一个域名系统（DNS）名称服务器列表，以及一组主机路由。这个子网上的VM实例随后会自动继承该配置。\n端口（Port）一个Port代表虚拟网络交换机（Logic Network Switch）上的一个虚机交换端口（Virtual Switch Port）。虚机的网卡（VIF - Virtual Interface）会被连接到Port上。当虚机的VIF连接到Port后，这个vNIC就会拥有MAC地址和IP地址。Port的IP地址是从Subnet中分配的。\n虚拟交换机（Virtual Switch）Neutron默认采用开源的Open vSwitch作为其虚机交换机，同时还支持使用Linux Bridge。\n虚拟路由器（Virtual Router）一个Virtual Router提供不同网段之间的IP包路由功能，由Neutron L3 Agent负责管理。\n各组件的关系OpenStack实际上并未增加网络功能。路由、交换和名称解析是由底层的网络基础架构处理的。OpenStack的作用是将这些组件管理捆绑到一起，并将它们连接到计算工作负载。\nNeutron中的网络连通性一个标准的OpenStack环境中的物理网络配置往往包括：\n\nInternet（Public Network）：传统意义上的公共网络，使用往往由电信运营商提供的公网IP。\n外部网络（External Network）：数据中心Intranet，从这里分配浮动IP地址。\nOpenStack内部网络：\n管理网络（Management Network）：提供OpenStack各个组件之间的内部通信，以及API访问端点（Endpoint）。为安全考虑，该网络必须限制在数据中心之内。\nAPI网络：其实这不是一个单独的网络。而是包含在外部和内部网络中。API的Endpoint包括Public URL和Internal URL。其中，Public URL包含的是External Network的IP地址，Internal URL包含的是Management Network IP地址。为了简单起见，提供给外部网访问的API的Public URL和Internal URL相同，而只给内部网络访问的API只使用Internal URL。\n数据网络（Data Network）：除管理网络以外的其他网络，还可以细分为下面几种。\n租户网络（Tenant Network）：提供虚机在计算节点之间，以及计算节点和网络节点之间的通信。同样这也是数据中心的内部网络。\n存储访问网络（Storage Access Network）：访问存储的网络。\n存储后端网络（Storage Backend Network）：比如Ceph和Swift集群用于后端数据复制的网络。\n\n\n\n\n除以上网络之外，往往还有各种功能网络，包括IPMI网络、PXE网络、监控网络等等。\n\n这几种网络，在物理交换机上，往往都使用VLAN来做网络隔离。现在讨论的只是租户网络即虚机之间通信的网络，在Neutron的实现来看，该网络的连通性包括几个层次：\n\n同主机和不同主机上一个网段的虚机之间的连接性：虚拟二层网络，走物理二层（VLAN）或者三层（GRE/VxLAN）网络。\n不同网段内的虚机之间的连通性：经物理（VLAN）或者Neutron Virtual Router。\n虚机和外部网络之间的连通性：经过物理路由器（给VLAN虚拟网络实用的物理交换机连接的路由器）或者Neutron Virtual Router。\n\n为了支持这些网络连通性，Neutron需要实现跨主机的二层网络和虚拟路由器。\n虚拟二层网络的实现所谓虚拟二层网络，就是提供给虚机的一种虚拟网络，使得虚机可以和同网段的其他虚机就像在物理二层网络一样在网络二层直接通信，不管目的虚机处于什么物理位置。对于虚机来说，物理三层网络对它是透明的。\n使用VLAN实现虚拟二层网络这种实现方式基于物理网络上的使用VLAN的交换机。\n基于GRE/VxLAN实现的二层网络（L2）除了VLAN方式的物理的二层网络，另一种方式使用Tunnel/Overlay方式实现虚机二层网络。那Overlay如何应对云计算网络的挑战？\n\n首先，Overlay的核心是重新构建一个逻辑网络平面，其技术手段是采用隧道技术实现L2oIP的封装。通过隧道实现各个虚拟机之间的二层直连。这样网络只看见Overlay边缘节点的MAC地址，物理网络学习到的MAC表项十分有限，现有交换机32k的MAC表项足以满足需求。对应的Overlay边缘节点实现基于会话的地址学习机制，也就是只学习有交互流量的虚拟机MAC地址。这样也严格限制了边缘节点的地址表项。\n\n\n其次，Overlay网络仅仅是一个逻辑上的二层直连网络。其依赖的物理网络，是一个传统的路由网络。这个路由网络是一个三层到边缘的网络。也就是说二层广播域被缩小到极致。这样，网络风暴潜在的风险大幅度降低。同时，对于一些需要依赖二层广播的协议报文，例如：ARP报文，Overlay网络通过ARP代理等方式实现协议内容的透传，不会影响协议报文的正常运作。\n\n再次，针对4K VLAN上限问题，Overlay网络通过L2oIP的封装字段，提供24bits长度的隔离ID，最大可以支持16M租户或业务。\n\n最后，针对网络虚拟化问题。Overlay网络本身就是一个从物理网络中抽离的逻辑网络，通过名址分离使得内层IP地址完全作为一个寻址标签，不再具备路由功能，可以实现不同subnet之间二层互通，保证二层网络的连通性不受IP地址段的限制。\n\n\n在Neutron中，Neutron将虚机发出的数据帧打包，走三层物理网络到达目的虚机的主机，解包给虚机。这种实现使得这两个虚机的通信看起来是二层网络通信。\n虚拟路由器（Virtual Router）跨子网的通信需要走虚拟路由器。同物理路由器一样，虚拟路由器由租户创建，拥有多个Virtual Interface，连接一个租户的子网，以及外部网络。它具有以下特性：\n\n一个VR只属于它的租户，只用于该租户子网之间和子网与外网的路由。\n同一网络内的若干子网可以挂载在一个VR上。\n同一租户的不同网络的没有IP地址重叠的子网可以挂载在一个VR上。\n不同租户之间的内网之间是不能使用VR的。\n同一个租户的不同网络内的有IP地址重叠的两个子网不能使用同一个VR（添加子网到VR时会报错）。\n在网络节点上，一个VR运行在Network Namespace内，该Namespace的名称包含该VR的UUID。\n\nDHCP服务DHCP服务是网络环境必须有的。Neutron提供基于Dnamasq实现的虚机DHCP服务，向租户网络内的虚机动态分配固定IP地址。它具有一下特性：\n\n一个网络可以有多个运行在不同网络节点上的DHCP Agent，同时向网络内的虚机提供服务。\n一个DHCP Agent只属于一个网络，在网络节点上运行在一个Network Namespace内。\n网络内的子网共享该DHCP Agent。\n\nNeutron租户网络的隔离性（Isolation of Tenant Network）Neutron实现了不同层次的租户网络隔离性。\n\n租户之间的网络是三层隔离的，连通过VR做路由都不行，实在要连通的话，需要走物理网络。\n一个租户内的不同网络之间二层隔离的，需要通过VR做三层连通。\n一个网络内的不同子网也是二层隔离的，需要通过VR做三层连通。\n\nNeutron对每个租户网络（Tenant Network）都分配一个segmentation_id，其特点包括：\n\n每个Tenant Network都有一个这种ID。\n\n每个租户网络的ID在全部的租户范围都是唯一的。\n\n一个ID代表一个广播域。\n\n一个ID使得同一网络内的两个虚机之间好像建立了一个虚拟通道（Tunnel）一样。\n\n不同ID的网络Tunnel之间是相互隔离的。\n\n根据物理实现不同，该ID被实现为不同的形式。\n\nVLAN ID\nGRE Tunnel ID\nVxLAN VNI\n\nGRE 类型的网络。\n\n\n计算节点的br-int上，Neutron为每个虚机连接OVS的Access Port分配了内部的VLAN Tag。这种Tag限制了网络流量只能在Tenant Network之内。\n\n计算节点的br-tun上，Neutron将内部的VLAN Tag 转化为GRE Tunnel ID，使得不同 Network的流量走不同的Tunnel。\n\n网络节点的br-tun上，Neutron将GRE Tunnel ID 转发了一一对应的内部VLAN Tag，使得网络流量被不同的服务处理。\n\n网络节点的br-int上连接的DHCP和L3 Agent使用Linux Network namespace进行隔离。\n\n\nNeutron租户网络的安全性（Security）除了租户的隔离性以外，Neutron还提供数据网络与外部网络的隔离性。默认情况下，所有虚机通往外网的流量全部走网络节点上的L3 Agent。在这里，内部的固定IP被转化为外部的浮动IP地址。这种做法一方面保证网络包能够回来，另一方面也隐藏了内部的IP地址。\nNeutron还利用Linux iptables特性，实现Security Group，从而保证访问虚机的安全性。\nNeutron利用网络控制节点上的Network Namespace中的iptables，实现了进出租户网络的网络包防火墙，从而保证了进出租户网络的安全性。\nNeutron租户网络的高可用性（HA）和扩展性（Scalability）OpenStack云中可能用于成千上万台虚机，成千上万个租户，因此，Neutron的数据网络的高可用性和扩展性非常重要。Neutron中，这些特性包括几个层次：\n\n软件架构上，Neutron实现OpenStack标准的中心化架构和插件机制，有效地保证了其扩展性。\n\n\n\nNeutron为每个Provider/Tenant Network分配一个唯一的segmentation_id。该ID的数目是影响可扩展性的因素之一。在规模不大的私有云中，往往使用VLAN模式，简单、可靠、能够满足规模要求；而在大型的私有云或者公有云中，往往使用VxLAN。\n\n\n\n网络类型\nID数目\n说明\n\n\n\nflat\n1\n通常不用于数据网络，因为其不具备租户隔离性。\n\n\nvlan\n4094\n802.1Q定义了VLAN ID占12-bit。\n\n\nGRE\n16777216\nRFC 2637定义的GRE的ID占24-bit。\n\n\nVxLAN\n16777216\nRFC 7348定义的VxLAN的ID占24-bit。\n\n\n\n分布式Virtual Router（DVR）和分布式DHCP Agent。默认情况下，L3 Agent和DHCP Agent部署在网络节点上，这在大规模的云环境中可能会存在性能问题。通过使用DVR，L3转发和NAT会被分布在计算节点上，这使得计算节点变为了网络节点，这样集中式的网络节点的负载就被分担了。分布式的DHCP Agent，进一步释放了集中式网络节点的压力。\n\nL2 Population和ARP Responder，这两个功能大大减少了网络的复杂性，提高了网络效率，从而促进了扩展性。\n\nNeutron包括很多的组件，比如L3 Agent、L2 Agent、LBaas、VPNaas、FWaas、Metadata Agent等Neutron组件，其中部分组件提供了原生的HA支持。\n\n\nNeutron扩展服务（Extension Service）在实际的网络中，除了网络的核心功能外，还有一些普遍应用的网络服务，比如VPN、Load Balancing和Firewall等。Neutron针对这些普遍的服务，也提供了参考实现。\nNeutron REST APINeutron的neutron-server模块提供REST API来操作各种网络组建，包括network、subnet、port、router等。\n文档\n\n\nNeutron的实现框架Neutron中包含大量内容，那Neutron如何实现这么多概念的呢？\n服务分类Neutron把所提供的服务分为两大类：\n\n第一类是核心服务，通过core plugin实现。在/etc/neutron/neutron.conf中的 core_plugin 配置项中指定。从这个配置项名称看，一个Neutron环境应该只能支持一个核心服务。Neutron的默认core plugin就是ml2。ml2是Neutron的核心插件，所有neutron内置API请求都会被它处理。它主要实现了最核心的Network、Subnet、Port等概念，并实现了这几种资源的操作API。\n\n第二类是非核心服务。这类服务通过service plugin实现。service plugin主要是用来支持除core plugin之外的其他资源的操作API的。Neutron核心资源上面已经讲过，就包含很少的几个（Network、Subnet、Port等），其他资源如qos、Router、Floatingips、fwaas、lbaas、vpnaas等的操作API都需要通过相应的plugin来支持，有部分老版本的plugin的实现是在neutron项目中（services目录下），而新版本的资源一般都是在各自独立的项目中，如neutron_lbaas、neutron_fwaas、neutron_vpnaas，减少与neutron主项目的耦合，便于各自独立快速的发展更新。当前支持的主要service plugin包括：\n\n\n\n\n\nShort Name\nClass Name\n\n\n\ndummy\nneutron.tests.unit.dummy_plugin:DummyServicePlugin\n\n\nrouter\nneutron.services.l3_router.l3_router_plugin:L3RouterPlugin\n\n\nmetering\nneutron.services.metering.metering_plugin:MeteringPlugin\n\n\nqos\nneutron.services.qos.qos_plugin:QoSPlugin\n\n\ntag\nneutron.services.tag.tag_plugin:TagPlugin\n\n\nflavors\nneutron.services.flavors.flavors_plugin:FlavorsPlugin\n\n\nauto_allocate\nneutron.services.auto_allocate.plugin:Plugin\n\n\nsegments\nneutron.services.segments.plugin:Plugin\n\n\nnetwork_ip_availability\nneutron.services.network_ip_availability.plugin:NetworkIPAvailabilityPlugin\n\n\nrevisions\nneutron.services.revisions.revision_plugin:RevisionPlugin\n\n\ntimestamp\nneutron.services.timestamp.timestamp_plugin:TimeStampPlugin\n\n\ntrunk\nneutron.services.trunk.plugin:TrunkPlugin\n\n\nloki\nneutron.services.loki.loki_plugin:LokiPlugin\n\n\nlog\nneutron.services.logapi.logging_plugin:LoggingPlugin\n\n\nport_forwarding\nneutron.services.portforwarding.pf_plugin:PortForwardingPlugin\n\n\nML2ML2的配置文件是/etc/neutron/plugins/ml2/ml2_conf.ini。它主要实现了两种驱动：\n\n类型驱动：Neutron支持的每一种网络类型都有实现一个类型驱动。包括：\n\nFlat：这种类型只能作为Provider Network Type\nVLAN\nGRE\nVXLAN\n\n\n机制驱动：机制驱动是实现某个网络类型所采用的机制即网络组件。主要包括：\n\nL2 Population\nLinuxbridge\nOpen vSwitch\nmacvtap\nsriovnicswitch\n各厂家自己的\n\n\n\n类型驱动和机制驱动不是完全对应关系。下面是它们之间的对照表：\n\n\nL2 Population是一种特殊的机制驱动，它旨在优化VxLAN和GRE环境中的BUM（广播，未知目的地址，多播）网络包。它必须和 Linux Bridge或者OVS一起工作，不能单独使用。\n\n\nAgent代理Neutorn要实现的目标，也就是要提供的网络服务。对所有的服务，都需要在控制、网络、计算等节点上执行相应的操作，比如创建网桥、创建命名空间、创建端口、创建iptables规则等。这些操作是通过称为Agent的多种组件来完成的。它们要么接收别人发过来的指令，要么自己通过扫描等行为，来触发具体行动，完成所需执行的内容。\nAgent也分为两大类：\n\nL2 Agent：对应于核心服务。这是完成ML2所需操作的Agent。基本上每种机制驱动都有对应一个L2 Agent。每个agent通常会支持一种机制驱动，但也可能支持多种。L2 Agent运行在网络和计算节点上。\n\n\n其他Agent：对应于非核心服务。这些Agent运行在网络节点上。\n\n\n\n\nNeutron之内以及与其他组件间通信OpenStack的核心是虚拟机，Neutron、Nova以及其它模块都是为虚拟机服务的。在虚机启动时，Nova和Neutron需要紧密配合。简单的Nova和Neutron交互示意图如下：","dateCreated":"2019-09-16T14:33:06+08:00","dateModified":"2023-09-21T10:44:59+08:00","datePublished":"2019-09-16T14:33:06+08:00","description":"Neutron实现的网络虚拟化","headline":"Neutron实现的网络虚拟化","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/","keywords":"Neutron","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Neutron实现的网络虚拟化">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Neutron实现的网络虚拟化">
+<meta property="og:url" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Neutron实现的网络虚拟化">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/OpenStack_Red_Hat_RDO.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/What_is_Network_Virtualization.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/midonet.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/neutron.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/openstack-cloud-network.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/neutron-2.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/network-config.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/network-compare.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/neutron-3.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/vlan.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/overlay.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/gre.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/neutron-4.jpg">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/driver.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/l2-agent.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/other-agent.png">
+<meta property="article:published_time" content="2019-09-16T06:33:06.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:44:59.967Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Neutron">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/OpenStack_Red_Hat_RDO.jpg">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Neutron实现的网络虚拟化
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2019-09-16T14:33:06+08:00">
+	
+		    Sep 16, 2019
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="toc-text">为什么要网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%8E%B0%E6%9C%89%E7%9A%84%E7%89%A9%E7%90%86%E7%BD%91%E7%BB%9C%E4%B8%8D%E8%83%BD%E6%BB%A1%E8%B6%B3%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84%E9%9C%80%E6%B1%82"><span class="toc-text">现有的物理网络不能满足云计算的需求</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%BA%91%E8%AE%A1%E7%AE%97%E7%9A%84SDN%E8%A6%81%E6%B1%82"><span class="toc-text">云计算的SDN要求</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96"><span class="toc-text">Neutron网络虚拟化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%EF%BC%88L2-Network%EF%BC%89"><span class="toc-text">网络（L2 Network）</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network"><span class="toc-text">Provider Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Tenant-Network"><span class="toc-text">Tenant Network</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#Provider-Network%E5%92%8CTenant-Network%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-text">Provider Network和Tenant Network的区别</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AD%90%E7%BD%91%EF%BC%88Subnet%EF%BC%89"><span class="toc-text">子网（Subnet）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3%EF%BC%88Port%EF%BC%89"><span class="toc-text">端口（Port）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E4%BA%A4%E6%8D%A2%E6%9C%BA%EF%BC%88Virtual-Switch%EF%BC%89"><span class="toc-text">虚拟交换机（Virtual Switch）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E8%B7%AF%E7%94%B1%E5%99%A8%EF%BC%88Virtual-Router%EF%BC%89"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%90%84%E7%BB%84%E4%BB%B6%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="toc-text">各组件的关系</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E4%B8%AD%E7%9A%84%E7%BD%91%E7%BB%9C%E8%BF%9E%E9%80%9A%E6%80%A7"><span class="toc-text">Neutron中的网络连通性</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-text">虚拟二层网络的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E4%BD%BF%E7%94%A8VLAN%E5%AE%9E%E7%8E%B0%E8%99%9A%E6%8B%9F%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C"><span class="toc-text">使用VLAN实现虚拟二层网络</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%9F%BA%E4%BA%8EGRE-VxLAN%E5%AE%9E%E7%8E%B0%E7%9A%84%E4%BA%8C%E5%B1%82%E7%BD%91%E7%BB%9C%EF%BC%88L2%EF%BC%89"><span class="toc-text">基于GRE&#x2F;VxLAN实现的二层网络（L2）</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%99%9A%E6%8B%9F%E8%B7%AF%E7%94%B1%E5%99%A8%EF%BC%88Virtual-Router%EF%BC%89-1"><span class="toc-text">虚拟路由器（Virtual Router）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#DHCP%E6%9C%8D%E5%8A%A1"><span class="toc-text">DHCP服务</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E9%9A%94%E7%A6%BB%E6%80%A7%EF%BC%88Isolation-of-Tenant-Network%EF%BC%89"><span class="toc-text">Neutron租户网络的隔离性（Isolation of Tenant Network）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E5%AE%89%E5%85%A8%E6%80%A7%EF%BC%88Security%EF%BC%89"><span class="toc-text">Neutron租户网络的安全性（Security）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%A7%9F%E6%88%B7%E7%BD%91%E7%BB%9C%E7%9A%84%E9%AB%98%E5%8F%AF%E7%94%A8%E6%80%A7%EF%BC%88HA%EF%BC%89%E5%92%8C%E6%89%A9%E5%B1%95%E6%80%A7%EF%BC%88Scalability%EF%BC%89"><span class="toc-text">Neutron租户网络的高可用性（HA）和扩展性（Scalability）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E6%89%A9%E5%B1%95%E6%9C%8D%E5%8A%A1%EF%BC%88Extension-Service%EF%BC%89"><span class="toc-text">Neutron扩展服务（Extension Service）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron-REST-API"><span class="toc-text">Neutron REST API</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Neutron%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%A1%86%E6%9E%B6"><span class="toc-text">Neutron的实现框架</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9C%8D%E5%8A%A1%E5%88%86%E7%B1%BB"><span class="toc-text">服务分类</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#ML2"><span class="toc-text">ML2</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Agent%E4%BB%A3%E7%90%86"><span class="toc-text">Agent代理</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Neutron%E4%B9%8B%E5%86%85%E4%BB%A5%E5%8F%8A%E4%B8%8E%E5%85%B6%E4%BB%96%E7%BB%84%E4%BB%B6%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="toc-text">Neutron之内以及与其他组件间通信</span></a></li></ol></li></ol>
+
+<h3 id="为什么要网络虚拟化"><a href="#为什么要网络虚拟化" class="headerlink" title="为什么要网络虚拟化"></a>为什么要网络虚拟化</h3><ul>
+<li>数据中心的现有网络不能满足云计算的物理需求。</li>
+<li>数据中心的现有网络不能满足云计算的软件即SDN要求。</li>
+</ul>
+<h4 id="现有的物理网络不能满足云计算的需求"><a href="#现有的物理网络不能满足云计算的需求" class="headerlink" title="现有的物理网络不能满足云计算的需求"></a>现有的物理网络不能满足云计算的需求</h4><p>互联网数据中心的基本特征就是服务器规模偏大。进入云计算时代后，其业务特征变得更加复杂，包括虚拟化支持、多业务承载、资源灵活调度等。与此同时，互联网云计算的规模不但没有缩减，反而更加庞大，这就给云计算的网络带来巨大压力。</p>
+<ul>
+<li>虚拟化支持<ul>
+<li>提供云平台支撑</li>
+<li>快速部署</li>
+<li>灵活迁移</li>
+</ul>
+</li>
+<li>多业务承载<ul>
+<li>承载多种业务</li>
+<li>主机托管业务安全隔离及访问控制</li>
+</ul>
+</li>
+<li>资源灵活性<ul>
+<li>业务资源任意迁移</li>
+<li>业务、资源与物理位置无关</li>
+</ul>
+</li>
+</ul>
+<ol>
+<li><p>大容量的MAC表项和ARP表项<br>虚拟化会导致更大的MAC表项。<br>假设一个互联网云计算中心的服务器有5000台，按照1:20的比例进行虚拟化，则有10万个虚拟机。通常每个虚拟机会配置两个业务网口，这样这个云计算中心就有20万个虚拟网口，对应的就是需要20万个MAC地址和IP地址。云计算要求资源灵活调度，业务资源任意迁移。也就是说任意一个虚拟机可以在整个云计算网络中任意迁移。这就要求全网在一个统一的二层网络中。全网任意交换机都有可能学习到全网所有的MAC表项。与此对应的则是，目前业界主流的接入交换机的MAC表项只有32K，基本无法满足互联网云计算的需求。另外，网关需要记录全网所有主机、所有网口的ARP信息。这就需要网关设备的有效ARP表项超过20万。大部分的网关设备芯片都不具备这种能力。</p>
+</li>
+<li><p>4K VLAN Trunk问题<br>传统大二层网络支持任意VLAN的虚拟机迁移到网络的任意位置，一般有两种方式。</p>
+<ul>
+<li>虚拟机迁移后，通过自动化网络管理平台动态的在虚拟机对应的端口上下发VLAN配置；同时，还有动态删除迁移前虚拟机对应所有端口上的VLAN配置，这种方式缺点是非常复杂，同时自动化管理平台对厂商设备还面临兼容性问题，所以很难实现。</li>
+<li>在云计算网络上静态配置VLAN，在所有端口上配置VLAN Trunk All。这种方式的优点是非常简单，是目前主流的应用方式，但是也带来了巨大的问题：任一VLAN内如果出现广播风暴，则全网所有VLAN内的虚拟机都会受到风暴影响，出现业务中断。</li>
+</ul>
+</li>
+<li><p>4K VLAN上限问题<br>云计算网络中有可能出现多租户需求。如果租户即业务的数量规模超出VLAN的上限（4K），则无法支撑客户的需求。</p>
+</li>
+<li><p>虚拟机迁移网络依赖问题<br>VM迁移需要在同一个二层域内，基于IP子网的区域换分限制了二层网络连通性的规模。</p>
+</li>
+</ol>
+<h4 id="云计算的SDN要求"><a href="#云计算的SDN要求" class="headerlink" title="云计算的SDN要求"></a>云计算的SDN要求</h4><p>数据中心（Data Center）中的网络是固定的、需要手工配置的、单一的、没有多租户隔离的网络。<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/OpenStack_Red_Hat_RDO.jpg" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/OpenStack_Red_Hat_RDO.jpg" alt=""></a></div>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="https://www.cisco.com/c/en/us/td/docs/solutions/Enterprise/Data_Center/OpenStack/Grizzly/OpenStack_Red_Hat_RDO.html">来源</a><br>TOR：Top On Rack交换机。图中的一个服务器拥有三块网卡，分别连接到数据网络和管理网络的交换机。</p>
+</div>
+
+<p>而云架构往往都是多租户架构，这意味着多个客户会共享单一的物理网络。因此，除了提供基本的网络连接能力之外，云还需要提供网络在租户之间的隔离能力；同时云是自服务的，这意味着租户可以通过云提供的API来使用虚拟出来的网络组建来设计、构建和部署各种他们需要的网络。<br><br></p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/What_is_Network_Virtualization.png" title="What is Network Virtualization" data-caption="What is Network Virtualization" data-fancybox="default"><img class="fig-img" src="images/What_is_Network_Virtualization.png" alt="What is Network Virtualization"></a><span class="caption">What is Network Virtualization</span></div>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="http://bradhedlund.com/2013/05/28/what-is-network-virtualization/">来源</a></p>
+</div>
+
+<br>
+<div class="figure " style="width:;"><a class="fancybox" href="images/midonet.png" title="MidoNet Logical and Physical View" data-caption="MidoNet Logical and Physical View" data-fancybox="default"><img class="fig-img" src="images/midonet.png" alt="MidoNet Logical and Physical View"></a><span class="caption">MidoNet Logical and Physical View</span></div>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="http://bradhedlund.com/2012/10/06/mind-blowing-l2-l4-network-virtualization-by-midokura-midonet/">来源</a><br>MidoNet提供的物理网络和逻辑网络的映射。</p>
+</div>
+
+<p>OpenStack云也不例外。OpenStack通过Neutron项目在物理网络环境之上提供满足多租户要求的虚拟网络和服务。Neutron提供的网络虚拟能力包括：</p>
+<ol>
+<li>二层到七层网路的虚拟化：L2（Virtual Switch）、L3（Virtual Router和LB）、L4-L7（Virtual Firewall）等。</li>
+<li>网络连通性：二层网络和三层网络。</li>
+<li>租户隔离性。</li>
+<li>网络安全性。</li>
+<li>网络扩展性。</li>
+<li>REST API。</li>
+<li>更高的网络服务，包括LBaaS、FWaaS、VPNaaS等。</li>
+</ol>
+<h3 id="Neutron网络虚拟化"><a href="#Neutron网络虚拟化" class="headerlink" title="Neutron网络虚拟化"></a>Neutron网络虚拟化</h3><p>在实际的数据中心中，网络可以分为三层：OpenStack Cloud Network、机房Intranet（External Network），以及真正的外部网络即Internet。External网络和Internet之间是数据中心的Uplink路由器，它负责通过NAT来进行两个网络之间的IP地址（即Floating IP和Internet/Public IP）转换，因此，这部分的控制不在OpenStack控制之下。<br><img src="images/neutron.jpg" alt="neutron"></p>
+<p>RedHat提供的OpenStack Cloud Network网络架构。<br><br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/openstack-cloud-network.png" title="OpenStack Cloud Network" data-caption="OpenStack Cloud Network" data-fancybox="default"><img class="fig-img" src="images/openstack-cloud-network.png" alt="OpenStack Cloud Network"></a><span class="caption">OpenStack Cloud Network</span></div>
+
+<p>大概的分类的话，分为管理网络和数据网络，数据网络中关键的是租户网络，用于租户虚拟机之间的通信。这部分也是Neutron所实现的网络虚拟化的核心。在目前的Neutron实现中，Neutron向租户提供虚拟的网络（network）、子网（subnet）、端口（port）、交换机（switch）、路由器（router）等网络组件。下图显示了虚拟网络和物理网络的映射关系：<br><img src="images/neutron-2.jpg" alt="neutron-2"></p>
+<h4 id="网络（L2-Network）"><a href="#网络（L2-Network）" class="headerlink" title="网络（L2 Network）"></a>网络（L2 Network）</h4><p>网络（Network）是一个隔离的二层网段，类似于物理网络世界中的虚拟LAN（VLAN）。更具体来讲，它是为创建它的租户而保留的一个广播域，或者被显式配置为共享网段。端口和子网始终被分配给某个特定的网络。这里所谓的隔离，可以理解为：</p>
+<ul>
+<li>跨网络的子网之间的流量必须走L3 Virtual Router。</li>
+<li>每个网络使用自己的DHCP Agent，每个DHCP Agent在一个Network NameSpace内。</li>
+<li>不同网络内的IP地址可以重复（overlapping）。</li>
+</ul>
+<p>根据创建网络的用户的权限，Neutron Network可以分为：</p>
+<ul>
+<li>Provider Network：管理员创建的和物理网络有之间映射关系的虚拟网络。</li>
+<li>Tenant Network：租户普通用户创建的网络，物理网络对创建者透明，其配置由Neutron根据管理员在系统中的配置决定。</li>
+</ul>
+<p>虚拟机可以直接挂载到Provider Network或者Tenant Network上。</p>
+<p>根据网络的类型，Neutron Network可以分为：</p>
+<ul>
+<li>VLAN Network（虚拟局域网）：基于物理VLAN网络实现的虚拟网络。共享同一个物理网络的多个VLAN网络是相互隔离的，甚至可以使用重叠的IP地址空间。每个支持VLAN Network的物理网络可以被视为一个分离的VLAN Trunk，它使用一组独占的VLAN ID。有效的VLAN ID范围是1到4094（0和4095保留）。</li>
+<li>Flat Network：基于不使用VLAN的物理网络实现的虚拟网络。每个物理网络最多只能实现一个虚拟网络。</li>
+<li>Local Network（本地网络）：一个只允许在本服务器内通信的虚拟网络，不支持跨服务的通信。主要用于单节点测试。</li>
+<li>GRE Network（通用路由封装网络）：一个使用GRE封装网络包的虚拟网络。GRE封装的数据包基于IP路由表来进行路由，因此GRE Network不和具体的物理网络绑定。</li>
+<li>VxLAN Network（虚拟可扩展网络）：基于VxLAN实现的虚拟网络。同GRE Network一样，VxLAN Network中的IP包的路由也基于IP路由表，也不和具体的物理网络绑定。</li>
+</ul>
+<h5 id="Provider-Network"><a href="#Provider-Network" class="headerlink" title="Provider Network"></a>Provider Network</h5><p>Provider Network是由OpenStack管理员创建的，直接对应数据中心的已有网络的一个网段。这种网络有三个和物理网络有关的属性：</p>
+<ul>
+<li>provider:network_type（网络类型，包括vxlan、gre、vlan、flat和local）</li>
+<li>provider:physical_network（物理网络的逻辑名称，比如physnet1、ph-eth1等等）</li>
+<li>provider:segmentation_id（网段ID，比如VLAN的802.1q tag，GRE网络的Tunnel ID，VxLAN网络的VNI）</li>
+</ul>
+<div class="alert info no-icon"><p>这种网络是可以在多个租户中共享的。这种网络通过计算和网络节点上指定的bridge直接接入物理网络，所以默认的情况下它们是可以路由的，因此因不需要接入Neutron Virtual Router，也不需要使用L3 agent。<br>使用这种网络，必须预先在各个计算节点和网络节点上配置指定的网桥。</p>
+</div>
+
+<p>创建 provider network：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># local类型</span></span><br><span class="line">neutron net-create NAME --provider:network_type <span class="built_in">local</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># flat类型</span></span><br><span class="line">neutron net-create NAME --provider:network_type flat --provider:physical_network PHYS_NET_NAME</span><br><span class="line"></span><br><span class="line"><span class="comment"># vlan类型</span></span><br><span class="line">neutron net-create NAME --provider:network_type vlan --provider:physical_network PHYS_NET_NAME --provider:segmentation_id VID</span><br><span class="line"></span><br><span class="line"><span class="comment"># gre类型</span></span><br><span class="line">neutron net-create NAME --provider:network_type gre --provider:segmentation_id TUNNEL_ID</span><br><span class="line"></span><br><span class="line"><span class="comment"># vxlan 类型</span></span><br><span class="line">neutron net-create NAME --provider:network_type vxlan --provider:segmentation_id VNI</span><br></pre></td></tr></table></figure>
+
+<h5 id="Tenant-Network"><a href="#Tenant-Network" class="headerlink" title="Tenant Network"></a>Tenant Network</h5><p>Tenant Network是由Tenant的普通用户创建的网络。默人情况下，这类用户不能创建共享的Tenant Network（Neutron Server的policy设置了”create_network:shared”: “rule:admin_only”）。因此这种网络是完全隔离的，也不可以被别的Tenant共享。</p>
+<p>Tenant Network也有local、flat、vlan、gre和vxlan等类型。</p>
+<p>创建Tenant Network的过程：</p>
+<ol>
+<li>管理员在neutron配置文件中配置tenant_network_types，其值可以设为一个所支持的网络类型列表，比如“vlan,gre,vxlan”。其值默认为“local”，因此需要被修改。该值表明OpenStack云中允许创建的Tenant Network类型。</li>
+<li>运行命令neutron net-create <net_name></li>
+<li>neutron-server逐一根据该配置创建network segment，成功则立即返回。</li>
+</ol>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network-config.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network-config.png" alt=""></a></div>
+
+
+<h5 id="Provider-Network和Tenant-Network的区别"><a href="#Provider-Network和Tenant-Network的区别" class="headerlink" title="Provider Network和Tenant Network的区别"></a>Provider Network和Tenant Network的区别</h5><ul>
+<li>Provider Network是由Admin用户创建的，而Tenant Network是由Tenant普通用户创建的。</li>
+<li>Provider Network和物理网络的某段直接映射，比如对应某个VLAN，因此需要预先在物理网络中做相应的配置。而Tenant Network是虚拟化的网络，Neutron需要负责其路由等三层功能。</li>
+<li>对Flat和VLAN类型的网络来说，只有Provider Network才有意义。即使这种类型的Tenant Network，其本质上也是对应一个实际的物理段。</li>
+<li>对GRE和VxLAN类型的网络来说，只有Tenant Network才有意义，因为它本身不依赖于具体的物理网络，只是需要物理网络提供IP和组播即可。</li>
+<li>Provider Network根据Admin用户输入的物理网络参数创建；而Tenant Network由Tenant普通用户创建，Neutron根据其网络配置来选择具体的配置，包括网络类型、物理网络；和segmentation_id。</li>
+<li>创建Provider Network时允许使用不在配置项范围内的segmentation_id。</li>
+</ul>
+<div class="figure " style="width:;"><a class="fancybox" href="images/network-compare.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/network-compare.png" alt=""></a></div>
+
+<h4 id="子网（Subnet）"><a href="#子网（Subnet）" class="headerlink" title="子网（Subnet）"></a>子网（Subnet）</h4><p>子网是一组IPv4或IPv6地址以及与其有关联的配置。它是一个资源池，OpenStack可从中向虚拟机（VM）分配IP地址。每一个子网指定为一个无类别域间路由（Classless Inter-Domain Routing）范围，必须与一个网络相关联。除了子网之外，租户还可以指定一个网关、一个域名系统（DNS）名称服务器列表，以及一组主机路由。这个子网上的VM实例随后会自动继承该配置。</p>
+<h4 id="端口（Port）"><a href="#端口（Port）" class="headerlink" title="端口（Port）"></a>端口（Port）</h4><p>一个Port代表虚拟网络交换机（Logic Network Switch）上的一个虚机交换端口（Virtual Switch Port）。虚机的网卡（VIF - Virtual Interface）会被连接到Port上。当虚机的VIF连接到Port后，这个vNIC就会拥有MAC地址和IP地址。Port的IP地址是从Subnet中分配的。</p>
+<h4 id="虚拟交换机（Virtual-Switch）"><a href="#虚拟交换机（Virtual-Switch）" class="headerlink" title="虚拟交换机（Virtual Switch）"></a>虚拟交换机（Virtual Switch）</h4><p>Neutron默认采用开源的Open vSwitch作为其虚机交换机，同时还支持使用Linux Bridge。</p>
+<h4 id="虚拟路由器（Virtual-Router）"><a href="#虚拟路由器（Virtual-Router）" class="headerlink" title="虚拟路由器（Virtual Router）"></a>虚拟路由器（Virtual Router）</h4><p>一个Virtual Router提供不同网段之间的IP包路由功能，由Neutron L3 Agent负责管理。</p>
+<h4 id="各组件的关系"><a href="#各组件的关系" class="headerlink" title="各组件的关系"></a>各组件的关系</h4><p>OpenStack实际上并未增加网络功能。路由、交换和名称解析是由底层的网络基础架构处理的。OpenStack的作用是将这些组件管理捆绑到一起，并将它们连接到计算工作负载。<br><img src="images/neutron-3.jpg" alt="neutron"></p>
+<h3 id="Neutron中的网络连通性"><a href="#Neutron中的网络连通性" class="headerlink" title="Neutron中的网络连通性"></a>Neutron中的网络连通性</h3><p>一个标准的OpenStack环境中的物理网络配置往往包括：</p>
+<ul>
+<li>Internet（Public Network）：传统意义上的公共网络，使用往往由电信运营商提供的公网IP。</li>
+<li>外部网络（External Network）：数据中心Intranet，从这里分配浮动IP地址。</li>
+<li>OpenStack内部网络：<ul>
+<li>管理网络（Management Network）：提供OpenStack各个组件之间的内部通信，以及API访问端点（Endpoint）。为安全考虑，该网络必须限制在数据中心之内。</li>
+<li>API网络：其实这不是一个单独的网络。而是包含在外部和内部网络中。API的Endpoint包括Public URL和Internal URL。其中，Public URL包含的是External Network的IP地址，Internal URL包含的是Management Network IP地址。为了简单起见，提供给外部网访问的API的Public URL和Internal URL相同，而只给内部网络访问的API只使用Internal URL。</li>
+<li>数据网络（Data Network）：除管理网络以外的其他网络，还可以细分为下面几种。<ul>
+<li>租户网络（Tenant Network）：提供虚机在计算节点之间，以及计算节点和网络节点之间的通信。同样这也是数据中心的内部网络。</li>
+<li>存储访问网络（Storage Access Network）：访问存储的网络。</li>
+<li>存储后端网络（Storage Backend Network）：比如Ceph和Swift集群用于后端数据复制的网络。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>除以上网络之外，往往还有各种功能网络，包括IPMI网络、PXE网络、监控网络等等。</li>
+</ul>
+<p>这几种网络，在物理交换机上，往往都使用VLAN来做网络隔离。现在讨论的只是租户网络即虚机之间通信的网络，在Neutron的实现来看，该网络的连通性包括几个层次：</p>
+<ul>
+<li>同主机和不同主机上一个网段的虚机之间的连接性：虚拟二层网络，走物理二层（VLAN）或者三层（GRE/VxLAN）网络。</li>
+<li>不同网段内的虚机之间的连通性：经物理（VLAN）或者Neutron Virtual Router。</li>
+<li>虚机和外部网络之间的连通性：经过物理路由器（给VLAN虚拟网络实用的物理交换机连接的路由器）或者Neutron Virtual Router。</li>
+</ul>
+<p>为了支持这些网络连通性，Neutron需要实现跨主机的二层网络和虚拟路由器。</p>
+<h4 id="虚拟二层网络的实现"><a href="#虚拟二层网络的实现" class="headerlink" title="虚拟二层网络的实现"></a>虚拟二层网络的实现</h4><p>所谓虚拟二层网络，就是提供给虚机的一种虚拟网络，使得虚机可以和同网段的其他虚机就像在物理二层网络一样在网络二层直接通信，不管目的虚机处于什么物理位置。对于虚机来说，物理三层网络对它是透明的。</p>
+<h5 id="使用VLAN实现虚拟二层网络"><a href="#使用VLAN实现虚拟二层网络" class="headerlink" title="使用VLAN实现虚拟二层网络"></a>使用VLAN实现虚拟二层网络</h5><p><img src="images/vlan.png" alt="vlan"><br>这种实现方式基于物理网络上的使用VLAN的交换机。</p>
+<h5 id="基于GRE-VxLAN实现的二层网络（L2）"><a href="#基于GRE-VxLAN实现的二层网络（L2）" class="headerlink" title="基于GRE/VxLAN实现的二层网络（L2）"></a>基于GRE/VxLAN实现的二层网络（L2）</h5><p>除了VLAN方式的物理的二层网络，另一种方式使用Tunnel/Overlay方式实现虚机二层网络。那Overlay如何应对云计算网络的挑战？</p>
+<ol>
+<li><p>首先，Overlay的核心是重新构建一个逻辑网络平面，其技术手段是采用隧道技术实现L2oIP的封装。通过隧道实现各个虚拟机之间的二层直连。这样网络只看见Overlay边缘节点的MAC地址，物理网络学习到的MAC表项十分有限，现有交换机32k的MAC表项足以满足需求。对应的Overlay边缘节点实现基于会话的地址学习机制，也就是只学习有交互流量的虚拟机MAC地址。这样也严格限制了边缘节点的地址表项。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/overlay.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/overlay.png" alt=""></a></div>
+</li>
+<li><p>其次，Overlay网络仅仅是一个逻辑上的二层直连网络。其依赖的物理网络，是一个传统的路由网络。这个路由网络是一个三层到边缘的网络。也就是说二层广播域被缩小到极致。这样，网络风暴潜在的风险大幅度降低。同时，对于一些需要依赖二层广播的协议报文，例如：ARP报文，Overlay网络通过ARP代理等方式实现协议内容的透传，不会影响协议报文的正常运作。</p>
+</li>
+<li><p>再次，针对4K VLAN上限问题，Overlay网络通过L2oIP的封装字段，提供24bits长度的隔离ID，最大可以支持16M租户或业务。</p>
+</li>
+<li><p>最后，针对网络虚拟化问题。Overlay网络本身就是一个从物理网络中抽离的逻辑网络，通过名址分离使得内层IP地址完全作为一个寻址标签，不再具备路由功能，可以实现不同subnet之间二层互通，保证二层网络的连通性不受IP地址段的限制。</p>
+</li>
+</ol>
+<p>在Neutron中，Neutron将虚机发出的数据帧打包，走三层物理网络到达目的虚机的主机，解包给虚机。这种实现使得这两个虚机的通信看起来是二层网络通信。</p>
+<h4 id="虚拟路由器（Virtual-Router）-1"><a href="#虚拟路由器（Virtual-Router）-1" class="headerlink" title="虚拟路由器（Virtual Router）"></a>虚拟路由器（Virtual Router）</h4><p>跨子网的通信需要走虚拟路由器。同物理路由器一样，虚拟路由器由租户创建，拥有多个Virtual Interface，连接一个租户的子网，以及外部网络。它具有以下特性：</p>
+<ul>
+<li>一个VR只属于它的租户，只用于该租户子网之间和子网与外网的路由。</li>
+<li>同一网络内的若干子网可以挂载在一个VR上。</li>
+<li>同一租户的不同网络的没有IP地址重叠的子网可以挂载在一个VR上。</li>
+<li>不同租户之间的内网之间是不能使用VR的。</li>
+<li>同一个租户的不同网络内的有IP地址重叠的两个子网不能使用同一个VR（添加子网到VR时会报错）。</li>
+<li>在网络节点上，一个VR运行在Network Namespace内，该Namespace的名称包含该VR的UUID。</li>
+</ul>
+<h4 id="DHCP服务"><a href="#DHCP服务" class="headerlink" title="DHCP服务"></a>DHCP服务</h4><p>DHCP服务是网络环境必须有的。Neutron提供基于Dnamasq实现的虚机DHCP服务，向租户网络内的虚机动态分配固定IP地址。它具有一下特性：</p>
+<ul>
+<li>一个网络可以有多个运行在不同网络节点上的DHCP Agent，同时向网络内的虚机提供服务。</li>
+<li>一个DHCP Agent只属于一个网络，在网络节点上运行在一个Network Namespace内。</li>
+<li>网络内的子网共享该DHCP Agent。</li>
+</ul>
+<h3 id="Neutron租户网络的隔离性（Isolation-of-Tenant-Network）"><a href="#Neutron租户网络的隔离性（Isolation-of-Tenant-Network）" class="headerlink" title="Neutron租户网络的隔离性（Isolation of Tenant Network）"></a>Neutron租户网络的隔离性（Isolation of Tenant Network）</h3><p>Neutron实现了不同层次的租户网络隔离性。</p>
+<ul>
+<li>租户之间的网络是三层隔离的，连通过VR做路由都不行，实在要连通的话，需要走物理网络。</li>
+<li>一个租户内的不同网络之间二层隔离的，需要通过VR做三层连通。</li>
+<li>一个网络内的不同子网也是二层隔离的，需要通过VR做三层连通。</li>
+</ul>
+<p>Neutron对每个租户网络（Tenant Network）都分配一个segmentation_id，其特点包括：</p>
+<ul>
+<li><p>每个Tenant Network都有一个这种ID。</p>
+</li>
+<li><p>每个租户网络的ID在全部的租户范围都是唯一的。</p>
+</li>
+<li><p>一个ID代表一个广播域。</p>
+</li>
+<li><p>一个ID使得同一网络内的两个虚机之间好像建立了一个虚拟通道（Tunnel）一样。</p>
+</li>
+<li><p>不同ID的网络Tunnel之间是相互隔离的。</p>
+</li>
+<li><p>根据物理实现不同，该ID被实现为不同的形式。</p>
+<ul>
+<li>VLAN ID</li>
+<li>GRE Tunnel ID</li>
+<li>VxLAN VNI</li>
+</ul>
+<p>GRE 类型的网络。<br></p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/gre.jpg" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/gre.jpg" alt=""></a></div>
+</li>
+<li><p>计算节点的br-int上，Neutron为每个虚机连接OVS的Access Port分配了内部的VLAN Tag。这种Tag限制了网络流量只能在Tenant Network之内。</p>
+</li>
+<li><p>计算节点的br-tun上，Neutron将内部的VLAN Tag 转化为GRE Tunnel ID，使得不同 Network的流量走不同的Tunnel。</p>
+</li>
+<li><p>网络节点的br-tun上，Neutron将GRE Tunnel ID 转发了一一对应的内部VLAN Tag，使得网络流量被不同的服务处理。</p>
+</li>
+<li><p>网络节点的br-int上连接的DHCP和L3 Agent使用Linux Network namespace进行隔离。</p>
+</li>
+</ul>
+<h3 id="Neutron租户网络的安全性（Security）"><a href="#Neutron租户网络的安全性（Security）" class="headerlink" title="Neutron租户网络的安全性（Security）"></a>Neutron租户网络的安全性（Security）</h3><p>除了租户的隔离性以外，Neutron还提供数据网络与外部网络的隔离性。默认情况下，所有虚机通往外网的流量全部走网络节点上的L3 Agent。在这里，内部的固定IP被转化为外部的浮动IP地址。这种做法一方面保证网络包能够回来，另一方面也隐藏了内部的IP地址。</p>
+<p>Neutron还利用Linux iptables特性，实现Security Group，从而保证访问虚机的安全性。</p>
+<p>Neutron利用网络控制节点上的Network Namespace中的iptables，实现了进出租户网络的网络包防火墙，从而保证了进出租户网络的安全性。</p>
+<h3 id="Neutron租户网络的高可用性（HA）和扩展性（Scalability）"><a href="#Neutron租户网络的高可用性（HA）和扩展性（Scalability）" class="headerlink" title="Neutron租户网络的高可用性（HA）和扩展性（Scalability）"></a>Neutron租户网络的高可用性（HA）和扩展性（Scalability）</h3><p>OpenStack云中可能用于成千上万台虚机，成千上万个租户，因此，Neutron的数据网络的高可用性和扩展性非常重要。Neutron中，这些特性包括几个层次：</p>
+<ol>
+<li><p>软件架构上，Neutron实现OpenStack标准的中心化架构和插件机制，有效地保证了其扩展性。</p>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/neutron-4.jpg" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/neutron-4.jpg" alt=""></a></div>
+<br></li>
+<li><p>Neutron为每个Provider/Tenant Network分配一个唯一的segmentation_id。该ID的数目是影响可扩展性的因素之一。在规模不大的私有云中，往往使用VLAN模式，简单、可靠、能够满足规模要求；而在大型的私有云或者公有云中，往往使用VxLAN。</p>
+<table>
+<thead>
+<tr>
+<th align="left">网络类型</th>
+<th align="left">ID数目</th>
+<th align="left">说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">flat</td>
+<td align="left">1</td>
+<td align="left">通常不用于数据网络，因为其不具备租户隔离性。</td>
+</tr>
+<tr>
+<td align="left">vlan</td>
+<td align="left">4094</td>
+<td align="left">802.1Q定义了VLAN ID占12-bit。</td>
+</tr>
+<tr>
+<td align="left">GRE</td>
+<td align="left">16777216</td>
+<td align="left">RFC 2637定义的GRE的ID占24-bit。</td>
+</tr>
+<tr>
+<td align="left">VxLAN</td>
+<td align="left">16777216</td>
+<td align="left">RFC 7348定义的VxLAN的ID占24-bit。</td>
+</tr>
+</tbody></table>
+</li>
+<li><p>分布式Virtual Router（DVR）和分布式DHCP Agent。<br>默认情况下，L3 Agent和DHCP Agent部署在网络节点上，这在大规模的云环境中可能会存在性能问题。通过使用DVR，L3转发和NAT会被分布在计算节点上，这使得计算节点变为了网络节点，这样集中式的网络节点的负载就被分担了。分布式的DHCP Agent，进一步释放了集中式网络节点的压力。</p>
+</li>
+<li><p>L2 Population和ARP Responder，这两个功能大大减少了网络的复杂性，提高了网络效率，从而促进了扩展性。</p>
+</li>
+<li><p>Neutron包括很多的组件，比如L3 Agent、L2 Agent、LBaas、VPNaas、FWaas、Metadata Agent等Neutron组件，其中部分组件提供了原生的HA支持。</p>
+</li>
+</ol>
+<h3 id="Neutron扩展服务（Extension-Service）"><a href="#Neutron扩展服务（Extension-Service）" class="headerlink" title="Neutron扩展服务（Extension Service）"></a>Neutron扩展服务（Extension Service）</h3><p>在实际的网络中，除了网络的核心功能外，还有一些普遍应用的网络服务，比如VPN、Load Balancing和Firewall等。Neutron针对这些普遍的服务，也提供了参考实现。</p>
+<h3 id="Neutron-REST-API"><a href="#Neutron-REST-API" class="headerlink" title="Neutron REST API"></a>Neutron REST API</h3><p>Neutron的neutron-server模块提供REST API来操作各种网络组建，包括network、subnet、port、router等。</p>
+<div class="alert info no-icon"><p><a target="_blank" rel="noopener" href="https://docs.openstack.org/api-ref/network/v2/index.html">文档</a></p>
+</div>
+
+<h3 id="Neutron的实现框架"><a href="#Neutron的实现框架" class="headerlink" title="Neutron的实现框架"></a>Neutron的实现框架</h3><p>Neutron中包含大量内容，那Neutron如何实现这么多概念的呢？</p>
+<h4 id="服务分类"><a href="#服务分类" class="headerlink" title="服务分类"></a>服务分类</h4><p>Neutron把所提供的服务分为两大类：</p>
+<ul>
+<li><p>第一类是核心服务，通过core plugin实现。<br>在/etc/neutron/neutron.conf中的 core_plugin 配置项中指定。从这个配置项名称看，一个Neutron环境应该只能支持一个核心服务。Neutron的默认core plugin就是ml2。ml2是Neutron的核心插件，所有neutron内置API请求都会被它处理。它主要实现了最核心的Network、Subnet、Port等概念，并实现了这几种资源的操作API。</p>
+</li>
+<li><p>第二类是非核心服务。这类服务通过service plugin实现。<br>service plugin主要是用来支持除core plugin之外的其他资源的操作API的。Neutron核心资源上面已经讲过，就包含很少的几个（Network、Subnet、Port等），其他资源如qos、Router、Floatingips、fwaas、lbaas、vpnaas等的操作API都需要通过相应的plugin来支持，有部分老版本的plugin的实现是在neutron项目中（services目录下），而新版本的资源一般都是在各自独立的项目中，如neutron_lbaas、neutron_fwaas、neutron_vpnaas，减少与neutron主项目的耦合，便于各自独立快速的发展更新。当前支持的主要service plugin包括：</p>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th align="left">Short Name</th>
+<th align="left">Class Name</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">dummy</td>
+<td align="left">neutron.tests.unit.dummy_plugin:DummyServicePlugin</td>
+</tr>
+<tr>
+<td align="left">router</td>
+<td align="left">neutron.services.l3_router.l3_router_plugin:L3RouterPlugin</td>
+</tr>
+<tr>
+<td align="left">metering</td>
+<td align="left">neutron.services.metering.metering_plugin:MeteringPlugin</td>
+</tr>
+<tr>
+<td align="left">qos</td>
+<td align="left">neutron.services.qos.qos_plugin:QoSPlugin</td>
+</tr>
+<tr>
+<td align="left">tag</td>
+<td align="left">neutron.services.tag.tag_plugin:TagPlugin</td>
+</tr>
+<tr>
+<td align="left">flavors</td>
+<td align="left">neutron.services.flavors.flavors_plugin:FlavorsPlugin</td>
+</tr>
+<tr>
+<td align="left">auto_allocate</td>
+<td align="left">neutron.services.auto_allocate.plugin:Plugin</td>
+</tr>
+<tr>
+<td align="left">segments</td>
+<td align="left">neutron.services.segments.plugin:Plugin</td>
+</tr>
+<tr>
+<td align="left">network_ip_availability</td>
+<td align="left">neutron.services.network_ip_availability.plugin:NetworkIPAvailabilityPlugin</td>
+</tr>
+<tr>
+<td align="left">revisions</td>
+<td align="left">neutron.services.revisions.revision_plugin:RevisionPlugin</td>
+</tr>
+<tr>
+<td align="left">timestamp</td>
+<td align="left">neutron.services.timestamp.timestamp_plugin:TimeStampPlugin</td>
+</tr>
+<tr>
+<td align="left">trunk</td>
+<td align="left">neutron.services.trunk.plugin:TrunkPlugin</td>
+</tr>
+<tr>
+<td align="left">loki</td>
+<td align="left">neutron.services.loki.loki_plugin:LokiPlugin</td>
+</tr>
+<tr>
+<td align="left">log</td>
+<td align="left">neutron.services.logapi.logging_plugin:LoggingPlugin</td>
+</tr>
+<tr>
+<td align="left">port_forwarding</td>
+<td align="left">neutron.services.portforwarding.pf_plugin:PortForwardingPlugin</td>
+</tr>
+</tbody></table>
+<h4 id="ML2"><a href="#ML2" class="headerlink" title="ML2"></a>ML2</h4><p>ML2的配置文件是/etc/neutron/plugins/ml2/ml2_conf.ini。它主要实现了两种驱动：</p>
+<ul>
+<li><p>类型驱动：Neutron支持的每一种网络类型都有实现一个类型驱动。包括：</p>
+<ul>
+<li>Flat：这种类型只能作为Provider Network Type</li>
+<li>VLAN</li>
+<li>GRE</li>
+<li>VXLAN</li>
+</ul>
+</li>
+<li><p>机制驱动：机制驱动是实现某个网络类型所采用的机制即网络组件。主要包括：</p>
+<ul>
+<li>L2 Population</li>
+<li>Linuxbridge</li>
+<li>Open vSwitch</li>
+<li>macvtap</li>
+<li>sriovnicswitch</li>
+<li>各厂家自己的</li>
+</ul>
+</li>
+</ul>
+<p>类型驱动和机制驱动不是完全对应关系。下面是它们之间的对照表：</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/driver.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/driver.png" alt=""></a></div>
+
+<div class="alert warning no-icon"><p>L2 Population是一种特殊的机制驱动，它旨在优化VxLAN和GRE环境中的BUM（广播，未知目的地址，多播）网络包。它必须和 Linux Bridge或者OVS一起工作，不能单独使用。</p>
+</div>
+
+<h4 id="Agent代理"><a href="#Agent代理" class="headerlink" title="Agent代理"></a>Agent代理</h4><p>Neutorn要实现的目标，也就是要提供的网络服务。对所有的服务，都需要在控制、网络、计算等节点上执行相应的操作，比如创建网桥、创建命名空间、创建端口、创建iptables规则等。这些操作是通过称为Agent的多种组件来完成的。它们要么接收别人发过来的指令，要么自己通过扫描等行为，来触发具体行动，完成所需执行的内容。</p>
+<p>Agent也分为两大类：</p>
+<ul>
+<li><p>L2 Agent：对应于核心服务。这是完成ML2所需操作的Agent。基本上每种机制驱动都有对应一个L2 Agent。每个agent通常会支持一种机制驱动，但也可能支持多种。L2 Agent运行在网络和计算节点上。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/l2-agent.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/l2-agent.png" alt=""></a></div>
+</li>
+<li><p>其他Agent：对应于非核心服务。这些Agent运行在网络节点上。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/other-agent.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/other-agent.png" alt=""></a></div>
+
+</li>
+</ul>
+<h4 id="Neutron之内以及与其他组件间通信"><a href="#Neutron之内以及与其他组件间通信" class="headerlink" title="Neutron之内以及与其他组件间通信"></a>Neutron之内以及与其他组件间通信</h4><p>OpenStack的核心是虚拟机，Neutron、Nova以及其它模块都是为虚拟机服务的。在虚机启动时，Nova和Neutron需要紧密配合。简单的Nova和Neutron交互示意图如下：</p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Neutron/" rel="tag">Neutron</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/18/Neutron-OpenvSwitch-VLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络"
+                    aria-label="PREVIOUS: Neutron OpenvSwitch + VLAN 虚拟网络"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    data-tooltip="Kolla-ansible部署Openstack Rocky"
+                    aria-label="NEXT: Kolla-ansible部署Openstack Rocky"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/&amp;title=Neutron实现的网络虚拟化"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2019/09/16/Neutron实现的网络虚拟化/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/09/18/Neutron-OpenvSwitch-VLAN%E8%99%9A%E6%8B%9F%E7%BD%91%E7%BB%9C/"
+                    data-tooltip="Neutron OpenvSwitch + VLAN 虚拟网络"
+                    aria-label="PREVIOUS: Neutron OpenvSwitch + VLAN 虚拟网络"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2019/08/22/Kolla-ansible%E9%83%A8%E7%BD%B2Openstack-Rocky/"
+                    data-tooltip="Kolla-ansible部署Openstack Rocky"
+                    aria-label="NEXT: Kolla-ansible部署Openstack Rocky"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/&amp;title=Neutron实现的网络虚拟化"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/&amp;title=Neutron实现的网络虚拟化"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2019/09/16/Neutron%E5%AE%9E%E7%8E%B0%E7%9A%84%E7%BD%91%E7%BB%9C%E8%99%9A%E6%8B%9F%E5%8C%96/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

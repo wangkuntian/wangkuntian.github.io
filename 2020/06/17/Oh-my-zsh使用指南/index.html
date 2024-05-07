@@ -1,0 +1,822 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Oh my zsh使用指南 - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="oh my zsh">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"\n\n\n安装安装zshoh-my-zsh是zsh的一个框架，所以安装oh-my-zsh前需要安装zsh。\n\nFor Mac\n1brew install zsh\n\nFor CentOS\n1yum install zsh\n\nFor Ubuntu\n1apt install zsh\n\n\n\n安装git在执行oh-my-sh安装脚本的时候会用到git命令所以要提前安装好。\n\nFor CentOS\n1yum install git\n\nFor Ubuntu\n1apt install git\n\n\n\n安装oh-my-zsh\nvia curl\n1sh -c &quot;$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)&quot;\n\nvia wget\n1sh -c &quot;$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)&quot;\n安装成功\n出现Connection refused的错误需要在/etc/hosts下面配置一下。151.101.228.133     raw.githubusercontent.com\n\n\n\n\n配置插件zsh-syntax-highlightingzsh-syntax-highlighting为zsh提供语法高亮。安装\n1git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-syntax-highlighting\n.zshrc中\n1plugins=( [plugins...] zsh-syntax-highlighting)\n\n激活插件\n1source .zshrc\n\nzsh-autosuggestionszsh-autosuggestions是zsh下的自动补全插件。\n安装\n1git clone https://github.com/zsh-users/zsh-autosuggestions $&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;/plugins/zsh-autosuggestions\n\n.zshrc中\n1plugins=( [plugins...] zsh-autosuggestions)\n\n激活插件\n1source .zshrc\n\nthemesoh-my-zsh可以使用theme命令更换主题。安装，.zshrc中。\n1plugins=( [plugins...] themes)\n1234theme [theme_name] # 更换主题theme              # 随机更换主题lstheme            # 查看安装的主题\n\n其他更多插件。\n主题powerlineoh-my-zsh-powerline-theme\n安装powerline字体\n12345git clone https://github.com/powerline/fonts.git --depth=1cd fonts./install.shcd ..rm -rf fonts\n\n安装\n12git clone https://github.com/jeremyFreeAgent/oh-my-zsh-powerline-theme.gitcd oh-my-zsh-powerline-theme &amp;&amp; ./install_in_omz.sh\n\n.zshrc中\n1ZSH_THEME=&quot;powerline&quot;\n\n配置，在.zshrc中。\npowerline默认在右边展示日期和时间，可以选择展示项。\n默认\n\n自定义显示项\n1POWERLINE_RIGHT_B=&quot;❤❤❤❤&quot;\n自定义\n\n关闭右边的展示项\n1POWERLINE_RIGHT_B=&quot;none&quot;\n关闭显示\n\n显示日期\n1POWERLINE_RIGHT_A=&quot;date&quot;\n日期\n\n自定义\n1POWERLINE_RIGHT_A=&quot;Hello world&quot;\n自定义\n\n显示上一条命令的执行状态\n1POWERLINE_RIGHT_A=&quot;exit-status&quot;\n执行成功\n执行异常\n\n只显示执行异常的命令的状态\n1POWERLINE_RIGHT_A=&quot;exit-status-on-fail&quot;\n\n混合，既可以显示日期和时间，也会显示执行异常的命令的状态。\n1POWERLINE_RIGHT_A=&quot;mixed&quot;\n\n修改POWERLINE_RIGHT_A的颜色。\n123POWERLINE_RIGHT_A=&quot;date&quot;POWERLINE_RIGHT_A_COLOR_FRONT=&quot;white&quot;POWERLINE_RIGHT_A_COLOR_BACK=&quot;red&quot;\n自定义颜色\n\n修改日期的格式\n12POWERLINE_RIGHT_A=&quot;date&quot;POWERLINE_DATE_FORMAT=&quot;%D&#123;%m-%d&#125;&quot;\n日期格式\n\n隐藏用户名\n1POWERLINE_HIDE_USER_NAME=&quot;true&quot;\n隐藏用户名\n\n隐藏主机名\n1POWERLINE_HIDE_HOST_NAME=&quot;true&quot;\n隐藏主机名\n\n短主机名\n1POWERLINE_SHORT_HOST_NAME=&quot;true&quot;\n短主机名\n\n更多配置","dateCreated":"2020-06-17T14:09:03+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2020-06-17T14:09:03+08:00","description":"oh-my-zsh的安装和使用","headline":"Oh my zsh使用指南","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/","keywords":"oh my zsh","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="oh-my-zsh的安装和使用">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Oh my zsh使用指南">
+<meta property="og:url" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="oh-my-zsh的安装和使用">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/install.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/default.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/heart.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/none.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/date.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/hello_world.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/success.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/fail.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/color.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/date_format.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/username.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/hostname.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/hostname_short.png">
+<meta property="article:published_time" content="2020-06-17T06:09:03.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.031Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="oh my zsh">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/install.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Oh my zsh使用指南
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2020-06-17T14:09:03+08:00">
+	
+		    Jun 17, 2020
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <!-- excerpt -->
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%89%E8%A3%85"><span class="toc-text">安装</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85zsh"><span class="toc-text">安装zsh</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85git"><span class="toc-text">安装git</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%89%E8%A3%85oh-my-zsh"><span class="toc-text">安装oh-my-zsh</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%85%8D%E7%BD%AE"><span class="toc-text">配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8F%92%E4%BB%B6"><span class="toc-text">插件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#zsh-syntax-highlighting"><span class="toc-text">zsh-syntax-highlighting</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#zsh-autosuggestions"><span class="toc-text">zsh-autosuggestions</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#themes"><span class="toc-text">themes</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-text">其他</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%BB%E9%A2%98"><span class="toc-text">主题</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#powerline"><span class="toc-text">powerline</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h1><h2 id="安装zsh"><a href="#安装zsh" class="headerlink" title="安装zsh"></a>安装zsh</h2><p><a target="_blank" rel="noopener" href="https://github.com/ohmyzsh/ohmyzsh">oh-my-zsh</a>是zsh的一个框架，所以安装oh-my-zsh前需要安装zsh。</p>
+<ul>
+<li><p>For Mac</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brew install zsh</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>For CentOS</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install zsh</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>For Ubuntu</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install zsh</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="安装git"><a href="#安装git" class="headerlink" title="安装git"></a>安装git</h2><p>在执行oh-my-sh安装脚本的时候会用到git命令所以要提前安装好。</p>
+<ul>
+<li><p>For CentOS</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install git</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>For Ubuntu</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install git</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="安装oh-my-zsh"><a href="#安装oh-my-zsh" class="headerlink" title="安装oh-my-zsh"></a>安装oh-my-zsh</h2><ul>
+<li><p>via curl</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh -c <span class="string">&quot;<span class="subst">$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)</span>&quot;</span></span><br></pre></td></tr></table></figure>
+</li>
+<li><p>via wget</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh -c <span class="string">&quot;<span class="subst">$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)</span>&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/install.png" title="安装成功" data-caption="安装成功" data-fancybox="default"><img class="fig-img" src="images/install.png" alt="安装成功"></a><span class="caption">安装成功</span></div>
+<div class="alert info no-icon"><p>出现Connection refused的错误需要在/etc/hosts下面配置一下。<br>151.101.228.133     raw.githubusercontent.com</p>
+</div>
+
+</li>
+</ul>
+<h1 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h1><h2 id="插件"><a href="#插件" class="headerlink" title="插件"></a>插件</h2><h3 id="zsh-syntax-highlighting"><a href="#zsh-syntax-highlighting" class="headerlink" title="zsh-syntax-highlighting"></a>zsh-syntax-highlighting</h3><p><a target="_blank" rel="noopener" href="https://github.com/zsh-users/zsh-syntax-highlighting">zsh-syntax-highlighting</a>为zsh提供语法高亮。<br>安装</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/zsh-users/zsh-syntax-highlighting.git <span class="variable">$&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;</span>/plugins/zsh-syntax-highlighting</span><br></pre></td></tr></table></figure>
+<p>.zshrc中</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugins=( [plugins...] zsh-syntax-highlighting)</span><br></pre></td></tr></table></figure>
+
+<p>激活插件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> .zshrc</span><br></pre></td></tr></table></figure>
+
+<h3 id="zsh-autosuggestions"><a href="#zsh-autosuggestions" class="headerlink" title="zsh-autosuggestions"></a>zsh-autosuggestions</h3><p><a target="_blank" rel="noopener" href="https://github.com/zsh-users/zsh-autosuggestions">zsh-autosuggestions</a>是zsh下的自动补全插件。</p>
+<p>安装</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/zsh-users/zsh-autosuggestions <span class="variable">$&#123;ZSH_CUSTOM:-~/.oh-my-zsh/custom&#125;</span>/plugins/zsh-autosuggestions</span><br></pre></td></tr></table></figure>
+
+<p>.zshrc中</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugins=( [plugins...] zsh-autosuggestions)</span><br></pre></td></tr></table></figure>
+
+<p>激活插件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> .zshrc</span><br></pre></td></tr></table></figure>
+
+<h3 id="themes"><a href="#themes" class="headerlink" title="themes"></a>themes</h3><p>oh-my-zsh可以使用<a target="_blank" rel="noopener" href="https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/themes">theme</a>命令更换主题。<br>安装，.zshrc中。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugins=( [plugins...] themes)</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">theme [theme_name] <span class="comment"># 更换主题</span></span><br><span class="line">theme              <span class="comment"># 随机更换主题</span></span><br><span class="line">lstheme            <span class="comment"># 查看安装的主题</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><p><a target="_blank" rel="noopener" href="https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins">更多插件</a>。</p>
+<h2 id="主题"><a href="#主题" class="headerlink" title="主题"></a>主题</h2><h3 id="powerline"><a href="#powerline" class="headerlink" title="powerline"></a>powerline</h3><p><a target="_blank" rel="noopener" href="https://github.com/jeremyFreeAgent/oh-my-zsh-powerline-theme">oh-my-zsh-powerline-theme</a></p>
+<p>安装<a target="_blank" rel="noopener" href="https://github.com/powerline/fonts">powerline</a>字体</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/powerline/fonts.git --depth=1</span><br><span class="line"><span class="built_in">cd</span> fonts</span><br><span class="line">./install.sh</span><br><span class="line"><span class="built_in">cd</span> ..</span><br><span class="line"><span class="built_in">rm</span> -rf fonts</span><br></pre></td></tr></table></figure>
+
+<p>安装</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/jeremyFreeAgent/oh-my-zsh-powerline-theme.git</span><br><span class="line"><span class="built_in">cd</span> oh-my-zsh-powerline-theme &amp;&amp; ./install_in_omz.sh</span><br></pre></td></tr></table></figure>
+
+<p>.zshrc中</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ZSH_THEME=<span class="string">&quot;powerline&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>配置，在.zshrc中。</p>
+<p>powerline默认在右边展示日期和时间，可以选择展示项。</p>
+<div class="figure " style="width:;"><a class="fancybox" href="images/default.png" title="默认" data-caption="默认" data-fancybox="default"><img class="fig-img" src="images/default.png" alt="默认"></a><span class="caption">默认</span></div>
+
+<p>自定义显示项</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_B=<span class="string">&quot;❤❤❤❤&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/heart.png" title="自定义" data-caption="自定义" data-fancybox="default"><img class="fig-img" src="images/heart.png" alt="自定义"></a><span class="caption">自定义</span></div>
+
+<p>关闭右边的展示项</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_B=<span class="string">&quot;none&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/none.png" title="关闭显示" data-caption="关闭显示" data-fancybox="default"><img class="fig-img" src="images/none.png" alt="关闭显示"></a><span class="caption">关闭显示</span></div>
+
+<p>显示日期</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;date&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/date.png" title="日期" data-caption="日期" data-fancybox="default"><img class="fig-img" src="images/date.png" alt="日期"></a><span class="caption">日期</span></div>
+
+<p>自定义</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;Hello world&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/hello_world.png" title="自定义" data-caption="自定义" data-fancybox="default"><img class="fig-img" src="images/hello_world.png" alt="自定义"></a><span class="caption">自定义</span></div>
+
+<p>显示上一条命令的执行状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;exit-status&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/success.png" title="执行成功" data-caption="执行成功" data-fancybox="default"><img class="fig-img" src="images/success.png" alt="执行成功"></a><span class="caption">执行成功</span></div>
+<div class="figure " style="width:;"><a class="fancybox" href="images/fail.png" title="执行异常" data-caption="执行异常" data-fancybox="default"><img class="fig-img" src="images/fail.png" alt="执行异常"></a><span class="caption">执行异常</span></div>
+
+<p>只显示执行异常的命令的状态</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;exit-status-on-fail&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>混合，既可以显示日期和时间，也会显示执行异常的命令的状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;mixed&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>修改POWERLINE_RIGHT_A的颜色。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;date&quot;</span></span><br><span class="line">POWERLINE_RIGHT_A_COLOR_FRONT=<span class="string">&quot;white&quot;</span></span><br><span class="line">POWERLINE_RIGHT_A_COLOR_BACK=<span class="string">&quot;red&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/color.png" title="自定义颜色" data-caption="自定义颜色" data-fancybox="default"><img class="fig-img" src="images/color.png" alt="自定义颜色"></a><span class="caption">自定义颜色</span></div>
+
+<p>修改日期的格式</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_RIGHT_A=<span class="string">&quot;date&quot;</span></span><br><span class="line">POWERLINE_DATE_FORMAT=<span class="string">&quot;%D&#123;%m-%d&#125;&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/date_format.png" title="日期格式" data-caption="日期格式" data-fancybox="default"><img class="fig-img" src="images/date_format.png" alt="日期格式"></a><span class="caption">日期格式</span></div>
+
+<p>隐藏用户名</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_HIDE_USER_NAME=<span class="string">&quot;true&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/username.png" title="隐藏用户名" data-caption="隐藏用户名" data-fancybox="default"><img class="fig-img" src="images/username.png" alt="隐藏用户名"></a><span class="caption">隐藏用户名</span></div>
+
+<p>隐藏主机名</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_HIDE_HOST_NAME=<span class="string">&quot;true&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/hostname.png" title="隐藏主机名" data-caption="隐藏主机名" data-fancybox="default"><img class="fig-img" src="images/hostname.png" alt="隐藏主机名"></a><span class="caption">隐藏主机名</span></div>
+
+<p>短主机名</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">POWERLINE_SHORT_HOST_NAME=<span class="string">&quot;true&quot;</span></span><br></pre></td></tr></table></figure>
+<div class="figure " style="width:;"><a class="fancybox" href="images/hostname_short.png" title="短主机名" data-caption="短主机名" data-fancybox="default"><img class="fig-img" src="images/hostname_short.png" alt="短主机名"></a><span class="caption">短主机名</span></div>
+
+<p><a target="_blank" rel="noopener" href="https://github.com/jeremyFreeAgent/oh-my-zsh-powerline-theme#More-options">更多配置</a></p>
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/oh-my-zsh/" rel="tag">oh my zsh</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/08/25/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"
+                    data-tooltip="数据结构"
+                    aria-label="PREVIOUS: 数据结构"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/16/Understand-Neutron/"
+                    data-tooltip="Understand Neutron"
+                    aria-label="NEXT: Understand Neutron"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/&amp;title=Oh my zsh使用指南"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2020/06/17/Oh-my-zsh使用指南/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/08/25/%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/"
+                    data-tooltip="数据结构"
+                    aria-label="PREVIOUS: 数据结构"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2020/06/16/Understand-Neutron/"
+                    data-tooltip="Understand Neutron"
+                    aria-label="NEXT: Understand Neutron"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/&amp;title=Oh my zsh使用指南"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/&amp;title=Oh my zsh使用指南"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2020/06/17/Oh-my-zsh%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

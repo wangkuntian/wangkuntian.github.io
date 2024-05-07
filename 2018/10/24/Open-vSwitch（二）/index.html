@@ -1,0 +1,895 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>Open vSwitch（二） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Open vSwitch">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"ovs流表分析\n\n\n\n\n查看流表查看br-int的流表。\n12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849505152535455565758596061root@compute-1:~# ovs-ofctl dump-flows br-intNXST_FLOW reply (xid=0x4): cookie=0xbedca6dce2935c60, duration=86037.896s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=38,icmp_type=136 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.785s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=40,icmp_type=136 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.648s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=9,icmp_type=136 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.536s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=39,icmp_type=136 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.351s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=37,icmp_type=136 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.868s, table=0, n_packets=359, n_bytes=15078, idle_age=34, hard_age=65534, priority=10,arp,in_port=38 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.755s, table=0, n_packets=361, n_bytes=15162, idle_age=15, hard_age=65534, priority=10,arp,in_port=40 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.618s, table=0, n_packets=24558, n_bytes=1031436, idle_age=0, hard_age=65534, priority=10,arp,in_port=9 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.508s, table=0, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=10,arp,in_port=39 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=86037.322s, table=0, n_packets=24133, n_bytes=1013586, idle_age=2, hard_age=65534, priority=10,arp,in_port=37 actions=resubmit(,24) cookie=0xbedca6dce2935c60, duration=4150068.305s, table=0, n_packets=72220587, n_bytes=5493785948, idle_age=0, hard_age=65534, priority=2,in_port=2 actions=drop cookie=0xbedca6dce2935c60, duration=4150068.292s, table=0, n_packets=50525913, n_bytes=3109582261, idle_age=0, hard_age=65534, priority=2,in_port=14 actions=drop cookie=0xbedca6dce2935c60, duration=4150065.422s, table=0, n_packets=167905, n_bytes=57401910, idle_age=14, hard_age=65534, priority=2,in_port=10 actions=drop cookie=0xbedca6dce2935c60, duration=86037.924s, table=0, n_packets=359, n_bytes=122778, idle_age=39, hard_age=65534, priority=9,in_port=38 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.813s, table=0, n_packets=361, n_bytes=123462, idle_age=20, hard_age=65534, priority=9,in_port=40 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.679s, table=0, n_packets=13932, n_bytes=1030968, idle_age=7, hard_age=65534, priority=9,in_port=9 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.563s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=9,in_port=39 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.381s, table=0, n_packets=6966, n_bytes=515484, idle_age=1, hard_age=65534, priority=9,in_port=37 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=4150067.869s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.840s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.810s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150067.782s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.754s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.727s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150067.698s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.669s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.641s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150067.614s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:59:82:51 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.586s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:59:82:51 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.559s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:59:82:51 actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150067.532s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.501s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.471s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150067.441s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.413s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,2) cookie=0xbedca6dce2935c60, duration=4150067.384s, table=0, n_packets=142997, n_bytes=10919635, idle_age=89, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,1) cookie=0xbedca6dce2935c60, duration=4150069.241s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=NORMAL cookie=0xbedca6dce2935c60, duration=4150068.319s, table=0, n_packets=1226663, n_bytes=69674983, idle_age=4, hard_age=65534, priority=1 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86050.759s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=5,dl_dst=fa:16:3e:ae:8e:e1 actions=strip_vlan,mod_dl_src:fa:16:3e:0e:31:d7,output:40 cookie=0xbedca6dce2935c60, duration=86050.745s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=5,dl_dst=fa:16:3e:89:bd:99 actions=strip_vlan,mod_dl_src:fa:16:3e:0e:31:d7,output:38 cookie=0xbedca6dce2935c60, duration=4150068.348s, table=1, n_packets=142997, n_bytes=10919635, idle_age=89, hard_age=65534, priority=1 actions=drop cookie=0xbedca6dce2935c60, duration=4150068.334s, table=2, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1 actions=drop cookie=0xbedca6dce2935c60, duration=4150068.361s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop cookie=0xbedca6dce2935c60, duration=86037.910s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=38,icmp_type=136,nd_target=fe80::f816:3eff:fe89:bd99 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.799s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=40,icmp_type=136,nd_target=fe80::f816:3eff:feae:8ee1 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.663s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=9,icmp_type=136,nd_target=fe80::f816:3eff:fe5c:87d7 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.551s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=39,icmp_type=136,nd_target=fe80::f816:3eff:fe1a:41b4 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.366s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=37,icmp_type=136,nd_target=fe80::f816:3eff:fe45:d778 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.882s, table=24, n_packets=359, n_bytes=15078, idle_age=34, hard_age=65534, priority=2,arp,in_port=38,arp_spa=192.168.10.14 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.770s, table=24, n_packets=361, n_bytes=15162, idle_age=15, hard_age=65534, priority=2,arp,in_port=40,arp_spa=192.168.10.13 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.633s, table=24, n_packets=24558, n_bytes=1031436, idle_age=0, hard_age=65534, priority=2,arp,in_port=9,arp_spa=3.1.1.82 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.522s, table=24, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=2,arp,in_port=39,arp_spa=3.1.1.91 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=86037.336s, table=24, n_packets=24133, n_bytes=1013586, idle_age=2, hard_age=65534, priority=2,arp,in_port=37,arp_spa=3.1.1.92 actions=resubmit(,25) cookie=0xbedca6dce2935c60, duration=4150069.213s, table=24, n_packets=1, n_bytes=42, idle_age=65534, hard_age=65534, priority=0 actions=drop cookie=0xbedca6dce2935c60, duration=86037.951s, table=25, n_packets=718, n_bytes=137856, idle_age=34, hard_age=65534, priority=2,in_port=38,dl_src=fa:16:3e:89:bd:99 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.841s, table=25, n_packets=722, n_bytes=138624, idle_age=15, hard_age=65534, priority=2,in_port=40,dl_src=fa:16:3e:ae:8e:e1 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.709s, table=25, n_packets=38490, n_bytes=2062404, idle_age=0, hard_age=65534, priority=2,in_port=9,dl_src=fa:16:3e:5c:87:d7 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.590s, table=25, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=2,in_port=39,dl_src=fa:16:3e:1a:41:b4 actions=NORMAL cookie=0xbedca6dce2935c60, duration=86037.411s, table=25, n_packets=31099, n_bytes=1529070, idle_age=1, hard_age=65534, priority=2,in_port=37,dl_src=fa:16:3e:45:d7:78 actions=NORMAL\n\n流表字段组成基本字段cookieduration = value\n\n流表的id默认为0。64位数字，不可重复。\ndurationduration = secs\n\n报文在表中的时间。以秒为单位。\ntabletable = number\n\n流表的编号，范围是0-254。\nn_packets匹配的报文个数。\nn_bytes匹配的报文总字节数。\nhard_agehard_age = secs\n\n自流表被添加或者修改经过的时间\nidle_ageidle_age = secs\n\n没有任何包经过流表的时间\npriority指明流表的优先级，0-65535，默认32768。数字越大，则优先级越高。因此，高优先级带通配符流表项必须要被放到低编号的流表中。交换机负责正确地顺序，避免高优先级规则覆盖掉低优先级的。\n条件字段in_portin_port = port\n\n匹配传递数据包的OpenFlow端口号。\ndl_srcdl_src = xx:xx:xx:xx:xx:xx\n\n匹配数据包的源MAC地址。\ndl_dstdl_dst = xx:xx:xx:xx:xx:xx\n\n匹配数据包的目的MAC地址。\nnw_srcnw_src = ip[Inetmask]\n\n匹配数据包的源IP地址。\nnw_dstnw_dst = ip[Inetmask]\n\n匹配数据包的目的IP地址。\ndl_vlandl_vlan = vlan\n\n匹配数据包的Vlan id，范围是0-4095。0xffff代表不包含Vlan Tag的数据包。\ndl_typedl_type = ethertype\n\n匹配以太网协议类型。0-65535，16进制的数字。其中0x0800代表IPv4协议，0x086DD代表IPv6协议，0x0806代表ARP协议。\n\n\n\nEthertype\n协议\n\n\n\n0x0000-0x05DC\nIEEE 802.3长度\n\n\n0x0101–0x01FF\n实验\n\n\n0x0600\nXEROX NS IDP\n\n\n0x06600x0661\nDLOG\n\n\n0x0800\n网际协议（IP）\n\n\n0x0801\nX.75 Internet\n\n\n0x0802\nNBS Internet\n\n\n0x0803\nECMA Internet\n\n\n0x0804\nChaosnet\n\n\n0x0805\nX.25 Level 3\n\n\n0x0806\n地址解析协议（ARP：Address Resolution Protocol）\n\n\n0x0808\n帧中继ARP（Frame Relay ARP）[RFC1701]\n\n\n0x6559\n原始帧中继（Raw Frame Relay）[RFC1701]\n\n\n0x8035\n动态DARP（DRARP：Dynamic RARP）反向地址解析协议（RARP：Reverse Address Resolution Protocol）\n\n\n0x8037\nNovell Netware IPX\n\n\n0x809B\nEtherTalk\n\n\n0x80D5\nIBM SNA Services over Ethernet\n\n\n0x80F3\nAppleTalk地址解析协议（AARP：AppleTalk Address Resolution Protocol）\n\n\n0x8100\n以太网自动保护开关（EAPS：Ethernet Automatic Protection Switching）\n\n\n0x8137\n因特网包交换（IPX：Internet Packet Exchange）\n\n\n0x814C\n简单网络管理协议（SNMP：Simple Network Management Protocol）\n\n\n0x86DD\n网际协议v6（IPv6，Internet Protocol version 6）\n\n\n0x880B\n点对点协议（PPP：Point-to-Point Protocol）\n\n\n0x880C\n通用交换管理协议（GSMP：General Switch Management Protocol）\n\n\n0x8847\n多协议标签交换（单播）（MPLS：Multi-Protocol Label Switching [unicast]）\n\n\n0x8848\n多协议标签交换（组播）（MPLS, Multi-Protocol Label Switching [multicast]）\n\n\n0x8863\n以太网上的PPP（发现阶段）（PPPoE：PPP Over Ethernet [Discovery Stage]）\n\n\n0x8864\n以太网上的PPP（会话阶段）（PPPoE，PPP Over Ethernet[PPP Session Stage]）\n\n\n0x88BB\n轻量级访问点协议（LWAPP：Light Weight Access Point Protocol）\n\n\n0x88CC\n链接层发现协议（LLDP：Link Layer Discovery Protocol）\n\n\n0x8E88\n局域网上的 EAP（EAPOL：EAP over LAN）\n\n\n0x9000\n配置测试协议（Loopback）\n\n\n0x9100\nVLAN 标签协议标识符（VLAN Tag Protocol Identifier）\n\n\n0x9200\nVLAN 标签协议标识符（VLAN Tag Protocol Identifier）\n\n\n0xFFFF\n保留\n\n\nnw_protonw_proto = proto\n\n\nicmp_typeicmp_type = type\n\n当dl_type和nw_proto确定数据包为ICMP或ICMPv6时，匹配ICMP的type和code。取值区间都为[0, 255]。如果dl_type和nw_proto使用了其他值时，该字段忽略。\n协议关键字协议关键字相当于alias。\n1234567891011121314ip     =  dl_type=0x0800  ipv6   =  dl_type=0x86DDicmp   =  dl_type=0x0800,nw_proto=1  icmp6  =  dl_type=0x86DD,nw_proto=58  tcp    =  dl_type=0x0800,nw_proto=6  tcp6   =  dl_type=0x86DD,nw_proto=6  udp    =  dl_type=0x0800,nw_proto=17  udp6   =  dl_type=0x86DD,nw_proto=17  sctp   =  dl_type=0x0800,nw_proto=132  sctp6  =  dl_type=0x86DD,nw_proto=132  arp    =  dl_type=0x0806  rarp   =  dl_type=0x8035  mpls   =  dl_type=0x8847  mplsm  =  dl_type=0x8848\n\n动作字段normal按照常规L2/L3处理流程处理数据包。\ndrop将数据包丢弃。\nresubmitresubmit([port],[table])\n\n将报文转发给指定的流表，并替换流表的in_port字段，重新进行匹配。\n","dateCreated":"2018-10-24T10:37:23+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-10-24T10:37:23+08:00","description":"ovs流表分析","headline":"Open vSwitch（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Open vSwitch","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="ovs流表分析">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="Open vSwitch（二）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="ovs流表分析">
+<meta property="og:locale" content="zh_EN">
+<meta property="article:published_time" content="2018-10-24T02:37:23.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.035Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Open vSwitch">
+<meta name="twitter:card" content="summary">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            Open vSwitch（二）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-10-24T10:37:23+08:00">
+	
+		    Oct 24, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>ovs流表分析</p>
+<span id="more"></span>
+
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%B5%81%E8%A1%A8"><span class="toc-text">查看流表</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%81%E8%A1%A8%E5%AD%97%E6%AE%B5%E7%BB%84%E6%88%90"><span class="toc-text">流表字段组成</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E5%AD%97%E6%AE%B5"><span class="toc-text">基本字段</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#cookie"><span class="toc-text">cookie</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#duration"><span class="toc-text">duration</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#table"><span class="toc-text">table</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#n-packets"><span class="toc-text">n_packets</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#n-bytes"><span class="toc-text">n_bytes</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#hard-age"><span class="toc-text">hard_age</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#idle-age"><span class="toc-text">idle_age</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#priority"><span class="toc-text">priority</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9D%A1%E4%BB%B6%E5%AD%97%E6%AE%B5"><span class="toc-text">条件字段</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#in-port"><span class="toc-text">in_port</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dl-src"><span class="toc-text">dl_src</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dl-dst"><span class="toc-text">dl_dst</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#nw-src"><span class="toc-text">nw_src</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#nw-dst"><span class="toc-text">nw_dst</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dl-vlan"><span class="toc-text">dl_vlan</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#dl-type"><span class="toc-text">dl_type</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#nw-proto"><span class="toc-text">nw_proto</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#icmp-type"><span class="toc-text">icmp_type</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8A%A8%E4%BD%9C%E5%AD%97%E6%AE%B5"><span class="toc-text">动作字段</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#normal"><span class="toc-text">normal</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#drop"><span class="toc-text">drop</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#resubmit"><span class="toc-text">resubmit</span></a></li></ol></li></ol></li></ol>
+
+<h3 id="查看流表"><a href="#查看流表" class="headerlink" title="查看流表"></a>查看流表</h3><p>查看br-int的流表。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">root@compute-1:~# ovs-ofctl dump-flows br-int</span><br><span class="line">NXST_FLOW reply (xid=0x4):</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.896s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=38,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.785s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=40,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.648s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=9,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.536s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=39,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.351s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=10,icmp6,in_port=37,icmp_type=136 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.868s, table=0, n_packets=359, n_bytes=15078, idle_age=34, hard_age=65534, priority=10,arp,in_port=38 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.755s, table=0, n_packets=361, n_bytes=15162, idle_age=15, hard_age=65534, priority=10,arp,in_port=40 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.618s, table=0, n_packets=24558, n_bytes=1031436, idle_age=0, hard_age=65534, priority=10,arp,in_port=9 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.508s, table=0, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=10,arp,in_port=39 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.322s, table=0, n_packets=24133, n_bytes=1013586, idle_age=2, hard_age=65534, priority=10,arp,in_port=37 actions=resubmit(,24)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.305s, table=0, n_packets=72220587, n_bytes=5493785948, idle_age=0, hard_age=65534, priority=2,in_port=2 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.292s, table=0, n_packets=50525913, n_bytes=3109582261, idle_age=0, hard_age=65534, priority=2,in_port=14 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150065.422s, table=0, n_packets=167905, n_bytes=57401910, idle_age=14, hard_age=65534, priority=2,in_port=10 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.924s, table=0, n_packets=359, n_bytes=122778, idle_age=39, hard_age=65534, priority=9,in_port=38 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.813s, table=0, n_packets=361, n_bytes=123462, idle_age=20, hard_age=65534, priority=9,in_port=40 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.679s, table=0, n_packets=13932, n_bytes=1030968, idle_age=7, hard_age=65534, priority=9,in_port=9 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.563s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=9,in_port=39 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.381s, table=0, n_packets=6966, n_bytes=515484, idle_age=1, hard_age=65534, priority=9,in_port=37 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.869s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.840s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.810s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:18:bd:b2 actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.782s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.754s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.727s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:2e:7d:ad actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.698s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.669s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.641s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:50:d4:4f actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.614s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:59:82:51 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.586s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:59:82:51 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.559s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:59:82:51 actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.532s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.501s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.471s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:95:13:f7 actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.441s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=2,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.413s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,in_port=14,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,2)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150067.384s, table=0, n_packets=142997, n_bytes=10919635, idle_age=89, hard_age=65534, priority=2,in_port=1,dl_src=fa:16:3f:df:c1:f5 actions=resubmit(,1)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150069.241s, table=0, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.319s, table=0, n_packets=1226663, n_bytes=69674983, idle_age=4, hard_age=65534, priority=1 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86050.759s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=5,dl_dst=fa:16:3e:ae:8e:e1 actions=strip_vlan,mod_dl_src:fa:16:3e:0e:31:d7,output:40</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86050.745s, table=1, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=4,dl_vlan=5,dl_dst=fa:16:3e:89:bd:99 actions=strip_vlan,mod_dl_src:fa:16:3e:0e:31:d7,output:38</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.348s, table=1, n_packets=142997, n_bytes=10919635, idle_age=89, hard_age=65534, priority=1 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.334s, table=2, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=1 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150068.361s, table=23, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=0 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.910s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=38,icmp_type=136,nd_target=fe80::f816:3eff:fe89:bd99 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.799s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=40,icmp_type=136,nd_target=fe80::f816:3eff:feae:8ee1 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.663s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=9,icmp_type=136,nd_target=fe80::f816:3eff:fe5c:87d7 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.551s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=39,icmp_type=136,nd_target=fe80::f816:3eff:fe1a:41b4 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.366s, table=24, n_packets=0, n_bytes=0, idle_age=65534, hard_age=65534, priority=2,icmp6,in_port=37,icmp_type=136,nd_target=fe80::f816:3eff:fe45:d778 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.882s, table=24, n_packets=359, n_bytes=15078, idle_age=34, hard_age=65534, priority=2,arp,in_port=38,arp_spa=192.168.10.14 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.770s, table=24, n_packets=361, n_bytes=15162, idle_age=15, hard_age=65534, priority=2,arp,in_port=40,arp_spa=192.168.10.13 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.633s, table=24, n_packets=24558, n_bytes=1031436, idle_age=0, hard_age=65534, priority=2,arp,in_port=9,arp_spa=3.1.1.82 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.522s, table=24, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=2,arp,in_port=39,arp_spa=3.1.1.91 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.336s, table=24, n_packets=24133, n_bytes=1013586, idle_age=2, hard_age=65534, priority=2,arp,in_port=37,arp_spa=3.1.1.92 actions=resubmit(,25)</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=4150069.213s, table=24, n_packets=1, n_bytes=42, idle_age=65534, hard_age=65534, priority=0 actions=drop</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.951s, table=25, n_packets=718, n_bytes=137856, idle_age=34, hard_age=65534, priority=2,in_port=38,dl_src=fa:16:3e:89:bd:99 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.841s, table=25, n_packets=722, n_bytes=138624, idle_age=15, hard_age=65534, priority=2,in_port=40,dl_src=fa:16:3e:ae:8e:e1 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.709s, table=25, n_packets=38490, n_bytes=2062404, idle_age=0, hard_age=65534, priority=2,in_port=9,dl_src=fa:16:3e:5c:87:d7 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.590s, table=25, n_packets=19996, n_bytes=839832, idle_age=0, hard_age=65534, priority=2,in_port=39,dl_src=fa:16:3e:1a:41:b4 actions=NORMAL</span><br><span class="line"> cookie=0xbedca6dce2935c60, duration=86037.411s, table=25, n_packets=31099, n_bytes=1529070, idle_age=1, hard_age=65534, priority=2,in_port=37,dl_src=fa:16:3e:45:d7:78 actions=NORMAL</span><br></pre></td></tr></table></figure>
+
+<h3 id="流表字段组成"><a href="#流表字段组成" class="headerlink" title="流表字段组成"></a>流表字段组成</h3><h4 id="基本字段"><a href="#基本字段" class="headerlink" title="基本字段"></a>基本字段</h4><h5 id="cookie"><a href="#cookie" class="headerlink" title="cookie"></a>cookie</h5><div class="alert success"><p>duration = value</p>
+</div>
+<p>流表的id默认为0。64位数字，不可重复。</p>
+<h5 id="duration"><a href="#duration" class="headerlink" title="duration"></a>duration</h5><div class="alert success"><p>duration = secs</p>
+</div>
+<p>报文在表中的时间。以秒为单位。</p>
+<h5 id="table"><a href="#table" class="headerlink" title="table"></a>table</h5><div class="alert success"><p>table = number</p>
+</div>
+<p>流表的编号，范围是0-254。</p>
+<h5 id="n-packets"><a href="#n-packets" class="headerlink" title="n_packets"></a>n_packets</h5><p>匹配的报文个数。</p>
+<h5 id="n-bytes"><a href="#n-bytes" class="headerlink" title="n_bytes"></a>n_bytes</h5><p>匹配的报文总字节数。</p>
+<h5 id="hard-age"><a href="#hard-age" class="headerlink" title="hard_age"></a>hard_age</h5><div class="alert success"><p>hard_age = secs</p>
+</div>
+<p>自流表被添加或者修改经过的时间</p>
+<h5 id="idle-age"><a href="#idle-age" class="headerlink" title="idle_age"></a>idle_age</h5><div class="alert success"><p>idle_age = secs</p>
+</div>
+<p>没有任何包经过流表的时间</p>
+<h5 id="priority"><a href="#priority" class="headerlink" title="priority"></a>priority</h5><p>指明流表的优先级，0-65535，默认32768。数字越大，则优先级越高。因此，高优先级带通配符流表项必须要被放到低编号的流表中。交换机负责正确地顺序，避免高优先级规则覆盖掉低优先级的。</p>
+<h4 id="条件字段"><a href="#条件字段" class="headerlink" title="条件字段"></a>条件字段</h4><h5 id="in-port"><a href="#in-port" class="headerlink" title="in_port"></a>in_port</h5><div class="alert success"><p>in_port = port</p>
+</div>
+<p>匹配传递数据包的OpenFlow端口号。</p>
+<h5 id="dl-src"><a href="#dl-src" class="headerlink" title="dl_src"></a>dl_src</h5><div class="alert success"><p>dl_src = xx:xx:xx:xx:xx:xx</p>
+</div>
+<p>匹配数据包的源MAC地址。</p>
+<h5 id="dl-dst"><a href="#dl-dst" class="headerlink" title="dl_dst"></a>dl_dst</h5><div class="alert success"><p>dl_dst = xx:xx:xx:xx:xx:xx</p>
+</div>
+<p>匹配数据包的目的MAC地址。</p>
+<h5 id="nw-src"><a href="#nw-src" class="headerlink" title="nw_src"></a>nw_src</h5><div class="alert success"><p>nw_src = ip[Inetmask]</p>
+</div>
+<p>匹配数据包的源IP地址。</p>
+<h5 id="nw-dst"><a href="#nw-dst" class="headerlink" title="nw_dst"></a>nw_dst</h5><div class="alert success"><p>nw_dst = ip[Inetmask]</p>
+</div>
+<p>匹配数据包的目的IP地址。</p>
+<h5 id="dl-vlan"><a href="#dl-vlan" class="headerlink" title="dl_vlan"></a>dl_vlan</h5><div class="alert success"><p>dl_vlan = vlan</p>
+</div>
+<p>匹配数据包的Vlan id，范围是0-4095。0xffff代表不包含Vlan Tag的数据包。</p>
+<h5 id="dl-type"><a href="#dl-type" class="headerlink" title="dl_type"></a>dl_type</h5><div class="alert success"><p>dl_type = ethertype</p>
+</div>
+<p>匹配以太网协议类型。0-65535，16进制的数字。其中0x0800代表IPv4协议，0x086DD代表IPv6协议，0x0806代表ARP协议。</p>
+<table>
+<thead>
+<tr>
+<th align="left">Ethertype</th>
+<th align="left">协议</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">0x0000-0x05DC</td>
+<td align="left">IEEE 802.3长度</td>
+</tr>
+<tr>
+<td align="left">0x0101–0x01FF</td>
+<td align="left">实验</td>
+</tr>
+<tr>
+<td align="left">0x0600</td>
+<td align="left">XEROX NS IDP</td>
+</tr>
+<tr>
+<td align="left">0x0660</br>0x0661</td>
+<td align="left">DLOG</td>
+</tr>
+<tr>
+<td align="left">0x0800</td>
+<td align="left">网际协议（IP）</td>
+</tr>
+<tr>
+<td align="left">0x0801</td>
+<td align="left">X.75 Internet</td>
+</tr>
+<tr>
+<td align="left">0x0802</td>
+<td align="left">NBS Internet</td>
+</tr>
+<tr>
+<td align="left">0x0803</td>
+<td align="left">ECMA Internet</td>
+</tr>
+<tr>
+<td align="left">0x0804</td>
+<td align="left">Chaosnet</td>
+</tr>
+<tr>
+<td align="left">0x0805</td>
+<td align="left">X.25 Level 3</td>
+</tr>
+<tr>
+<td align="left">0x0806</td>
+<td align="left">地址解析协议（ARP：Address Resolution Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x0808</td>
+<td align="left">帧中继ARP（Frame Relay ARP）[RFC1701]</td>
+</tr>
+<tr>
+<td align="left">0x6559</td>
+<td align="left">原始帧中继（Raw Frame Relay）[RFC1701]</td>
+</tr>
+<tr>
+<td align="left">0x8035</td>
+<td align="left">动态DARP（DRARP：Dynamic RARP）</br>反向地址解析协议（RARP：Reverse Address Resolution Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x8037</td>
+<td align="left">Novell Netware IPX</td>
+</tr>
+<tr>
+<td align="left">0x809B</td>
+<td align="left">EtherTalk</td>
+</tr>
+<tr>
+<td align="left">0x80D5</td>
+<td align="left">IBM SNA Services over Ethernet</td>
+</tr>
+<tr>
+<td align="left">0x80F3</td>
+<td align="left">AppleTalk地址解析协议（AARP：AppleTalk Address Resolution Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x8100</td>
+<td align="left">以太网自动保护开关（EAPS：Ethernet Automatic Protection Switching）</td>
+</tr>
+<tr>
+<td align="left">0x8137</td>
+<td align="left">因特网包交换（IPX：Internet Packet Exchange）</td>
+</tr>
+<tr>
+<td align="left">0x814C</td>
+<td align="left">简单网络管理协议（SNMP：Simple Network Management Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x86DD</td>
+<td align="left">网际协议v6（IPv6，Internet Protocol version 6）</td>
+</tr>
+<tr>
+<td align="left">0x880B</td>
+<td align="left">点对点协议（PPP：Point-to-Point Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x880C</td>
+<td align="left">通用交换管理协议（GSMP：General Switch Management Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x8847</td>
+<td align="left">多协议标签交换（单播）（MPLS：Multi-Protocol Label Switching [unicast]）</td>
+</tr>
+<tr>
+<td align="left">0x8848</td>
+<td align="left">多协议标签交换（组播）（MPLS, Multi-Protocol Label Switching [multicast]）</td>
+</tr>
+<tr>
+<td align="left">0x8863</td>
+<td align="left">以太网上的PPP（发现阶段）（PPPoE：PPP Over Ethernet [Discovery Stage]）</td>
+</tr>
+<tr>
+<td align="left">0x8864</td>
+<td align="left">以太网上的PPP（会话阶段）（PPPoE，PPP Over Ethernet[PPP Session Stage]）</td>
+</tr>
+<tr>
+<td align="left">0x88BB</td>
+<td align="left">轻量级访问点协议（LWAPP：Light Weight Access Point Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x88CC</td>
+<td align="left">链接层发现协议（LLDP：Link Layer Discovery Protocol）</td>
+</tr>
+<tr>
+<td align="left">0x8E88</td>
+<td align="left">局域网上的 EAP（EAPOL：EAP over LAN）</td>
+</tr>
+<tr>
+<td align="left">0x9000</td>
+<td align="left">配置测试协议（Loopback）</td>
+</tr>
+<tr>
+<td align="left">0x9100</td>
+<td align="left">VLAN 标签协议标识符（VLAN Tag Protocol Identifier）</td>
+</tr>
+<tr>
+<td align="left">0x9200</td>
+<td align="left">VLAN 标签协议标识符（VLAN Tag Protocol Identifier）</td>
+</tr>
+<tr>
+<td align="left">0xFFFF</td>
+<td align="left">保留</td>
+</tr>
+</tbody></table>
+<h5 id="nw-proto"><a href="#nw-proto" class="headerlink" title="nw_proto"></a>nw_proto</h5><div class="alert success"><p>nw_proto = proto</p>
+</div>
+
+<h5 id="icmp-type"><a href="#icmp-type" class="headerlink" title="icmp_type"></a>icmp_type</h5><div class="alert success"><p>icmp_type = type</p>
+</div>
+<p>当dl_type和nw_proto确定数据包为ICMP或ICMPv6时，匹配ICMP的type和code。取值区间都为[0, 255]。如果dl_type和nw_proto使用了其他值时，该字段忽略。</p>
+<p>协议关键字<br>协议关键字相当于alias。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">ip     =  dl_type=0x0800  </span><br><span class="line">ipv6   =  dl_type=0x86DD</span><br><span class="line">icmp   =  dl_type=0x0800,nw_proto=1  </span><br><span class="line">icmp6  =  dl_type=0x86DD,nw_proto=58  </span><br><span class="line">tcp    =  dl_type=0x0800,nw_proto=6  </span><br><span class="line">tcp6   =  dl_type=0x86DD,nw_proto=6  </span><br><span class="line">udp    =  dl_type=0x0800,nw_proto=17  </span><br><span class="line">udp6   =  dl_type=0x86DD,nw_proto=17  </span><br><span class="line">sctp   =  dl_type=0x0800,nw_proto=132  </span><br><span class="line">sctp6  =  dl_type=0x86DD,nw_proto=132  </span><br><span class="line">arp    =  dl_type=0x0806  </span><br><span class="line">rarp   =  dl_type=0x8035  </span><br><span class="line">mpls   =  dl_type=0x8847  </span><br><span class="line">mplsm  =  dl_type=0x8848</span><br></pre></td></tr></table></figure>
+
+<h4 id="动作字段"><a href="#动作字段" class="headerlink" title="动作字段"></a>动作字段</h4><h5 id="normal"><a href="#normal" class="headerlink" title="normal"></a>normal</h5><p>按照常规L2/L3处理流程处理数据包。</p>
+<h5 id="drop"><a href="#drop" class="headerlink" title="drop"></a>drop</h5><p>将数据包丢弃。</p>
+<h5 id="resubmit"><a href="#resubmit" class="headerlink" title="resubmit"></a>resubmit</h5><div class="alert success"><p>resubmit([port],[table])</p>
+</div>
+<p>将报文转发给指定的流表，并替换流表的in_port字段，重新进行匹配。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Open-vSwitch/" rel="tag">Open vSwitch</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（三）Neutron支持的部署拓扑"
+                    aria-label="PREVIOUS: 深入浅出Neutron（三）Neutron支持的部署拓扑"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    data-tooltip="iptables详解"
+                    aria-label="NEXT: iptables详解"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Open vSwitch（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/10/24/Open-vSwitch（二）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/25/%E6%B7%B1%E5%85%A5%E6%B5%85%E5%87%BANeutron%EF%BC%88%E4%B8%89%EF%BC%89/"
+                    data-tooltip="深入浅出Neutron（三）Neutron支持的部署拓扑"
+                    aria-label="PREVIOUS: 深入浅出Neutron（三）Neutron支持的部署拓扑"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/10/18/iptables%E8%AF%A6%E8%A7%A3/"
+                    data-tooltip="iptables详解"
+                    aria-label="NEXT: iptables详解"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Open vSwitch（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=Open vSwitch（二）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/10/24/Open-vSwitch%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>

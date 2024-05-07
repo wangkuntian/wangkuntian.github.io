@@ -1,0 +1,1007 @@
+
+<!DOCTYPE html>
+<html lang="zh-en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Wang kuntian&#39;s Blog">
+    <title>乘风破浪的Docker（二） - Wang kuntian&#39;s Blog</title>
+    <meta name="author" content="Wang kuntian">
+    
+        <meta name="keywords" content="Docker">
+    
+    
+        <link rel="icon" href="https://wangkuntian.github.io/assets/images/favicon.png">
+    
+    
+        
+            <link rel="alternate" type="application/atom+xml" title="RSS" href="/atom.xml">
+        
+    
+    <script type="application/ld+json">{"@context":"http://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg"},"articleBody":"Docker高级使用指南\n\n\n\nDocker数据管理用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。\n容器的数据管理主要有两种方式：\n\n数据卷（Data Volumes）\n数据卷容器（Data Volume Dontainers）\n\n数据卷数据卷是一个可供容器使用的特殊目录，它绕过文件系统，可以提供很多有用的特性。\n\n数据卷可以在容器间共享使用。\n对数据卷的修改会马上生效。\n对数据卷的更新，不会影响镜像。\n卷会一直存在，直到没有容器使用。数据卷的使用，类似Linux下对目录或文件进行mount操作。\n\n在容器内创建一个数据卷在用docker run命令时，使用-v可以在容器内创建一个数据卷。\n1sudo docker run -d -P --name web -v /webapp training/webapp python app.py\n-P 是允许外部访问容器需要暴露的端口。\n\n\n\n\n挂载一个主机目录作为数据卷使用-v也可以指定挂载一个本地的目录到容器中去作为数据卷。\n1sudo docker run -d -P --name web-2 -v /src/webapp:/opt/webapp training/webapp python app.py\n加载主机中的/src/webapp目录到容器的/opt/webapp目录。本地目录的路径必须是绝对路径，如果目录不存在，docker会自动创建。\n\n\n\n\ndocker挂载的数据卷默认权限是读写（rw），用户也可以通过，ro设定只读。\n1sudo docker run -d -P --name web-3 -v /src/webapp:/opt/webapp:ro training/webapp python app.py\n\n挂载一个本地主机文件作为数据卷-v也可以从主句挂载单个文件到容器中作为数据卷。\n1sudo docker run --rm -it  -v ~/.bash_history:/.bash_history ubuntu /bin/bash\n\n数据卷容器如果用户需要在容器之间共享一些持续更新的数据，最简单的方式是使用数据卷容器。数据卷容器其实就是一个普通的容器，专门用它提供数据卷供其他容器挂载。\n首先创建一个数据卷容器dbdata，并在其中创建一个数据卷挂在到/dbdata。\n1sudo docker run -it -v /dbdata --name dbdata ubuntu\n\n\n然后，可以在其他容器中使用–volumes-from来挂载dbdata容器中的数据卷。创建db1和db2两个容器，并从dbdata容器挂载数据卷。\n12sudo docker run -it --volumes-from dbdata --name db1 ubuntusudo docker run -it --volumes-from dbdata --name db2 ubuntu\n现在，容器db1和db2都挂载同一个数据卷到相同的/dbdata目录。三个容器任何一方在该目录写入，其他容器都可以看到。\n在dbdata容器中创建一个test文件。\n12345root@33821d0743e1:/# cd dbdata/root@33821d0743e1:/dbdata# touch testroot@33821d0743e1:/dbdata# lstestroot@33821d0743e1:/dbdata#\n\n\n在db1容器内查看。\n\n\n可以多次使用–volumes-from参数来从多个容器挂载多个数据卷。还可以从其他已经挂载了容器卷的容器来挂载数据卷。\n1sudo docker run -d --volumes-from db1 --name db3 ubuntu\n使用–volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。\n\n\n如果删除了挂载了的容器（包括dbdata、db1和db2），数据卷并不会自动删除。如果要删除一个数据卷，必须在删除最后一个还挂载这它的容器时显示使用docker rm -v命令来指定同时删除相关联的容器。\n\n\n利用数据卷容器迁移数据可以利用数据卷容器对其中的数据卷进行备份、恢复，以实现数据的迁移。\n备份1sudo docker run --volumes-from dbdata -v $(pwd):/backup --name worker ubuntu tar cvf /backup/backup.tar /dbdata\n首先，利用ubuntu镜像创建一个容器worker。使用–volumes-from dbdata参数让worker容器挂载dbdata容器的数据卷（即dbdata数据卷）。使用-v$(pwd):/backup参数来挂载本地的当前目录到worker容器下的/backup目录。worker容器启动后，使用tar cvf /backup/backup.tar /dbdata命令来将/dbdata下内容备份为容器内的/backup/backup.tar，即主机目录下的backup.tar。\n\n\n\n\n恢复首先创建一个带有数据卷的容器dbdata2。\n1sudo docker run -v /dbdata --name dbdata2 ubuntu /bin/bash\n然后创建另一个新的容器，挂载dbdata2的容器，并使用untar解压备份文件到所挂载的容器卷即可。\n1sudo docker run --volumes-from dbdata2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar\nDocker网络配置Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。\n端口映射实现访问容器从外部访问容器应用在启动容器时，如果不指定对应参数，在容器外部是无法通过网络来访问容器内的网络应用和服务的。\n当容器中运行一些网络应用，要让外部访问这些应用，可以通过-P或者-p参数来指定端口映射。当使用-P标记时，Docker会随机映射一个端口至容器内部的开放的网络端口。\n12docker run -d -P training/webapp python app.pydocker ps -l\n\n\n本地主机的32768被映射到了容器5000端口，访问宿主主机的32768端口即可访问容器内Web应用提供的界面。\n\n\n\n\n可以通过docker logs命令来查看应用的信息。\n\n\n-p则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。支持的格式有ip:hostPort:containerPort | ip::containerPort | hostPort::containerPort。\n映射所有接口地址使用hostPort:containerPort格式将本地的5000端口映射到容器的5000端口。\n1docker run -d -p 5000:5000 training/webapp python app.py\n\n此时默认会绑定本地所有接口上的所有地址。多次使用-p标记可以绑定多个端口。\n1docker run -d -p 5000:5000 -p 3000:80 training/webapp python app.py\n\n映射到指定地址的任意端口使用ip::containerPort绑定localhost的任意端口到容器的5000端口，本地主机会自动分配一个端口。\n1docker run -d -p 127.0.0.1::5000 training/webapp python app.py\n还可以使用udp标记来指定udp端口。\n1docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py\n\n查看映射端口配置1docker port CONTAINER [PRIVATE_PORT[/PROTO]]\n\n\n\n容器互联实现容器间通信容器间的连接（linking）系统是除了端口外另一种可以与容器中应用进行交互的方式。它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。\n使用–name标记可以为容器自定义命名。\n1docker run -d --name web -P training/webapp python app.py\n\n\n容器的名称是唯一的。如果已经命名了一个叫web的容器，要再次使用web命名新容器，需要先用docker rm删除之前的容器。\n在执行docker run的使用如果添加–rm标记，则容器会在终止后立即删除。–rm和-d参数不能同时使用。\n\n\n容器互联使用--link参数可以让容器之间安全的进行交互。先创建一个新的数据库容器。\n1docker run -d --name db training/postgres\n\n删除之前创建的web容器。\n1docker rm -f web\n\n然后创建一个新的web容器，并将它连接到db容器。\n1docker run -d -P --name web --link db:db training/webapp python app.py\n\n\n–link参数的格式为–link name:alias，其中name是要链接的容器的名称，alias是这个链接的别名。\n\n\nDocker在两个容器之间创建了一个安全隧道，而且不用映射它们的端口到宿主主机上。在启动db容器的时候没有-p和-P标记，从而避免暴露数据库端口到外部网络上。\nDocker通过两种方式为容器公开连接信息。\n\n环境变量。\n更新/etc/hosts文件。\n\n使用env命令查看web容器的环境变量。\n1docker exec web env\n\n\n其中DB_开头的环境变量是供web容器连接db容器使用，前缀采用大写的连接别名。\n\n\n除了环境变量，Docker还添加host信息到父容器的/etc/hosts的文件。\n1docker exec web cat /etc/hosts \n\n\n这里有两个hosts信息，第一个是db容器的ip和主机名，第二个是web容器，web容器用自己的id作为默认主机名。可以在web容器中用ping命令测试与db容器的连通。\n1docker exec web ping db\n\n\n可以连接多个子容器到父容器。\n\n\nDockerfile创建镜像Dockerfile是一个文本格式的配置文件，用户可以用Dockerfile快速创建自定义的镜像。\n环境介绍\nDockerfile中所用的文件一定是和Dockerfile文件在同一级目录下，可以为Dockerfile文件的父目录的子目录。\nDockerfile中相对路径默认是Dockerfile所在的目录。\nDockerfile中每一条指令被视为一层，分层构建，联合挂载。所以，能写到一行的指令，一定要写到一行。\nDockerfile中指令不区分大小写，但习惯上将它大写，以便和参数区分开来。\n\n指令介绍FROM功能为指定基础镜像，必须是第一条指令。同时意味着接下来所写的指令将作为镜像的第一层开始。\n123FROM &lt;image&gt;FROM &lt;image&gt;:&lt;tag&gt;FROM &lt;image&gt;:&lt;digest&gt;\n三种写法，其中和是可选项，如果没有选择，那么默认latest。如果不以任何镜像为基础，那么写法为：FROM scratch。\n\n\nMAINTAINER指定作者\n1MAINTAINER &lt;name&gt;\n新版docker中使用LABEL指明。\n\n\nLABEL为镜像指定标签。\n12345678910111213LABEL &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;一个Dockerfile可以有多个LABEL。LABEL com.example.label-with-value=&quot;foo&quot;LABEL version=&quot;1.0&quot;LABEL description=&quot;This text illustrates that label-values \\can span multiple lines.&quot;但不建议这么写，最好写成一行，可以使用\\换行。LABEL multi.label1=&quot;value1&quot; \\multi.label2=&quot;value2&quot; \\other=&quot;value3&quot;\nLABEL会继承基础镜像的LABEL，遇到相同key的，则值被覆盖。\n\n\nADD复制文件到镜像中。\n12ADD &lt;src&gt; ... &lt;dest&gt;ADD [&quot;&lt;src&gt;&quot; ... &quot;&lt;dest&gt;&quot;]\n路径可以是容器内的绝对路径，也可以是相对于工作目录的相对路径，推荐写成绝对路径。可以是一个本地文件，还可以是一个url，相当于wget。\n\n123ADD test relativeDir/ADD test /relativeDirADD http://example.com/test /\nscr为一个目录时，会自动把目录下的文件复制过去，目录本身不会复制。如果scr为多个文件，dest一个是一个目录。\n\n\nCOPY复制文件到镜像中。\n12COPY &lt;src&gt; ... &lt;dest&gt;COPY [&quot;&lt;src&gt;&quot; ... &quot;&lt;dest&gt;&quot;]\n与ADD的区别：COPY只能是本地文件，其他用法一致。\n\n\nEXPOSE暴露容器运行时的监听端口给外部。\n1EXPOSE &lt;port&gt;/&lt;tcp/udp&gt;\nEXPOSE不会使容器访问主机的端口，如果想使容器和主机的端口有映射关系，必须在容器启动的时候加上-p参数。\n\n\nENV设置环境变量。\n12ENV &lt;key&gt; &lt;value&gt;ENV &lt;key&gt;=&lt;value&gt; ...\n两者的区别：第一种一次设置一个，第二种一次设置多个。\n\n\n在Dockerfile中使用环境变量\n$varname\n${varname}\n${varname:-default}\n${varname:+default}\n\n第一种和第二种相同。第三种表示当变量不存在时，使用-号后面的值。第四种表示无论变量存不存在，都使用+后面的值。\n\n\nRUN运行指定命令。\n12RUN &lt;command&gt;RUN [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]\n第一种后面直接跟shell命令。\n\n在linux上默认/bin/sh -c\n在windows上默认cmd /S /C\n\n第二种类似函数调用。\n\n可以将executable理解为可执行文件，后面就是两个参数。\n\n\n\nCMD容器启动时要运行的命令。\n123CMD [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]CMD [&quot;param1&quot;, &quot;param2&quot;]CMD command param1 param2\n示例：\n12CMD [&quot;sh&quot;, &quot;-c&quot;, &quot;echo $HOME&quot;]CMD [&quot;echo&quot;, &quot;$HOME&quot;]\n参数一定要用双引号包括。原因是参数传递后，docker解析的是一个JSON array。\n\n\nRUN和CMD的却别：\n\nRUN是构建容器镜像时就会运行的命令以及提交运行结果。\nCMD是容器启动时执行的命令，在构建时不运行，构建时仅仅指定了这个命令。\n\n\n\nENTRYPOINT启动时的默认命令。\n12ENTRYPOINT [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]  ENTRYPOINT command param1 param2\nENTRYPOINT与CMD比较：\n\n相同点：只能写一条，如果写了多条，那么只有最后一条会生效；容器启动时才会运行，运行时机相同。\n不同点：ENTRYPOINT不会被运行的command覆盖，而CMD则会被覆盖。\n\n\n\n如果我们在Dockerfile中同时写了ENTRYPOINT和CMD，并且CMD指令不是一个完整可执行的命令，那么CMD指定的内容将会作为ENTRYPOINT的参数。\n123FROM ubuntuENTRYPOINT [&quot;top&quot;, &quot;-b&quot;]CMD [&quot;-c&quot;]\n\n如果我们在Dcokerfile中同时写了ENTRYPOINT和CMD，并且CMD是一个完整的指令，那么他们会相互覆盖，谁在最后谁生效。\n123FROM ubuntuENTRYPOINT [&quot;top&quot;, &quot;-b&quot;]CMD ls -al\n那么容器内将执行ls -al，top -b将不会被执行。\nVOLUME实现挂载功能，可将宿主机目录挂载到容器中。\n1VOLUME [&quot;/data&quot;]\n[“/data”]可以是一个JsonArray，也可以是多个值。\n\n\n123VOLUME [&quot;/var/log&quot;]VOLUME /var/logVOLUME /var/log /var/db\n容器使用的是AUFS，这种文件系统不能持久化数据，当容器关闭后，所有的更改都会丢失。所以当数据需要持久化时使用这个命令。\n\n\nUSER设置启动容器的用户，可以是用户名或UID。\n12USER kingUSER UID\n如果设置了容器以king用户去运行，那么RUN，CMD和ENTRYPOINT都会以这个用户去运行，使用这个命令一定要确认容器中拥有这个用户，并且拥有足够的权限。\n\n\nWORKDIR设置工作目录，对RUN，CMD，ENTRYPOINT，COPY和ADD生效。如果目录不存在会创建，也可以设置多次。\n1WORKDIR /path/to/workdir\n1234WORKDIR /aWORKDIR bWORKDIR cRUN pwd\npwd的执行结果是/a/b/c。WORKDIR也可以解析环境变量。\n123ENV DIRPATH /pathWORKDIR $DIRPATH/$DIRNAMERUN pwd\npwd的执行结果是/path/$DIRNAME。\nARG设置变量。ARG命令定义一个变量，在docker build创建镜像的时候，使用**–build-arg=**来指定参数。\n1ARG &lt;name&gt;[=&lt;default value&gt;]\n\n如果用户在build镜像时指定了一个参数没有定义在Dockerfile中，那么将会有一个warning，提示如下：[Warning] One or more build-args [path] were not consumed.\n\n\n可以定义一个或者多个参数.\n123FROM ubuntuARG userARG buildinfo\n还可以给参数一个默认值。\n123FROM ubuntuARG user=kingARG buildinfo=1\n如果我们给了ARG定义的参数默认值，那么当build镜像时没有指定参数值，将会使用这个默认值。\n\n\nONBUILD1ONBUILD [INSTRUCTION]\n这个命令只对当前镜像的子镜像生效。比如当前镜像为A，在Dockerfile中添加：\n1ONBUILD RUN ls -al\n这个ls -al命令不会在A镜像构建或启动的时候执行。此时有一个镜像B是基于A镜像构建的，那么这个ls -al命令会在镜像B构建的时候被执行。\nSTOPSIGNAL当容器停止时给系统发送什么样的指令，默认是15.\n1STOPSIGNAL signal\n\nHEALTHCHECK12HEALTHCHECK [OPTIONS] CMD commandHEALTHCHECK NONE\n\n在容器内部运行一个命令来检查容器的健康状况。\n在基础镜像中取消健康检查命令。\n\n[OPTIONS]支持以下三种选项：\n\n–interval=DURATION 两次检查默认的时间间隔，默认为30秒。\n–timeout=DURATION 健康检查命令运行超时时长，默认为30秒。\n-reties=N 当连续失败指定次数后，则容器被认为是不健康的，状态日为unhealthy，默认次数是3。\n\nHEALTHCHECK命令只能出现一次，如果出现了多次，只有最后一次生效。\n\n\nCMD后面的命令的返回值决定了本次健康检查是否成功，具体的返回值如下：\n\n0：success。表示容器是健康的。\n1：unhealthy。表示容器已经不能工作了。\n2：reserved。保留值。\n\n12HEALTHCHECK --interval=5m --timeout=3s \\CMD curl -f http://localhost/ || exit 1\n健康检查的命令是：curl -f http://localhost/ || exit 1两次检查的间隔是5分钟，命令超时时间是3秒。\n","dateCreated":"2018-09-20T14:44:39+08:00","dateModified":"2023-09-21T10:45:00+08:00","datePublished":"2018-09-20T14:44:39+08:00","description":"Docker高级使用指南","headline":"乘风破浪的Docker（二）","image":[null,"images/PROJECT-Vayne.jpg"],"mainEntityOfPage":{"@type":"WebPage","@id":"https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"},"publisher":{"@type":"Organization","name":"Wang kuntian","sameAs":["https://github.com/wangkuntian","mailto:wangkuntian1994@163.com"],"image":"faker.jpg","logo":{"@type":"ImageObject","url":"faker.jpg"}},"url":"https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/","keywords":"Docker","thumbnailUrl":"images/PROJECT-Vayne.jpg"}</script>
+    <meta name="description" content="Docker高级使用指南">
+<meta property="og:type" content="blog">
+<meta property="og:title" content="乘风破浪的Docker（二）">
+<meta property="og:url" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/index.html">
+<meta property="og:site_name" content="Wang kuntian&#39;s Blog">
+<meta property="og:description" content="Docker高级使用指南">
+<meta property="og:locale" content="zh_EN">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker-run-1.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker-run-2.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker-run-3.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/touch-test.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/db1-ls.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker-backup.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_run.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/curl.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_logs.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_port.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_run_name.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_ps.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_exec_env.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_exec_cat.png">
+<meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker_exec_ping.png">
+<meta property="article:published_time" content="2018-09-20T06:44:39.000Z">
+<meta property="article:modified_time" content="2023-09-21T02:45:00.147Z">
+<meta property="article:author" content="Wang kuntian">
+<meta property="article:tag" content="Docker">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/docker-run-1.png">
+    
+    
+        
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/assets/images/faker.jpg"/>
+    
+    
+    
+        <meta property="og:image" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+        <meta class="swiftype" name="image" data-type="enum" content="https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/images/PROJECT-Vayne.jpg"/>
+    
+    
+    <!--STYLES-->
+    
+<link rel="stylesheet" href="/assets/css/style-bkzaqwnhdy35ne9gawopbfxp7lltc7yhde0uckf6kikurfjo9ztq2v5apuqa.min.css">
+
+    <!--STYLES END-->
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-136102260-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-136102260-1');
+    </script>
+
+
+    
+
+    
+        
+    
+<!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --></head>
+
+    <body>
+        <div id="blog">
+            <!-- Define author's picture -->
+
+
+    
+        
+            
+        
+    
+
+<header id="header" data-behavior="4">
+    <i id="btn-open-sidebar" class="fa fa-lg fa-bars"></i>
+    <div class="header-title">
+        <a
+            class="header-title-link"
+            href="/"
+            aria-label=""
+        >
+            Wang kuntian&#39;s Blog
+        </a>
+    </div>
+    
+        
+            <a
+                class="header-right-picture "
+                href="#about"
+                aria-label="Öffne den Link: /#about"
+            >
+        
+        
+            <img class="header-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+        </a>
+    
+</header>
+
+            <!-- Define author's picture -->
+
+
+
+        
+    
+
+<nav id="sidebar" data-behavior="4">
+    <div class="sidebar-container">
+        
+            <div class="sidebar-profile">
+                <a
+                    href="/#about"
+                    aria-label="Lesen Sie mehr über den Autor"
+                >
+                    <img class="sidebar-profile-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+                </a>
+                <h4 class="sidebar-profile-name">Wang kuntian</h4>
+                
+                    <h5 class="sidebar-profile-bio"><p>Hi</p>
+</h5>
+                
+            </div>
+        
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/"
+                            
+                            rel="noopener"
+                            title="Home"
+                        >
+                        <i class="sidebar-button-icon fa fa-home" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Home</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-categories"
+                            
+                            rel="noopener"
+                            title="Categories"
+                        >
+                        <i class="sidebar-button-icon fa fa-bookmark" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Categories</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-tags"
+                            
+                            rel="noopener"
+                            title="Tags"
+                        >
+                        <i class="sidebar-button-icon fa fa-tags" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Tags</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/all-archives"
+                            
+                            rel="noopener"
+                            title="Archives"
+                        >
+                        <i class="sidebar-button-icon fa fa-archive" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Archives</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link open-algolia-search"
+                            href="#search"
+                            
+                            rel="noopener"
+                            title="Search"
+                        >
+                        <i class="sidebar-button-icon fa fa-search" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Search</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="#about"
+                            
+                            rel="noopener"
+                            title="About"
+                        >
+                        <i class="sidebar-button-icon fa fa-question" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">About</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="https://github.com/wangkuntian"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="GitHub"
+                        >
+                        <i class="sidebar-button-icon fab fa-github" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">GitHub</span>
+                    </a>
+            </li>
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="mailto:wangkuntian1994@163.com"
+                            
+                                target="_blank"
+                            
+                            rel="noopener"
+                            title="Mail"
+                        >
+                        <i class="sidebar-button-icon fa fa-envelope" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">Mail</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+            <ul class="sidebar-buttons">
+            
+                <li class="sidebar-button">
+                    
+                        <a
+                            class="sidebar-button-link "
+                            href="/atom.xml"
+                            
+                            rel="noopener"
+                            title="RSS"
+                        >
+                        <i class="sidebar-button-icon fa fa-rss" aria-hidden="true"></i>
+                        <span class="sidebar-button-desc">RSS</span>
+                    </a>
+            </li>
+            
+        </ul>
+        
+    </div>
+</nav>
+
+            
+        <div class="post-header-cover
+                    text-center
+                    post-header-cover--full"
+             style="background-image:url('/images/PROJECT-Vayne.jpg');"
+             data-behavior="4">
+            
+                <div class="post-header main-content-wrap text-center">
+    
+        <h1 class="post-title">
+            乘风破浪的Docker（二）
+        </h1>
+    
+    
+        <div class="post-meta">
+    <time datetime="2018-09-20T14:44:39+08:00">
+	
+		    Sep 20, 2018
+    	
+    </time>
+    
+</div>
+
+    
+</div>
+
+            
+        </div>
+
+            <div id="main" data-behavior="4"
+                 class="hasCover
+                        hasCoverMetaIn
+                        ">
+                
+<article class="post">
+    
+    
+    <div class="post-content markdown">
+        <div class="main-content-wrap">
+            <p>Docker高级使用指南</p>
+<span id="more"></span>
+<h1 id="table-of-contents">目录</h1><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Docker%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86"><span class="toc-text">Docker数据管理</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">数据卷</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9C%A8%E5%AE%B9%E5%99%A8%E5%86%85%E5%88%9B%E5%BB%BA%E4%B8%80%E4%B8%AA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">在容器内创建一个数据卷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%82%E8%BD%BD%E4%B8%80%E4%B8%AA%E4%B8%BB%E6%9C%BA%E7%9B%AE%E5%BD%95%E4%BD%9C%E4%B8%BA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">挂载一个主机目录作为数据卷</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8C%82%E8%BD%BD%E4%B8%80%E4%B8%AA%E6%9C%AC%E5%9C%B0%E4%B8%BB%E6%9C%BA%E6%96%87%E4%BB%B6%E4%BD%9C%E4%B8%BA%E6%95%B0%E6%8D%AE%E5%8D%B7"><span class="toc-text">挂载一个本地主机文件作为数据卷</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%8D%B7%E5%AE%B9%E5%99%A8"><span class="toc-text">数据卷容器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%95%B0%E6%8D%AE%E5%8D%B7%E5%AE%B9%E5%99%A8%E8%BF%81%E7%A7%BB%E6%95%B0%E6%8D%AE"><span class="toc-text">利用数据卷容器迁移数据</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A4%87%E4%BB%BD"><span class="toc-text">备份</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%81%A2%E5%A4%8D"><span class="toc-text">恢复</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Docker%E7%BD%91%E7%BB%9C%E9%85%8D%E7%BD%AE"><span class="toc-text">Docker网络配置</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AB%AF%E5%8F%A3%E6%98%A0%E5%B0%84%E5%AE%9E%E7%8E%B0%E8%AE%BF%E9%97%AE%E5%AE%B9%E5%99%A8"><span class="toc-text">端口映射实现访问容器</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E5%A4%96%E9%83%A8%E8%AE%BF%E9%97%AE%E5%AE%B9%E5%99%A8%E5%BA%94%E7%94%A8"><span class="toc-text">从外部访问容器应用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%A0%E5%B0%84%E6%89%80%E6%9C%89%E6%8E%A5%E5%8F%A3%E5%9C%B0%E5%9D%80"><span class="toc-text">映射所有接口地址</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%98%A0%E5%B0%84%E5%88%B0%E6%8C%87%E5%AE%9A%E5%9C%B0%E5%9D%80%E7%9A%84%E4%BB%BB%E6%84%8F%E7%AB%AF%E5%8F%A3"><span class="toc-text">映射到指定地址的任意端口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9F%A5%E7%9C%8B%E6%98%A0%E5%B0%84%E7%AB%AF%E5%8F%A3%E9%85%8D%E7%BD%AE"><span class="toc-text">查看映射端口配置</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E4%BA%92%E8%81%94%E5%AE%9E%E7%8E%B0%E5%AE%B9%E5%99%A8%E9%97%B4%E9%80%9A%E4%BF%A1"><span class="toc-text">容器互联实现容器间通信</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E4%BA%92%E8%81%94"><span class="toc-text">容器互联</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#Dockerfile%E5%88%9B%E5%BB%BA%E9%95%9C%E5%83%8F"><span class="toc-text">Dockerfile创建镜像</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%8E%AF%E5%A2%83%E4%BB%8B%E7%BB%8D"><span class="toc-text">环境介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8C%87%E4%BB%A4%E4%BB%8B%E7%BB%8D"><span class="toc-text">指令介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#FROM"><span class="toc-text">FROM</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MAINTAINER"><span class="toc-text">MAINTAINER</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#LABEL"><span class="toc-text">LABEL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ADD"><span class="toc-text">ADD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#COPY"><span class="toc-text">COPY</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#EXPOSE"><span class="toc-text">EXPOSE</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ENV"><span class="toc-text">ENV</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%9C%A8Dockerfile%E4%B8%AD%E4%BD%BF%E7%94%A8%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"><span class="toc-text">在Dockerfile中使用环境变量</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#RUN"><span class="toc-text">RUN</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CMD"><span class="toc-text">CMD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ENTRYPOINT"><span class="toc-text">ENTRYPOINT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#VOLUME"><span class="toc-text">VOLUME</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#USER"><span class="toc-text">USER</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#WORKDIR"><span class="toc-text">WORKDIR</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ARG"><span class="toc-text">ARG</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ONBUILD"><span class="toc-text">ONBUILD</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#STOPSIGNAL"><span class="toc-text">STOPSIGNAL</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HEALTHCHECK"><span class="toc-text">HEALTHCHECK</span></a></li></ol></li></ol></li></ol>
+
+<h1 id="Docker数据管理"><a href="#Docker数据管理" class="headerlink" title="Docker数据管理"></a>Docker数据管理</h1><p>用户在使用docker过程中，往往需要查看容器内应用产生的数据，或者需要把容器内的数据进行备份，甚至多个容器之间进行数据的共享，这必然涉及到容器的数据管理操作。</p>
+<p>容器的数据管理主要有两种方式：</p>
+<ul>
+<li>数据卷（Data Volumes）</li>
+<li>数据卷容器（Data Volume Dontainers）</li>
+</ul>
+<h2 id="数据卷"><a href="#数据卷" class="headerlink" title="数据卷"></a>数据卷</h2><p>数据卷是一个可供容器使用的特殊目录，它绕过文件系统，可以提供很多有用的特性。</p>
+<ul>
+<li>数据卷可以在容器间共享使用。</li>
+<li>对数据卷的修改会马上生效。</li>
+<li>对数据卷的更新，不会影响镜像。</li>
+<li>卷会一直存在，直到没有容器使用。<br>数据卷的使用，类似Linux下对目录或文件进行mount操作。</li>
+</ul>
+<h3 id="在容器内创建一个数据卷"><a href="#在容器内创建一个数据卷" class="headerlink" title="在容器内创建一个数据卷"></a>在容器内创建一个数据卷</h3><p>在用docker run命令时，使用-v可以在容器内创建一个数据卷。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web -v /webapp training/webapp python app.py</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>-P 是允许外部访问容器需要暴露的端口。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-run-1.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run-1.png" alt=""></a></div>
+
+<h3 id="挂载一个主机目录作为数据卷"><a href="#挂载一个主机目录作为数据卷" class="headerlink" title="挂载一个主机目录作为数据卷"></a>挂载一个主机目录作为数据卷</h3><p>使用-v也可以指定挂载一个本地的目录到容器中去作为数据卷。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web-2 -v /src/webapp:/opt/webapp training/webapp python app.py</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>加载主机中的/src/webapp目录到容器的/opt/webapp目录。<br>本地目录的路径必须是绝对路径，如果目录不存在，docker会自动创建。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-run-2.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run-2.png" alt=""></a></div>
+
+<p>docker挂载的数据卷默认权限是读写（rw），用户也可以通过，ro设定只读。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d -P --name web-3 -v /src/webapp:/opt/webapp:ro training/webapp python app.py</span><br></pre></td></tr></table></figure>
+
+<h3 id="挂载一个本地主机文件作为数据卷"><a href="#挂载一个本地主机文件作为数据卷" class="headerlink" title="挂载一个本地主机文件作为数据卷"></a>挂载一个本地主机文件作为数据卷</h3><p>-v也可以从主句挂载单个文件到容器中作为数据卷。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --<span class="built_in">rm</span> -it  -v ~/.bash_history:/.bash_history ubuntu /bin/bash</span><br></pre></td></tr></table></figure>
+
+<h2 id="数据卷容器"><a href="#数据卷容器" class="headerlink" title="数据卷容器"></a>数据卷容器</h2><p>如果用户需要在容器之间共享一些持续更新的数据，最简单的方式是使用数据卷容器。数据卷容器其实就是一个普通的容器，专门用它提供数据卷供其他容器挂载。</p>
+<p>首先创建一个数据卷容器dbdata，并在其中创建一个数据卷挂在到/dbdata。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -it -v /dbdata --name dbdata ubuntu</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-run-3.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-run-3.png" alt=""></a></div>
+
+<p>然后，可以在其他容器中使用–volumes-from来挂载dbdata容器中的数据卷。创建db1和db2两个容器，并从dbdata容器挂载数据卷。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -it --volumes-from dbdata --name db1 ubuntu</span><br><span class="line">sudo docker run -it --volumes-from dbdata --name db2 ubuntu</span><br></pre></td></tr></table></figure>
+<p>现在，容器db1和db2都挂载同一个数据卷到相同的/dbdata目录。三个容器任何一方在该目录写入，其他容器都可以看到。</p>
+<p>在dbdata容器中创建一个test文件。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">root@33821d0743e1:/<span class="comment"># cd dbdata/</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment"># touch test</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment"># ls</span></span><br><span class="line"><span class="built_in">test</span></span><br><span class="line">root@33821d0743e1:/dbdata<span class="comment">#</span></span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/touch-test.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/touch-test.png" alt=""></a></div>
+
+<p>在db1容器内查看。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/db1-ls.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/db1-ls.png" alt=""></a></div>
+
+<p>可以多次使用–volumes-from参数来从多个容器挂载多个数据卷。还可以从其他已经挂载了容器卷的容器来挂载数据卷。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -d --volumes-from db1 --name db3 ubuntu</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>使用–volumes-from参数所挂载数据卷的容器自身并不需要保持运行状态。</p>
+</div>
+
+<div class="alert danger no-icon"><p>如果删除了挂载了的容器（包括dbdata、db1和db2），数据卷并不会自动删除。<br>如果要删除一个数据卷，必须在删除最后一个还挂载这它的容器时显示使用docker rm -v命令来指定同时删除相关联的容器。</p>
+</div>
+
+<h3 id="利用数据卷容器迁移数据"><a href="#利用数据卷容器迁移数据" class="headerlink" title="利用数据卷容器迁移数据"></a>利用数据卷容器迁移数据</h3><p>可以利用数据卷容器对其中的数据卷进行备份、恢复，以实现数据的迁移。</p>
+<h4 id="备份"><a href="#备份" class="headerlink" title="备份"></a>备份</h4><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --volumes-from dbdata -v $(pwd):/backup --name worker ubuntu tar cvf /backup/backup.tar /dbdata</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>首先，利用ubuntu镜像创建一个容器worker。<br>使用–volumes-from dbdata参数让worker容器挂载dbdata容器的数据卷（即dbdata数据卷）。<br>使用-v$(pwd):/backup参数来挂载本地的当前目录到worker容器下的/backup目录。<br>worker容器启动后，使用tar cvf /backup/backup.tar /dbdata命令来将/dbdata下内容备份为容器内的/backup/backup.tar，即主机目录下的backup.tar。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker-backup.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker-backup.png" alt=""></a></div>
+
+<h4 id="恢复"><a href="#恢复" class="headerlink" title="恢复"></a>恢复</h4><p>首先创建一个带有数据卷的容器dbdata2。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run -v /dbdata --name dbdata2 ubuntu /bin/bash</span><br></pre></td></tr></table></figure>
+<p>然后创建另一个新的容器，挂载dbdata2的容器，并使用untar解压备份文件到所挂载的容器卷即可。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo docker run --volumes-from dbdata2 -v $(pwd):/backup ubuntu tar xvf /backup/backup.tar</span><br></pre></td></tr></table></figure>
+<h1 id="Docker网络配置"><a href="#Docker网络配置" class="headerlink" title="Docker网络配置"></a>Docker网络配置</h1><p>Docker提供了映射容器端口到宿主主机和容器互联机制来为容器提供网络服务。</p>
+<h2 id="端口映射实现访问容器"><a href="#端口映射实现访问容器" class="headerlink" title="端口映射实现访问容器"></a>端口映射实现访问容器</h2><h3 id="从外部访问容器应用"><a href="#从外部访问容器应用" class="headerlink" title="从外部访问容器应用"></a>从外部访问容器应用</h3><p>在启动容器时，如果不指定对应参数，在容器外部是无法通过网络来访问容器内的网络应用和服务的。</p>
+<p>当容器中运行一些网络应用，要让外部访问这些应用，可以通过-P或者-p参数来指定端口映射。当使用-P标记时，Docker会随机映射一个端口至容器内部的开放的网络端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -P training/webapp python app.py</span><br><span class="line">docker ps -l</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_run.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_run.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>本地主机的32768被映射到了容器5000端口，访问宿主主机的32768端口即可访问容器内Web应用提供的界面。</p>
+</div>
+<br>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/curl.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/curl.png" alt=""></a></div>
+
+<p>可以通过docker logs命令来查看应用的信息。</p>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_logs.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_logs.png" alt=""></a></div>
+
+<p>-p则可以指定要映射的端口，并且，在一个指定端口上只可以绑定一个容器。支持的格式有ip:hostPort:containerPort | ip::containerPort | hostPort::containerPort。</p>
+<h3 id="映射所有接口地址"><a href="#映射所有接口地址" class="headerlink" title="映射所有接口地址"></a>映射所有接口地址</h3><p>使用hostPort:containerPort格式将本地的5000端口映射到容器的5000端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 5000:5000 training/webapp python app.py</span><br></pre></td></tr></table></figure>
+
+<p>此时默认会绑定本地所有接口上的所有地址。多次使用-p标记可以绑定多个端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 5000:5000 -p 3000:80 training/webapp python app.py</span><br></pre></td></tr></table></figure>
+
+<h3 id="映射到指定地址的任意端口"><a href="#映射到指定地址的任意端口" class="headerlink" title="映射到指定地址的任意端口"></a>映射到指定地址的任意端口</h3><p>使用ip::containerPort绑定localhost的任意端口到容器的5000端口，本地主机会自动分配一个端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 127.0.0.1::5000 training/webapp python app.py</span><br></pre></td></tr></table></figure>
+<p>还可以使用udp标记来指定udp端口。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -p 127.0.0.1:5000:5000/udp training/webapp python app.py</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看映射端口配置"><a href="#查看映射端口配置" class="headerlink" title="查看映射端口配置"></a>查看映射端口配置</h3><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker port CONTAINER [PRIVATE_PORT[/PROTO]]</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_port.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_port.png" alt=""></a></div>
+
+
+<h2 id="容器互联实现容器间通信"><a href="#容器互联实现容器间通信" class="headerlink" title="容器互联实现容器间通信"></a>容器互联实现容器间通信</h2><p>容器间的连接（linking）系统是除了端口外另一种可以与容器中应用进行交互的方式。它会在源和接收容器之间创建一个隧道，接收容器可以看到源容器指定的信息。</p>
+<p>使用–name标记可以为容器自定义命名。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name web -P training/webapp python app.py</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_run_name.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_run_name.png" alt=""></a></div>
+
+<div class="alert danger no-icon"><p>容器的名称是唯一的。<br>如果已经命名了一个叫web的容器，要再次使用web命名新容器，需要先用docker rm删除之前的容器。</p>
+<p>在执行docker run的使用如果添加–rm标记，则容器会在终止后立即删除。<br>–rm和-d参数不能同时使用。</p>
+</div>
+
+<h3 id="容器互联"><a href="#容器互联" class="headerlink" title="容器互联"></a>容器互联</h3><p>使用--link参数可以让容器之间安全的进行交互。<br>先创建一个新的数据库容器。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name db training/postgres</span><br></pre></td></tr></table></figure>
+
+<p>删除之前创建的web容器。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker rm -f web</span><br></pre></td></tr></table></figure>
+
+<p>然后创建一个新的web容器，并将它连接到db容器。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -d -P --name web --link db:db training/webapp python app.py</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_ps.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_ps.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>–link参数的格式为–link name:alias，其中name是要链接的容器的名称，alias是这个链接的别名。</p>
+</div>
+
+<p>Docker在两个容器之间创建了一个安全隧道，而且不用映射它们的端口到宿主主机上。在启动db容器的时候没有-p和-P标记，从而避免暴露数据库端口到外部网络上。</p>
+<p>Docker通过两种方式为容器公开连接信息。</p>
+<ul>
+<li>环境变量。</li>
+<li>更新/etc/hosts文件。</li>
+</ul>
+<p>使用env命令查看web容器的环境变量。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web env</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_exec_env.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_exec_env.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>其中DB_开头的环境变量是供web容器连接db容器使用，前缀采用大写的连接别名。</p>
+</div>
+
+<p>除了环境变量，Docker还添加host信息到父容器的/etc/hosts的文件。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web cat /etc/hosts </span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_exec_cat.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_exec_cat.png" alt=""></a></div>
+
+<p>这里有两个hosts信息，第一个是db容器的ip和主机名，第二个是web容器，web容器用自己的id作为默认主机名。可以在web容器中用ping命令测试与db容器的连通。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker exec web ping db</span><br></pre></td></tr></table></figure>
+<div class="figure center" style="width:;"><a class="fancybox" href="images/docker_exec_ping.png" title="" data-caption="" data-fancybox="default"><img class="fig-img" src="images/docker_exec_ping.png" alt=""></a></div>
+
+<div class="alert info no-icon"><p>可以连接多个子容器到父容器。</p>
+</div>
+
+<h1 id="Dockerfile创建镜像"><a href="#Dockerfile创建镜像" class="headerlink" title="Dockerfile创建镜像"></a>Dockerfile创建镜像</h1><p>Dockerfile是一个文本格式的配置文件，用户可以用Dockerfile快速创建自定义的镜像。</p>
+<h2 id="环境介绍"><a href="#环境介绍" class="headerlink" title="环境介绍"></a>环境介绍</h2><ol>
+<li>Dockerfile中所用的文件一定是和Dockerfile文件在同一级目录下，可以为Dockerfile文件的父目录的子目录。</li>
+<li>Dockerfile中相对路径默认是Dockerfile所在的目录。</li>
+<li>Dockerfile中每一条指令被视为一层，分层构建，联合挂载。所以，能写到一行的指令，一定要写到一行。</li>
+<li>Dockerfile中指令不区分大小写，但习惯上将它大写，以便和参数区分开来。</li>
+</ol>
+<h2 id="指令介绍"><a href="#指令介绍" class="headerlink" title="指令介绍"></a>指令介绍</h2><h3 id="FROM"><a href="#FROM" class="headerlink" title="FROM"></a>FROM</h3><p>功能为指定基础镜像，必须是第一条指令。<br>同时意味着接下来所写的指令将作为镜像的第一层开始。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> &lt;image&gt;</span><br><span class="line"><span class="keyword">FROM</span> &lt;image&gt;:&lt;tag&gt;</span><br><span class="line"><span class="keyword">FROM</span> &lt;image&gt;:&lt;digest&gt;</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>三种写法，其中<tag>和<digest>是可选项，如果没有选择，那么默认latest。<br>如果不以任何镜像为基础，那么写法为：FROM scratch。</p>
+</div>
+
+<h3 id="MAINTAINER"><a href="#MAINTAINER" class="headerlink" title="MAINTAINER"></a>MAINTAINER</h3><p>指定作者</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">MAINTAINER</span> &lt;name&gt;</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>新版docker中使用LABEL指明。</p>
+</div>
+
+<h3 id="LABEL"><a href="#LABEL" class="headerlink" title="LABEL"></a>LABEL</h3><p>为镜像指定标签。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt; &lt;key&gt;=&lt;value&gt;</span></span><br><span class="line"></span><br><span class="line">一个Dockerfile可以有多个<span class="keyword">LABEL</span><span class="language-bash">。</span></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> com.example.label-with-value=<span class="string">&quot;foo&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> version=<span class="string">&quot;1.0&quot;</span></span></span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> description=<span class="string">&quot;This text illustrates that label-values \</span></span></span><br><span class="line"><span class="string"><span class="language-bash">can span multiple lines.&quot;</span></span></span><br><span class="line"></span><br><span class="line">但不建议这么写，最好写成一行，可以使用\换行。</span><br><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> multi.label1=<span class="string">&quot;value1&quot;</span> \</span></span><br><span class="line"><span class="language-bash">multi.label2=<span class="string">&quot;value2&quot;</span> \</span></span><br><span class="line"><span class="language-bash">other=<span class="string">&quot;value3&quot;</span></span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>LABEL会继承基础镜像的LABEL，遇到相同key的，则值被覆盖。</p>
+</div>
+
+<h3 id="ADD"><a href="#ADD" class="headerlink" title="ADD"></a>ADD</h3><p>复制文件到镜像中。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="language-bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="keyword">ADD</span><span class="language-bash"> [<span class="string">&quot;&lt;src&gt;&quot;</span> ... <span class="string">&quot;&lt;dest&gt;&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>路径可以是容器内的绝对路径，也可以是相对于工作目录的相对路径，推荐写成绝对路径。<br>可以是一个本地文件，还可以是一个url，相当于wget。</p>
+</div>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ADD</span><span class="language-bash"> <span class="built_in">test</span> relativeDir/</span></span><br><span class="line"><span class="keyword">ADD</span><span class="language-bash"> <span class="built_in">test</span> /relativeDir</span></span><br><span class="line"><span class="keyword">ADD</span><span class="language-bash"> http://example.com/test /</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>scr为一个目录时，会自动把目录下的文件复制过去，目录本身不会复制。<br>如果scr为多个文件，dest一个是一个目录。</p>
+</div>
+
+<h3 id="COPY"><a href="#COPY" class="headerlink" title="COPY"></a>COPY</h3><p>复制文件到镜像中。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">COPY</span><span class="language-bash"> &lt;src&gt; ... &lt;dest&gt;</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> [<span class="string">&quot;&lt;src&gt;&quot;</span> ... <span class="string">&quot;&lt;dest&gt;&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>与ADD的区别：COPY只能是本地文件，其他用法一致。</p>
+</div>
+
+<h3 id="EXPOSE"><a href="#EXPOSE" class="headerlink" title="EXPOSE"></a>EXPOSE</h3><p>暴露容器运行时的监听端口给外部。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">EXPOSE</span> &lt;port&gt;/&lt;tcp/udp&gt;</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>EXPOSE不会使容器访问主机的端口，如果想使容器和主机的端口有映射关系，必须在容器启动的时候加上-p参数。</p>
+</div>
+
+<h3 id="ENV"><a href="#ENV" class="headerlink" title="ENV"></a>ENV</h3><p>设置环境变量。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENV</span> &lt;key&gt; &lt;value&gt;</span><br><span class="line"><span class="keyword">ENV</span> &lt;key&gt;=&lt;value&gt; ...</span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>两者的区别：第一种一次设置一个，第二种一次设置多个。</p>
+</div>
+
+<h4 id="在Dockerfile中使用环境变量"><a href="#在Dockerfile中使用环境变量" class="headerlink" title="在Dockerfile中使用环境变量"></a>在Dockerfile中使用环境变量</h4><ul>
+<li>$varname</li>
+<li>${varname}</li>
+<li>${varname:-default}</li>
+<li>${varname:+default}</li>
+</ul>
+<div class="alert info no-icon"><p>第一种和第二种相同。<br>第三种表示当变量不存在时，使用-号后面的值。<br>第四种表示无论变量存不存在，都使用+后面的值。</p>
+</div>
+
+<h3 id="RUN"><a href="#RUN" class="headerlink" title="RUN"></a>RUN</h3><p>运行指定命令。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">RUN</span><span class="language-bash"> &lt;<span class="built_in">command</span>&gt;</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> [<span class="string">&quot;executable&quot;</span>, <span class="string">&quot;param1&quot;</span>, <span class="string">&quot;param2&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>第一种后面直接跟shell命令。</p>
+<ul>
+<li>在linux上默认/bin/sh -c</li>
+<li>在windows上默认cmd /S /C</li>
+</ul>
+<p>第二种类似函数调用。</p>
+<ul>
+<li>可以将executable理解为可执行文件，后面就是两个参数。</li>
+</ul>
+</div>
+
+<h3 id="CMD"><a href="#CMD" class="headerlink" title="CMD"></a>CMD</h3><p>容器启动时要运行的命令。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;executable&quot;</span>, <span class="string">&quot;param1&quot;</span>, <span class="string">&quot;param2&quot;</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;param1&quot;</span>, <span class="string">&quot;param2&quot;</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
+<p>示例：</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;sh&quot;</span>, <span class="string">&quot;-c&quot;</span>, <span class="string">&quot;echo <span class="variable">$HOME</span>&quot;</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;echo&quot;</span>, <span class="string">&quot;<span class="variable">$HOME</span>&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>参数一定要用双引号包括。原因是参数传递后，docker解析的是一个JSON array。</p>
+</div>
+
+<div class="alert info no-icon"><p>RUN和CMD的却别：</p>
+<ul>
+<li>RUN是构建容器镜像时就会运行的命令以及提交运行结果。</li>
+<li>CMD是容器启动时执行的命令，在构建时不运行，构建时仅仅指定了这个命令。</li>
+</ul>
+</div>
+
+<h3 id="ENTRYPOINT"><a href="#ENTRYPOINT" class="headerlink" title="ENTRYPOINT"></a>ENTRYPOINT</h3><p>启动时的默认命令。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;executable&quot;</span>, <span class="string">&quot;param1&quot;</span>, <span class="string">&quot;param2&quot;</span>]  </span></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> <span class="built_in">command</span> param1 param2</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>ENTRYPOINT与CMD比较：</p>
+<ul>
+<li>相同点：只能写一条，如果写了多条，那么只有最后一条会生效；容器启动时才会运行，运行时机相同。</li>
+<li>不同点：ENTRYPOINT不会被运行的command覆盖，而CMD则会被覆盖。</li>
+</ul>
+</div>
+
+<p>如果我们在Dockerfile中同时写了ENTRYPOINT和CMD，并且CMD指令不是一个完整可执行的命令，那么CMD指定的内容将会作为ENTRYPOINT的参数。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;top&quot;</span>, <span class="string">&quot;-b&quot;</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;-c&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+
+<p>如果我们在Dcokerfile中同时写了ENTRYPOINT和CMD，并且CMD是一个完整的指令，那么他们会相互覆盖，谁在最后谁生效。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;top&quot;</span>, <span class="string">&quot;-b&quot;</span>]</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> <span class="built_in">ls</span> -al</span></span><br></pre></td></tr></table></figure>
+<p>那么容器内将执行ls -al，top -b将不会被执行。</p>
+<h3 id="VOLUME"><a href="#VOLUME" class="headerlink" title="VOLUME"></a>VOLUME</h3><p>实现挂载功能，可将宿主机目录挂载到容器中。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">VOLUME</span><span class="language-bash"> [<span class="string">&quot;/data&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>[“/data”]可以是一个JsonArray，也可以是多个值。</p>
+</div>
+
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">VOLUME</span><span class="language-bash"> [<span class="string">&quot;/var/log&quot;</span>]</span></span><br><span class="line"><span class="keyword">VOLUME</span><span class="language-bash"> /var/log</span></span><br><span class="line"><span class="keyword">VOLUME</span><span class="language-bash"> /var/log /var/db</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>容器使用的是AUFS，这种文件系统不能持久化数据，当容器关闭后，所有的更改都会丢失。所以当数据需要持久化时使用这个命令。</p>
+</div>
+
+<h3 id="USER"><a href="#USER" class="headerlink" title="USER"></a>USER</h3><p>设置启动容器的用户，可以是用户名或UID。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">USER</span> king</span><br><span class="line"><span class="keyword">USER</span> UID</span><br></pre></td></tr></table></figure>
+<div class="alert danger no-icon"><p>如果设置了容器以king用户去运行，那么RUN，CMD和ENTRYPOINT都会以这个用户去运行，使用这个命令一定要确认容器中拥有这个用户，并且拥有足够的权限。</p>
+</div>
+
+<h3 id="WORKDIR"><a href="#WORKDIR" class="headerlink" title="WORKDIR"></a>WORKDIR</h3><p>设置工作目录，对RUN，CMD，ENTRYPOINT，COPY和ADD生效。如果目录不存在会创建，也可以设置多次。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> /path/to/workdir</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> /a</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> b</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> c</span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
+<p>pwd的执行结果是/a/b/c。<br>WORKDIR也可以解析环境变量。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ENV</span> DIRPATH /path</span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> <span class="variable">$DIRPATH</span>/<span class="variable">$DIRNAME</span></span></span><br><span class="line"><span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">pwd</span></span></span><br></pre></td></tr></table></figure>
+<p>pwd的执行结果是/path/$DIRNAME。</p>
+<h3 id="ARG"><a href="#ARG" class="headerlink" title="ARG"></a>ARG</h3><p>设置变量。ARG命令定义一个变量，在docker build创建镜像的时候，使用**–build-arg=**来指定参数。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ARG</span> &lt;name&gt;[=&lt;default value&gt;]</span><br></pre></td></tr></table></figure>
+
+<div class="alert warning no-icon"><p>如果用户在build镜像时指定了一个参数没有定义在Dockerfile中，那么将会有一个warning，提示如下：<br>[Warning] One or more build-args [path] were not consumed.</p>
+</div>
+
+<p>可以定义一个或者多个参数.</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">user</span></span><br><span class="line"><span class="keyword">ARG</span> buildinfo</span><br></pre></td></tr></table></figure>
+<p>还可以给参数一个默认值。</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> ubuntu</span><br><span class="line"><span class="keyword">ARG</span> <span class="keyword">user</span>=king</span><br><span class="line"><span class="keyword">ARG</span> buildinfo=<span class="number">1</span></span><br></pre></td></tr></table></figure>
+<div class="alert info no-icon"><p>如果我们给了ARG定义的参数默认值，那么当build镜像时没有指定参数值，将会使用这个默认值。</p>
+</div>
+
+<h3 id="ONBUILD"><a href="#ONBUILD" class="headerlink" title="ONBUILD"></a>ONBUILD</h3><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ONBUILD</span> [INSTRUCTION]</span><br></pre></td></tr></table></figure>
+<p>这个命令只对当前镜像的子镜像生效。<br>比如当前镜像为A，在Dockerfile中添加：</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">ONBUILD</span> <span class="keyword">RUN</span><span class="language-bash"> <span class="built_in">ls</span> -al</span></span><br></pre></td></tr></table></figure>
+<p>这个<strong>ls -al</strong>命令不会在A镜像构建或启动的时候执行。此时有一个镜像B是基于A镜像构建的，那么这个<strong>ls -al</strong>命令会在镜像B构建的时候被执行。</p>
+<h3 id="STOPSIGNAL"><a href="#STOPSIGNAL" class="headerlink" title="STOPSIGNAL"></a>STOPSIGNAL</h3><p>当容器停止时给系统发送什么样的指令，默认是15.</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">STOPSIGNAL</span> signal</span><br></pre></td></tr></table></figure>
+
+<h3 id="HEALTHCHECK"><a href="#HEALTHCHECK" class="headerlink" title="HEALTHCHECK"></a>HEALTHCHECK</h3><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">HEALTHCHECK</span><span class="language-bash"> [OPTIONS] CMD <span class="built_in">command</span></span></span><br><span class="line"><span class="keyword">HEALTHCHECK</span><span class="language-bash"> NONE</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li>在容器内部运行一个命令来检查容器的健康状况。</li>
+<li>在基础镜像中取消健康检查命令。</li>
+</ol>
+<p>[OPTIONS]支持以下三种选项：</p>
+<ul>
+<li>–interval=DURATION 两次检查默认的时间间隔，默认为30秒。</li>
+<li>–timeout=DURATION 健康检查命令运行超时时长，默认为30秒。</li>
+<li>-reties=N 当连续失败指定次数后，则容器被认为是不健康的，状态日为unhealthy，默认次数是3。</li>
+</ul>
+<div class="alert danger no-icon"><p>HEALTHCHECK命令只能出现一次，如果出现了多次，只有最后一次生效。</p>
+</div>
+
+<p>CMD后面的命令的返回值决定了本次健康检查是否成功，具体的返回值如下：</p>
+<ul>
+<li>0：success。表示容器是健康的。</li>
+<li>1：unhealthy。表示容器已经不能工作了。</li>
+<li>2：reserved。保留值。</li>
+</ul>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">HEALTHCHECK</span><span class="language-bash"> --interval=5m --<span class="built_in">timeout</span>=3s \</span></span><br><span class="line"><span class="language-bash">CMD curl -f http://localhost/ || <span class="built_in">exit</span> 1</span></span><br></pre></td></tr></table></figure>
+<p>健康检查的命令是：curl -f <a target="_blank" rel="noopener" href="http://localhost/">http://localhost/</a> || exit 1<br>两次检查的间隔是5分钟，命令超时时间是3秒。</p>
+
+            
+
+
+        </div>
+    </div>
+    <div id="post-footer" class="post-footer main-content-wrap">
+        
+            <div class="post-footer-tags">
+                <span class="text-color-light text-small">TAGGED IN</span><br/>
+                
+    <a class="tag tag--primary tag--small t-none-link" href="/tags/Docker/" rel="tag">Docker</a>
+
+            </div>
+        
+        
+            <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Understand Neutron（一）"
+                    aria-label="PREVIOUS: Understand Neutron（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/19/%E6%BA%90%E7%A0%81%E7%9C%8BTrove%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="源码看Trove（一）"
+                    aria-label="NEXT: 源码看Trove（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=乘风破浪的Docker（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+        
+        
+            
+        
+    </div>
+</article>
+
+<div class="main-content-wrap">
+    
+        
+            <script src="//cdn.jsdelivr.net/npm/@waline/client"></script>
+阅读量：<span id="2018/09/20/乘风破浪的Docker（二）/" class="waline-visitor-count"></span>
+<div id="vcomments"></div>
+<script>
+    new Waline({
+        el: "#vcomments",
+        serverURL: "https://blog-api-nu-nine.vercel.app/",
+        lang: "zh-cn",
+        visitor: true,
+        emoji: [
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/bilibili",
+            "https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/qq",
+        ],
+        placeholder: "ヾﾉ≧∀≦)o来啊，快活啊!",
+        dark: "auto",
+        meta: ["nick", "mail", "link"],
+        requiredMeta: [],
+        wordLimit: "200",
+        pageSize: "10",
+        highlight: "hanabi",
+        copyright: true,
+        avatar: "wavatar",
+    });
+</script>
+  
+        
+    
+</div>
+
+
+
+                <footer id="footer" class="main-content-wrap">
+    <span class="copyrights">
+        Copyrights &copy; 2024 Wang kuntian. All Rights Reserved.
+    </span>
+</footer>
+
+            </div>
+            
+                <div id="bottom-bar" class="post-bottom-bar" data-behavior="4">
+                    <div class="post-actions-wrap">
+    <nav>
+        <ul class="post-actions post-action-nav">
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/27/Understand-Neutron%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="Understand Neutron（一）"
+                    aria-label="PREVIOUS: Understand Neutron（一）"
+                >
+                    
+                        <i class="fa fa-angle-left" aria-hidden="true"></i>
+                        <span class="hide-xs hide-sm text-small icon-ml">PREVIOUS</span>
+                    </a>
+            </li>
+            <li class="post-action">
+                
+                    
+                <a
+                    class="post-action-btn btn btn--default tooltip--top"
+                    href="/2018/09/19/%E6%BA%90%E7%A0%81%E7%9C%8BTrove%EF%BC%88%E4%B8%80%EF%BC%89/"
+                    data-tooltip="源码看Trove（一）"
+                    aria-label="NEXT: 源码看Trove（一）"
+                >
+                    
+                        <span class="hide-xs hide-sm text-small icon-mr">NEXT</span>
+                        <i class="fa fa-angle-right" aria-hidden="true"></i>
+                    </a>
+            </li>
+        </ul>
+    </nav>
+    <ul class="post-actions post-action-share">
+        <li class="post-action hide-lg hide-md hide-sm">
+            <a
+                class="post-action-btn btn btn--default btn-open-shareoptions"
+                href="#btn-open-shareoptions"
+                aria-label="Share this post"
+            >
+                <i class="fa fa-share-alt" aria-hidden="true"></i>
+            </a>
+        </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Weibo"
+                    aria-label="Share on Weibo"
+                >
+                    <i class="fab fa-weibo" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=乘风破浪的Docker（二）"
+                    title="Share on QQ"
+                    aria-label="Share on QQ"
+                >
+                    <i class="fab fa-qq" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+            
+            
+            <li class="post-action hide-xs">
+                <a
+                    class="post-action-btn btn btn--default"
+                    target="new" href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                    title="Share on Qzone"
+                    aria-label="Share on Qzone"
+                >
+                    <i class="fa fa-star" aria-hidden="true"></i>
+                </a>
+            </li>
+        
+        
+            
+        
+        <li class="post-action">
+            
+                <a class="post-action-btn btn btn--default" href="#table-of-contents" aria-label="目录">
+            
+                <i class="fa fa-list" aria-hidden="true"></i>
+            </a>
+        </li>
+    </ul>
+</div>
+
+
+                </div>
+                
+    <div id="share-options-bar" class="share-options-bar" data-behavior="4">
+        <i id="btn-close-shareoptions" class="fa fa-times"></i>
+        <ul class="share-options">
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://service.weibo.com/share/share.php?&amp;title=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Weibo"
+                    >
+                        <i class="fab fa-weibo" aria-hidden="true"></i><span>Share on Weibo</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://connect.qq.com/widget/shareqq/index.html?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/&amp;title=乘风破浪的Docker（二）"
+                        aria-label="Share on QQ"
+                    >
+                        <i class="fab fa-qq" aria-hidden="true"></i><span>Share on QQ</span>
+                    </a>
+                </li>
+            
+                
+                
+                <li class="share-option">
+                    <a
+                        class="share-option-btn"
+                        target="new"
+                        href="http://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=https://wangkuntian.github.io/2018/09/20/%E4%B9%98%E9%A3%8E%E7%A0%B4%E6%B5%AA%E7%9A%84Docker%EF%BC%88%E4%BA%8C%EF%BC%89/"
+                        aria-label="Share on Qzone"
+                    >
+                        <i class="fa fa-star" aria-hidden="true"></i><span>Share on Qzone</span>
+                    </a>
+                </li>
+            
+        </ul>
+    </div>
+
+
+            
+        </div>
+        
+
+
+    
+        
+    
+
+<div id="about">
+    <div id="about-card">
+        <div id="about-btn-close">
+            <i class="fa fa-times"></i>
+        </div>
+        
+            <img id="about-card-picture" src="/assets/images/faker.jpg" alt="Author&#39;s picture"/>
+        
+            <h4 id="about-card-name">Wang kuntian</h4>
+        
+            <div id="about-card-bio"><p>Hi</p>
+</div>
+        
+        
+            <div id="about-card-job">
+                <i class="fa fa-briefcase"></i>
+                <br/>
+                <p>Software Engineer</p>
+
+            </div>
+        
+        
+            <div id="about-card-location">
+                <i class="fa fa-map-marker-alt"></i>
+                <br/>
+                Beijing
+            </div>
+        
+    </div>
+</div>
+
+        
+        
+<div id="cover" style="background-image:url('/assets/images/cover-v1.2.0.jpg');"></div>
+        <!--SCRIPTS-->
+
+<script src="/assets/js/script-ndtc2tx33sr3grlppafri7aw03fwgxbruphsl7cntcdkym8tusuknerf6c0g.min.js"></script>
+
+<!--SCRIPTS END-->
+
+
+    
+
+
+
+
+    <script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"display":{"superSample":2.5,"width":180,"height":400,"position":"right","hOffset":0,"vOffset":40},"mobile":{"show":true,"scale":0.5},"react":{"opacityDefault":0.7,"opacityOnHover":0.2},"dialog":{"enable":true,"hitokoto":false},"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"debug":false,"model":{"scale":1,"hHeadPos":0.5,"vHeadPos":0.618,"jsonPath":"/live2dw/assets/hibiki.model.json"},"log":false});</script></body>
+</html>
